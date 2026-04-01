@@ -1,4 +1,6 @@
+import type { ReactElement, ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { cloneElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource } from '../../types'
 import OperationDropdown from '../operation-dropdown'
@@ -12,24 +14,22 @@ vi.mock('@/utils/classnames', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-    <button data-testid="action-button" className={className} onClick={onClick}>
-      {children}
-    </button>
+vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children, open }: { children: ReactNode, open: boolean }) => (
+    <div data-testid="dropdown-menu" data-open={open}>{children}</div>
   ),
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-elem" data-open={open}>{children}</div>
+  DropdownMenuTrigger: ({ children, className }: { children: ReactNode, className?: string }) => (
+    <button data-testid="dropdown-trigger" className={className}>{children}</button>
   ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="dropdown-content">{children}</div>
   ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div data-testid="portal-content" className={className}>{children}</div>
-  ),
+  DropdownMenuItem: ({ children, onClick, render, destructive }: { children: ReactNode, onClick?: () => void, render?: ReactElement, destructive?: boolean }) => {
+    if (render)
+      return cloneElement(render, { onClick, 'data-destructive': destructive } as Record<string, unknown>, children)
+    return <div data-testid="dropdown-item" data-destructive={destructive} onClick={onClick}>{children}</div>
+  },
+  DropdownMenuSeparator: () => <hr data-testid="dropdown-separator" />,
 }))
 
 describe('OperationDropdown', () => {
@@ -52,14 +52,13 @@ describe('OperationDropdown', () => {
     it('should render trigger button', () => {
       render(<OperationDropdown {...defaultProps} />)
 
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
-      expect(screen.getByTestId('action-button')).toBeInTheDocument()
+      expect(screen.getByTestId('dropdown-trigger')).toBeInTheDocument()
     })
 
     it('should render dropdown content', () => {
       render(<OperationDropdown {...defaultProps} />)
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('dropdown-content')).toBeInTheDocument()
     })
 
     it('should render info option for github source', () => {
@@ -118,14 +117,10 @@ describe('OperationDropdown', () => {
   })
 
   describe('User Interactions', () => {
-    it('should toggle dropdown when trigger is clicked', () => {
+    it('should render dropdown menu root', () => {
       render(<OperationDropdown {...defaultProps} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
-      fireEvent.click(trigger)
-
-      // The portal-elem should reflect the open state
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument()
     })
 
     it('should call onInfo when info option is clicked', () => {
@@ -174,7 +169,7 @@ describe('OperationDropdown', () => {
         const { unmount } = render(
           <OperationDropdown {...defaultProps} source={source} />,
         )
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument()
         expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
         unmount()
       })
@@ -199,9 +194,7 @@ describe('OperationDropdown', () => {
 
   describe('Memoization', () => {
     it('should be wrapped with React.memo', () => {
-      // Verify the component is exported as a memo component
       expect(OperationDropdown).toBeDefined()
-      // React.memo wraps the component, so it should have $$typeof
       expect((OperationDropdown as { $$typeof?: symbol }).$$typeof).toBeDefined()
     })
   })

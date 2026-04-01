@@ -1,21 +1,27 @@
 'use client'
 
-import { lazy, Suspense } from 'react'
-import { IS_DEV } from '@/config'
+import { TanStackDevtools } from '@tanstack/react-devtools'
+import { formDevtoolsPlugin } from '@tanstack/react-form-devtools'
 
-const TanStackDevtoolsWrapper = lazy(() =>
-  import('./devtools').then(module => ({
-    default: module.TanStackDevtoolsWrapper,
-  })),
-)
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
+import { IS_DEV } from '@/config'
 
 export const TanStackDevtoolsLoader = () => {
   if (!IS_DEV)
     return null
 
   return (
-    <Suspense fallback={null}>
-      <TanStackDevtoolsWrapper />
-    </Suspense>
+    <TanStackDevtools
+      plugins={[
+        // Query Devtools (Official Plugin)
+        {
+          name: 'React Query',
+          render: () => <ReactQueryDevtoolsPanel />,
+        },
+
+        // Form Devtools (Official Plugin)
+        formDevtoolsPlugin(),
+      ]}
+    />
   )
 }

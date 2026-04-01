@@ -4,9 +4,11 @@ import { useStore } from '@/app/components/app/store'
 import MessageLogModal from '../index'
 
 let clickAwayHandler: (() => void) | null = null
+let clickAwayHandlers: (() => void)[] = []
 vi.mock('ahooks', () => ({
   useClickAway: (fn: () => void) => {
     clickAwayHandler = fn
+    clickAwayHandlers.push(fn)
   },
 }))
 
@@ -38,6 +40,7 @@ describe('MessageLogModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clickAwayHandler = null
+    clickAwayHandlers = []
     // eslint-disable-next-line ts/no-explicit-any
     vi.mocked(useStore).mockImplementation((selector: any) => selector({
       appDetail: { id: 'app-1' },
@@ -99,6 +102,13 @@ describe('MessageLogModal', () => {
       expect(clickAwayHandler).toBeTruthy()
       clickAwayHandler!()
       expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not call onCancel when clicked away if not mounted', () => {
+      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      expect(clickAwayHandlers.length).toBeGreaterThan(0)
+      clickAwayHandlers[0]() // This is the closure from the initial render, where mounted is false
+      expect(onCancel).not.toHaveBeenCalled()
     })
   })
 })

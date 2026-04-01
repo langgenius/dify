@@ -234,5 +234,39 @@ describe('CustomPopover', () => {
       const button = screen.getByTestId('trigger').parentElement
       expect(button).toHaveClass('btn-closed')
     })
+
+    it('should align popover panel to left when position is bl', async () => {
+      render(
+        <CustomPopover
+          {...defaultProps}
+          trigger="click"
+          position="bl"
+        />,
+      )
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger'))
+      })
+
+      const panel = screen.getByTestId('content').closest('.absolute')
+      expect(panel).toHaveClass('left-0')
+    })
+
+    it('should align popover panel to right when position is br', async () => {
+      render(
+        <CustomPopover
+          {...defaultProps}
+          trigger="click"
+          position="br"
+        />,
+      )
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger'))
+      })
+
+      const panel = screen.getByTestId('content').closest('.absolute')
+      expect(panel).toHaveClass('right-0')
+    })
   })
 })

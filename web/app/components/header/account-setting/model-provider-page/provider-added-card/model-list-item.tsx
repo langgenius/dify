@@ -1,4 +1,5 @@
 import type { ModelItem, ModelProvider } from '../declarations'
+import { useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +10,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { disableModel, enableModel } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import { ModelStatusEnum } from '../declarations'
@@ -30,16 +32,30 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
   const { isCurrentWorkspaceManager } = useAppContext()
+  const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
+  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+    input: {
+      params: {
+        provider: provider.provider,
+      },
+    },
+  })
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
       await enableModel(`/workspaces/current/model-providers/${provider.provider}/models/enable`, { model: model.model, model_type: model.model_type })
     else
       await disableModel(`/workspaces/current/model-providers/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
+
+    queryClient.invalidateQueries({
+      queryKey: modelProviderModelListQueryKey,
+      exact: true,
+      refetchType: 'none',
+    })
     updateModelList(model.model_type)
     onChange?.(provider.provider)
-  }, [model.model, model.model_type, onChange, provider.provider, updateModelList])
+  }, [model.model, model.model_type, modelProviderModelListQueryKey, onChange, provider.provider, queryClient, updateModelList])
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, { wait: 500 })
 
@@ -58,7 +74,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         modelName={model.model}
       />
       <ModelName
-        className="system-md-regular grow text-text-secondary"
+        className="grow text-text-secondary system-md-regular"
         modelItem={model}
         showModelType
         showMode

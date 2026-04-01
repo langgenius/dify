@@ -3,16 +3,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../index'
 
 const renderOpenSelect = ({
+  rootProps = {},
   triggerProps = {},
   contentProps = {},
   onValueChange,
 }: {
+  rootProps?: Record<string, unknown>
   triggerProps?: Record<string, unknown>
   contentProps?: Record<string, unknown>
   onValueChange?: (value: string | null) => void
 } = {}) => {
   return render(
-    <Select open defaultValue="seattle" onValueChange={onValueChange}>
+    <Select open defaultValue="seattle" onValueChange={onValueChange} {...rootProps}>
       <SelectTrigger aria-label="city select" {...triggerProps}>
         <SelectValue />
       </SelectTrigger>
@@ -108,6 +110,107 @@ describe('Select wrappers', () => {
 
       const clearButton = screen.getByRole('button', { name: /clear selection/i })
       expect(() => fireEvent.click(clearButton)).not.toThrow()
+    })
+
+    it('should apply regular size variant classes by default', () => {
+      renderOpenSelect()
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toMatch(/system-sm-regular/)
+      expect(trigger.className).toMatch(/rounded-lg/)
+    })
+
+    it('should apply small size variant classes when size is small', () => {
+      renderOpenSelect({
+        triggerProps: { size: 'small' },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toMatch(/system-xs-regular/)
+      expect(trigger.className).toMatch(/rounded-md/)
+    })
+
+    it('should apply large size variant classes when size is large', () => {
+      renderOpenSelect({
+        triggerProps: { size: 'large' },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toMatch(/system-md-regular/)
+    })
+
+    it('should apply disabled styling via data attributes when disabled', () => {
+      renderOpenSelect({
+        triggerProps: { disabled: true },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger).toHaveAttribute('data-disabled')
+      expect(trigger.className).toContain('data-[disabled]:bg-components-input-bg-disabled')
+    })
+
+    it('should apply disabled placeholder color class for compound state', () => {
+      renderOpenSelect({
+        triggerProps: { disabled: true },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toContain('data-[disabled]:data-[placeholder]:text-components-input-text-disabled')
+    })
+
+    it('should show error icon and apply destructive styling when variant is destructive', () => {
+      renderOpenSelect({
+        triggerProps: { variant: 'destructive' },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toContain('border-components-input-border-destructive')
+      expect(trigger.className).toContain('bg-components-input-bg-destructive')
+      const errorIcon = trigger.querySelector('.i-ri-error-warning-line')
+      expect(errorIcon).toBeInTheDocument()
+    })
+
+    it('should hide clear button when variant is destructive even if clearable', () => {
+      renderOpenSelect({
+        triggerProps: { clearable: true, variant: 'destructive' },
+      })
+
+      expect(screen.queryByRole('button', { name: /clear selection/i })).not.toBeInTheDocument()
+    })
+
+    it('should apply readonly styling via data attributes when Root is readOnly', () => {
+      renderOpenSelect({
+        rootProps: { readOnly: true },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger).toHaveAttribute('data-readonly')
+      expect(trigger.className).toContain('data-[readonly]:bg-transparent')
+    })
+
+    it('should hide arrow icon via CSS when Root is readOnly', () => {
+      renderOpenSelect({
+        rootProps: { readOnly: true },
+      })
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      const iconWrapper = trigger.querySelector('[class*="group-data-[readonly]:hidden"]')
+      expect(iconWrapper).toBeInTheDocument()
+    })
+
+    it('should set aria-hidden on decorative icons', () => {
+      renderOpenSelect()
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      const arrowIcon = trigger.querySelector('.i-ri-arrow-down-s-line')
+      expect(arrowIcon).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('should include placeholder color class via data attribute', () => {
+      renderOpenSelect()
+
+      const trigger = screen.getByRole('combobox', { name: 'city select' })
+      expect(trigger.className).toContain('data-[placeholder]:text-components-input-text-placeholder')
     })
   })
 

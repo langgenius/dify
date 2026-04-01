@@ -8,18 +8,19 @@ associates with the node span.
 """
 
 import logging
+from contextvars import Token
 from dataclasses import dataclass
 from typing import cast, final
 
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
 from opentelemetry import context as context_api
 from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_context
 from typing_extensions import override
 
 from configs import dify_config
-from dify_graph.enums import NodeType
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import GraphNodeEventBase
-from dify_graph.nodes.base.node import Node
 from extensions.otel.parser import (
     DefaultNodeOTelParser,
     LLMNodeOTelParser,
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _NodeSpanContext:
     span: "Span"
-    token: object
+    token: Token[context_api.Context]
 
 
 @final
@@ -74,16 +75,13 @@ class ObservabilityLayer(GraphEngineLayer):
     def _build_parser_registry(self) -> None:
         """Initialize parser registry for node types."""
         self._parsers = {
-            NodeType.TOOL: ToolNodeOTelParser(),
-            NodeType.LLM: LLMNodeOTelParser(),
-            NodeType.KNOWLEDGE_RETRIEVAL: RetrievalNodeOTelParser(),
+            BuiltinNodeTypes.TOOL: ToolNodeOTelParser(),
+            BuiltinNodeTypes.LLM: LLMNodeOTelParser(),
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: RetrievalNodeOTelParser(),
         }
 
     def _get_parser(self, node: Node) -> NodeOTelParser:
-        node_type = getattr(node, "node_type", None)
-        if isinstance(node_type, NodeType):
-            return self._parsers.get(node_type, self._default_parser)
-        return self._default_parser
+        return self._parsers.get(node.node_type, self._default_parser)
 
     @override
     def on_graph_start(self) -> None:

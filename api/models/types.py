@@ -144,8 +144,8 @@ class EnumText(TypeDecorator[_E | None], Generic[_E]):
         return dialect.type_descriptor(VARCHAR(self._length))
 
     def process_result_value(self, value: str | None, dialect: Dialect) -> _E | None:
-        if value is None:
-            return value
+        if value is None or value == "":
+            return None
         # Type annotation guarantees value is str at this point
         return self._enum_class(value)
 

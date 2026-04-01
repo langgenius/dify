@@ -1,17 +1,12 @@
 import type { Credential } from '../../declarations'
 import {
-  RiCheckLine,
-  RiDeleteBinLine,
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Tooltip from '@/app/components/base/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 
@@ -56,7 +51,7 @@ const CredentialItem = ({
       key={credential.credential_id}
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
-        (disabled || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
+        (disabled || credential.not_allowed_to_use) ? 'cursor-not-allowed opacity-50' : onItemClick && 'cursor-pointer',
       )}
       onClick={() => {
         if (disabled || credential.not_allowed_to_use)
@@ -70,7 +65,7 @@ const CredentialItem = ({
             <div className="h-4 w-4">
               {
                 selectedCredentialId === credential.credential_id && (
-                  <RiCheckLine className="h-4 w-4 text-text-accent" />
+                  <span className="i-ri-check-line h-4 w-4 text-text-accent" />
                 )
               }
             </div>
@@ -78,7 +73,7 @@ const CredentialItem = ({
         }
         <Indicator className="ml-2 mr-1.5 shrink-0" />
         <div
-          className="system-md-regular truncate text-text-secondary"
+          className="truncate text-text-secondary system-md-regular"
           title={credential.credential_name}
         >
           {credential.credential_name}
@@ -96,38 +91,50 @@ const CredentialItem = ({
           <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
               !disableEdit && !credential.not_allowed_to_use && (
-                <Tooltip popupContent={t('operation.edit', { ns: 'common' })}>
-                  <ActionButton
-                    disabled={disabled}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit?.(credential)
-                    }}
-                  >
-                    <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit?.(credential)
+                        }}
+                      >
+                        <span className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>{t('operation.edit', { ns: 'common' })}</TooltipContent>
                 </Tooltip>
               )
             }
             {
               !disableDelete && (
-                <Tooltip popupContent={disableDeleteWhenSelected ? disableDeleteTip : t('operation.delete', { ns: 'common' })}>
-                  <ActionButton
-                    className="hover:bg-transparent"
-                    onClick={(e) => {
-                      if (disabled || disableDeleteWhenSelected)
-                        return
-                      e.stopPropagation()
-                      onDelete?.(credential)
-                    }}
-                  >
-                    <RiDeleteBinLine className={cn(
-                      'h-4 w-4 text-text-tertiary',
-                      !disableDeleteWhenSelected && 'hover:text-text-destructive',
-                      disableDeleteWhenSelected && 'opacity-50',
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton
+                        className="hover:bg-transparent"
+                        onClick={(e) => {
+                          if (disabled || disableDeleteWhenSelected)
+                            return
+                          e.stopPropagation()
+                          onDelete?.(credential)
+                        }}
+                      >
+                        <span className={cn(
+                          'i-ri-delete-bin-line h-4 w-4 text-text-tertiary',
+                          !disableDeleteWhenSelected && 'hover:text-text-destructive',
+                          disableDeleteWhenSelected && 'opacity-50',
+                        )}
+                        />
+                      </ActionButton>
                     )}
-                    />
-                  </ActionButton>
+                  />
+                  <TooltipContent>
+                    {disableDeleteWhenSelected ? disableDeleteTip : t('operation.delete', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }
@@ -139,8 +146,9 @@ const CredentialItem = ({
 
   if (credential.not_allowed_to_use) {
     return (
-      <Tooltip popupContent={t('auth.customCredentialUnavailable', { ns: 'plugin' })}>
-        {Item}
+      <Tooltip>
+        <TooltipTrigger render={Item} />
+        <TooltipContent>{t('auth.customCredentialUnavailable', { ns: 'plugin' })}</TooltipContent>
       </Tooltip>
     )
   }

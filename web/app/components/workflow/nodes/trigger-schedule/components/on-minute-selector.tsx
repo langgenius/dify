@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Slider from '@/app/components/base/slider'
+import { Slider } from '@/app/components/base/ui/slider'
 
 type OnMinuteSelectorProps = {
   value?: number
@@ -27,7 +27,8 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
             min={0}
             max={59}
             step={1}
-            onChange={onChange}
+            onValueChange={onChange}
+            aria-label={t('nodes.triggerSchedule.onMinute', { ns: 'workflow' })}
           />
         </div>
       </div>

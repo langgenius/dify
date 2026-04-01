@@ -1,7 +1,7 @@
 from typing import TypedDict
 
-from dify_graph.variables.segments import Segment
-from dify_graph.variables.types import SegmentType
+from graphon.variables.segments import Segment
+from graphon.variables.types import SegmentType
 
 
 class _VarTypedDict(TypedDict, total=False):

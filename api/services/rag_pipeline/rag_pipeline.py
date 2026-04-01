@@ -9,6 +9,15 @@ from typing import Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from graphon.errors import WorkflowNodeRunFailedError
+from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from graphon.runtime import VariablePool
+from graphon.variables.variables import Variable, VariableBase
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -34,25 +43,19 @@ from core.rag.entities.event import (
     DatasourceErrorEvent,
     DatasourceProcessingEvent,
 )
-from core.repositories.factory import DifyCoreRepositoryFactory
+from core.repositories.factory import DifyCoreRepositoryFactory, OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
+from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    get_system_segment,
 )
-from dify_graph.enums import ErrorStrategy, NodeType, SystemVariableKey
-from dify_graph.errors import WorkflowNodeRunFailedError
-from dify_graph.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
-from dify_graph.graph_events.base import GraphNodeEventBase
-from dify_graph.node_events.base import NodeRunResult
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from dify_graph.repositories.workflow_node_execution_repository import OrderConfig
-from dify_graph.runtime import VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables.variables import VariableBase
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.workflow_entry import WorkflowEntry
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
@@ -64,7 +67,7 @@ from models.dataset import (  # type: ignore
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import IndexingStatus, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
     Workflow,
@@ -79,12 +82,19 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
 )
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
+from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
+
+
+def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
+    variable_pool = VariablePool()
+    add_variables_to_pool(variable_pool, variables)
+    return variable_pool
 
 
 class RagPipelineService:
@@ -117,13 +127,21 @@ class RagPipelineService:
     def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> dict | None:
         """
         Get pipeline template detail.
+
         :param template_id: template id
-        :return:
+        :param type: template type, "built-in" or "customized"
+        :return: template detail dict, or None if not found
         """
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             built_in_result: dict | None = retrieval_instance.get_pipeline_template_detail(template_id)
+            if built_in_result is None:
+                logger.warning(
+                    "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
+                    template_id,
+                    mode,
+                )
             return built_in_result
         else:
             mode = "customized"
@@ -226,6 +244,21 @@ class RagPipelineService:
 
         return workflow
 
+    def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+        """Fetch a published workflow snapshot by ID for restore operations."""
+        workflow = (
+            db.session.query(Workflow)
+            .where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.id == workflow_id,
+            )
+            .first()
+        )
+        if workflow and workflow.version == Workflow.VERSION_DRAFT:
+            raise IsDraftWorkflowError("source workflow must be published")
+        return workflow
+
     def get_all_published_workflow(
         self,
         *,
@@ -319,6 +352,42 @@ class RagPipelineService:
         # return draft workflow
         return workflow
 
+    def restore_published_workflow_to_draft(
+        self,
+        *,
+        pipeline: Pipeline,
+        workflow_id: str,
+        account: Account,
+    ) -> Workflow:
+        """Restore a published pipeline workflow snapshot into the draft workflow.
+
+        Pipelines reuse the shared draft-restore field copy helper, but still own
+        the pipeline-specific flush/link step that wires a newly created draft
+        back onto ``pipeline.workflow_id``.
+        """
+        source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
+        if not source_workflow:
+            raise WorkflowNotFoundError("Workflow not found.")
+
+        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
+        )
+
+        if is_new_draft:
+            db.session.add(draft_workflow)
+            db.session.flush()
+            pipeline.workflow_id = draft_workflow.id
+
+        db.session.commit()
+
+        return draft_workflow
+
     def publish_workflow(
         self,
         *,
@@ -381,10 +450,10 @@ class RagPipelineService:
         """
         # return default block config
         default_block_configs: list[dict[str, Any]] = []
-        for node_type, node_class_mapping in NODE_TYPE_CLASSES_MAPPING.items():
+        for node_type, node_class_mapping in get_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
-            if node_type is NodeType.HTTP_REQUEST:
+            if node_type == BuiltinNodeTypes.HTTP_REQUEST:
                 filters = {
                     HTTP_REQUEST_CONFIG_FILTER_KEY: build_http_request_config(
                         max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -410,14 +479,15 @@ class RagPipelineService:
         :return:
         """
         node_type_enum = NodeType(node_type)
+        node_mapping = get_node_type_classes_mapping()
 
         # return default block config
-        if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
+        if node_type_enum not in node_mapping:
             return None
 
-        node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
+        node_class = node_mapping[node_type_enum][LATEST_VERSION]
         final_filters = dict(filters) if filters else {}
-        if node_type_enum is NodeType.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in final_filters:
+        if node_type_enum == BuiltinNodeTypes.HTTP_REQUEST and HTTP_REQUEST_CONFIG_FILTER_KEY not in final_filters:
             final_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] = build_http_request_config(
                 max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
                 max_read_timeout=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
@@ -460,17 +530,12 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
-                variable_pool=VariablePool(
-                    system_variables=SystemVariable.default(),
-                    user_inputs=user_inputs,
-                    environment_variables=[],
-                    conversation_variables=[],
-                    rag_pipeline_variables=[],
-                ),
+                variable_pool=_build_seeded_variable_pool(default_system_variables()),
                 variable_loader=DraftVarLoader(
                     engine=db.engine,
                     app_id=pipeline.id,
                     tenant_id=pipeline.tenant_id,
+                    user_id=account.id,
                 ),
             ),
             start_at=start_at,
@@ -499,7 +564,7 @@ class RagPipelineService:
                 session=session,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution.node_id,
-                node_type=NodeType(workflow_node_execution.node_type),
+                node_type=workflow_node_execution.node_type,
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=account,
@@ -509,6 +574,13 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        if workflow_node_execution_db_model is not None:
+            enqueue_draft_node_execution_trace(
+                execution=workflow_node_execution_db_model,
+                outputs=workflow_node_execution.outputs,
+                workflow_execution_id=None,
+                user_id=account.id,
+            )
         return workflow_node_execution_db_model
 
     def run_datasource_workflow_node(
@@ -897,14 +969,14 @@ class RagPipelineService:
             workflow_node_execution.error = error
             # update document status
             variable_pool = node_instance.graph_runtime_state.variable_pool
-            invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
+            invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
             if invoke_from:
                 if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
-                    document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+                    document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
                         if document:
-                            document.indexing_status = "error"
+                            document.indexing_status = IndexingStatus.ERROR
                             document.error = error
                             db.session.add(document)
                             db.session.commit()
@@ -1214,7 +1286,7 @@ class RagPipelineService:
         else:
             enclosing_node_id = None
 
-        system_inputs = SystemVariable(
+        system_inputs = build_system_variables(
             datasource_type=args.get("datasource_type", "online_document"),
             datasource_info=args.get("datasource_info", {}),
         )
@@ -1225,17 +1297,17 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs={},
                 user_id=current_user.id,
-                variable_pool=VariablePool(
-                    system_variables=system_inputs,
-                    user_inputs={},
-                    environment_variables=[],
-                    conversation_variables=[],
-                    rag_pipeline_variables=[],
+                variable_pool=_build_seeded_variable_pool(
+                    build_bootstrap_variables(
+                        system_variables=system_inputs,
+                        rag_pipeline_variables=(),
+                    )
                 ),
                 variable_loader=DraftVarLoader(
                     engine=db.engine,
                     app_id=pipeline.id,
                     tenant_id=pipeline.tenant_id,
+                    user_id=current_user.id,
                 ),
             ),
             start_at=start_at,
@@ -1261,7 +1333,7 @@ class RagPipelineService:
                 session=session,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution_db_model.node_id,
-                node_type=NodeType(workflow_node_execution_db_model.node_type),
+                node_type=workflow_node_execution_db_model.node_type,
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
                 user=current_user,
@@ -1271,6 +1343,12 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution_db_model,
+            outputs=workflow_node_execution.outputs,
+            workflow_execution_id=None,
+            user_id=current_user.id,
+        )
         return workflow_node_execution_db_model
 
     def get_recommended_plugins(self, type: str) -> dict:

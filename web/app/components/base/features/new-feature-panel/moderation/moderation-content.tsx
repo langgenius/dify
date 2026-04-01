@@ -37,7 +37,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
               )
             }
             <Switch
-              size="l"
+              size="lg"
               value={config.enabled}
               onChange={v => handleConfigChange('enabled', v)}
             />

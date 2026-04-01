@@ -13,6 +13,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DatasetAutoDisableLog, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import IndexingStatus, SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def add_document_to_index_task(dataset_document_id: str):
             logger.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
             return
 
-        if dataset_document.indexing_status != "completed":
+        if dataset_document.indexing_status != IndexingStatus.COMPLETED:
             return
 
         indexing_cache_key = f"document_{dataset_document.id}_indexing"
@@ -48,7 +49,7 @@ def add_document_to_index_task(dataset_document_id: str):
                 session.query(DocumentSegment)
                 .where(
                     DocumentSegment.document_id == dataset_document.id,
-                    DocumentSegment.status == "completed",
+                    DocumentSegment.status == SegmentStatus.COMPLETED,
                 )
                 .order_by(DocumentSegment.position.asc())
                 .all()
@@ -139,7 +140,7 @@ def add_document_to_index_task(dataset_document_id: str):
             logger.exception("add document to index failed")
             dataset_document.enabled = False
             dataset_document.disabled_at = naive_utc_now()
-            dataset_document.indexing_status = "error"
+            dataset_document.indexing_status = IndexingStatus.ERROR
             dataset_document.error = str(e)
             session.commit()
         finally:

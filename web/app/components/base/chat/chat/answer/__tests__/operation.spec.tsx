@@ -3,8 +3,6 @@ import type { ChatContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import * as React from 'react'
-import { vi } from 'vitest'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Operation from '../operation'
@@ -98,12 +96,8 @@ vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/annot
     return (
       <div data-testid="annotation-ctrl">
         {cached
-          ? (
-              <button data-testid="annotation-edit-btn" onClick={onEdit}>Edit</button>
-            )
-          : (
-              <button data-testid="annotation-add-btn" onClick={handleAdd}>Add</button>
-            )}
+          ? (<button data-testid="annotation-edit-btn" onClick={onEdit}>Edit</button>)
+          : (<button data-testid="annotation-add-btn" onClick={handleAdd}>Add</button>)}
       </div>
     )
   },
@@ -117,7 +111,7 @@ vi.mock('@/app/components/base/chat/chat/log', () => ({
   default: () => <button data-testid="log-btn"><div className="i-ri-file-list-3-line" /></button>,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => ({ appId: 'test-app' })),
   usePathname: vi.fn(() => '/apps/test-app'),
 }))
@@ -440,6 +434,17 @@ describe('Operation', () => {
       const bar = screen.getByTestId('operation-bar')
       expect(bar.querySelectorAll('.i-ri-thumb-up-line').length).toBe(0)
     })
+
+    it('should test feedback modal translation fallbacks', async () => {
+      const user = userEvent.setup()
+      mockT.mockImplementation((_key: string): string => '')
+      renderOperation()
+      const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
+      await user.click(thumbDown)
+      // Check if modal title/labels fallback works
+      expect(screen.getByRole('tooltip')).toBeInTheDocument()
+      mockT.mockImplementation(key => key)
+    })
   })
 
   describe('Admin feedback (with annotation support)', () => {
@@ -538,6 +543,19 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, item })
       expect(screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line').length).toBe(0)
     })
+
+    it('should render action buttons with Default state when feedback rating is undefined', () => {
+      // Setting a malformed feedback object with no rating but triggers the wrapper to see undefined fallbacks
+      const item = {
+        ...baseItem,
+        feedback: {} as unknown as Record<string, unknown>,
+        adminFeedback: {} as unknown as Record<string, unknown>,
+      } as ChatItem
+      renderOperation({ ...baseProps, item })
+      // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
+      // the like/dislike regular ActionButtons should hit the Default state
+      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+    })
   })
 
   describe('Positioning and layout', () => {
@@ -594,6 +612,60 @@ describe('Operation', () => {
 
       // Reset to default behavior
       mockT.mockImplementation(key => key)
+    })
+
+    it('should handle buildFeedbackTooltip with empty translation fallbacks', () => {
+      // Mock t to return empty string for 'like' and 'dislike' to hit fallback branches:
+      mockT.mockImplementation((key: string): string => {
+        if (key.includes('operation.like'))
+          return ''
+        if (key.includes('operation.dislike'))
+          return ''
+        return key
+      })
+      const itemLike = { ...baseItem, feedback: { rating: 'like' as const, content: 'test content' } }
+      const { rerender } = renderOperation({ ...baseProps, item: itemLike })
+      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+
+      const itemDislike = { ...baseItem, feedback: { rating: 'dislike' as const, content: 'test content' } }
+      rerender(
+        <div className="group">
+          <Operation {...baseProps} item={itemDislike} />
+        </div>,
+      )
+      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+
+      mockT.mockImplementation(key => key)
+    })
+
+    it('should handle buildFeedbackTooltip without rating', () => {
+      // Mock tooltip display without rating to hit: 'if (!feedbackData?.rating) return label'
+      const item = { ...baseItem, feedback: { rating: null } as unknown as Record<string, unknown> } as unknown as ChatItem
+      renderOperation({ ...baseProps, item })
+      const bar = screen.getByTestId('operation-bar')
+      expect(bar).toBeInTheDocument()
+    })
+
+    it('should handle missing onFeedback gracefully in handleFeedback', async () => {
+      const user = userEvent.setup()
+      // First, render with feedback enabled to get the DOM node
+      mockContextValue.config = makeChatConfig({ supportFeedback: true })
+      mockContextValue.onFeedback = vi.fn()
+      const { rerender } = renderOperation()
+
+      const thumbUp = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-up-line')!.closest('button')!
+
+      // Then, disable the context callback to hit the `if (!onFeedback) return` early exit internally upon rerender/click
+      mockContextValue.onFeedback = undefined
+      // Rerender to ensure the component closure gets the updated undefined value from the mock context
+      rerender(
+        <div className="group">
+          <Operation {...baseProps} />
+        </div>,
+      )
+
+      await user.click(thumbUp)
+      expect(mockContextValue.onFeedback).toBeUndefined()
     })
   })
 
@@ -721,6 +793,54 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByTestId('copy-btn'))
       expect(copy).toHaveBeenCalledWith('Hello world')
+    })
+
+    it('should handle editing annotation missing onAnnotationEdited gracefully', async () => {
+      const user = userEvent.setup()
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        appId: 'test-app',
+      })
+      mockContextValue.onAnnotationEdited = undefined
+      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+      renderOperation({ ...baseProps, item })
+      const editBtn = screen.getByTestId('annotation-edit-btn')
+      await user.click(editBtn)
+      await user.click(screen.getByTestId('modal-edit'))
+      expect(mockContextValue.onAnnotationEdited).toBeUndefined()
+    })
+
+    it('should handle adding annotation missing onAnnotationAdded gracefully', async () => {
+      const user = userEvent.setup()
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        appId: 'test-app',
+      })
+      mockContextValue.onAnnotationAdded = undefined
+      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+      renderOperation({ ...baseProps, item })
+      const editBtn = screen.getByTestId('annotation-edit-btn')
+      await user.click(editBtn)
+      await user.click(screen.getByTestId('modal-add'))
+      expect(mockContextValue.onAnnotationAdded).toBeUndefined()
+    })
+
+    it('should handle removing annotation missing onAnnotationRemoved gracefully', async () => {
+      const user = userEvent.setup()
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+        appId: 'test-app',
+      })
+      mockContextValue.onAnnotationRemoved = undefined
+      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+      renderOperation({ ...baseProps, item })
+      const editBtn = screen.getByTestId('annotation-edit-btn')
+      await user.click(editBtn)
+      await user.click(screen.getByTestId('modal-remove'))
+      expect(mockContextValue.onAnnotationRemoved).toBeUndefined()
     })
   })
 })

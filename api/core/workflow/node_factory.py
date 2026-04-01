@@ -1,14 +1,32 @@
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast, final
+import importlib
+import pkgutil
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
 
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.file.file_manager import file_manager
+from graphon.graph.graph import NodeFactory
+from graphon.model_runtime.memory import PromptMessageMemory
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.nodes.base.node import Node
+from graphon.nodes.code.code_node import WorkflowCodeExecutor
+from graphon.nodes.code.entities import CodeLanguage
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.nodes.document_extractor import UnstructuredApiConfig
+from graphon.nodes.http_request import build_http_request_config
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from typing_extensions import override
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DifyRunContext
-from core.app.llm.model_access import build_dify_model_access
-from core.datasource.datasource_manager import DatasourceManager
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
@@ -17,46 +35,164 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.rag.index_processor.index_processor import IndexProcessor
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.rag.summary_index.summary_index import SummaryIndex
-from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-from core.tools.tool_file_manager import ToolFileManager
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY
-from dify_graph.enums import NodeType, SystemVariableKey
-from dify_graph.file.file_manager import file_manager
-from dify_graph.graph.graph import NodeFactory
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.memory import PromptMessageMemory
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.code.code_node import CodeNode, WorkflowCodeExecutor
-from dify_graph.nodes.code.entities import CodeLanguage
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.nodes.datasource import DatasourceNode
-from dify_graph.nodes.document_extractor import DocumentExtractorNode, UnstructuredApiConfig
-from dify_graph.nodes.http_request import HttpRequestNode, build_http_request_config
-from dify_graph.nodes.human_input.human_input_node import HumanInputNode
-from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
-from dify_graph.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from dify_graph.nodes.llm.entities import ModelConfig
-from dify_graph.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
-from dify_graph.nodes.template_transform.template_renderer import (
-    CodeExecutorJinja2TemplateRenderer,
+from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    DifyRetrieverAttachmentLoader,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    build_dify_llm_file_saver,
 )
-from dify_graph.nodes.template_transform.template_transform_node import TemplateTransformNode
-from dify_graph.variables.segments import StringSegment
+from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
+from core.workflow.nodes.agent.plugin_strategy_adapter import (
+    PluginAgentStrategyPresentationProvider,
+    PluginAgentStrategyResolver,
+)
+from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
+from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.ext_database import db
 from models.model import Conversation
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
+
+LATEST_VERSION = "latest"
+_START_NODE_TYPES: frozenset[NodeType] = frozenset(
+    (BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES)
+)
+
+
+def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] = frozenset()) -> None:
+    package = importlib.import_module(package_name)
+    for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
+        if module_name in excluded_modules:
+            continue
+        importlib.import_module(module_name)
+
+
+@lru_cache(maxsize=1)
+def register_nodes() -> None:
+    """Import production node modules so they self-register with ``Node``."""
+    _import_node_package("graphon.nodes")
+    _import_node_package("core.workflow.nodes")
+
+
+def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
+    """Return a read-only snapshot of the current production node registry.
+
+    The workflow layer owns node bootstrap because it must compose built-in
+    `graphon.nodes.*` implementations with workflow-local nodes under
+    `core.workflow.nodes.*`. Keeping this import side effect here avoids
+    reintroducing registry bootstrapping into lower-level graph primitives.
+    """
+    register_nodes()
+    return Node.get_node_type_classes_mapping()
+
+
+def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+    node_mapping = get_node_type_classes_mapping().get(node_type)
+    if not node_mapping:
+        raise ValueError(f"No class mapping found for node type: {node_type}")
+
+    latest_node_class = node_mapping.get(LATEST_VERSION)
+    matched_node_class = node_mapping.get(node_version)
+    node_class = matched_node_class or latest_node_class
+    if not node_class:
+        raise ValueError(f"No latest version class found for node type: {node_type}")
+    return node_class
+
+
+def is_start_node_type(node_type: NodeType) -> bool:
+    """Return True when the node type can serve as a workflow entry point."""
+    return node_type in _START_NODE_TYPES
+
+
+def get_default_root_node_id(graph_config: Mapping[str, Any]) -> str:
+    """Resolve the default entry node for a persisted top-level workflow graph.
+
+    This workflow-layer helper depends on start-node semantics defined by
+    `is_start_node_type`, so it intentionally lives next to the node registry
+    instead of in the raw `graphon.entities.graph_config` schema module.
+    """
+    nodes = graph_config.get("nodes")
+    if not isinstance(nodes, list):
+        raise ValueError("nodes in workflow graph must be a list")
+
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+
+        if node.get("type") == "custom-note":
+            continue
+
+        node_id = node.get("id")
+        data = node.get("data")
+        if not isinstance(node_id, str) or not isinstance(data, Mapping):
+            continue
+
+        node_type = data.get("type")
+        if isinstance(node_type, str) and is_start_node_type(node_type):
+            return node_id
+
+    raise ValueError("Unable to determine default root node ID from workflow graph")
+
+
+class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Node]]]):
+    """Mutable dict-like view over the current node registry."""
+
+    def __init__(self) -> None:
+        self._cached_snapshot: dict[NodeType, Mapping[str, type[Node]]] = {}
+        self._cached_version = -1
+        self._deleted: set[NodeType] = set()
+        self._overrides: dict[NodeType, Mapping[str, type[Node]]] = {}
+
+    def _snapshot(self) -> dict[NodeType, Mapping[str, type[Node]]]:
+        current_version = Node.get_registry_version()
+        if self._cached_version != current_version:
+            self._cached_snapshot = dict(get_node_type_classes_mapping())
+            self._cached_version = current_version
+        if not self._deleted and not self._overrides:
+            return self._cached_snapshot
+
+        snapshot = {key: value for key, value in self._cached_snapshot.items() if key not in self._deleted}
+        snapshot.update(self._overrides)
+        return snapshot
+
+    def __getitem__(self, key: NodeType) -> Mapping[str, type[Node]]:
+        return self._snapshot()[key]
+
+    def __setitem__(self, key: NodeType, value: Mapping[str, type[Node]]) -> None:
+        self._deleted.discard(key)
+        self._overrides[key] = value
+
+    def __delitem__(self, key: NodeType) -> None:
+        if key in self._overrides:
+            del self._overrides[key]
+            return
+        if key in self._cached_snapshot:
+            self._deleted.add(key)
+            return
+        raise KeyError(key)
+
+    def __iter__(self) -> Iterator[NodeType]:
+        return iter(self._snapshot())
+
+    def __len__(self) -> int:
+        return len(self._snapshot())
+
+
+# Keep the canonical node-class mapping in the workflow layer that also bootstraps
+# legacy `core.workflow.nodes.*` registrations.
+NODE_TYPE_CLASSES_MAPPING: MutableMapping[NodeType, Mapping[str, type[Node]]] = _LazyNodeTypeClassesMapping()
+
+
+LLMCompatibleNodeData: TypeAlias = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
 
 
 def fetch_memory(
@@ -99,10 +235,7 @@ class DefaultWorkflowCodeExecutor:
 @final
 class DifyNodeFactory(NodeFactory):
     """
-    Default implementation of NodeFactory that uses the traditional node mapping.
-
-    This factory creates nodes by looking up their types in NODE_TYPE_CLASSES_MAPPING
-    and instantiating the appropriate node class.
+    Default implementation of NodeFactory that resolves node classes from the live registry.
     """
 
     def __init__(
@@ -124,12 +257,32 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
-        self._template_renderer = CodeExecutorJinja2TemplateRenderer(code_executor=self._code_executor)
+        self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = ssrf_proxy
-        self._http_request_tool_file_manager_factory = ToolFileManager
+        self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(
+            self._dify_context,
+            conversation_id_getter=self._conversation_id,
+        )
+        self._file_reference_factory = DifyFileReferenceFactory(self._dify_context)
+        self._prompt_message_serializer = DifyPromptMessageSerializer()
+        self._retriever_attachment_loader = DifyRetrieverAttachmentLoader(
+            file_reference_factory=self._file_reference_factory,
+        )
+        self._llm_file_saver = build_dify_llm_file_saver(
+            run_context=self._dify_context,
+            http_client=self._http_request_http_client,
+            conversation_id_getter=self._conversation_id,
+        )
+        self._human_input_runtime = DifyHumanInputNodeRuntime(
+            self._dify_context,
+            workflow_execution_id_getter=lambda: get_system_text(
+                self.graph_runtime_state.variable_pool,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID,
+            ),
+        )
+        self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
-        self._rag_retrieval = DatasetRetrieval()
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
             api_url=dify_config.UNSTRUCTURED_API_URL,
             api_key=dify_config.UNSTRUCTURED_API_KEY or "",
@@ -144,7 +297,11 @@ class DifyNodeFactory(NodeFactory):
             ssrf_default_max_retries=dify_config.SSRF_DEFAULT_MAX_RETRIES,
         )
 
-        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context.tenant_id)
+        self._llm_credentials_provider, self._llm_model_factory = build_dify_model_access(self._dify_context)
+        self._agent_strategy_resolver = PluginAgentStrategyResolver()
+        self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
+        self._agent_runtime_support = AgentRuntimeSupport()
+        self._agent_message_transformer = AgentMessageTransformer()
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
@@ -155,220 +312,175 @@ class DifyNodeFactory(NodeFactory):
             return raw_ctx
         return DifyRunContext.model_validate(raw_ctx)
 
+    def _conversation_id(self) -> str | None:
+        return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+
     @override
-    def create_node(self, node_config: NodeConfigDict) -> Node:
+    def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
         """
         Create a Node instance from node configuration data using the traditional mapping.
 
         :param node_config: node configuration dictionary containing type and other data
         :return: initialized Node instance
-        :raises ValueError: if node type is unknown or configuration is invalid
+        :raises ValueError: if node_config fails NodeConfigDict/BaseNodeData validation
+            (including pydantic ValidationError, which subclasses ValueError),
+            if node type is unknown, or if no implementation exists for the resolved version
         """
-        # Get node_id from config
-        node_id = node_config["id"]
-
-        # Get node type from config
-        node_data = node_config["data"]
-        try:
-            node_type = NodeType(node_data["type"])
-        except ValueError:
-            raise ValueError(f"Unknown node type: {node_data['type']}")
-
-        # Get node class
-        node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
-        if not node_mapping:
-            raise ValueError(f"No class mapping found for node type: {node_type}")
-
-        latest_node_class = node_mapping.get(LATEST_VERSION)
-        node_version = str(node_data.get("version", "1"))
-        matched_node_class = node_mapping.get(node_version)
-        node_class = matched_node_class or latest_node_class
-        if not node_class:
-            raise ValueError(f"No latest version class found for node type: {node_type}")
-
-        # Create node instance
-        if node_type == NodeType.CODE:
-            return CodeNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                code_executor=self._code_executor,
-                code_limits=self._code_limits,
-            )
-
-        if node_type == NodeType.TEMPLATE_TRANSFORM:
-            return TemplateTransformNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                template_renderer=self._template_renderer,
-                max_output_length=self._template_transform_max_output_length,
-            )
-
-        if node_type == NodeType.HTTP_REQUEST:
-            return HttpRequestNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                http_request_config=self._http_request_config,
-                http_client=self._http_request_http_client,
-                tool_file_manager_factory=self._http_request_tool_file_manager_factory,
-                file_manager=self._http_request_file_manager,
-            )
-
-        if node_type == NodeType.HUMAN_INPUT:
-            return HumanInputNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                form_repository=HumanInputFormRepositoryImpl(tenant_id=self._dify_context.tenant_id),
-            )
-
-        if node_type == NodeType.KNOWLEDGE_INDEX:
-            return KnowledgeIndexNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                index_processor=IndexProcessor(),
-                summary_index_service=SummaryIndex(),
-            )
-
-        if node_type == NodeType.LLM:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
-            return LLMNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                credentials_provider=self._llm_credentials_provider,
-                model_factory=self._llm_model_factory,
-                model_instance=model_instance,
-                memory=memory,
-            )
-
-        if node_type == NodeType.DATASOURCE:
-            return DatasourceNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                datasource_manager=DatasourceManager,
-            )
-
-        if node_type == NodeType.KNOWLEDGE_RETRIEVAL:
-            return KnowledgeRetrievalNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                rag_retrieval=self._rag_retrieval,
-            )
-
-        if node_type == NodeType.DOCUMENT_EXTRACTOR:
-            return DocumentExtractorNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                unstructured_api_config=self._document_extractor_unstructured_api_config,
-                http_client=self._http_request_http_client,
-            )
-
-        if node_type == NodeType.QUESTION_CLASSIFIER:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
-            return QuestionClassifierNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                credentials_provider=self._llm_credentials_provider,
-                model_factory=self._llm_model_factory,
-                model_instance=model_instance,
-                memory=memory,
-            )
-
-        if node_type == NodeType.PARAMETER_EXTRACTOR:
-            model_instance = self._build_model_instance_for_llm_node(node_data)
-            memory = self._build_memory_for_llm_node(node_data=node_data, model_instance=model_instance)
-            return ParameterExtractorNode(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                credentials_provider=self._llm_credentials_provider,
-                model_factory=self._llm_model_factory,
-                model_instance=model_instance,
-                memory=memory,
-            )
-
+        typed_node_config = NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
+        node_id = typed_node_config["id"]
+        node_data = typed_node_config["data"]
+        node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
+        node_type = node_data.type
+        node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
+            BuiltinNodeTypes.CODE: lambda: {
+                "code_executor": self._code_executor,
+                "code_limits": self._code_limits,
+            },
+            BuiltinNodeTypes.TEMPLATE_TRANSFORM: lambda: {
+                "jinja2_template_renderer": self._jinja2_template_renderer,
+                "max_output_length": self._template_transform_max_output_length,
+            },
+            BuiltinNodeTypes.HTTP_REQUEST: lambda: {
+                "http_request_config": self._http_request_config,
+                "http_client": self._http_request_http_client,
+                "tool_file_manager_factory": self._bound_tool_file_manager_factory,
+                "file_manager": self._http_request_file_manager,
+                "file_reference_factory": self._file_reference_factory,
+            },
+            BuiltinNodeTypes.HUMAN_INPUT: lambda: {
+                "runtime": self._human_input_runtime,
+                "form_repository": self._human_input_runtime.build_form_repository(),
+            },
+            BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
+                node_class=node_class,
+                node_data=node_data,
+                wrap_model_instance=True,
+                include_http_client=True,
+                include_llm_file_saver=True,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=True,
+                include_jinja2_template_renderer=True,
+            ),
+            BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
+                "unstructured_api_config": self._document_extractor_unstructured_api_config,
+                "http_client": self._http_request_http_client,
+            },
+            BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
+                node_class=node_class,
+                node_data=node_data,
+                wrap_model_instance=True,
+                include_http_client=True,
+                include_llm_file_saver=True,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
+            ),
+            BuiltinNodeTypes.PARAMETER_EXTRACTOR: lambda: self._build_llm_compatible_node_init_kwargs(
+                node_class=node_class,
+                node_data=node_data,
+                wrap_model_instance=True,
+                include_http_client=False,
+                include_llm_file_saver=False,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
+            ),
+            BuiltinNodeTypes.TOOL: lambda: {
+                "tool_file_manager_factory": self._bound_tool_file_manager_factory(),
+                "runtime": self._tool_runtime,
+            },
+            BuiltinNodeTypes.AGENT: lambda: {
+                "strategy_resolver": self._agent_strategy_resolver,
+                "presentation_provider": self._agent_strategy_presentation_provider,
+                "runtime_support": self._agent_runtime_support,
+                "message_transformer": self._agent_message_transformer,
+            },
+        }
+        node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
             id=node_id,
-            config=node_config,
+            config=typed_node_config,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
+            **node_init_kwargs,
         )
 
-    def _build_model_instance_for_llm_node(self, node_data: Mapping[str, Any]) -> ModelInstance:
-        node_data_model = ModelConfig.model_validate(node_data["model"])
-        if not node_data_model.mode:
-            raise LLMModeRequiredError("LLM mode is required.")
+    @staticmethod
+    def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
+        """
+        Re-validate the permissive graph payload with the concrete NodeData model declared by the resolved node class.
+        """
+        return node_class.validate_node_data(node_data)
 
-        credentials = self._llm_credentials_provider.fetch(node_data_model.provider, node_data_model.name)
-        model_instance = self._llm_model_factory.init_model_instance(node_data_model.provider, node_data_model.name)
-        provider_model_bundle = model_instance.provider_model_bundle
+    @staticmethod
+    def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+        return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
-        provider_model = provider_model_bundle.configuration.get_provider_model(
-            model=node_data_model.name,
-            model_type=ModelType.LLM,
+    def _build_llm_compatible_node_init_kwargs(
+        self,
+        *,
+        node_class: type[Node],
+        node_data: BaseNodeData,
+        wrap_model_instance: bool,
+        include_http_client: bool,
+        include_llm_file_saver: bool,
+        include_prompt_message_serializer: bool,
+        include_retriever_attachment_loader: bool,
+        include_jinja2_template_renderer: bool,
+    ) -> dict[str, object]:
+        validated_node_data = cast(
+            LLMCompatibleNodeData,
+            self._validate_resolved_node_data(node_class=node_class, node_data=node_data),
         )
-        if provider_model is None:
-            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-        provider_model.raise_for_status()
+        model_instance = self._build_model_instance_for_llm_node(validated_node_data)
+        node_init_kwargs: dict[str, object] = {
+            "credentials_provider": self._llm_credentials_provider,
+            "model_factory": self._llm_model_factory,
+            "model_instance": DifyPreparedLLM(model_instance) if wrap_model_instance else model_instance,
+            "memory": self._build_memory_for_llm_node(
+                node_data=validated_node_data,
+                model_instance=model_instance,
+            ),
+        }
+        if validated_node_data.type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
+            node_init_kwargs["template_renderer"] = self._jinja2_template_renderer
+        if include_http_client:
+            node_init_kwargs["http_client"] = self._http_request_http_client
+        if include_llm_file_saver:
+            node_init_kwargs["llm_file_saver"] = self._llm_file_saver
+        if include_prompt_message_serializer:
+            node_init_kwargs["prompt_message_serializer"] = self._prompt_message_serializer
+        if include_retriever_attachment_loader:
+            node_init_kwargs["retriever_attachment_loader"] = self._retriever_attachment_loader
+        if include_jinja2_template_renderer:
+            node_init_kwargs["jinja2_template_renderer"] = self._jinja2_template_renderer
+        if validated_node_data.type == BuiltinNodeTypes.LLM:
+            node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
+        return node_init_kwargs
 
-        completion_params = dict(node_data_model.completion_params)
-        stop = completion_params.pop("stop", [])
-        if not isinstance(stop, list):
-            stop = []
-
-        model_schema = model_instance.model_type_instance.get_model_schema(node_data_model.name, credentials)
-        if not model_schema:
-            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-
-        model_instance.provider = node_data_model.provider
-        model_instance.model_name = node_data_model.name
-        model_instance.credentials = credentials
-        model_instance.parameters = completion_params
-        model_instance.stop = tuple(stop)
+    def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
+        node_data_model = node_data.model
+        model_instance, _ = fetch_model_config(
+            node_data_model=node_data_model,
+            credentials_provider=self._llm_credentials_provider,
+            model_factory=self._llm_model_factory,
+        )
         model_instance.model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
         return model_instance
 
     def _build_memory_for_llm_node(
         self,
         *,
-        node_data: Mapping[str, Any],
+        node_data: LLMCompatibleNodeData,
         model_instance: ModelInstance,
     ) -> PromptMessageMemory | None:
-        raw_memory_config = node_data.get("memory")
-        if raw_memory_config is None:
+        if node_data.memory is None:
             return None
 
-        node_memory = MemoryConfig.model_validate(raw_memory_config)
-        conversation_id_variable = self.graph_runtime_state.variable_pool.get(
-            ["sys", SystemVariableKey.CONVERSATION_ID]
-        )
-        conversation_id = (
-            conversation_id_variable.value if isinstance(conversation_id_variable, StringSegment) else None
-        )
+        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self._dify_context.app_id,
-            node_data_memory=node_memory,
+            node_data_memory=node_data.memory,
             model_instance=model_instance,
         )

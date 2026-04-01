@@ -13,6 +13,7 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.account_service import AccountService, TenantService
 from services.trigger.webhook_service import WebhookService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWebhookService:
@@ -60,7 +61,7 @@ class TestWebhookService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -172,7 +173,7 @@ class TestWebhookService:
             assert workflow.app_id == test_data["app"].id
             assert node_config is not None
             assert node_config["id"] == "webhook_node"
-            assert node_config["data"]["title"] == "Test Webhook"
+            assert node_config["data"].title == "Test Webhook"
 
     def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers):
         """Test webhook trigger not found scenario."""

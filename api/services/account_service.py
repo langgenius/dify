@@ -7,9 +7,19 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
+
+
+class InvitationData(TypedDict):
+    account_id: str
+    email: str
+    workspace_id: str
+
+
+_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -1089,9 +1099,9 @@ class TenantService:
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
-            ta.role = role
+            ta.role = TenantAccountRole(role)
         else:
-            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=role)
+            ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             db.session.add(ta)
 
         db.session.commit()
@@ -1319,10 +1329,10 @@ class TenantService:
                 db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
             )
             if current_owner_join:
-                current_owner_join.role = "admin"
+                current_owner_join.role = TenantAccountRole.ADMIN
 
         # Update the role of the target member
-        target_member_join.role = new_role
+        target_member_join.role = TenantAccountRole(new_role)
         db.session.commit()
 
     @staticmethod
@@ -1571,7 +1581,7 @@ class RegisterService:
     @classmethod
     def get_invitation_by_token(
         cls, token: str, workspace_id: str | None = None, email: str | None = None
-    ) -> dict[str, str] | None:
+    ) -> InvitationData | None:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
@@ -1590,7 +1600,7 @@ class RegisterService:
             if not data:
                 return None
 
-            invitation: dict = json.loads(data)
+            invitation = _invitation_adapter.validate_json(data)
             return invitation
 
     @classmethod

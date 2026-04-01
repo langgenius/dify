@@ -122,6 +122,6 @@ class JiebaKeywordTableHandler:
             results.add(token)
             sub_tokens = re.findall(r"\w+", token)
             if len(sub_tokens) > 1:
-                results.update({w for w in sub_tokens if w not in list(STOPWORDS)})
+                results.update({w for w in sub_tokens if w not in STOPWORDS})
 
         return results

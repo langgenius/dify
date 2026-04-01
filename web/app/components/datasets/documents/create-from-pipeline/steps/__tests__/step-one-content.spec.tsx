@@ -143,7 +143,7 @@ vi.mock('@/service/base', () => ({
   upload: vi.fn().mockResolvedValue({ id: 'uploaded-file-id' }),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'mock-dataset-id' }),
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/datasets/mock-dataset-id',

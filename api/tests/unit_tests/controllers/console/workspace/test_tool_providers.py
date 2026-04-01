@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import builtins
 import importlib
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -18,7 +18,6 @@ if not hasattr(builtins, "MethodView"):
 
 _CONTROLLER_MODULE: ModuleType | None = None
 _WRAPS_MODULE: ModuleType | None = None
-_CONTROLLER_PATCHERS: list[patch] = []
 
 
 @contextmanager
@@ -37,6 +36,14 @@ def app() -> Flask:
 
 @pytest.fixture
 def controller_module(monkeypatch: pytest.MonkeyPatch):
+    """
+    Import the controller with auth decorators neutralized only during import.
+
+    The imported view classes retain those no-op decorators after import, so we
+    can restore the original globals immediately and avoid leaking auth patches
+    into unrelated tests such as libs.login unit coverage.
+    """
+
     module_name = "controllers.console.workspace.tool_providers"
     global _CONTROLLER_MODULE
     if _CONTROLLER_MODULE is None:
@@ -51,13 +58,12 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
             ("controllers.console.wraps.is_admin_or_owner_required", _noop),
             ("controllers.console.wraps.enterprise_license_required", _noop),
         ]
-        for target, value in patch_targets:
-            patcher = patch(target, value)
-            patcher.start()
-            _CONTROLLER_PATCHERS.append(patcher)
         monkeypatch.setenv("DIFY_SETUP_READY", "true")
-        with _mock_db():
-            _CONTROLLER_MODULE = importlib.import_module(module_name)
+        with ExitStack() as stack:
+            for target, value in patch_targets:
+                stack.enter_context(patch(target, value))
+            with _mock_db():
+                _CONTROLLER_MODULE = importlib.import_module(module_name)
 
     module = _CONTROLLER_MODULE
     monkeypatch.setattr(module, "jsonable_encoder", lambda payload: payload)

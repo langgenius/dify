@@ -325,18 +325,12 @@ describe('DatasetMetadataDrawer', () => {
       fireEvent.change(inputs[0], { target: { value: 'changed_name' } })
 
       // Find and click cancel button
-      const cancelBtns = screen.getAllByText(/cancel/i)
-      const cancelBtn = cancelBtns.find(btn =>
-        !btn.closest('button')?.classList.contains('btn-primary'),
-      )
-      if (cancelBtn)
-        fireEvent.click(cancelBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      // Verify input resets or modal closes
+      // Verify rename modal closes while drawer stays open
       await waitFor(() => {
-        const currentInputs = document.querySelectorAll('input')
-        // Either no inputs (modal closed) or value reset
-        expect(currentInputs.length === 0 || currentInputs[0].value !== 'changed_name').toBe(true)
+        expect(screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' })).not.toBeInTheDocument()
+        expect(screen.getAllByRole('dialog')).toHaveLength(1)
       })
     })
 

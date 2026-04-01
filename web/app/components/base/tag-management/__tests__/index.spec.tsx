@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
+import * as ReactI18next from 'react-i18next'
 import TagManagementModal from '../index'
 import { useStore as useTagStore } from '../store'
 
@@ -71,6 +72,19 @@ describe('TagManagementModal', () => {
     it('should render the new tag input with placeholder', () => {
       render(<TagManagementModal {...defaultProps} />)
       expect(screen.getByPlaceholderText(i18n.addNew)).toBeInTheDocument()
+    })
+
+    it('should fallback to empty placeholder when translation returns empty', () => {
+      const mockedTranslation = {
+        t: vi.fn().mockReturnValue(''),
+        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
+        ready: true,
+      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
+
+      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
+
+      render(<TagManagementModal {...defaultProps} />)
+      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
     })
 
     it('should render existing tags from the store', () => {

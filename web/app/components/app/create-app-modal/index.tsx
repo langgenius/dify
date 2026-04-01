@@ -4,8 +4,6 @@ import type { AppIconSelection } from '../../base/app-icon-picker'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -23,6 +21,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
+import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -117,10 +116,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-[139px]" />
             <div className="pb-6 pt-1">
-              <span className="title-2xl-semi-bold text-text-primary">{t('newApp.startFromBlank', { ns: 'app' })}</span>
+              <span className="text-text-primary title-2xl-semi-bold">{t('newApp.startFromBlank', { ns: 'app' })}</span>
             </div>
             <div className="mb-2 leading-6">
-              <span className="system-sm-semibold text-text-secondary">{t('newApp.chooseAppType', { ns: 'app' })}</span>
+              <span className="text-text-secondary system-sm-semibold">{t('newApp.chooseAppType', { ns: 'app' })}</span>
             </div>
             <div className="flex w-[660px] flex-col gap-4">
               <div>
@@ -160,7 +159,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     className="flex cursor-pointer items-center border-0 bg-transparent p-0"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
-                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
+                    <span className="text-text-tertiary system-2xs-medium-uppercase">{t('newApp.forBeginners', { ns: 'app' })}</span>
                     <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
                   </button>
                 </div>
@@ -212,7 +211,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
-                    <label className="system-sm-semibold text-text-secondary">{t('newApp.captionName', { ns: 'app' })}</label>
+                    <label className="text-text-secondary system-sm-semibold">{t('newApp.captionName', { ns: 'app' })}</label>
                   </div>
                   <Input
                     value={name}
@@ -243,8 +242,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <label className="system-sm-semibold text-text-secondary">{t('newApp.captionDescription', { ns: 'app' })}</label>
-                  <span className="system-xs-regular ml-1 text-text-tertiary">
+                  <label className="text-text-secondary system-sm-semibold">{t('newApp.captionDescription', { ns: 'app' })}</label>
+                  <span className="ml-1 text-text-tertiary system-xs-regular">
                     (
                     {t('newApp.optional', { ns: 'app' })}
                     )
@@ -260,7 +259,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pb-10 pt-5">
-              <div className="system-xs-regular flex cursor-pointer items-center gap-1 text-text-tertiary" onClick={onCreateFromTemplate}>
+              <div className="flex cursor-pointer items-center gap-1 text-text-tertiary system-xs-regular" onClick={onCreateFromTemplate}>
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-[1px]">
                   <RiArrowRightLine className="h-3.5 w-3.5" />
@@ -334,8 +333,8 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
       onClick={onClick}
     >
       {icon}
-      <div className="system-sm-semibold mb-0.5 mt-2 text-text-secondary">{title}</div>
-      <div className="system-xs-regular line-clamp-2 text-text-tertiary" title={description}>{description}</div>
+      <div className="mb-0.5 mt-2 text-text-secondary system-sm-semibold">{title}</div>
+      <div className="line-clamp-2 text-text-tertiary system-xs-regular" title={description}>{description}</div>
     </div>
   )
 }
@@ -367,8 +366,8 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
   const previewInfo = modeToPreviewInfoMap[mode]
   return (
     <div className="px-8 py-4">
-      <h4 className="system-sm-semibold-uppercase text-text-secondary">{previewInfo.title}</h4>
-      <div className="system-xs-regular mt-1 min-h-8 max-w-96 text-text-tertiary">
+      <h4 className="text-text-secondary system-sm-semibold-uppercase">{previewInfo.title}</h4>
+      <div className="mt-1 min-h-8 max-w-96 text-text-tertiary system-xs-regular">
         <span>{previewInfo.description}</span>
       </div>
     </div>
@@ -389,7 +388,7 @@ function AppScreenShot({ mode, show }: { mode: AppModeEnum, show: boolean }) {
       <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
       <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
       <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
-      <Image
+      <img
         className={show ? '' : 'hidden'}
         src={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
         alt="App Screen Shot"

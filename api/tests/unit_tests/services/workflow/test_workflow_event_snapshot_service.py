@@ -8,13 +8,13 @@ from datetime import UTC, datetime
 from threading import Event
 
 import pytest
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from dify_graph.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun

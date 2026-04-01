@@ -5,14 +5,24 @@ from collections.abc import Callable, Generator
 from typing import Any, TypeVar, cast
 
 import httpx
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from pydantic import BaseModel
 from yarl import URL
 
 from configs import dify_config
+from core.helper.http_client_pooling import get_pooled_http_client
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
+    PluginDaemonClientSideError,
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
@@ -27,14 +37,6 @@ from core.trigger.errors import (
     TriggerPluginInvokeError,
     TriggerProviderCredentialValidationError,
 )
-from dify_graph.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
-from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(
@@ -52,6 +54,11 @@ else:
 T = TypeVar("T", bound=(BaseModel | dict[str, Any] | list[Any] | bool | str))
 
 logger = logging.getLogger(__name__)
+
+_httpx_client: httpx.Client = get_pooled_http_client(
+    "plugin_daemon",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False),
+)
 
 
 class BasePluginClient:
@@ -83,7 +90,7 @@ class BasePluginClient:
             request_kwargs["content"] = prepared_data
 
         try:
-            response = httpx.request(**request_kwargs)
+            response = _httpx_client.request(**request_kwargs)
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -170,7 +177,7 @@ class BasePluginClient:
             stream_kwargs["content"] = prepared_data
 
         try:
-            with httpx.stream(**stream_kwargs) as response:
+            with _httpx_client.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
@@ -235,7 +242,10 @@ class BasePluginClient:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
-            raise e
+            if e.response.status_code < 500:
+                raise PluginDaemonClientSideError(description=str(e))
+            else:
+                raise PluginDaemonInternalServerError(description=str(e))
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
             logger.exception("Failed to request plugin daemon, url: %s", path)

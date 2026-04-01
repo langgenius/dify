@@ -25,7 +25,7 @@ vi.mock('../context', () => ({
   useChatWithHistoryContext: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
     replace: vi.fn(),
@@ -978,7 +978,7 @@ describe('ChatWrapper', () => {
     expect(screen.getByAltText('answer icon')).toBeInTheDocument()
   })
 
-  it('should render question icon when user avatar is available', () => {
+  it('should render question icon fallback when user avatar is available', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       initUserVariables: {
@@ -992,12 +992,11 @@ describe('ChatWrapper', () => {
       chatList: [{ id: 'q1', content: 'Question' }],
     } as unknown as ChatHookReturn)
 
-    const { container } = render(<ChatWrapper />)
-    const avatar = container.querySelector('img[alt="John Doe"]')
-    expect(avatar).toBeInTheDocument()
+    render(<ChatWrapper />)
+    expect(screen.getByText('J')).toBeInTheDocument()
   })
 
-  it('should use fallback values for nullable appData, appMeta and user name', () => {
+  it('should use fallback values for nullable appData, appMeta and avatar name', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       appData: null as unknown as AppData,
@@ -1014,7 +1013,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     expect(screen.getByText('Question with fallback avatar name')).toBeInTheDocument()
-    expect(screen.getByAltText('user')).toBeInTheDocument()
+    expect(screen.getByText('U')).toBeInTheDocument()
   })
 
   it('should set handleStop on currentChatInstanceRef', () => {

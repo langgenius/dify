@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { PortalSelect } from '@/app/components/base/select'
-import { useGitHubUpload } from '../../hooks'
+import { handleUpload } from '../../hooks'
 
 const i18nPrefix = 'installFromGitHub'
 
@@ -43,7 +43,6 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { t } = useTranslation()
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
-  const { handleUpload } = useGitHubUpload()
 
   const handleUploadPackage = async () => {
     if (isUploading)
