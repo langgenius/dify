@@ -800,8 +800,8 @@ class DraftVariableSaver:
     # technical variables from being exposed in the draft environment, particularly those
     # that aren't meant to be directly edited or viewed by users.
     _EXCLUDE_VARIABLE_NAMES_MAPPING: dict[NodeType, frozenset[str]] = {
-        BuiltinNodeTypes.LLM: frozenset(["finish_reason"]),
-        BuiltinNodeTypes.LOOP: frozenset(["loop_round"]),
+        BuiltinNodeTypes.LLM: frozenset(("finish_reason",)),
+        BuiltinNodeTypes.LOOP: frozenset(("loop_round",)),
     }
 
     # Database session used for persisting draft variables.
