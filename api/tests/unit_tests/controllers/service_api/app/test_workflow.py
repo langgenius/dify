@@ -470,16 +470,23 @@ class TestWorkflowTaskStopApi:
 
 class TestWorkflowAppLogApi:
     def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
-        class _SessionStub:
+        class _BeginStub:
             def __enter__(self):
                 return SimpleNamespace()
 
             def __exit__(self, exc_type, exc, tb):
                 return False
 
+        class _SessionMakerStub:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def begin(self):
+                return _BeginStub()
+
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
-        monkeypatch.setattr(workflow_module, "Session", lambda *_args, **_kwargs: _SessionStub())
+        monkeypatch.setattr(workflow_module, "sessionmaker", _SessionMakerStub)
         monkeypatch.setattr(
             WorkflowAppService,
             "get_paginate_workflow_app_logs",
@@ -635,11 +642,14 @@ class TestWorkflowAppLogApiGet:
         mock_svc_instance.get_paginate_workflow_app_logs.return_value = mock_pagination
         mock_wf_svc_cls.return_value = mock_svc_instance
 
-        # Mock Session context manager
+        # Mock sessionmaker(...).begin() context manager
         mock_session = Mock()
         mock_db.engine = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=False)
+        mock_begin = Mock()
+        mock_begin.__enter__ = Mock(return_value=mock_session)
+        mock_begin.__exit__ = Mock(return_value=False)
+        mock_session_factory = Mock()
+        mock_session_factory.begin.return_value = mock_begin
 
         from controllers.service_api.app.workflow import WorkflowAppLogApi
 
@@ -647,7 +657,7 @@ class TestWorkflowAppLogApiGet:
             "/workflows/logs?page=1&limit=20",
             method="GET",
         ):
-            with patch("controllers.service_api.app.workflow.Session", return_value=mock_session):
+            with patch("controllers.service_api.app.workflow.sessionmaker", return_value=mock_session_factory):
                 api = WorkflowAppLogApi()
                 result = _unwrap(api.get)(api, app_model=mock_workflow_app)
 
