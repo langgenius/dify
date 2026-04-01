@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from unittest import mock
 
 import pytest
+from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import (
     LLMResultChunk,
@@ -32,7 +34,9 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
 from graphon.nodes.base.entities import VariableSelector
+from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
@@ -60,7 +64,9 @@ from graphon.nodes.llm.node import (
 )
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
+from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
 from core.app.llm.model_access import (
@@ -74,12 +80,6 @@ from core.entities.provider_entities import CustomConfiguration, SystemConfigura
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
-from graphon.nodes.llm import llm_utils
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
 

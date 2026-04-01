@@ -1622,10 +1622,9 @@ class TestWorkflowService:
             from datetime import datetime
 
             from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from graphon.nodes.base.node import Node
-
             from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1698,10 +1697,9 @@ class TestWorkflowService:
             from datetime import datetime
 
             from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from graphon.nodes.base.node import Node
-
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1768,10 +1766,9 @@ class TestWorkflowService:
             from datetime import datetime
 
             from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-            from graphon.nodes.base.node import Node
-
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)

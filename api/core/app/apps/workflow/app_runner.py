@@ -4,6 +4,9 @@ from collections.abc import Sequence
 from typing import cast
 
 from graphon.enums import WorkflowType
+from graphon.graph_engine.command_channels import RedisChannel
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -18,9 +21,6 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
 

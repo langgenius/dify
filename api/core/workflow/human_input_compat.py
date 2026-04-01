@@ -16,11 +16,10 @@ import bleach
 import markdown
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.runtime import VariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from markdown.extensions.tables import TableExtension
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter
-
-from graphon.runtime import VariablePool
 
 
 class DeliveryMethodType(enum.StrEnum):

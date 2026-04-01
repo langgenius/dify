@@ -10,6 +10,7 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.nodes.tool.exc import ToolRuntimeInvocationError
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
+from graphon.runtime import VariablePool
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
@@ -21,7 +22,6 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from graphon.runtime import VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 

@@ -8,6 +8,7 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.human_input.entities import FormDefinition, FormInput, UserAction
@@ -16,7 +17,6 @@ from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_storage import storage
-from graphon.entities import WorkflowExecution
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import (

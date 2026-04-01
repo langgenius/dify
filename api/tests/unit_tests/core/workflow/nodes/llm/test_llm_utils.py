@@ -1,6 +1,12 @@
 from unittest import mock
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities import (
+    ImagePromptMessageContent,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     SystemPromptMessage,
@@ -16,6 +22,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from graphon.nodes.base.entities import VariableSelector
+from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, MemoryConfig
 from graphon.nodes.llm.exc import (
     InvalidVariableTypeError,
@@ -23,17 +30,10 @@ from graphon.nodes.llm.exc import (
     NoPromptFoundError,
     TemplateTypeNotSupportError,
 )
-
-from core.model_manager import ModelInstance
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.model_runtime.entities import (
-    ImagePromptMessageContent,
-    PromptMessageRole,
-    TextPromptMessageContent,
-)
-from graphon.nodes.llm import llm_utils
 from graphon.runtime import VariablePool
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+
+from core.model_manager import ModelInstance
 
 
 def _build_model_schema(

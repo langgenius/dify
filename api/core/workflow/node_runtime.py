@@ -4,6 +4,8 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
@@ -58,8 +60,6 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.file import FileTransferMethod, FileType
-from graphon.model_runtime.entities import LLMMode
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -76,12 +76,12 @@ from .human_input_compat import (
 from .system_variables import SystemVariableKey, get_system_text
 
 if TYPE_CHECKING:
+    from graphon.file import File
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
 
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
-    from graphon.file import File
 
 
 _file_access_controller = DatabaseFileAccessController()

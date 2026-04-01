@@ -3,13 +3,13 @@ from unittest.mock import Mock
 
 import pytest
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.node_events import NodeRunResult
 
 from core.app.workflow.layers.persistence import (
     PersistenceWorkflowInfo,
     WorkflowPersistenceLayer,
     _NodeRuntimeSnapshot,
 )
-from graphon.node_events import NodeRunResult
 
 
 def _build_layer() -> WorkflowPersistenceLayer:

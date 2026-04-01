@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import (
     ArrayFileSegment,
@@ -20,8 +21,6 @@ from graphon.variables.segments import (
     StringSegment,
 )
 from graphon.variables.types import ArrayValidation, SegmentType
-
-from graphon.file import File, FileTransferMethod, FileType
 
 
 def create_test_file(

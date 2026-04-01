@@ -2,6 +2,8 @@ import dataclasses
 
 import orjson
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import VariablePool
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import (
     ArrayAnySegment,
@@ -45,8 +47,6 @@ from pydantic import BaseModel
 from core.helper import encrypter
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_variables_to_pool
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import VariablePool
 
 
 def _build_variable_pool(
