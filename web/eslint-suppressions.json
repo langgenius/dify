@@ -5512,11 +5512,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/card/card-more-info.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/plugins/install-plugin/base/installed.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -5618,7 +5613,7 @@
   },
   "app/components/plugins/marketplace/description/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 2
     }
   },
   "app/components/plugins/marketplace/empty/index.tsx": {
@@ -5628,29 +5623,6 @@
   },
   "app/components/plugins/marketplace/hooks.ts": {
     "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/card-wrapper.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/list-with-collection.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/list-wrapper.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/plugin-type-switch.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
