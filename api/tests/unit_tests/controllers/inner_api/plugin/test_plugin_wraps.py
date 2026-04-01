@@ -129,9 +129,7 @@ class TestGetUser:
     @patch("controllers.inner_api.plugin.wraps.EndUser")
     @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
-    def test_should_raise_error_on_database_exception(
-        self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask
-    ):
+    def test_should_raise_error_on_database_exception(self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask):
         """Test raising ValueError when database operation fails"""
         # Arrange
         mock_session = MagicMock()
