@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKEND_URL="${DIFY_WEB_BACKEND_URL:-http://localhost:5001}"
+IMAGE="${DIFY_WEB_IMAGE:-docker.io/langgenius/dify-web:1.13.2}"
+HOST_BIND="${DIFY_WEB_HOSTNAME:-localhost}"
+WEB_URL="${DIFY_WEB_FRONTEND_URL:-}"
+CONTAINER_NAME="${DIFY_WEB_CONTAINER_NAME:-dify-web}"
+NEXT_PUBLIC_COOKIE_DOMAIN="${DIFY_WEB_NEXT_PUBLIC_COOKIE_DOMAIN:-}"
+
+podman rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+
+exec podman run --rm --name "$CONTAINER_NAME" --network host \
+  -e HOSTNAME="${HOST_BIND}" \
+  -e CONSOLE_API_URL="${BACKEND_URL}" \
+  -e APP_API_URL="${BACKEND_URL}" \
+  -e SERVICE_API_URL="${BACKEND_URL}" \
+  ${WEB_URL:+-e CONSOLE_WEB_URL="${WEB_URL}"} \
+  ${NEXT_PUBLIC_COOKIE_DOMAIN:+-e NEXT_PUBLIC_COOKIE_DOMAIN="${NEXT_PUBLIC_COOKIE_DOMAIN}"} \
+  "${IMAGE}"

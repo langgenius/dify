@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+ROOT="$(dirname "$SCRIPT_DIR")"
+COMPOSE_FILE="${PODMAN_COMPOSE_FILE:-$ROOT/docker/podman-compose.middleware.yaml}"
+PROJECT_NAME="${PODMAN_PROJECT_NAME:-dify}"
+
+cd "$ROOT/docker"
+podman compose -f "$COMPOSE_FILE" -p "$PROJECT_NAME" down -v

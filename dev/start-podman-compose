@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+ROOT="$(dirname "$SCRIPT_DIR")"
+
+PROJECT_NAME="${PODMAN_PROJECT_NAME:-dify}"
+COMPOSE_FILE="${PODMAN_COMPOSE_FILE:-$ROOT/docker/podman-compose.middleware.yaml}"
+NETWORK_NAME="${PODMAN_NETWORK_NAME:-dify}"
+
+cd "$ROOT/docker"
+
+podman compose -f "$COMPOSE_FILE" -p "$PROJECT_NAME" down -v --remove-orphans || true
+
+if ! podman network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+  podman network create "$NETWORK_NAME"
+fi
+
+podman compose -f "$COMPOSE_FILE" --profile postgresql --profile weaviate -p "$PROJECT_NAME" up -d
