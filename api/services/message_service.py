@@ -221,8 +221,8 @@ class MessageService:
 
     @classmethod
     def get_message(cls, app_model: App, user: Account | EndUser | None, message_id: str):
-        message = (
-            db.session.query(Message)
+        message = db.session.scalar(
+            select(Message)
             .where(
                 Message.id == message_id,
                 Message.app_id == app_model.id,
@@ -230,7 +230,7 @@ class MessageService:
                 Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
                 Message.from_account_id == (user.id if isinstance(user, Account) else None),
             )
-            .first()
+            .limit(1)
         )
 
         if not message:
