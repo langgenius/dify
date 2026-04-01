@@ -1,5 +1,4 @@
 import type { inferParserType } from 'nuqs/server'
-import type { ActivePluginType } from './constants'
 import { parseAsArrayOf, parseAsString, parseAsStringEnum } from 'nuqs/server'
 
 export const CREATION_TYPE = {

@@ -55,7 +55,7 @@ const createWrapper = (searchParams = '') => {
   return { Wrapper, queryClient }
 }
 
-describe('useMarketplaceData', () => {
+describe('usePluginsMarketplaceData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -80,7 +80,7 @@ describe('useMarketplaceData', () => {
   })
 
   it('should return initial state with loading and collections data', async () => {
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?category=all')
 
     // Create a mock container for scroll
@@ -88,14 +88,14 @@ describe('useMarketplaceData', () => {
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    expect(result.current.marketplaceCollections).toBeDefined()
-    expect(result.current.marketplaceCollectionPluginsMap).toBeDefined()
+    expect(result.current.pluginCollections).toBeDefined()
+    expect(result.current.pluginCollectionPluginsMap).toBeDefined()
     expect(result.current.page).toBeDefined()
     expect(result.current.isFetchingNextPage).toBe(false)
 
@@ -103,14 +103,14 @@ describe('useMarketplaceData', () => {
   })
 
   it('should return search mode data when search text is present', async () => {
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?category=all&q=test')
 
     const container = document.createElement('div')
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -123,7 +123,7 @@ describe('useMarketplaceData', () => {
   })
 
   it('should return plugins undefined in collection mode (not search mode)', async () => {
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     // "all" category with no search → collection mode
     const { Wrapper } = createWrapper('?category=all')
 
@@ -131,7 +131,7 @@ describe('useMarketplaceData', () => {
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -144,14 +144,14 @@ describe('useMarketplaceData', () => {
   })
 
   it('should enable search for category without collections (e.g. model)', async () => {
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?category=model')
 
     const container = document.createElement('div')
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -177,7 +177,7 @@ describe('useMarketplaceData', () => {
       },
     })
 
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     // Use "model" to force search mode
     const { Wrapper } = createWrapper('?category=model')
 
@@ -189,7 +189,7 @@ describe('useMarketplaceData', () => {
     Object.defineProperty(container, 'scrollHeight', { value: 1000, writable: true, configurable: true })
     Object.defineProperty(container, 'clientHeight', { value: 200, writable: true, configurable: true })
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     // Wait for data to fully load (isFetching becomes false, plugins become available)
     await waitFor(() => {
@@ -206,7 +206,7 @@ describe('useMarketplaceData', () => {
   })
 
   it('should handle tags filter in search mode', async () => {
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     // tags in URL triggers search mode
     const { Wrapper } = createWrapper('?category=all&tags=search')
 
@@ -214,7 +214,7 @@ describe('useMarketplaceData', () => {
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -238,7 +238,7 @@ describe('useMarketplaceData', () => {
       },
     })
 
-    const { useMarketplaceData } = await import('../state')
+    const { usePluginsMarketplaceData } = await import('../state')
     const { Wrapper } = createWrapper('?category=model')
 
     const container = document.createElement('div')
@@ -249,7 +249,7 @@ describe('useMarketplaceData', () => {
     Object.defineProperty(container, 'scrollHeight', { value: 1000, writable: true, configurable: true })
     Object.defineProperty(container, 'clientHeight', { value: 200, writable: true, configurable: true })
 
-    const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
+    const { result } = renderHook(() => usePluginsMarketplaceData(), { wrapper: Wrapper })
 
     await waitFor(() => {
       expect(result.current.plugins).toBeDefined()

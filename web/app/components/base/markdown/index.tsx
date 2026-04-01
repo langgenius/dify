@@ -45,7 +45,7 @@ export const Markdown = memo((props: MarkdownProps) => {
     <div className={cn('markdown-body', '!text-text-primary', className)} data-testid="markdown-body">
       <StreamdownWrapper
         pluginInfo={pluginInfo}
-        content={props.content}
+        latexContent={latexContent}
         customComponents={customComponents}
         customDisallowedElements={customDisallowedElements}
         remarkPlugins={remarkPlugins}

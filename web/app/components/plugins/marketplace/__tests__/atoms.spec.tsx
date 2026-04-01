@@ -4,16 +4,16 @@ import { Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
-  useActivePluginType,
+  useActivePluginCategory,
   useFilterPluginTags,
   useMarketplaceMoreClick,
+  useMarketplacePluginSort,
+  useMarketplacePluginSortValue,
   useMarketplaceSearchMode,
-  useMarketplaceSort,
-  useMarketplaceSortValue,
-  useSearchPluginText,
-  useSetMarketplaceSort,
+  useSearchText,
+  useSetMarketplacePluginSort,
 } from '../atoms'
-import { DEFAULT_SORT } from '../constants'
+import { DEFAULT_PLUGIN_SORT } from '../constants'
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
@@ -34,24 +34,24 @@ describe('Marketplace sort atoms', () => {
 
   it('should return default sort value from useMarketplaceSort', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceSort(), { wrapper })
+    const { result } = renderHook(() => useMarketplacePluginSort(), { wrapper })
 
-    expect(result.current[0]).toEqual(DEFAULT_SORT)
+    expect(result.current[0]).toEqual(DEFAULT_PLUGIN_SORT)
     expect(typeof result.current[1]).toBe('function')
   })
 
   it('should return default sort value from useMarketplaceSortValue', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceSortValue(), { wrapper })
+    const { result } = renderHook(() => useMarketplacePluginSortValue(), { wrapper })
 
-    expect(result.current).toEqual(DEFAULT_SORT)
+    expect(result.current).toEqual(DEFAULT_PLUGIN_SORT)
   })
 
   it('should return setter from useSetMarketplaceSort', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => ({
-      setSort: useSetMarketplaceSort(),
-      sortValue: useMarketplaceSortValue(),
+      setSort: useSetMarketplacePluginSort(),
+      sortValue: useMarketplacePluginSortValue(),
     }), { wrapper })
 
     act(() => {
@@ -63,7 +63,7 @@ describe('Marketplace sort atoms', () => {
 
   it('should update sort value via useMarketplaceSort setter', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceSort(), { wrapper })
+    const { result } = renderHook(() => useMarketplacePluginSort(), { wrapper })
 
     act(() => {
       result.current[1]({ sortBy: 'created_at', sortOrder: 'ASC' })
@@ -73,14 +73,14 @@ describe('Marketplace sort atoms', () => {
   })
 })
 
-describe('useSearchPluginText', () => {
+describe('useSearchText', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should return empty string as default', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useSearchPluginText(), { wrapper })
+    const { result } = renderHook(() => useSearchText(), { wrapper })
 
     expect(result.current[0]).toBe('')
     expect(typeof result.current[1]).toBe('function')
@@ -88,14 +88,14 @@ describe('useSearchPluginText', () => {
 
   it('should parse q from search params', () => {
     const { wrapper } = createWrapper('?q=hello')
-    const { result } = renderHook(() => useSearchPluginText(), { wrapper })
+    const { result } = renderHook(() => useSearchText(), { wrapper })
 
     expect(result.current[0]).toBe('hello')
   })
 
   it('should expose a setter function for search text', async () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useSearchPluginText(), { wrapper })
+    const { result } = renderHook(() => useSearchText(), { wrapper })
 
     await act(async () => {
       result.current[1]('search term')
@@ -105,21 +105,21 @@ describe('useSearchPluginText', () => {
   })
 })
 
-describe('useActivePluginType', () => {
+describe('useActivePluginCategory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should return "all" as default category', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useActivePluginType(), { wrapper })
+    const { result } = renderHook(() => useActivePluginCategory(), { wrapper })
 
     expect(result.current[0]).toBe('all')
   })
 
   it('should parse category from search params', () => {
     const { wrapper } = createWrapper('?category=tool')
-    const { result } = renderHook(() => useActivePluginType(), { wrapper })
+    const { result } = renderHook(() => useActivePluginCategory(), { wrapper })
 
     expect(result.current[0]).toBe('tool')
   })
@@ -202,8 +202,8 @@ describe('useMarketplaceMoreClick', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => ({
       handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-      searchText: useSearchPluginText()[0],
+      sort: useMarketplacePluginSortValue(),
+      searchText: useSearchText()[0],
     }), { wrapper })
 
     const sortBefore = result.current.sort
@@ -222,7 +222,7 @@ describe('useMarketplaceMoreClick', () => {
 
     const { result } = renderHook(() => ({
       handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
+      sort: useMarketplacePluginSortValue(),
     }), { wrapper })
 
     act(() => {
@@ -240,13 +240,13 @@ describe('useMarketplaceMoreClick', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(() => ({
       handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
+      sort: useMarketplacePluginSortValue(),
     }), { wrapper })
 
     act(() => {
       result.current.handleMoreClick({})
     })
 
-    expect(result.current.sort).toEqual(DEFAULT_SORT)
+    expect(result.current.sort).toEqual(DEFAULT_PLUGIN_SORT)
   })
 })

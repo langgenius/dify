@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '../../../types'
 import SearchBox from '../index'
 import SearchBoxWrapper from '../search-box-wrapper'
+import SearchDropdown from '../search-dropdown'
 import MarketplaceTrigger from '../trigger/marketplace'
 import ToolSelectorTrigger from '../trigger/tool-selector'
 
@@ -80,7 +81,6 @@ const {
 
 vi.mock('../../atoms', () => ({
   useSearchText: () => [mockSearchText, mockHandleSearchTextChange],
-  useSearchPluginText: () => [mockSearchPluginText, mockHandleSearchPluginTextChange],
   useFilterPluginTags: () => [mockFilterPluginTags, mockHandleFilterPluginTagsChange],
   useActivePluginCategory: () => [mockActivePluginCategory, vi.fn()],
   useMarketplacePluginSortValue: () => mockSortValue,
@@ -92,8 +92,8 @@ vi.mock('../../atoms', () => ({
   searchModeAtom: {},
 }))
 
-vi.mock('../utils', async () => {
-  const actual = await vi.importActual<typeof import('../utils')>('../utils')
+vi.mock('../../utils', async () => {
+  const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {
     ...actual,
     mapUnifiedPluginToPlugin: (item: Plugin) => item,

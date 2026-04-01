@@ -1,5 +1,4 @@
 import type { SearchParams } from 'nuqs/server'
-import type { MarketplaceSearchParams } from './search-params'
 import type { CreatorSearchParams, PluginsSearchParams, TemplateSearchParams } from './types'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { headers } from 'next/headers'

@@ -23,9 +23,11 @@ const mockSearchAdvanced = vi.fn()
 
 vi.mock('@/service/client', () => ({
   marketplaceClient: {
-    collections: (...args: unknown[]) => mockCollections(...args),
-    collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
-    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
+    plugins: {
+      collections: (...args: unknown[]) => mockCollections(...args),
+      collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+      searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
+    },
   },
 }))
 
@@ -134,69 +136,69 @@ describe('getPluginDetailLinkInMarketplace', () => {
   })
 })
 
-describe('getMarketplaceListCondition', () => {
+describe('getPluginCondition', () => {
   it('should return category condition for tool', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.tool)).toBe('category=tool')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition(PluginCategoryEnum.tool)).toBe('category=tool')
   })
 
   it('should return category condition for model', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.model)).toBe('category=model')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition(PluginCategoryEnum.model)).toBe('category=model')
   })
 
   it('should return category condition for agent', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.agent)).toBe('category=agent-strategy')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition(PluginCategoryEnum.agent)).toBe('category=agent')
   })
 
   it('should return category condition for datasource', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.datasource)).toBe('category=datasource')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition(PluginCategoryEnum.datasource)).toBe('category=datasource')
   })
 
   it('should return category condition for trigger', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.trigger)).toBe('category=trigger')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition(PluginCategoryEnum.trigger)).toBe('category=trigger')
   })
 
   it('should return endpoint category for extension', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.extension)).toBe('category=endpoint')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition(PluginCategoryEnum.extension)).toBe('category=endpoint')
   })
 
   it('should return type condition for bundle', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition('bundle')).toBe('type=bundle')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition('bundle')).toBe('type=bundle')
   })
 
   it('should return empty string for all', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition('all')).toBe('')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition('all')).toBe('')
   })
 
   it('should return empty string for unknown type', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition('unknown')).toBe('')
+    const { getPluginCondition } = await import('../utils')
+    expect(getPluginCondition('unknown')).toBe('')
   })
 })
 
-describe('getMarketplaceListFilterType', () => {
+describe('getPluginFilterType', () => {
   it('should return undefined for all', async () => {
-    const { getMarketplaceListFilterType } = await import('../utils')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.all)).toBeUndefined()
+    const { getPluginFilterType } = await import('../utils')
+    expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.all)).toBeUndefined()
   })
 
   it('should return bundle for bundle', async () => {
-    const { getMarketplaceListFilterType } = await import('../utils')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.bundle)).toBe('bundle')
+    const { getPluginFilterType } = await import('../utils')
+    expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.bundle)).toBe('bundle')
   })
 
   it('should return plugin for other categories', async () => {
-    const { getMarketplaceListFilterType } = await import('../utils')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
+    const { getPluginFilterType } = await import('../utils')
+    expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
+    expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
+    expect(getPluginFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
   })
 })
 

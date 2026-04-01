@@ -1,4 +1,4 @@
-import type { MarketplaceCollection, SearchParamsFromCollection } from '../../types'
+import type { PluginCollection, SearchParamsFromCollection } from '../../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -103,8 +103,8 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 // Mock marketplace utils
-vi.mock('../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../utils')>()
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
   return {
     ...actual,
     getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
