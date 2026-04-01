@@ -8,7 +8,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -314,7 +314,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,

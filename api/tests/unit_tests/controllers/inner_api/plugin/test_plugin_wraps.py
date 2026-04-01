@@ -41,15 +41,15 @@ class TestGetUser:
     """Test get_user function"""
 
     @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.Session")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
-    def test_should_return_existing_user_by_id(self, mock_db, mock_session_class, mock_enduser_class, app: Flask):
+    def test_should_return_existing_user_by_id(self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask):
         """Test returning existing user when found by ID"""
         # Arrange
         mock_user = MagicMock()
         mock_user.id = "user123"
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
         mock_session.get.return_value = mock_user
 
         # Act
@@ -61,17 +61,17 @@ class TestGetUser:
         mock_session.get.assert_called_once()
 
     @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.Session")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_return_existing_anonymous_user_by_session_id(
-        self, mock_db, mock_session_class, mock_enduser_class, app: Flask
+        self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask
     ):
         """Test returning existing anonymous user by session_id"""
         # Arrange
         mock_user = MagicMock()
         mock_user.session_id = "anonymous_session"
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
         # non-anonymous path uses session.get(); anonymous uses session.scalar()
         mock_session.get.return_value = mock_user
 
@@ -83,13 +83,13 @@ class TestGetUser:
         assert result == mock_user
 
     @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.Session")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
-    def test_should_create_new_user_when_not_found(self, mock_db, mock_session_class, mock_enduser_class, app: Flask):
+    def test_should_create_new_user_when_not_found(self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask):
         """Test creating new user when not found in database"""
         # Arrange
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
         mock_session.get.return_value = None
         mock_new_user = MagicMock()
         mock_enduser_class.return_value = mock_new_user
@@ -101,21 +101,20 @@ class TestGetUser:
         # Assert
         assert result == mock_new_user
         mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once()
 
     @patch("controllers.inner_api.plugin.wraps.select")
     @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.Session")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_use_default_session_id_when_user_id_none(
-        self, mock_db, mock_session_class, mock_enduser_class, mock_select, app: Flask
+        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
     ):
         """Test using default session ID when user_id is None"""
         # Arrange
         mock_user = MagicMock()
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
         # When user_id is None, is_anonymous=True, so session.scalar() is used
         mock_session.scalar.return_value = mock_user
 
@@ -127,15 +126,13 @@ class TestGetUser:
         assert result == mock_user
 
     @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.Session")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
-    def test_should_raise_error_on_database_exception(
-        self, mock_db, mock_session_class, mock_enduser_class, app: Flask
-    ):
+    def test_should_raise_error_on_database_exception(self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask):
         """Test raising ValueError when database operation fails"""
         # Arrange
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
         mock_session.get.side_effect = Exception("Database error")
 
         # Act & Assert
