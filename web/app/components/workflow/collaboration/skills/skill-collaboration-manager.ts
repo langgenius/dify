@@ -43,10 +43,11 @@ type SkillCursorInfo = {
 
 type SkillCursorMap = Record<string, SkillCursorInfo>
 
-class SkillCollaborationManager {
+export class SkillCollaborationManager {
   private appId: string | null = null
   private socket: Socket | null = null
   private docs = new Map<string, SkillDocEntry>()
+  private openCounts = new Map<string, number>()
   private leaderByFile = new Map<string, boolean>()
   private syncHandlers = new Map<string, Set<() => void>>()
   private activeFileId: string | null = null
@@ -157,6 +158,7 @@ class SkillCollaborationManager {
     if (this.appId && this.appId !== appId) {
       this.teardownSocket()
       this.docs.clear()
+      this.openCounts.clear()
       this.leaderByFile.clear()
       this.syncHandlers.clear()
       this.activeFileId = null
@@ -201,6 +203,7 @@ class SkillCollaborationManager {
       return
 
     const socket = this.ensureSocket(appId)
+    this.openCounts.set(fileId, (this.openCounts.get(fileId) || 0) + 1)
 
     if (!this.docs.has(fileId)) {
       const doc = new LoroDoc()
@@ -227,8 +230,24 @@ class SkillCollaborationManager {
     if (!fileId)
       return
 
+    const currentOpenCount = this.openCounts.get(fileId)
+    if (currentOpenCount && currentOpenCount > 1) {
+      this.openCounts.set(fileId, currentOpenCount - 1)
+      return
+    }
+
+    this.openCounts.delete(fileId)
+
     if (this.activeFileId === fileId)
       this.activeFileId = null
+
+    this.docs.delete(fileId)
+    this.leaderByFile.delete(fileId)
+    this.syncHandlers.delete(fileId)
+    this.pendingResync.delete(fileId)
+
+    if (this.cursorByFile.delete(fileId))
+      this.cursorEmitter.emit(this.getCursorEventKey(fileId), {})
   }
 
   updateText(fileId: string, text: string): void {
