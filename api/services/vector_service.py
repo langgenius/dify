@@ -268,7 +268,9 @@ class VectorService:
                     vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
-            db.session.execute(delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id))
+            db.session.execute(
+                delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id)
+            )
 
             if not attachment_ids:
                 db.session.commit()

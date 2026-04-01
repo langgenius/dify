@@ -9,11 +9,13 @@ from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 class APIBasedExtensionService:
     @staticmethod
     def get_all_by_tenant_id(tenant_id: str) -> list[APIBasedExtension]:
-        extension_list = list(db.session.scalars(
-            select(APIBasedExtension)
-            .where(APIBasedExtension.tenant_id == tenant_id)
-            .order_by(APIBasedExtension.created_at.desc())
-        ).all())
+        extension_list = list(
+            db.session.scalars(
+                select(APIBasedExtension)
+                .where(APIBasedExtension.tenant_id == tenant_id)
+                .order_by(APIBasedExtension.created_at.desc())
+            ).all()
+        )
 
         for extension in extension_list:
             extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)

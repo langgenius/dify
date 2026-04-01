@@ -52,13 +52,9 @@ class AgentService:
 
         if conversation.from_end_user_id:
             # only select name field
-            executor_name = db.session.scalar(
-                select(EndUser.name).where(EndUser.id == conversation.from_end_user_id)
-            )
+            executor_name = db.session.scalar(select(EndUser.name).where(EndUser.id == conversation.from_end_user_id))
         else:
-            executor_name = db.session.scalar(
-                select(Account.name).where(Account.id == conversation.from_account_id)
-            )
+            executor_name = db.session.scalar(select(Account.name).where(Account.id == conversation.from_account_id))
 
         executor = executor_name or "Unknown"
         assert isinstance(current_user, Account)

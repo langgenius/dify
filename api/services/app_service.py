@@ -4,9 +4,9 @@ from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from sqlalchemy import select
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from sqlalchemy import select
 
 from configs import dify_config
 from constants.model_template import default_app_templates
