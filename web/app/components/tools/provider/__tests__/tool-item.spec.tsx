@@ -227,7 +227,7 @@ describe('ToolItem', () => {
   describe('Edge Cases', () => {
     it('should handle tool with empty description', () => {
       const toolWithEmptyDesc = createMockTool({
-        description: { 'en-US': '' },
+        description: { en_US: '', zh_Hans: '' },
       })
 
       render(<ToolItem {...defaultProps} tool={toolWithEmptyDesc} />)

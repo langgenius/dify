@@ -6,6 +6,21 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
+type OutputSchemaProperty = {
+  type?: string
+  description?: string
+  items?: {
+    type?: string
+    properties?: Record<string, OutputSchemaProperty>
+  }
+  properties?: Record<string, OutputSchemaProperty>
+}
+
+type OutputSchema = {
+  properties?: Record<string, OutputSchemaProperty>
+  [key: string]: unknown
+}
+
 export enum LOC {
   tools = 'tools',
   app = 'app',
@@ -132,17 +147,17 @@ export type Event = {
   description: LocalizedText
   parameters: TriggerParameter[]
   labels: string[]
-  output_schema: Record<string, unknown>
+  output_schema: OutputSchema
 }
 
 export type Tool = {
   name: string
   author: string
   label: LocalizedText
-  description: unknown
+  description: LocalizedText
   parameters: ToolParameter[]
   labels: string[]
-  output_schema: Record<string, unknown>
+  output_schema: OutputSchema
 }
 
 export type ToolCredential = {
@@ -166,22 +181,22 @@ export type CustomCollectionBackend = {
   icon: Emoji
   schema_type: string
   schema: string
-  privacy_policy: string
-  custom_disclaimer: string
+  privacy_policy?: string
+  custom_disclaimer?: string
   tools?: CustomParamSchema[]
-  id: string
-  labels: string[]
+  id?: string
+  labels?: string[]
 }
 
 export type ParamItem = {
   name: string
   label: LocalizedText
-  human_description: LocalizedText
-  llm_description: string
-  type: string
-  form: string
-  required: boolean
-  default: string
+  human_description?: LocalizedText
+  llm_description?: string
+  type?: string
+  form?: string
+  required?: boolean
+  default?: string
   min?: number
   max?: number
   options?: {
