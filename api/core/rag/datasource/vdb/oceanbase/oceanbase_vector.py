@@ -10,6 +10,7 @@ from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -366,8 +367,8 @@ class OceanBaseVector(BaseVector):
 
             # Parse metadata JSON
             try:
-                metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
-            except json.JSONDecodeError:
+                metadata = parse_metadata_json(metadata_str)
+            except (ValueError, TypeError):
                 logger.warning("Invalid JSON metadata: %s", metadata_str)
                 metadata = {}
 

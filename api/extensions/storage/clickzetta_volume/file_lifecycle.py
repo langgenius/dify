@@ -15,7 +15,11 @@ from datetime import datetime
 from enum import StrEnum, auto
 from typing import Any
 
+from pydantic import TypeAdapter
+
 logger = logging.getLogger(__name__)
+
+_metadata_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class FileStatus(StrEnum):
@@ -455,8 +459,8 @@ class FileLifecycleManager:
         try:
             if self._storage.exists(self._metadata_file):
                 metadata_content = self._storage.load_once(self._metadata_file)
-                result = json.loads(metadata_content.decode("utf-8"))
-                return dict(result) if result else {}
+                result = _metadata_adapter.validate_json(metadata_content)
+                return result or {}
             else:
                 return {}
         except Exception as e:

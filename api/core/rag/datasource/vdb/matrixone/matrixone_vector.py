@@ -9,6 +9,7 @@ from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -196,11 +197,7 @@ class MatrixoneVector(BaseVector):
 
         docs = []
         for result in results:
-            metadata = result.metadata
-            if isinstance(metadata, str):
-                import json
-
-                metadata = json.loads(metadata)
+            metadata = parse_metadata_json(result.metadata)
             score = 1 - result.distance
             if score >= score_threshold:
                 metadata["score"] = score
