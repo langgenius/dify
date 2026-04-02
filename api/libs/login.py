@@ -42,13 +42,7 @@ def current_account_with_tenant():
     return user, user.current_tenant_id
 
 
-from typing import ParamSpec, TypeVar
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def login_required(func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]:
+def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | ResponseReturnValue]:
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are

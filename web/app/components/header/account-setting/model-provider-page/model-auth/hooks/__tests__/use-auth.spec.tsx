@@ -5,7 +5,6 @@ import type {
   ModelProvider,
 } from '../../../declarations'
 import { act, renderHook } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { ConfigurationMethodEnum, ModelModalModeEnum, ModelTypeEnum } from '../../../declarations'
 import { useAuth } from '../use-auth'
 
@@ -22,11 +21,19 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
-vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    useToastContext: () => ({ notify: mockNotify }),
+    default: {
+      notify: (args: unknown) => mockNotify(args),
+    },
+    toast: {
+      success: (message: string) => mockNotify({ type: 'success', message }),
+      error: (message: string) => mockNotify({ type: 'error', message }),
+      warning: (message: string) => mockNotify({ type: 'warning', message }),
+      info: (message: string) => mockNotify({ type: 'info', message }),
+    },
   }
 })
 
@@ -73,9 +80,9 @@ describe('useAuth', () => {
   }
 
   const createWrapper = ({ children }: { children: ReactNode }) => (
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <>
       {children}
-    </ToastContext.Provider>
+    </>
   )
 
   beforeEach(() => {

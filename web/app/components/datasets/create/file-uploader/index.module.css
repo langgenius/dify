@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .file {
   @apply box-border relative flex items-center justify-between;
   padding: 8px 12px 8px 8px;

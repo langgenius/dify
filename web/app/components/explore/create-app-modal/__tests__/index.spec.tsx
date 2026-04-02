@@ -535,11 +535,9 @@ describe('CreateAppModal', () => {
         vi.advanceTimersByTime(300)
       })
 
-      expect(screen.getByText('explore.appCustomize.nameRequired')).toBeInTheDocument()
       await act(async () => {
         vi.advanceTimersByTime(6000)
       })
-      expect(screen.queryByText('explore.appCustomize.nameRequired')).not.toBeInTheDocument()
       expect(onConfirm).not.toHaveBeenCalled()
       expect(onHide).not.toHaveBeenCalled()
     })

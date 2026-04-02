@@ -20,8 +20,12 @@ import {
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-import { useToastContext } from '@/app/components/base/toast/context'
-import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
@@ -74,7 +78,6 @@ const AdvancedPromptInput: FC<Props> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
-  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
@@ -94,7 +97,7 @@ const AdvancedPromptInput: FC<Props> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
             return false
           }
         }
@@ -164,7 +167,7 @@ const AdvancedPromptInput: FC<Props> = ({
     </div>
   )
   return (
-    <div className={`rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
+    <div className={`rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
       <div className="rounded-xl bg-background-default">
         {isContextMissing
           ? contextMissing
@@ -180,13 +183,18 @@ const AdvancedPromptInput: FC<Props> = ({
                         <div className="text-sm font-semibold uppercase text-indigo-800">
                           {t('pageTitle.line1', { ns: 'appDebug' })}
                         </div>
-                        <Tooltip
-                          popupContent={(
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={(
+                              <span className="i-ri-question-line ml-1 h-4 w-4 shrink-0 text-text-quaternary" />
+                            )}
+                          />
+                          <TooltipContent>
                             <div className="w-[180px]">
                               {t('promptTip', { ns: 'appDebug' })}
                             </div>
-                          )}
-                        />
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     )}
                 <div className={cn(s.optionWrap, 'items-center space-x-1')}>

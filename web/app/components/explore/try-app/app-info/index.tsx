@@ -30,7 +30,7 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 
   if (hasLoadError) {
     return (
-      <div className="flex size-5 items-center justify-center overflow-hidden rounded-[6px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+      <div className="flex size-5 items-center justify-center overflow-hidden radius-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         <div className="i-custom-public-other-default-tool-icon size-3 text-text-tertiary" />
       </div>
     )
@@ -77,7 +77,7 @@ const AppInfo: FC<Props> = ({
             type={mode}
           />
         </div>
-        <div className="w-0 grow py-[1px]">
+        <div className="w-0 grow py-px">
           <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
             <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>

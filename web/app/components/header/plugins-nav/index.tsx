@@ -39,7 +39,7 @@ const PluginsNav = ({
           (isFailed || isInstallingWithError) && !activated && (
             <Indicator
               color="red"
-              className="absolute left-[-1px] top-[-1px]"
+              className="absolute -left-px -top-px"
             />
           )
         }

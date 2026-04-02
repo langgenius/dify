@@ -1,10 +1,9 @@
 from collections import defaultdict
-from typing import Any
+from typing import Any, TypedDict
 
 import orjson
 from pydantic import BaseModel
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler

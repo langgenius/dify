@@ -4,7 +4,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
@@ -19,7 +19,6 @@ import Options from './options'
 
 const ERROR_I18N_PREFIX = 'errorMsg'
 const I18N_PREFIX = 'stepOne.website'
-
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
@@ -28,21 +27,12 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
-
 enum Step {
   init = 'init',
   running = 'running',
   finished = 'finished',
 }
-
-const JinaReader: FC<Props> = ({
-  onPreview,
-  checkedCrawlResult,
-  onCheckedCrawlResultChange,
-  onJobIdChange,
-  crawlOptions,
-  onCrawlOptionsChange,
-}) => {
+const JinaReader: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlResultChange, onJobIdChange, crawlOptions, onCrawlOptionsChange }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
@@ -56,7 +46,6 @@ const JinaReader: FC<Props> = ({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
-
   const checkValid = useCallback((url: string) => {
     let errorMsg = ''
     if (!url) {
@@ -65,23 +54,19 @@ const JinaReader: FC<Props> = ({
         field: 'url',
       })
     }
-
     if (!errorMsg && !((url.startsWith('http://') || url.startsWith('https://'))))
       errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`, { ns: 'common' })
-
     if (!errorMsg && (crawlOptions.limit === null || crawlOptions.limit === undefined || crawlOptions.limit === '')) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
         ns: 'common',
         field: t(`${I18N_PREFIX}.limit`, { ns: 'datasetCreation' }),
       })
     }
-
     return {
       isValid: !errorMsg,
       errorMsg,
     }
   }, [crawlOptions, t])
-
   const isInit = step === Step.init
   const isCrawlFinished = step === Step.finished
   const isRunning = step === Step.running
@@ -93,7 +78,6 @@ const JinaReader: FC<Props> = ({
   } | undefined>(undefined)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const showError = isCrawlFinished && crawlErrorMessage
-
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
     try {
       const res = await checkJinaReaderTaskStatus(jobId) as any
@@ -135,14 +119,10 @@ const JinaReader: FC<Props> = ({
       }
     }
   }, [crawlOptions.limit, onCheckedCrawlResultChange])
-
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
     if (!isValid) {
-      Toast.notify({
-        message: errorMsg!,
-        type: 'error',
-      })
+      toast.error(errorMsg!)
       return
     }
     setStep(Step.running)
@@ -152,7 +132,6 @@ const JinaReader: FC<Props> = ({
         url,
         options: crawlOptions,
       }) as any
-
       if (res.data) {
         const { title, content, description, url } = res.data
         const data = {
@@ -192,49 +171,22 @@ const JinaReader: FC<Props> = ({
       setStep(Step.finished)
     }
   }, [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished])
-
   return (
     <div>
-      <Header
-        onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.jinaReaderTitle`, { ns: 'datasetCreation' })}
-        buttonText={t(`${I18N_PREFIX}.configureJinaReader`, { ns: 'datasetCreation' })}
-        docTitle={t(`${I18N_PREFIX}.jinaReaderDoc`, { ns: 'datasetCreation' })}
-        docLink="https://jina.ai/reader"
-      />
+      <Header onClickConfiguration={handleSetting} title={t(`${I18N_PREFIX}.jinaReaderTitle`, { ns: 'datasetCreation' })} buttonText={t(`${I18N_PREFIX}.configureJinaReader`, { ns: 'datasetCreation' })} docTitle={t(`${I18N_PREFIX}.jinaReaderDoc`, { ns: 'datasetCreation' })} docLink="https://jina.ai/reader" />
       <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0">
         <UrlInput onRun={handleRun} isRunning={isRunning} />
-        <OptionsWrap
-          className="mt-4"
-          controlFoldOptions={controlFoldOptions}
-        >
+        <OptionsWrap className="mt-4" controlFoldOptions={controlFoldOptions}>
           <Options className="mt-2" payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl">
+          <div className="relative left-[-16px] mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning
-              && (
-                <Crawling
-                  className="mt-2"
-                  crawledNum={crawlResult?.current || 0}
-                  totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
-                />
-              )}
-            {showError && (
-              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />
-            )}
+              && (<Crawling className="mt-2" crawledNum={crawlResult?.current || 0} totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0} />)}
+            {showError && (<ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />)}
             {isCrawlFinished && !showError
-              && (
-                <CrawledResult
-                  className="mb-2"
-                  list={crawlResult?.data || []}
-                  checkedList={checkedCrawlResult}
-                  onSelectedChange={onCheckedCrawlResultChange}
-                  onPreview={onPreview}
-                  usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
-                />
-              )}
+              && (<CrawledResult className="mb-2" list={crawlResult?.data || []} checkedList={checkedCrawlResult} onSelectedChange={onCheckedCrawlResultChange} onPreview={onPreview} usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0} />)}
           </div>
         )}
       </div>

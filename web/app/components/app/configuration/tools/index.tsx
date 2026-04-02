@@ -5,7 +5,6 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-// abandoned
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -15,14 +14,17 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Switch from '@/app/components/base/switch'
-import { useToastContext } from '@/app/components/base/toast/context'
-import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 
 const Tools = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const {
     externalDataToolsConfig,
@@ -48,7 +50,7 @@ const Tools = () => {
     const promptVariables = modelConfig?.configs?.prompt_variables || []
     for (let i = 0; i < promptVariables.length; i++) {
       if (promptVariables[i].key === newExternalDataTool.variable) {
-        notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+        toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
         return false
       }
     }
@@ -66,7 +68,7 @@ const Tools = () => {
 
     for (let i = 0; i < existedExternalDataTools.length; i++) {
       if (existedExternalDataTools[i].variable === newExternalDataTool.variable) {
-        notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: existedExternalDataTools[i].variable }) })
+        toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: existedExternalDataTools[i].variable }))
         return false
       }
     }
@@ -110,19 +112,20 @@ const Tools = () => {
           <div className="mr-1 text-sm font-semibold text-gray-800">
             {t('feature.tools.title', { ns: 'appDebug' })}
           </div>
-          <Tooltip
-            popupContent={(
+          <Tooltip>
+            <TooltipTrigger render={<span className="i-ri-question-line ml-1 h-4 w-4 shrink-0 text-text-quaternary" />} />
+            <TooltipContent>
               <div className="max-w-[160px]">
                 {t('feature.tools.tips', { ns: 'appDebug' })}
               </div>
-            )}
-          />
+            </TooltipContent>
+          </Tooltip>
         </div>
         {
           !expanded && !!externalDataToolsConfig.length && (
             <>
               <div className="mr-3 text-xs text-gray-500">{t('feature.tools.toolsInUse', { ns: 'appDebug', count: externalDataToolsConfig.length })}</div>
-              <div className="mr-1 h-3.5 w-[1px] bg-gray-200" />
+              <div className="mr-1 h-3.5 w-px bg-gray-200" />
             </>
           )
         }
@@ -146,23 +149,28 @@ const Tools = () => {
                   <div className="flex grow items-center">
                     <AppIcon
                       size="large"
-                      className="mr-2 !h-6 !w-6 rounded-md border-[0.5px] border-black/5"
+                      className="mr-2 h-6! w-6! rounded-md border-[0.5px] border-black/5"
                       icon={item.icon}
                       background={item.icon_background}
                     />
                     <div className="mr-2 text-[13px] font-medium text-gray-800">{item.label}</div>
-                    <Tooltip
-                      popupContent={copied ? t('copied', { ns: 'appApi' }) : `${item.variable}, ${t('copy', { ns: 'appApi' })}`}
-                    >
-                      <div
-                        className="text-xs text-gray-500"
-                        onClick={() => {
-                          copy(item.variable || '')
-                          setCopied(true)
-                        }}
-                      >
-                        {item.variable}
-                      </div>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(
+                          <div
+                            className="text-xs text-gray-500"
+                            onClick={() => {
+                              copy(item.variable || '')
+                              setCopied(true)
+                            }}
+                          >
+                            {item.variable}
+                          </div>
+                        )}
+                      />
+                      <TooltipContent>
+                        {copied ? t('copied', { ns: 'appApi' }) : `${item.variable}, ${t('copy', { ns: 'appApi' })}`}
+                      </TooltipContent>
                     </Tooltip>
                   </div>
                   <div
@@ -177,7 +185,7 @@ const Tools = () => {
                   >
                     <RiDeleteBinLine className="h-4 w-4 text-gray-500 group-hover/action:text-[#D92D20]" />
                   </div>
-                  <div className="ml-2 mr-3 hidden h-3.5 w-[1px] bg-gray-200 group-hover:block" />
+                  <div className="ml-2 mr-3 hidden h-3.5 w-px bg-gray-200 group-hover:block" />
                   <Switch
                     size="lg"
                     value={item.enabled ?? false}

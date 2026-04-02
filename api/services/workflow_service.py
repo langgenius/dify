@@ -138,14 +138,14 @@ class WorkflowService:
         if workflow_id:
             return self.get_published_workflow_by_id(app_model, workflow_id)
         # fetch draft workflow by app_model
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
-            .first()
+            .limit(1)
         )
 
         # return draft workflow
@@ -155,14 +155,14 @@ class WorkflowService:
         """
         fetch published workflow by workflow_id
         """
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == workflow_id,
             )
-            .first()
+            .limit(1)
         )
         if not workflow:
             return None
@@ -182,14 +182,14 @@ class WorkflowService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == app_model.workflow_id,
             )
-            .first()
+            .limit(1)
         )
 
         return workflow
@@ -544,14 +544,14 @@ class WorkflowService:
 
             # Use the same fallback logic as runtime: get the first available credential
             # ordered by is_default DESC, created_at ASC (same as tool_manager.py)
-            default_provider = (
-                db.session.query(BuiltinToolProvider)
+            default_provider = db.session.scalar(
+                select(BuiltinToolProvider)
                 .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.provider == provider,
                 )
                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                .first()
+                .limit(1)
             )
 
             if not default_provider:

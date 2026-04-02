@@ -87,7 +87,7 @@ describe('ScoreThresholdItem', () => {
       expect(screen.getByRole('textbox')).toHaveValue('0.5')
     })
 
-    it('should call onChange with rounded value when input changes', async () => {
+    it('should call onChange with rounded-sm value when input changes', async () => {
       const user = userEvent.setup()
       const StatefulScoreThresholdItem = () => {
         const [value, setValue] = useState(defaultProps.value)

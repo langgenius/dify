@@ -118,7 +118,7 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
         {(isShowChunkingModeIcon || isExternalProvider) && (
-          <div className="absolute -bottom-1 -right-1 z-[5]">
+          <div className="absolute -bottom-1 -right-1 z-5">
             <Icon className="size-4" />
           </div>
         )}

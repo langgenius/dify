@@ -28,7 +28,7 @@ import type {
   WorkflowStartedResponse,
 } from '@/types/workflow'
 import Cookies from 'js-cookie'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
@@ -541,7 +541,7 @@ export const ssePost = async (
         }
         else {
           res.json().then((data) => {
-            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+            toast.error(data.message || 'Server Error')
           })
           onError?.('Server Error')
         }
@@ -554,7 +554,7 @@ export const ssePost = async (
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
             if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+              toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -593,7 +593,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
-        Toast.notify({ type: 'error', message: e })
+        toast.error(String(e))
       onError?.(e)
     })
 }
@@ -688,7 +688,7 @@ export const sseGet = async (
         }
         else {
           res.json().then((data) => {
-            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+            toast.error(data.message || 'Server Error')
           })
           onError?.('Server Error')
         }
@@ -701,7 +701,7 @@ export const sseGet = async (
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
             if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+              toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -740,7 +740,7 @@ export const sseGet = async (
     })
     .catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
-        Toast.notify({ type: 'error', message: e })
+        toast.error(String(e))
       onError?.(e)
     })
 }
@@ -787,7 +787,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
-        Toast.notify({ type: 'error', message, duration: 4000 })
+        toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
@@ -808,7 +808,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (!silent) {
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
         return Promise.reject(err)
       }
       jumpTo(loginUrl)

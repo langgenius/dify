@@ -103,7 +103,7 @@ const PopupItem: FC<PopupItemProps> = ({
 
   return (
     <div className="mb-1">
-      <div className="sticky top-12 z-[2] flex h-[22px] items-center justify-between bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
+      <div className="sticky top-12 z-2 flex h-[22px] items-center justify-between bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <div
           className="flex cursor-pointer items-center"
           onClick={() => setCollapsed(prev => !prev)}
@@ -134,17 +134,17 @@ const PopupItem: FC<PopupItemProps> = ({
                   : credentialName
                     ? (
                         <>
-                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-[2px] border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                          <span className={cn('h-1.5 w-1.5 shrink-0 radius-2xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
                           <span className="ml-1 text-text-tertiary">{credentialName}</span>
                         </>
                       )
                     : (
                         <>
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-[2px] border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                          <span className="h-1.5 w-1.5 shrink-0 radius-2xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
                           <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}
-                <span className="i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary" />
+                <span className="i-ri-arrow-down-s-line h-[14px]! w-[14px]! translate-y-px text-text-tertiary" />
               </button>
             )}
           />
@@ -200,7 +200,7 @@ const PopupItem: FC<PopupItemProps> = ({
           <TooltipContent
             placement="right"
             variant="plain"
-            popupClassName="w-[206px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 backdrop-blur-sm"
+            popupClassName="w-[206px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 backdrop-blur-xs"
           >
             <div className="flex flex-col gap-1">
               <div className="flex flex-col items-start gap-2">
@@ -209,7 +209,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   provider={model}
                   modelName={modelItem.model}
                 />
-                <div className="text-wrap break-words text-text-primary system-md-medium">{modelItem.label[language] || modelItem.label.en_US}</div>
+                <div className="text-wrap wrap-break-word text-text-primary system-md-medium">{modelItem.label[language] || modelItem.label.en_US}</div>
               </div>
               <div className="flex flex-wrap gap-1">
                 {!!modelItem.model_type && (

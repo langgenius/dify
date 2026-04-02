@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .logTable td {
   padding: 7px 8px;
   box-sizing: border-box;

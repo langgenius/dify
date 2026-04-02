@@ -64,7 +64,7 @@ const AppInputsForm = ({
     if (form.type === InputVarType.select) {
       return (
         <PortalSelect
-          popupClassName="w-[356px] z-[1050]"
+          popupClassName="w-[356px] z-1050"
           value={inputs[variable] || ''}
           items={options.map((option: string) => ({ value: option, name: option }))}
           onSelect={item => handleFormChange(variable, item.value as string)}
