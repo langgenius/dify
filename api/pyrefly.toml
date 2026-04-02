@@ -2,6 +2,7 @@ project-includes = ["."]
 project-excludes = [
     ".venv",
     "migrations/",
+    "unit_tests/",
 ]
 python-platform = "linux"
 python-version = "3.12"
