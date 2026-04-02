@@ -39,8 +39,13 @@ class TestDatasourceProviderService:
         Robust, chainable query mock.
         q returns itself for .filter_by(), .order_by(), .where() so any
         SQLAlchemy chaining pattern works without multiple brittle sub-mocks.
+
+        Patches ``sessionmaker`` so that
+        ``sessionmaker(db.engine).begin().__enter__()`` and
+        ``sessionmaker(db.engine, autoflush=False).begin().__enter__()``
+        both return this same mock session.
         """
-        with patch("services.datasource_provider_service.Session") as mock_cls:
+        with patch("services.datasource_provider_service.sessionmaker") as mock_sm:
             sess = MagicMock(spec=Session)
 
             q = MagicMock()
@@ -61,8 +66,9 @@ class TestDatasourceProviderService:
             sess.scalar.return_value = None
             sess.scalars.return_value.all.return_value = []
 
-            mock_cls.return_value.__enter__.return_value = sess
-            mock_cls.return_value.no_autoflush.__enter__.return_value = sess
+            # sessionmaker(db.engine).begin().__enter__() -> sess
+            mock_sm.return_value.begin.return_value.__enter__ = MagicMock(return_value=sess)
+            mock_sm.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
 
             yield sess
 
@@ -266,7 +272,6 @@ class TestDatasourceProviderService:
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
             service.get_datasource_credentials("t1", "prov", "org/plug")
-        mock_db_session.commit.assert_called_once()
 
     def test_should_return_decrypted_credentials_when_api_key_not_expired(self, service, mock_db_session, mock_user):
         """API key credentials with expires_at=-1 skip refresh and return directly."""
@@ -333,7 +338,6 @@ class TestDatasourceProviderService:
         p.name = "same"
         mock_db_session.query().first.return_value = p
         service.update_datasource_provider_name("t1", make_id(), "same", "cred-id")
-        mock_db_session.commit.assert_not_called()
 
     def test_should_raise_value_error_when_name_already_exists(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
@@ -352,7 +356,6 @@ class TestDatasourceProviderService:
         mock_db_session.query().count.return_value = 0
         service.update_datasource_provider_name("t1", make_id(), "new_name", "some-id")
         assert p.name == "new_name"
-        mock_db_session.commit.assert_called_once()
 
     # -----------------------------------------------------------------------
     # set_default_datasource_provider (lines 277-303)
@@ -370,7 +373,6 @@ class TestDatasourceProviderService:
         mock_db_session.query().first.return_value = target
         service.set_default_datasource_provider("t1", make_id(), "new-id")
         assert target.is_default is True
-        mock_db_session.commit.assert_called_once()
 
     # -----------------------------------------------------------------------
     # get_oauth_encrypter (lines 404-420)
@@ -460,7 +462,6 @@ class TestDatasourceProviderService:
         with patch.object(service, "extract_secret_variables", return_value=[]):
             service.add_datasource_oauth_provider("new", "t1", make_id(), "http://cb", 9999, {})
         mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
 
     def test_should_auto_rename_when_oauth_provider_name_conflicts(self, service, mock_db_session):
         """Conflict on name results in auto-incremented name, not an error."""
@@ -512,7 +513,6 @@ class TestDatasourceProviderService:
         mock_db_session.query().count.return_value = 0
         with patch.object(service, "extract_secret_variables", return_value=[]):
             service.reauthorize_datasource_oauth_provider("n", "t1", make_id(), "u", 1, {}, "oid")
-        mock_db_session.commit.assert_called_once()
 
     def test_should_auto_rename_when_reauth_name_conflicts(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
@@ -523,7 +523,6 @@ class TestDatasourceProviderService:
             service.reauthorize_datasource_oauth_provider(
                 "conflict_name", "t1", make_id(), "u", 9999, {"tok": "v"}, "cred-id"
             )
-        mock_db_session.commit.assert_called_once()
 
     def test_should_encrypt_secret_fields_when_reauthorizing(self, service, mock_db_session):
         p = MagicMock(spec=DatasourceProvider)
@@ -571,7 +570,6 @@ class TestDatasourceProviderService:
         ):
             service.add_datasource_api_key_provider(None, "t1", make_id(), {"sk": "v"})
         mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
 
     def test_should_acquire_redis_lock_when_adding_api_key_provider(self, service, mock_db_session, mock_user):
         mock_db_session.query().count.return_value = 0
@@ -746,8 +744,6 @@ class TestDatasourceProviderService:
             service.update_datasource_credentials("t1", "id", "prov", "org/plug", {"sk": "new_val"}, "name")
         # encrypter must have been called with the new secret value
         self._enc.encrypt_token.assert_called()
-        # commit must be called exactly once
-        mock_db_session.commit.assert_called_once()
 
     # -----------------------------------------------------------------------
     # remove_datasource_credentials (lines 980-997)
