@@ -3956,14 +3956,6 @@
       "count": 1
     }
   },
-  "app/components/base/select/locale.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
   "app/components/base/select/pure.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -5200,11 +5192,6 @@
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/crawled-result.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/base/error-message.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
