@@ -20,6 +20,8 @@ from unittest.mock import Mock, patch
 import pytest
 from werkzeug.exceptions import Forbidden, NotFound
 
+from sqlalchemy.orm import Session
+
 import services
 from controllers.service_api.dataset.dataset import (
     DatasetCreatePayload,
@@ -34,6 +36,8 @@ from controllers.service_api.dataset.dataset import (
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
+from models.enums import TagType
+from models.model import Tag
 
 # ---------------------------------------------------------------------------
 # Pydantic model validation tests
@@ -235,9 +239,9 @@ def _unwrap(method):
 @pytest.fixture
 def app(flask_app_with_containers):
     # Uses the full containerised app so that Flask config, extensions, and
-    # blueprint registrations match production.  Services are still mocked
-    # because these tests target controller-level logic (routing, error
-    # mapping, permission checks), not service/DB behaviour.
+    # blueprint registrations match production.  Most tests mock the service
+    # layer to isolate controller logic; a few (e.g. test_list_tags_from_db)
+    # exercise the real DB-backed path to validate end-to-end behaviour.
     return flask_app_with_containers
 
 
@@ -711,6 +715,42 @@ class TestDatasetTagsApiGet:
         assert status == 200
         assert len(response) == 1
         mock_tag_svc.get_tags.assert_called_once_with("knowledge", "tenant-1")
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_list_tags_from_db(
+        self,
+        mock_current_user,
+        app,
+        db_session_with_containers: Session,
+    ):
+        """Integration test: creates real Tag rows and retrieves them
+        through the controller without mocking TagService."""
+        from tests.test_containers_integration_tests.controllers.console.helpers import (
+            create_console_account_and_tenant,
+        )
+
+        account, tenant = create_console_account_and_tenant(db_session_with_containers)
+
+        tag = Tag(
+            name="Integration Tag",
+            type=TagType.KNOWLEDGE,
+            created_by=account.id,
+            tenant_id=tenant.id,
+        )
+        db_session_with_containers.add(tag)
+        db_session_with_containers.commit()
+
+        mock_current_user.__class__ = Account
+        mock_current_user.current_tenant_id = tenant.id
+
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        with app.test_request_context("/datasets/tags", method="GET"):
+            api = DatasetTagsApi()
+            response, status = api.get(_=None)
+
+        assert status == 200
+        assert any(t["name"] == "Integration Tag" for t in response)
 
 
 class TestDatasetTagsApiPost:
