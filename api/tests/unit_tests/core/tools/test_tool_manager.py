@@ -46,6 +46,13 @@ def _cm(session: Any):
     return context
 
 
+def _mock_sessionmaker(session: Any):
+    """Return a mock that mimics sessionmaker(engine).begin() -> context manager."""
+    factory = Mock()
+    factory.begin.return_value = _cm(session)
+    return lambda *args, **kwargs: factory
+
+
 def _setup_list_providers_from_api_mocks(
     monkeypatch,
     *,
@@ -58,7 +65,7 @@ def _setup_list_providers_from_api_mocks(
     mock_db = Mock()
     mock_db.engine = object()
     monkeypatch.setattr("core.tools.tool_manager.db", mock_db)
-    monkeypatch.setattr("core.tools.tool_manager.Session", lambda *args, **kwargs: _cm(session))
+    monkeypatch.setattr("core.tools.tool_manager.sessionmaker", _mock_sessionmaker(session))
     monkeypatch.setattr(
         ToolManager,
         "list_builtin_providers",
@@ -343,12 +350,11 @@ def test_get_tool_runtime_workflow_path():
     workflow_controller = Mock()
     workflow_controller.get_tools.return_value = [workflow_tool]
     session = Mock()
-    session.begin.return_value = _cm(None)
     session.scalar.return_value = workflow_provider
 
     with patch("core.tools.tool_manager.db") as mock_db:
         mock_db.engine = object()
-        with patch("core.tools.tool_manager.Session", return_value=_cm(session)):
+        with patch("core.tools.tool_manager.sessionmaker", _mock_sessionmaker(session)):
             with patch(
                 "core.tools.tool_manager.ToolTransformService.workflow_provider_to_controller",
                 return_value=workflow_controller,
@@ -642,7 +648,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
         with patch("core.tools.tool_manager.dify_config", SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME=scheme)):
             with patch("core.tools.tool_manager.db") as mock_db:
                 mock_db.engine = object()
-                with patch("core.tools.tool_manager.Session", return_value=_cm(session)):
+                with patch("core.tools.tool_manager.sessionmaker", _mock_sessionmaker(session)):
                     providers = ToolManager.list_default_builtin_providers("tenant-1")
 
         assert providers == provider_records
@@ -756,7 +762,7 @@ def test_get_mcp_provider_controller_returns_controller():
 
     with patch("core.tools.tool_manager.db") as mock_db:
         mock_db.engine = object()
-        with patch("core.tools.tool_manager.Session", return_value=_cm(session)):
+        with patch("core.tools.tool_manager.sessionmaker", _mock_sessionmaker(session)):
             with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
                 mock_service = mock_service_cls.return_value
                 mock_service.get_provider.return_value = provider_entity
@@ -771,7 +777,7 @@ def test_generate_mcp_tool_icon_url_returns_provider_icon():
 
     with patch("core.tools.tool_manager.db") as mock_db:
         mock_db.engine = object()
-        with patch("core.tools.tool_manager.Session", return_value=_cm(session)):
+        with patch("core.tools.tool_manager.sessionmaker", _mock_sessionmaker(session)):
             with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
                 mock_service = mock_service_cls.return_value
                 mock_service.get_provider_entity.return_value = provider_entity
@@ -783,7 +789,7 @@ def test_get_mcp_provider_controller_missing_raises():
 
     with patch("core.tools.tool_manager.db") as mock_db:
         mock_db.engine = object()
-        with patch("core.tools.tool_manager.Session", return_value=_cm(session)):
+        with patch("core.tools.tool_manager.sessionmaker", _mock_sessionmaker(session)):
             with patch("core.tools.tool_manager.MCPToolManageService") as mock_service_cls:
                 mock_service_cls.return_value.get_provider.side_effect = ValueError("missing")
                 with pytest.raises(ToolProviderNotFoundError, match="mcp provider mcp-1 not found"):

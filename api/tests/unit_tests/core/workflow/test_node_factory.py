@@ -44,21 +44,19 @@ class TestFetchMemory:
                 return self
 
         class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
             def scalar(self, _stmt):
                 return None
 
+        fake_session = FakeSession()
+        begin_cm = MagicMock()
+        begin_cm.__enter__ = MagicMock(return_value=fake_session)
+        begin_cm.__exit__ = MagicMock(return_value=False)
+        fake_factory = MagicMock()
+        fake_factory.begin.return_value = begin_cm
+
         monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
+        monkeypatch.setattr(node_factory, "sessionmaker", MagicMock(return_value=fake_factory))
 
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
@@ -78,22 +76,20 @@ class TestFetchMemory:
                 return self
 
         class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_args):
-                return False
-
             def scalar(self, _stmt):
                 return conversation
+
+        fake_session = FakeSession()
+        begin_cm = MagicMock()
+        begin_cm.__enter__ = MagicMock(return_value=fake_session)
+        begin_cm.__exit__ = MagicMock(return_value=False)
+        fake_factory = MagicMock()
+        fake_factory.begin.return_value = begin_cm
 
         token_buffer_memory = MagicMock(return_value=memory)
         monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
+        monkeypatch.setattr(node_factory, "sessionmaker", MagicMock(return_value=fake_factory))
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(

@@ -331,9 +331,9 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert result == tenant
 
-    @patch("models.account.Session")
+    @patch("models.account.sessionmaker")
     @patch("models.account.db")
-    def test_account_current_tenant_setter_with_valid_tenant(self, mock_db, mock_session_class):
+    def test_account_current_tenant_setter_with_valid_tenant(self, mock_db, mock_sessionmaker):
         """Test setting current_tenant with a valid tenant relationship."""
         # Arrange
         account = Account(
@@ -345,9 +345,12 @@ class TestTenantRelationshipIntegrity:
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
 
-        # Mock the session and queries
+        # Mock the sessionmaker chain: sessionmaker(engine).begin() -> context manager -> session
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        begin_cm = MagicMock()
+        begin_cm.__enter__.return_value = mock_session
+        begin_cm.__exit__.return_value = False
+        mock_sessionmaker.return_value.begin.return_value = begin_cm
 
         # Mock TenantAccountJoin query result
         tenant_join = TenantAccountJoin(
@@ -367,9 +370,9 @@ class TestTenantRelationshipIntegrity:
         assert account._current_tenant == tenant
         assert account.role == TenantAccountRole.OWNER
 
-    @patch("models.account.Session")
+    @patch("models.account.sessionmaker")
     @patch("models.account.db")
-    def test_account_current_tenant_setter_without_relationship(self, mock_db, mock_session_class):
+    def test_account_current_tenant_setter_without_relationship(self, mock_db, mock_sessionmaker):
         """Test setting current_tenant when no relationship exists."""
         # Arrange
         account = Account(
@@ -381,9 +384,12 @@ class TestTenantRelationshipIntegrity:
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
 
-        # Mock the session and queries
+        # Mock the sessionmaker chain
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        begin_cm = MagicMock()
+        begin_cm.__enter__.return_value = mock_session
+        begin_cm.__exit__.return_value = False
+        mock_sessionmaker.return_value.begin.return_value = begin_cm
 
         # Mock no TenantAccountJoin found
         mock_session.scalar.return_value = None
@@ -418,9 +424,9 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
-    @patch("models.account.Session")
+    @patch("models.account.sessionmaker")
     @patch("models.account.db")
-    def test_account_set_tenant_id_method(self, mock_db, mock_session_class):
+    def test_account_set_tenant_id_method(self, mock_db, mock_sessionmaker):
         """Test the set_tenant_id method."""
         # Arrange
         account = Account(
@@ -438,9 +444,12 @@ class TestTenantRelationshipIntegrity:
             role=TenantAccountRole.ADMIN,
         )
 
-        # Mock the session and queries
+        # Mock the sessionmaker chain
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        begin_cm = MagicMock()
+        begin_cm.__enter__.return_value = mock_session
+        begin_cm.__exit__.return_value = False
+        mock_sessionmaker.return_value.begin.return_value = begin_cm
         mock_session.execute.return_value.first.return_value = (tenant, tenant_join)
 
         # Act
@@ -450,9 +459,9 @@ class TestTenantRelationshipIntegrity:
         assert account._current_tenant == tenant
         assert account.role == TenantAccountRole.ADMIN
 
-    @patch("models.account.Session")
+    @patch("models.account.sessionmaker")
     @patch("models.account.db")
-    def test_account_set_tenant_id_with_no_relationship(self, mock_db, mock_session_class):
+    def test_account_set_tenant_id_with_no_relationship(self, mock_db, mock_sessionmaker):
         """Test set_tenant_id when no relationship exists."""
         # Arrange
         account = Account(
@@ -462,9 +471,12 @@ class TestTenantRelationshipIntegrity:
         account.id = str(uuid4())
         tenant_id = str(uuid4())
 
-        # Mock the session and queries
+        # Mock the sessionmaker chain
         mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        begin_cm = MagicMock()
+        begin_cm.__enter__.return_value = mock_session
+        begin_cm.__exit__.return_value = False
+        mock_sessionmaker.return_value.begin.return_value = begin_cm
         mock_session.execute.return_value.first.return_value = None
 
         # Act

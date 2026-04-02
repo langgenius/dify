@@ -4905,19 +4905,20 @@ class TestInternalHooksCoverage:
         query = Mock()
         query.where.return_value = query
         session.query.return_value = query
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = False
+        begin_cm = MagicMock()
+        begin_cm.__enter__.return_value = session
+        begin_cm.__exit__.return_value = False
+        mock_factory = Mock()
+        mock_factory.begin.return_value = begin_cm
 
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.retrieval.dataset_retrieval.Session", return_value=session_ctx),
+            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=mock_factory),
             patch.object(retrieval, "_send_trace_task") as mock_trace,
         ):
             retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
 
         query.update.assert_called_once()
-        session.commit.assert_called_once()
         mock_trace.assert_called_once()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
