@@ -876,11 +876,6 @@
       "count": 4
     }
   },
-  "app/components/app/configuration/config/agent/prompt-editor.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/app/configuration/config/assistant-type-picker/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -1225,11 +1220,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/app/configuration/tools/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/app/create-app-dialog/app-card/index.spec.tsx": {
@@ -2769,11 +2759,6 @@
       "count": 1
     }
   },
-  "app/components/base/icons/src/image/llm/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 9
-    }
-  },
   "app/components/base/icons/src/public/avatar/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -2819,19 +2804,9 @@
       "count": 9
     }
   },
-  "app/components/base/icons/src/public/model/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
   "app/components/base/icons/src/public/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
-    }
-  },
-  "app/components/base/icons/src/public/plugins/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 7
     }
   },
   "app/components/base/icons/src/public/thought/index.ts": {
@@ -2919,24 +2894,9 @@
       "count": 7
     }
   },
-  "app/components/base/icons/src/vender/line/shapes/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
   "app/components/base/icons/src/vender/line/time/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "app/components/base/icons/src/vender/line/users/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
-    }
-  },
-  "app/components/base/icons/src/vender/line/weather/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/other/index.ts": {
@@ -2997,11 +2957,6 @@
   "app/components/base/icons/src/vender/solid/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 11
-    }
-  },
-  "app/components/base/icons/src/vender/solid/layout/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/mediaAndDevices/index.ts": {
@@ -4807,11 +4762,6 @@
   "app/components/datasets/documents/components/document-list/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
-    }
-  },
-  "app/components/datasets/documents/components/document-list/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
     }
   },
   "app/components/datasets/documents/components/documents-header.tsx": {
@@ -12272,11 +12222,6 @@
   "service/utils.spec.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "service/workflow-payload.ts": {
-    "ts/no-explicit-any": {
-      "count": 10
     }
   },
   "types/app.ts": {
