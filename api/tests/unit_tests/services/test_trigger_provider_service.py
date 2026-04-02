@@ -229,7 +229,6 @@ def test_add_trigger_subscription_should_create_subscription_successfully_for_ap
     mock_session.add.assert_called_once()
 
 
-
 def test_add_trigger_subscription_should_store_empty_credentials_for_unauthorized_type(
     mocker: MockerFixture,
     mock_session: MagicMock,
@@ -855,7 +854,6 @@ def test_save_custom_oauth_client_params_should_create_record_and_clear_params_w
     mock_session.add.assert_called_once_with(fake_model)
 
 
-
 def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_cache(
     mocker: MockerFixture,
     mock_session: MagicMock,
@@ -885,7 +883,6 @@ def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_c
     assert result == {"result": "success"}
     assert json.loads(custom_client.encrypted_oauth_params) == {"client_id": "new-id"}
     cache.delete.assert_called_once()
-
 
 
 def test_get_custom_oauth_client_params_should_return_empty_when_record_missing(
@@ -936,7 +933,6 @@ def test_delete_custom_oauth_client_params_should_delete_record_and_commit(
 
     # Assert
     assert result == {"result": "success"}
-
 
 
 @pytest.mark.parametrize("exists", [True, False])
