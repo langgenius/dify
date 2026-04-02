@@ -25,7 +25,7 @@ import NoApps from './no-apps'
 
 const expandedSidebarScrollAreaClassNames = {
   content: 'space-y-0.5',
-  scrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
+  scrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:-me-3',
   viewport: 'overscroll-contain',
 } as const
 
@@ -137,7 +137,7 @@ const SideBar = () => {
           <button
             type="button"
             aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
-            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover"
+            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover"
             onClick={toggleIsFold}
           >
             {isFold
@@ -155,7 +155,7 @@ const SideBar = () => {
             <AlertDialogTitle className="w-full text-text-primary title-2xl-semi-bold">
               {t('sidebar.delete.title', { ns: 'explore' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
               {t('sidebar.delete.content', { ns: 'explore' })}
             </AlertDialogDescription>
           </div>

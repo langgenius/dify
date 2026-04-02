@@ -14,8 +14,14 @@ const mocks = vi.hoisted(() => ({
   invalidDatasetList: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: { notify: mocks.toastNotify },
+  toast: {
+    success: (message: string) => mocks.toastNotify({ type: 'success', message }),
+    error: (message: string) => mocks.toastNotify({ type: 'error', message }),
+    warning: (message: string) => mocks.toastNotify({ type: 'warning', message }),
+    info: (message: string) => mocks.toastNotify({ type: 'info', message }),
+  },
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({

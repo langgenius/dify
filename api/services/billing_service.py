@@ -2,14 +2,15 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Literal
+from typing import Literal, TypedDict
 
 import httpx
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError
 
+from core.helper.http_client_pooling import get_pooled_http_client
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -17,6 +18,11 @@ from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
 
 logger = logging.getLogger(__name__)
+
+_http_client: httpx.Client = get_pooled_http_client(
+    "billing:default",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 class SubscriptionPlan(TypedDict):
@@ -131,7 +137,7 @@ class BillingService:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = httpx.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
+        response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         if method == "PUT":
@@ -152,10 +158,10 @@ class BillingService:
     def is_tenant_owner_or_admin(current_user: Account):
         tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = (
-            db.session.query(TenantAccountJoin)
+        join: TenantAccountJoin | None = db.session.scalar(
+            select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
-            .first()
+            .limit(1)
         )
 
         if not join:

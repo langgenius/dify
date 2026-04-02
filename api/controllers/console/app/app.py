@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
@@ -9,7 +9,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.file import helpers as file_helpers
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -152,7 +152,7 @@ class AppTracePayload(BaseModel):
         return value
 
 
-JSONValue: TypeAlias = Any
+type JSONValue = Any
 
 
 class ResponseModel(BaseModel):
@@ -642,7 +642,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -655,7 +655,6 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
-            session.commit()
 
             # Inherit web app permission from original app
             if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:

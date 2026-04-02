@@ -28,7 +28,7 @@ export default function AccountAbout({
     <Modal
       isShow
       onClose={onCancel}
-      className="!w-[480px] !max-w-[480px] !px-6 !py-4"
+      className="w-[480px]! max-w-[480px]! px-6! py-4!"
     >
       <div className="relative">
         <div className="absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>

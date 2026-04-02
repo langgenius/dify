@@ -35,7 +35,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       aria-describedby="inline-delete-confirm-description"
       className={cn(
         'flex w-[120px] flex-col justify-center gap-1.5',
-        'rounded-[10px] border-[0.5px] border-components-panel-border-subtle',
+        'radius-lg border-[0.5px] border-components-panel-border-subtle',
         'bg-components-panel-bg-blur px-2 pb-2 pt-1.5',
         'backdrop-blur-[10px]',
         'shadow-lg',

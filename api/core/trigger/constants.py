@@ -5,11 +5,11 @@ TRIGGER_SCHEDULE_NODE_TYPE: Final[str] = "trigger-schedule"
 TRIGGER_PLUGIN_NODE_TYPE: Final[str] = "trigger-plugin"
 
 TRIGGER_NODE_TYPES: Final[frozenset[str]] = frozenset(
-    {
+    (
         TRIGGER_WEBHOOK_NODE_TYPE,
         TRIGGER_SCHEDULE_NODE_TYPE,
         TRIGGER_PLUGIN_NODE_TYPE,
-    }
+    )
 )
 
 

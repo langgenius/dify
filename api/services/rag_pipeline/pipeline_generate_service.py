@@ -110,7 +110,7 @@ class PipelineGenerateService:
         Update document status to waiting
         :param document_id: document id
         """
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.get(Document, document_id)
         if document:
             document.indexing_status = IndexingStatus.WAITING
             db.session.add(document)

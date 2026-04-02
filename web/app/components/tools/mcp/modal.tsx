@@ -284,7 +284,7 @@ const MCPModal: FC<DuplicateAppModalProps> = ({
     <Modal
       isShow={show}
       onClose={noop}
-      className={cn('relative !max-w-[520px]', 'p-6')}
+      className={cn('relative max-w-[520px]!', 'p-6')}
     >
       <MCPModalContent
         key={formKey}

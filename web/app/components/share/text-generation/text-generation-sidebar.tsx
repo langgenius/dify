@@ -74,7 +74,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
     <div
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%_-_64px)]' : '',
+        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
         isInstalledApp && 'rounded-l-2xl',
       )}
     >

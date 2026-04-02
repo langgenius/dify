@@ -55,7 +55,7 @@ const VariableModalTrigger = ({
           <span className="system-sm-medium">{t('chatVariable.button', { ns: 'workflow' })}</span>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <VariableModal
           chatVar={chatVar}
           onSave={onSave}

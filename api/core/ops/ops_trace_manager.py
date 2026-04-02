@@ -6,17 +6,19 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, TypedDict
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
 from flask import current_app
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
+    BaseTracingConfig,
     TracingProviderEnum,
 )
 from core.ops.entities.trace_entity import (
@@ -33,7 +35,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.utils import get_message_data
+from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
@@ -48,6 +50,14 @@ if TYPE_CHECKING:
     from graphon.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
+
+
+class _AppTracingConfig(TypedDict, total=False):
+    enabled: bool
+    tracing_provider: str | None
+
+
+_app_tracing_config_adapter: TypeAdapter[_AppTracingConfig] = TypeAdapter(_AppTracingConfig)
 
 
 def _lookup_app_and_workspace_names(app_id: str | None, tenant_id: str | None) -> tuple[str, str]:
@@ -185,8 +195,15 @@ def _lookup_llm_credential_info(
         return None, ""
 
 
-class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, provider: str) -> dict[str, Any]:
+class TracingProviderConfigEntry(TypedDict):
+    config_class: type[BaseTracingConfig]
+    secret_keys: list[str]
+    other_keys: list[str]
+    trace_instance: type[Any]
+
+
+class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
+    def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
         match provider:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
@@ -446,7 +463,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Union[UUID, str] | None = None,
+        app_id: UUID | str | None = None,
     ):
         """
         Get ops trace through model config
@@ -468,7 +485,7 @@ class OpsTraceManager:
         if app is None:
             return None
 
-        app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
+        app_ops_trace_config = _app_tracing_config_adapter.validate_json(app.tracing) if app.tracing else None
         if app_ops_trace_config is None:
             return None
         if not app_ops_trace_config.get("enabled"):
@@ -560,7 +577,7 @@ class OpsTraceManager:
             raise ValueError("App not found")
         if not app.tracing:
             return {"enabled": False, "tracing_provider": None}
-        app_trace_config = json.loads(app.tracing)
+        app_trace_config = _app_tracing_config_adapter.validate_json(app.tracing)
         return app_trace_config
 
     @staticmethod
@@ -575,8 +592,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).api_check()
+        config = config_type(**tracing_config)
+        return trace_instance(config).api_check()
 
     @staticmethod
     def get_trace_config_project_key(tracing_config: dict, tracing_provider: str):
@@ -590,8 +607,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).get_project_key()
+        config = config_type(**tracing_config)
+        return trace_instance(config).get_project_key()
 
     @staticmethod
     def get_trace_config_project_url(tracing_config: dict, tracing_provider: str):
@@ -605,8 +622,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).get_project_url()
+        config = config_type(**tracing_config)
+        return trace_instance(config).get_project_url()
 
 
 class TraceTask:
@@ -636,7 +653,6 @@ class TraceTask:
         carries ``total_tokens``.  Projects only the ``outputs`` column to avoid loading
         large JSON blobs unnecessarily.
         """
-        import json
 
         from models.workflow import WorkflowNodeExecutionModel
 
@@ -658,7 +674,7 @@ class TraceTask:
             if not raw:
                 continue
             try:
-                outputs = json.loads(raw) if isinstance(raw, str) else raw
+                outputs = JSON_DICT_ADAPTER.validate_json(raw) if isinstance(raw, str) else raw
             except (ValueError, TypeError):
                 continue
             if not isinstance(outputs, dict):
@@ -700,7 +716,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: str | None = None,
-        workflow_execution: Optional["WorkflowExecution"] = None,
+        workflow_execution: "WorkflowExecution | None" = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,
@@ -1420,7 +1436,7 @@ class TraceTask:
             return {}
 
         try:
-            metadata = json.loads(message_data.message_metadata)
+            metadata = JSON_DICT_ADAPTER.validate_json(message_data.message_metadata)
             usage = metadata.get("usage", {})
             time_to_first_token = usage.get("time_to_first_token")
             time_to_generate = usage.get("time_to_generate")
@@ -1430,7 +1446,7 @@ class TraceTask:
                 "llm_streaming_time_to_generate": time_to_generate,
                 "is_streaming_request": time_to_first_token is not None,
             }
-        except (json.JSONDecodeError, AttributeError):
+        except (ValueError, AttributeError):
             return {}
 
 

@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { ProcessMode } from '@/models/datasets'
 import * as datasetsService from '@/service/datasets'
 import * as useDataset from '@/service/knowledge/use-dataset'
@@ -14,22 +13,24 @@ import { IndexingType } from '../../../../create/step-two'
 import { DocumentContext } from '../../context'
 import EmbeddingDetail from '../index'
 
-const { mockNotify, mockClose } = vi.hoisted(() => ({
-  mockNotify: vi.fn(),
-  mockClose: vi.fn(),
-}))
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
 
 vi.mock('@/service/datasets')
 vi.mock('@/service/knowledge/use-dataset')
-vi.mock('@/app/components/base/toast/context', async () => {
-  const { createContext } = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ToastContext: createContext({
-      notify: mockNotify,
-      close: mockClose,
-    }),
-  }
-})
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
@@ -47,11 +48,11 @@ const createWrapper = (contextValue: DocumentContextValue = { datasetId: 'ds1', 
   const queryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+      <>
         <DocumentContext.Provider value={contextValue}>
           {children}
         </DocumentContext.Provider>
-      </ToastContext.Provider>
+      </>
     </QueryClientProvider>
   )
 }

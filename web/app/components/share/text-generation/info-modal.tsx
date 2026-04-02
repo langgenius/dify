@@ -20,7 +20,7 @@ const InfoModal = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className="min-w-[400px] max-w-[400px] !p-0"
+      className="min-w-[400px] max-w-[400px] p-0!"
       closable
     >
       <div className={cn('flex flex-col items-center gap-4 px-4 pb-8 pt-10')}>

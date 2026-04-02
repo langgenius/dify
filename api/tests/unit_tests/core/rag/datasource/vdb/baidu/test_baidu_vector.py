@@ -381,13 +381,22 @@ def test_init_client_constructs_configuration_and_client(baidu_module, monkeypat
     monkeypatch.setattr(baidu_module, "MochowClient", client_cls)
 
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
-    config = SimpleNamespace(account="account", api_key="key", endpoint="https://endpoint")
+    config = SimpleNamespace(
+        account="account",
+        api_key="key",
+        endpoint="https://endpoint",
+        connection_timeout_in_mills=12_345,
+    )
 
     client = vector._init_client(config)
 
     assert client == "client"
     credentials.assert_called_once_with("account", "key")
-    configuration.assert_called_once_with(credentials="credentials", endpoint="https://endpoint")
+    configuration.assert_called_once_with(
+        credentials="credentials",
+        endpoint="https://endpoint",
+        connection_timeout_in_mills=12_345,
+    )
     client_cls.assert_called_once_with("configuration")
 
 

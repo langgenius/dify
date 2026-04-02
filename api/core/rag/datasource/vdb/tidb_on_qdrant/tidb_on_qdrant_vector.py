@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import qdrant_client
@@ -40,8 +40,8 @@ if TYPE_CHECKING:
     from qdrant_client.conversions import common_types
     from qdrant_client.http import models as rest
 
-    DictFilter = dict[str, Union[str, int, bool, dict, list]]
-    MetadataFilter = Union[DictFilter, common_types.Filter]
+    type DictFilter = dict[str, str | int | bool | dict | list]
+    type MetadataFilter = DictFilter | common_types.Filter
 
 
 class TidbOnQdrantConfig(BaseModel):

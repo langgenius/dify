@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .mask {
   backdrop-filter: blur(2px);
 }

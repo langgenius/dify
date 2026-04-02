@@ -51,7 +51,7 @@ const AppCard = ({
             type={appBasicInfo.mode}
           />
         </div>
-        <div className="w-0 grow py-[1px]">
+        <div className="w-0 grow py-px">
           <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
             <div className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
@@ -70,7 +70,7 @@ const AppCard = ({
         </div>
       </div>
       {isExplore && (canCreate || isTrialApp) && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
+        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
           <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && 'grid-cols-2')}>
             {
               canCreate && (

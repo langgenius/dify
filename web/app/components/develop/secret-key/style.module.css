@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .customModal {
     max-width: 800px !important;
     max-height: calc(100vh - 80px);

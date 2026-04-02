@@ -35,13 +35,13 @@ const WorkflowPreviewCard = ({
       <div className="grow bg-components-panel-bg">
         <div className="p-4 pb-1">
           <div className="mb-1 py-2">
-            <div className="h-2 w-20 rounded-sm bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-20 rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
           <div className="h-16 w-full rounded-lg bg-components-input-bg-normal"></div>
         </div>
         <div className="flex items-center justify-between px-4 py-3">
           <Button size="small">
-            <div className="h-2 w-10 rounded-sm bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-10 rounded-xs bg-text-quaternary opacity-20"></div>
           </Button>
           <Button variant="primary" size="small" disabled>
             <span className="i-ri-play-large-line mr-1 h-4 w-4" />

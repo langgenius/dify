@@ -84,8 +84,8 @@ const NodeGroupItem = ({
     <div
       className={cn(
         'relative rounded-lg border-[1.5px] border-transparent px-1.5 pb-1.5 pt-1',
-        showSelectionBorder && '!border-dashed !border-divider-subtle bg-state-base-hover',
-        showSelectedBorder && '!border-text-accent !bg-util-colors-blue-blue-50',
+        showSelectionBorder && 'border-dashed! border-divider-subtle! bg-state-base-hover',
+        showSelectedBorder && 'border-text-accent! bg-util-colors-blue-blue-50!',
       )}
       onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
@@ -102,7 +102,7 @@ const NodeGroupItem = ({
         </span>
         <div className="flex items-center">
           <span className="ml-2 shrink-0">{item.type}</span>
-          <div className="ml-2 mr-1 h-2.5 w-[1px] bg-divider-regular"></div>
+          <div className="ml-2 mr-1 h-2.5 w-px bg-divider-regular"></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}
@@ -116,7 +116,7 @@ const NodeGroupItem = ({
           <div
             className={cn(
               'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal uppercase text-text-tertiary',
-              (showSelectedBorder || showSelectionBorder) && '!bg-black/[0.02]',
+              (showSelectedBorder || showSelectionBorder) && 'bg-black/[0.02]!',
             )}
           >
             {t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}

@@ -11,7 +11,7 @@ const Empty = () => {
 
   return (
     <div className="mb-2 rounded-xl bg-background-section p-6">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-sm">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-xs">
         <RiPuzzle2Line className="h-5 w-5 text-text-accent" />
       </div>
       <div className="system-sm-medium mb-1 text-text-secondary">{t('apiBasedExtension.title', { ns: 'common' })}</div>

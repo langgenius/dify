@@ -141,7 +141,7 @@ const BlockIcon: FC<BlockIconProps> = ({
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
-        toolIcon && '!shadow-none',
+        toolIcon && 'shadow-none!',
         className,
       )
     }
@@ -169,7 +169,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                   )
                 : (
                     <AppIcon
-                      className="!h-full !w-full shrink-0"
+                      className="h-full! w-full! shrink-0"
                       size="tiny"
                       icon={resolvedToolIcon?.content}
                       background={resolvedToolIcon?.background}

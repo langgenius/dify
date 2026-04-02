@@ -51,7 +51,7 @@ const ConfigBtn: FC<Props> = ({
           {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <ConfigPopup {...popupProps} />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

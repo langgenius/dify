@@ -31,7 +31,7 @@
     "dev:proxy": "tsx ./scripts/dev-hono-proxy.ts",
     "dev:vinext": "vinext dev",
     "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
-    "gen-icons": "node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
+    "gen-icons": "pnpm --filter @dify/iconify-collections generate && node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "knip": "knip",
     "lint": "eslint --cache --concurrency=auto",
@@ -40,7 +40,6 @@
     "lint:quiet": "vp run lint --quiet",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
-    "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "refactor-component": "node ./scripts/refactor-component.js",
     "start": "node ./scripts/copy-and-start.mjs",
     "start:vinext": "vinext start",
@@ -159,6 +158,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
     "@chromatic-com/storybook": "catalog:",
+    "@dify/iconify-collections": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",
     "@hono/node-server": "catalog:",
@@ -176,6 +176,8 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/nextjs-vite": "catalog:",
     "@storybook/react": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "@tailwindcss/vite": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
     "@tanstack/react-devtools": "catalog:",
     "@tanstack/react-form-devtools": "catalog:",
@@ -191,7 +193,6 @@
     "@types/js-yaml": "catalog:",
     "@types/negotiator": "catalog:",
     "@types/node": "catalog:",
-    "@types/postcss-js": "catalog:",
     "@types/qs": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -204,7 +205,6 @@
     "@vitejs/plugin-rsc": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "agentation": "catalog:",
-    "autoprefixer": "catalog:",
     "code-inspector-plugin": "catalog:",
     "eslint": "catalog:",
     "eslint-markdown": "catalog:",
@@ -218,12 +218,8 @@
     "eslint-plugin-storybook": "catalog:",
     "happy-dom": "catalog:",
     "hono": "catalog:",
-    "husky": "catalog:",
-    "iconify-import-svg": "catalog:",
     "knip": "catalog:",
-    "lint-staged": "catalog:",
     "postcss": "catalog:",
-    "postcss-js": "catalog:",
     "react-server-dom-webpack": "catalog:",
     "sass": "catalog:",
     "storybook": "catalog:",
@@ -237,8 +233,5 @@
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vitest-canvas-mock": "catalog:"
-  },
-  "lint-staged": {
-    "*": "eslint --fix --pass-on-unpruned-suppressions"
   }
 }

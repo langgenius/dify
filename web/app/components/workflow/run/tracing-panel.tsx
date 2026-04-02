@@ -99,7 +99,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               onClick={() => toggleCollapse(node.id)}
               className={cn(
                 'mr-2 transition-colors',
-                isHovered ? 'rounded border-components-button-primary-border bg-components-button-primary-bg text-text-primary-on-surface' : 'text-text-secondary hover:text-text-primary',
+                isHovered ? 'rounded-sm border-components-button-primary-border bg-components-button-primary-bg text-text-primary-on-surface' : 'text-text-secondary hover:text-text-primary',
               )}
             >
               {isHovered
