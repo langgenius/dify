@@ -4038,11 +4038,6 @@
       "count": 1
     }
   },
-  "app/components/base/ui/context-menu/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/ui/dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
