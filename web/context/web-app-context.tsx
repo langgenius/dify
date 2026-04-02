@@ -79,10 +79,6 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [shareCode, updateShareCode])
 
   useEffect(() => {
-    updateWebAppAccessMode(null)
-  }, [shareCode, updateWebAppAccessMode])
-
-  useEffect(() => {
     let cancelled = false
     const syncEmbeddedUserId = async () => {
       try {
@@ -110,7 +106,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
-  }, [accessModeResult, updateWebAppAccessMode])
+  }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
   return <>{children}</>
 }
