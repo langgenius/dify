@@ -980,9 +980,9 @@ describe('CreateFromDSLModal', () => {
 
       // Verify success handling
       await waitFor(() => {
-      expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-      }))
+        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+        }))
       })
 
       vi.useRealTimers()
