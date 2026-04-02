@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Any, cast, overload
+from typing import Concatenate, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -230,12 +230,22 @@ def cloud_edition_billing_rate_limit_check[**P, R](
     return interceptor
 
 
-def validate_dataset_token(
-    view: Callable[..., Any] | None = None,
-) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
-    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
+@overload
+def validate_dataset_token[T, **P, R](view: Callable[Concatenate[T, str, P], R]) -> Callable[Concatenate[T, P], R]: ...
+
+
+@overload
+def validate_dataset_token[T, **P, R](
+    view: None = None,
+) -> Callable[[Callable[Concatenate[T, str, P], R]], Callable[Concatenate[T, P], R]]: ...
+
+
+def validate_dataset_token[T, **P, R](
+    view: Callable[Concatenate[T, str, P], R] | None = None,
+) -> Callable[Concatenate[T, P], R] | Callable[[Callable[Concatenate[T, str, P], R]], Callable[Concatenate[T, P], R]]:
+    def decorator(view_func: Callable[Concatenate[T, str, P], R]) -> Callable[Concatenate[T, P], R]:
         @wraps(view_func)
-        def decorated(*args: Any, **kwargs: Any) -> Any:
+        def decorated(instance: T, *args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("dataset")
 
             # get url path dataset_id from positional args or kwargs
@@ -247,29 +257,13 @@ def validate_dataset_token(
 
             # If not in kwargs, try to extract from positional args
             if not dataset_id and args:
-                # For class methods: args[0] is self, args[1] is dataset_id (if exists)
-                # Check if first arg is likely a class instance (has __dict__ or __class__)
-                if len(args) > 1 and hasattr(args[0], "__dict__"):
-                    # This is a class method, dataset_id should be in args[1]
-                    potential_id = args[1]
-                    # Validate it's a string-like UUID, not another object
-                    try:
-                        # Try to convert to string and check if it's a valid UUID format
-                        str_id = str(potential_id)
-                        # Basic check: UUIDs are 36 chars with hyphens
-                        if len(str_id) == 36 and str_id.count("-") == 4:
-                            dataset_id = str_id
-                    except Exception:
-                        logger.exception("Failed to parse dataset_id from class method args")
-                elif len(args) > 0:
-                    # Not a class method, check if args[0] looks like a UUID
-                    potential_id = args[0]
-                    try:
-                        str_id = str(potential_id)
-                        if len(str_id) == 36 and str_id.count("-") == 4:
-                            dataset_id = str_id
-                    except Exception:
-                        logger.exception("Failed to parse dataset_id from positional args")
+                potential_id = args[0]
+                try:
+                    str_id = str(potential_id)
+                    if len(str_id) == 36 and str_id.count("-") == 4:
+                        dataset_id = str_id
+                except Exception:
+                    logger.exception("Failed to parse dataset_id from positional args")
 
             # Validate dataset if dataset_id is provided
             if dataset_id:
@@ -305,10 +299,7 @@ def validate_dataset_token(
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-            if args and isinstance(args[0], Resource):
-                return view_func(args[0], api_token.tenant_id, *args[1:], **kwargs)
-
-            return view_func(api_token.tenant_id, *args, **kwargs)
+            return view_func(instance, api_token.tenant_id, *args, **kwargs)
 
         return decorated
 
