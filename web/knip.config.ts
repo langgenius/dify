@@ -30,7 +30,7 @@ const config: KnipConfig = {
     duplicates: 'error',
     enumMembers: 'error',
     exports: 'error',
-    files: 'warn',
+    files: 'error',
     namespaceMembers: 'error',
     nsExports: 'error',
     nsTypes: 'error',
