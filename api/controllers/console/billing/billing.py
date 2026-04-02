@@ -1,4 +1,6 @@
 import base64
+import json
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from flask import request
@@ -9,6 +11,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from enums.cloud_plan import CloudPlan
+from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 
@@ -84,3 +87,35 @@ class PartnerTenants(Resource):
             raise BadRequest("Invalid partner information")
 
         return BillingService.sync_partner_tenants_bindings(current_user.id, decoded_partner_key, click_id)
+
+
+_DEBUG_KEY = "billing:debug"
+_DEBUG_TTL = timedelta(days=7)
+
+
+class DebugDataPayload(BaseModel):
+    type: str = Field(..., min_length=1, description="Data type key")
+    data: str = Field(..., min_length=1, description="Data value to append")
+
+
+@console_ns.route("/billing/debug/data")
+class DebugData(Resource):
+    def post(self):
+        body = DebugDataPayload.model_validate(request.get_json(force=True))
+        item = json.dumps({
+            "type": body.type,
+            "data": body.data,
+            "createTime": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        })
+        redis_client.lpush(_DEBUG_KEY, item)
+        redis_client.expire(_DEBUG_KEY, _DEBUG_TTL)
+        return {"result": "ok"}, 201
+
+    def get(self):
+        recent = request.args.get("recent", 10, type=int)
+        items = redis_client.lrange(_DEBUG_KEY, 0, recent - 1)
+        return {
+            "data": [
+                json.loads(item.decode("utf-8") if isinstance(item, bytes) else item) for item in items
+            ]
+        }
