@@ -11,6 +11,7 @@ import { setWebAppAccessToken, setWebAppPassport, webAppLoginStatus, webAppLogou
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   const shareCode = useWebAppStore(s => s.shareCode)
+  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -71,6 +72,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     redirectUrl,
     router,
     message,
+    webAppAccessMode,
     tokenFromUrl,
     embeddedUserId,
   ])
