@@ -123,6 +123,8 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
             raise NotFound("End user not found.")
         return end_user
 
+    return None
+
 
 @user_logged_in.connect
 @user_loaded_from_request.connect

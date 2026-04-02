@@ -1,9 +1,10 @@
+import inspect
 import logging
 import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, cast, overload
+from typing import cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -230,85 +231,73 @@ def cloud_edition_billing_rate_limit_check[**P, R](
     return interceptor
 
 
-@overload
-def validate_dataset_token[T, **P, R](view: Callable[Concatenate[T, str, P], R]) -> Callable[Concatenate[T, P], R]: ...
+def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
+    positional_parameters = [
+        parameter
+        for parameter in inspect.signature(view).parameters.values()
+        if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    expects_bound_instance = bool(positional_parameters and positional_parameters[0].name in {"self", "cls"})
 
+    @wraps(view)
+    def decorated(*args: object, **kwargs: object) -> R:
+        api_token = validate_and_get_api_token("dataset")
 
-@overload
-def validate_dataset_token[T, **P, R](
-    view: None = None,
-) -> Callable[[Callable[Concatenate[T, str, P], R]], Callable[Concatenate[T, P], R]]: ...
+        # Flask may pass URL path parameters positionally, so inspect both kwargs and args.
+        dataset_id = kwargs.get("dataset_id")
 
+        if not dataset_id and args:
+            potential_id = args[0]
+            try:
+                str_id = str(potential_id)
+                if len(str_id) == 36 and str_id.count("-") == 4:
+                    dataset_id = str_id
+            except Exception:
+                logger.exception("Failed to parse dataset_id from positional args")
 
-def validate_dataset_token[T, **P, R](
-    view: Callable[Concatenate[T, str, P], R] | None = None,
-) -> Callable[Concatenate[T, P], R] | Callable[[Callable[Concatenate[T, str, P], R]], Callable[Concatenate[T, P], R]]:
-    def decorator(view_func: Callable[Concatenate[T, str, P], R]) -> Callable[Concatenate[T, P], R]:
-        @wraps(view_func)
-        def decorated(instance: T, *args: P.args, **kwargs: P.kwargs) -> R:
-            api_token = validate_and_get_api_token("dataset")
-
-            # get url path dataset_id from positional args or kwargs
-            # Flask passes URL path parameters as positional arguments
-            dataset_id = None
-
-            # First try to get from kwargs (explicit parameter)
-            dataset_id = kwargs.get("dataset_id")
-
-            # If not in kwargs, try to extract from positional args
-            if not dataset_id and args:
-                potential_id = args[0]
-                try:
-                    str_id = str(potential_id)
-                    if len(str_id) == 36 and str_id.count("-") == 4:
-                        dataset_id = str_id
-                except Exception:
-                    logger.exception("Failed to parse dataset_id from positional args")
-
-            # Validate dataset if dataset_id is provided
-            if dataset_id:
-                dataset_id = str(dataset_id)
-                dataset = db.session.scalar(
-                    select(Dataset)
-                    .where(
-                        Dataset.id == dataset_id,
-                        Dataset.tenant_id == api_token.tenant_id,
-                    )
-                    .limit(1)
+        if dataset_id:
+            dataset_id = str(dataset_id)
+            dataset = db.session.scalar(
+                select(Dataset)
+                .where(
+                    Dataset.id == dataset_id,
+                    Dataset.tenant_id == api_token.tenant_id,
                 )
-                if not dataset:
-                    raise NotFound("Dataset not found.")
-                if not dataset.enable_api:
-                    raise Forbidden("Dataset api access is not enabled.")
-            tenant_account_join = db.session.execute(
-                select(Tenant, TenantAccountJoin)
-                .where(Tenant.id == api_token.tenant_id)
-                .where(TenantAccountJoin.tenant_id == Tenant.id)
-                .where(TenantAccountJoin.role.in_(["owner"]))
-                .where(Tenant.status == TenantStatus.NORMAL)
-            ).one_or_none()  # TODO: only owner information is required, so only one is returned.
-            if tenant_account_join:
-                tenant, ta = tenant_account_join
-                account = db.session.get(Account, ta.account_id)
-                # Login admin
-                if account:
-                    account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
-                else:
-                    raise Unauthorized("Tenant owner account does not exist.")
+                .limit(1)
+            )
+            if not dataset:
+                raise NotFound("Dataset not found.")
+            if not dataset.enable_api:
+                raise Forbidden("Dataset api access is not enabled.")
+
+        tenant_account_join = db.session.execute(
+            select(Tenant, TenantAccountJoin)
+            .where(Tenant.id == api_token.tenant_id)
+            .where(TenantAccountJoin.tenant_id == Tenant.id)
+            .where(TenantAccountJoin.role.in_(["owner"]))
+            .where(Tenant.status == TenantStatus.NORMAL)
+        ).one_or_none()  # TODO: only owner information is required, so only one is returned.
+        if tenant_account_join:
+            tenant, ta = tenant_account_join
+            account = db.session.get(Account, ta.account_id)
+            # Login admin
+            if account:
+                account.current_tenant = tenant
+                current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
             else:
-                raise Unauthorized("Tenant does not exist.")
-            return view_func(instance, api_token.tenant_id, *args, **kwargs)
+                raise Unauthorized("Tenant owner account does not exist.")
+        else:
+            raise Unauthorized("Tenant does not exist.")
 
-        return decorated
+        if expects_bound_instance:
+            if not args:
+                raise TypeError("validate_dataset_token expected a bound resource instance.")
+            return view(args[0], api_token.tenant_id, *args[1:], **kwargs)
 
-    if view:
-        return decorator(view)
+        return view(api_token.tenant_id, *args, **kwargs)
 
-    # if view is None, it means that the decorator is used without parentheses
-    # use the decorator as a function for method_decorators
-    return decorator
+    return decorated
 
 
 def validate_and_get_api_token(scope: str | None = None):
