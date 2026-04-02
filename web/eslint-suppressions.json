@@ -166,7 +166,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 18
+      "count": 9
     }
   },
   "app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
@@ -7973,11 +7973,6 @@
     "react-refresh/only-export-components": {
       "count": 2
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/splash.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
