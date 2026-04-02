@@ -5,8 +5,9 @@ import psycopg2
 from core.rag.datasource.vdb.opengauss.opengauss import OpenGauss, OpenGaussConfig
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    setup_mock_redis,
 )
+
+pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 class OpenGaussTest(AbstractVectorTest):

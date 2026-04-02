@@ -16,8 +16,9 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.system_variables import build_system_variables
-from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 from tests.workflow_test_utils import build_test_graph_init_params
+
+pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.http",)
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,

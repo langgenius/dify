@@ -115,12 +115,6 @@ ignore = [
 "controllers/console/human_input_form.py" = ["TID251"]
 "controllers/web/human_input_form.py" = ["TID251"]
 
-[lint.pyflakes]
-allowed-unused-imports = [
-    "tests.integration_tests",
-    "tests.unit_tests",
-]
-
 [lint.flake8-tidy-imports]
 
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse"]

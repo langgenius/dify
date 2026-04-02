@@ -12,8 +12,9 @@ from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
     get_example_document,
     get_example_text,
-    setup_mock_redis,
 )
+
+pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 class TableStoreVectorTest(AbstractVectorTest):
