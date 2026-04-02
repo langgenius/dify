@@ -11,7 +11,7 @@ import Modal from '@/app/components/base/modal'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
-export type IBatchModalProps = {
+type IBatchModalProps = {
   isShow: boolean
   docForm: ChunkingMode
   onCancel: () => void

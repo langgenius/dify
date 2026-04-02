@@ -89,6 +89,12 @@ if $web_modified; then
         echo "No staged TypeScript changes detected, skipping type-check:tsgo"
     fi
 
+    echo "Running knip"
+    if ! pnpm run knip; then
+        echo "Knip check failed. Please run 'pnpm run knip' to fix the errors."
+        exit 1
+    fi
+
     echo "Running unit tests check"
     modified_files=$(git diff --cached --name-only -- utils | grep -v '\.spec\.ts$' || true)
 

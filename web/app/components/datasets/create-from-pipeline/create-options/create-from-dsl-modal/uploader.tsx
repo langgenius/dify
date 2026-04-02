@@ -9,7 +9,7 @@ import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
-export type Props = {
+type Props = {
   file: File | undefined
   updateFile: (file?: File) => void
   className?: string

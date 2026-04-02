@@ -2,7 +2,7 @@
 import { useTheme } from 'next-themes'
 import { cn } from '@/utils/classnames'
 
-export type Theme = 'light' | 'dark' | 'system'
+type Theme = 'light' | 'dark' | 'system'
 
 export default function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()

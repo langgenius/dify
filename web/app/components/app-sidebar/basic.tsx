@@ -7,7 +7,7 @@ import {
 import Tooltip from '@/app/components/base/tooltip'
 import AppIcon from '../base/app-icon'
 
-export type IAppBasicProps = {
+type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
   icon?: string
   icon_background?: string | null

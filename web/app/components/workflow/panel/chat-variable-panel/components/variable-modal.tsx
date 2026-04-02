@@ -22,7 +22,7 @@ import {
   ValueSection,
 } from './variable-modal.sections'
 
-export type ModalPropsType = {
+type ModalPropsType = {
   chatVar?: ConversationVariable
   onClose: () => void
   onSave: (chatVar: ConversationVariable) => void

@@ -8,7 +8,7 @@ import Divider from '../../base/divider'
 import TipPopup from '../operator/tip-popup'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
-export type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
+type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   const { t } = useTranslation()
   const { store } = useWorkflowHistoryStore()

@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 
-export type IRenameModalProps = {
+type IRenameModalProps = {
   isShow: boolean
   saveLoading: boolean
   name: string

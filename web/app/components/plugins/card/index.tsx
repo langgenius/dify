@@ -22,7 +22,7 @@ import OrgInfo from './base/org-info'
 import Placeholder from './base/placeholder'
 import Title from './base/title'
 
-export type Props = {
+type Props = {
   className?: string
   payload: Plugin
   titleLeft?: React.ReactNode

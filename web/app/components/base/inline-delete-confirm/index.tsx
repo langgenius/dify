@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 
-export type InlineDeleteConfirmProps = {
+type InlineDeleteConfirmProps = {
   title?: string
   confirmText?: string
   cancelText?: string

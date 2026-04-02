@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type IHasNotSetAPIProps = {
+type IHasNotSetAPIProps = {
   onSetting: () => void
 }
 

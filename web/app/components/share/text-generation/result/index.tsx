@@ -15,7 +15,7 @@ import NoData from '@/app/components/share/text-generation/no-data'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
 
-export type IResultProps = {
+type IResultProps = {
   isWorkflow: boolean
   isCallBatchAPI: boolean
   isPC: boolean

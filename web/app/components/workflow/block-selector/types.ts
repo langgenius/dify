@@ -124,35 +124,6 @@ export type DataSourceItem = {
   is_authorized: boolean
 }
 
-// Backend API types - exact match with Python definitions
-export type TriggerParameter = {
-  multiple: boolean
-  name: string
-  label: TypeWithI18N
-  description?: TypeWithI18N
-  type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'files'
-    | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
-  auto_generate?: {
-    type: string
-    value?: unknown
-  } | null
-  template?: {
-    type: string
-    value?: unknown
-  } | null
-  scope?: string | null
-  required?: boolean
-  default?: unknown
-  min?: number | null
-  max?: number | null
-  precision?: number | null
-  options?: Array<{
-    value: string
-    label: TypeWithI18N
-    icon?: string | null
-  }> | null
-}
-
 export type TriggerCredentialField = {
   type: 'secret-input' | 'text-input' | 'select' | 'boolean'
     | 'app-selector' | 'model-selector' | 'tools-selector'
@@ -168,31 +139,6 @@ export type TriggerCredentialField = {
   help?: TypeWithI18N
   url?: string | null
   placeholder?: TypeWithI18N
-}
-
-export type TriggerSubscriptionSchema = {
-  parameters_schema: TriggerParameter[]
-  properties_schema: TriggerCredentialField[]
-}
-
-export type TriggerIdentity = {
-  author: string
-  name: string
-  label: TypeWithI18N
-  provider: string
-}
-
-export type TriggerDescription = {
-  human: TypeWithI18N
-  llm: TypeWithI18N
-}
-
-export type TriggerApiEntity = {
-  name: string
-  identity: TriggerIdentity
-  description: TypeWithI18N
-  parameters: TriggerParameter[]
-  output_schema?: Record<string, unknown>
 }
 
 export type TriggerProviderApiEntity = {
@@ -270,11 +216,6 @@ export type TriggerOAuthClientParams = {
   authorization_url?: string
   token_url?: string
   scope?: string
-}
-
-export type TriggerOAuthResponse = {
-  authorization_url: string
-  subscription_builder: TriggerSubscriptionBuilder
 }
 
 export type TriggerLogEntity = {

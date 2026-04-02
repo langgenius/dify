@@ -20,7 +20,7 @@ import Blocks from './blocks'
 import DataSources from './data-sources'
 import { TabsEnum } from './types'
 
-export type TabsProps = {
+type TabsProps = {
   activeTab: TabsEnum
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string

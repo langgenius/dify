@@ -17,7 +17,7 @@ import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
-export type ILogsProps = {
+type ILogsProps = {
   appDetail: App
 }
 

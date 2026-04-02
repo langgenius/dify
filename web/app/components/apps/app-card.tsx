@@ -62,7 +62,7 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
   ssr: false,
 })
 
-export type AppCardProps = {
+type AppCardProps = {
   app: App
   onRefresh?: () => void
 }

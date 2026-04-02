@@ -24,7 +24,7 @@ type UncontrolledSliderProps = SliderBaseProps & {
   defaultValue?: number
 }
 
-export type SliderProps = ControlledSliderProps | UncontrolledSliderProps
+type SliderProps = ControlledSliderProps | UncontrolledSliderProps
 
 const sliderRootClassName = 'group/slider relative inline-flex w-full data-disabled:opacity-30'
 const sliderControlClassName = cn(

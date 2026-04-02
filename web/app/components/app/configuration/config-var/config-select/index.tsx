@@ -8,7 +8,7 @@ import { ReactSortable } from 'react-sortablejs'
 import { cn } from '@/utils/classnames'
 
 export type Options = string[]
-export type IConfigSelectProps = {
+type IConfigSelectProps = {
   options: Options
   onChange: (options: Options) => void
 }

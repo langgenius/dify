@@ -46,7 +46,7 @@ export type PortalToFollowElemOptions = {
 }
 
 /** @deprecated Use semantic overlay primitives instead. See #32767. */
-export function usePortalToFollowElem({
+function usePortalToFollowElem({
   placement = 'bottom',
   open: controlledOpen,
   offset: offsetValue = 0,
@@ -114,7 +114,7 @@ type ContextType = ReturnType<typeof usePortalToFollowElem> | null
 
 const PortalToFollowElemContext = React.createContext<ContextType>(null)
 
-export function usePortalToFollowElemContext() {
+function usePortalToFollowElemContext() {
   const context = React.useContext(PortalToFollowElemContext)
 
   if (context == null)

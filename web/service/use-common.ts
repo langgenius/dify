@@ -10,7 +10,6 @@ import type {
   ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
-  DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
@@ -25,7 +24,6 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
-import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
 
@@ -277,14 +275,6 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
   })
 }
 
-export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
-  return useQuery({
-    queryKey: commonQueryKeys.defaultModel(type),
-    queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
-    enabled,
-  })
-}
-
 export const useSupportRetrievalMethods = () => {
   return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
     queryKey: commonQueryKeys.retrievalMethods,
@@ -299,25 +289,6 @@ export const useAccountIntegrates = () => {
   })
 }
 
-type DataSourceIntegratesOptions = {
-  enabled?: boolean
-  initialData?: { data: DataSourceNotion[] }
-}
-
-export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {}) => {
-  const { enabled = true, initialData } = options
-  return useQuery<{ data: DataSourceNotion[] }>({
-    queryKey: commonQueryKeys.dataSourceIntegrates,
-    queryFn: () => get<{ data: DataSourceNotion[] }>('/data-source/integrates'),
-    enabled,
-    initialData,
-  })
-}
-
-export const useInvalidDataSourceIntegrates = () => {
-  return useInvalid(commonQueryKeys.dataSourceIntegrates)
-}
-
 export const usePluginProviders = () => {
   return useQuery<PluginProvider[] | null>({
     queryKey: commonQueryKeys.pluginProviders,
@@ -329,14 +300,6 @@ export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
     queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
-  })
-}
-
-export const useNotionConnection = (enabled: boolean) => {
-  return useQuery<{ data: string }>({
-    queryKey: commonQueryKeys.notionConnection,
-    queryFn: () => get<{ data: string }>('/oauth/data-source/notion'),
-    enabled,
   })
 }
 

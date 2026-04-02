@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 
-export type IAutomaticBtnProps = {
+type IAutomaticBtnProps = {
   onClick: () => void
 }
 const AutomaticBtn: FC<IAutomaticBtnProps> = ({

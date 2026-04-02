@@ -16,7 +16,7 @@ import { useTextGenerationBatch } from './hooks/use-text-generation-batch'
 import TextGenerationResultPanel from './text-generation-result-panel'
 import TextGenerationSidebar from './text-generation-sidebar'
 
-export type IMainProps = {
+type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isWorkflow?: boolean

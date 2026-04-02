@@ -52,7 +52,7 @@ const normalizeSelectDefaultValue = (inputVar: InputVar) => {
   return inputVar
 }
 
-export type IConfigModalProps = {
+type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
   isShow: boolean

@@ -24,7 +24,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 
-export type Props = {
+type Props = {
   conversationID: string
   onHide: () => void
 }

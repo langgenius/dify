@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 
-export type IConfirm = {
+type IConfirm = {
   className?: string
   isShow: boolean
   title: string

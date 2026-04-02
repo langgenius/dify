@@ -16,7 +16,7 @@ import {
 } from '../context'
 import { CssTransform } from '../theme/utils'
 
-export type IHeaderProps = {
+type IHeaderProps = {
   isMobile?: boolean
   allowResetChat?: boolean
   customerIcon?: React.ReactNode

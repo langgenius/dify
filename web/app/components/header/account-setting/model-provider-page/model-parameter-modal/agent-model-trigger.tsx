@@ -25,7 +25,7 @@ import ConfigurationButton from './configuration-button'
 import ModelDisplay from './model-display'
 import StatusIndicators from './status-indicators'
 
-export type AgentModelTriggerProps = {
+type AgentModelTriggerProps = {
   open?: boolean
   disabled?: boolean
   currentProvider?: ModelProvider

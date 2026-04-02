@@ -110,7 +110,7 @@ const ImageUploaderInRetrievalTesting = ({
   )
 }
 
-export type ImageUploaderInRetrievalTestingWrapperProps = {
+type ImageUploaderInRetrievalTestingWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
 } & ImageUploaderInRetrievalTestingProps

@@ -126,7 +126,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
 
 export const isDayjsObject = (value: unknown): value is Dayjs => dayjs.isDayjs(value)
 
-export type ToDayjsOptions = {
+type ToDayjsOptions = {
   timezone?: string
   format?: string
   formats?: string[]

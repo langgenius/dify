@@ -14,7 +14,7 @@ import { cn } from '@/utils/classnames'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
-export type IItemOperationProps = {
+type IItemOperationProps = {
   className?: string
   isItemHovering?: boolean
   isPinned: boolean

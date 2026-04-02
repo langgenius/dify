@@ -51,7 +51,7 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput):
   }
 }
 
-export type VarKeyErrorMessageKey = I18nKeysByPrefix<'appDebug', 'varKeyError.'>
+type VarKeyErrorMessageKey = I18nKeysByPrefix<'appDebug', 'varKeyError.'>
 
 export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]): true | VarKeyErrorMessageKey => {
   if (key.length === 0 && !canBeEmpty)

@@ -97,7 +97,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   )
 }
 
-export type ChatWithHistoryWrapProps = {
+type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
 }

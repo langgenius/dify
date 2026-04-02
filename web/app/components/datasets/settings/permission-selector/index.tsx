@@ -17,7 +17,7 @@ import { cn } from '@/utils/classnames'
 import MemberItem from './member-item'
 import Item from './permission-item'
 
-export type RoleSelectorProps = {
+type RoleSelectorProps = {
   disabled?: boolean
   permission?: DatasetPermission
   value: string[]

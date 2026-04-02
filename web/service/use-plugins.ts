@@ -4,7 +4,6 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
-  PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import type {
   DebugInfo as DebugInfoTypes,
@@ -70,7 +69,7 @@ export const useInvalidateCheckInstalled = () => {
 }
 
 const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
-export const useRecommendedMarketplacePlugins = ({
+const useRecommendedMarketplacePlugins = ({
   collection = '__recommended-plugins-tools',
   enabled = true,
   limit = 15,
@@ -230,12 +229,6 @@ export const useVersionListOfPlugin = (pluginID: string) => {
     queryKey: [NAME_SPACE, 'versions', pluginID],
     queryFn: () => getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, { params: { page: 1, page_size: 100 } }),
   })
-}
-export const useInvalidateVersionListOfPlugin = () => {
-  const queryClient = useQueryClient()
-  return (pluginID: string) => {
-    queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'versions', pluginID] })
-  }
 }
 
 export const useInstallPackageFromLocal = () => {
@@ -473,38 +466,6 @@ export const useRemoveAutoUpgrade = () => {
   })
 }
 
-export const useMutationPluginsFromMarketplace = () => {
-  return useMutation({
-    mutationFn: (pluginsSearchParams: PluginsSearchParams) => {
-      const {
-        query,
-        sort_by,
-        sort_order,
-        category,
-        tags,
-        exclude,
-        type,
-        page = 1,
-        page_size = 40,
-      } = pluginsSearchParams
-      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
-      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
-        body: {
-          page,
-          page_size,
-          query,
-          sort_by,
-          sort_order,
-          category: category !== 'all' ? category : '',
-          tags,
-          exclude,
-          type,
-        },
-      })
-    },
-  })
-}
-
 export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>) => {
   return useQuery({
     ...options,
@@ -516,39 +477,6 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
     }),
     enabled: unique_identifiers?.filter(i => !!i).length > 0,
     retry: 0,
-  })
-}
-
-export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'fetchPluginListOrBundleList', pluginsSearchParams],
-    queryFn: () => {
-      const {
-        query,
-        sort_by,
-        sort_order,
-        category,
-        tags,
-        exclude,
-        type,
-        page = 1,
-        page_size = 40,
-      } = pluginsSearchParams
-      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
-      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
-        body: {
-          page,
-          page_size,
-          query,
-          sort_by,
-          sort_order,
-          category: category !== 'all' ? category : '',
-          tags,
-          exclude,
-          type,
-        },
-      })
-    },
   })
 }
 
@@ -628,14 +556,6 @@ export const useMutationClearTaskPlugin = () => {
     mutationFn: ({ taskId, pluginId }: { taskId: string, pluginId: string }) => {
       const encodedPluginId = encodeURIComponent(pluginId)
       return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
-    },
-  })
-}
-
-export const useMutationClearAllTaskPlugin = () => {
-  return useMutation({
-    mutationFn: () => {
-      return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')
     },
   })
 }

@@ -17,7 +17,7 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../tool/types'
 
-export type StrategyStatus = {
+type StrategyStatus = {
   plugin: {
     source: 'external' | 'marketplace'
     installed: boolean

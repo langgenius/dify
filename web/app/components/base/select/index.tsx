@@ -37,7 +37,7 @@ export type Item = {
   extra?: React.ReactNode
 } & Record<string, any>
 
-export type ISelectProps = {
+type ISelectProps = {
   className?: string
   wrapperClassName?: string
   renderTrigger?: (value: Item | null, isOpen: boolean) => React.JSX.Element | null

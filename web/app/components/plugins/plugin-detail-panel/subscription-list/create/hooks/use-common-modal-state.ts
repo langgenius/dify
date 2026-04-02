@@ -31,7 +31,7 @@ export enum ApiKeyStep {
   Configuration = 'configuration',
 }
 
-export const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
+const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
   [SupportedCreationMethods.APIKEY]: TriggerCredentialTypeEnum.ApiKey,
   [SupportedCreationMethods.OAUTH]: TriggerCredentialTypeEnum.Oauth2,
   [SupportedCreationMethods.MANUAL]: TriggerCredentialTypeEnum.Unauthorized,

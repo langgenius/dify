@@ -14,7 +14,7 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { IndexingType } from './use-indexing-config'
 import { MAXIMUM_CHUNK_TOKEN_LENGTH } from './use-segmentation-state'
 
-export type UseDocumentCreationOptions = {
+type UseDocumentCreationOptions = {
   datasetId?: string
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
@@ -34,7 +34,7 @@ export type UseDocumentCreationOptions = {
   onSave?: () => void
   mutateDatasetRes?: () => void
 }
-export type ValidationParams = {
+type ValidationParams = {
   segmentationType: string
   maxChunkLength: number
   limitMaxChunkLength: number
@@ -197,4 +197,3 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     validatePreviewParams,
   }
 }
-export type DocumentCreation = ReturnType<typeof useDocumentCreation>

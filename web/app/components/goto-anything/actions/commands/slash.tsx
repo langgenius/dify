@@ -39,7 +39,7 @@ export const slashAction: ActionItem = {
 }
 
 // Register/unregister default handlers for slash commands with external dependencies.
-export const registerSlashCommands = (deps: Record<string, any>) => {
+const registerSlashCommands = (deps: Record<string, any>) => {
   // Register command handlers to the registry system with their respective dependencies
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
@@ -50,7 +50,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(zenCommand, {})
 }
 
-export const unregisterSlashCommands = () => {
+const unregisterSlashCommands = () => {
   // Remove command handlers from registry system (automatically calls each command's unregister method)
   slashCommandRegistry.unregister('theme')
   slashCommandRegistry.unregister('language')

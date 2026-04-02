@@ -13,10 +13,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout, useUserProfile } from '@/service/use-common'
 
-export type IAppSelector = {
-  isMobile: boolean
-}
-
 export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()

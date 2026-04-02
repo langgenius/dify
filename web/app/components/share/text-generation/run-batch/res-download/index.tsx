@@ -10,7 +10,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 
-export type IResDownloadProps = {
+type IResDownloadProps = {
   isMobile: boolean
   values: Record<string, string>[]
 }

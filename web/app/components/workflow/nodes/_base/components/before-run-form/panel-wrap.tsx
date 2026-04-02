@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'singleRun'
 
-export type Props = {
+type Props = {
   nodeName: string
   onHide: () => void
   children: React.ReactNode

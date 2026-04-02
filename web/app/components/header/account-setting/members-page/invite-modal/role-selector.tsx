@@ -17,7 +17,7 @@ const roleI18nKeyMap = {
 
 export type RoleKey = keyof typeof roleI18nKeyMap
 
-export type RoleSelectorProps = {
+type RoleSelectorProps = {
   value: RoleKey
   onChange: (role: RoleKey) => void
 }

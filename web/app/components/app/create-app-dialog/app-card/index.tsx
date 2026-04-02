@@ -12,7 +12,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
-export type AppCardProps = {
+type AppCardProps = {
   app: App
   canCreate: boolean
   onCreate: () => void

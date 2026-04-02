@@ -273,7 +273,7 @@ export type DocPathWithoutLang =
   | `${DocPathWithoutLangBase}#${string}`
 
 // Full documentation path with language prefix
-export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
+type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
 
 // API Reference path translations (English -> other languages)
 export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: string }> = {

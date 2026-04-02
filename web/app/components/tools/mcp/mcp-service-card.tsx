@@ -149,7 +149,7 @@ function getTooltipContent({
 }
 
 // Main component
-export type IAppCardProps = {
+type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   triggerModeDisabled?: boolean
   triggerModeMessage?: ReactNode

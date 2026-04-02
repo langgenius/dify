@@ -16,7 +16,7 @@ export const useDatasetMetaData = (datasetId: string) => {
   })
 }
 
-export const useInvalidDatasetMetaData = (datasetId: string) => {
+const useInvalidDatasetMetaData = (datasetId: string) => {
   return useInvalid([NAME_SPACE, 'dataset', datasetId])
 }
 
@@ -32,7 +32,7 @@ export const useCreateMetaData = (datasetId: string) => {
     },
   })
 }
-export const useInvalidAllDocumentMetaData = (datasetId: string) => {
+const useInvalidAllDocumentMetaData = (datasetId: string) => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({

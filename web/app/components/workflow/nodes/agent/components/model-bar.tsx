@@ -7,7 +7,7 @@ import { useModelList } from '@/app/components/header/account-setting/model-prov
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import Indicator from '@/app/components/header/indicator'
 
-export type ModelBarProps = {
+type ModelBarProps = {
   provider: string
   model: string
 } | {}

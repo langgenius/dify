@@ -29,7 +29,7 @@ import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
 
-export type ModelParameterModalProps = {
+type ModelParameterModalProps = {
   popupClassName?: string
   isAdvancedMode: boolean
   value: any

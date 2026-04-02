@@ -15,7 +15,7 @@ import { cn } from '@/utils/classnames'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
-export type AgentLogDetailProps = {
+type AgentLogDetailProps = {
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
   log: IChatItem

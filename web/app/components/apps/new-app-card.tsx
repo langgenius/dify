@@ -25,7 +25,7 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-export type CreateAppCardProps = {
+type CreateAppCardProps = {
   className?: string
   isLoading?: boolean
   onSuccess?: () => void

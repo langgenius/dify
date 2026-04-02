@@ -29,7 +29,7 @@ const CustomNode = (props: NodeProps) => {
 }
 CustomNode.displayName = 'CustomNode'
 
-export type PanelProps = {
+type PanelProps = {
   type: Node['type']
   id: Node['id']
   data: Node['data']

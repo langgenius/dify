@@ -7,9 +7,9 @@ import Confirm from '@/app/components/base/confirm'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useNotionBinding } from '@/service/use-common'
 
-export type ConfirmType = Pick<IConfirm, 'type' | 'title' | 'content'>
+type ConfirmType = Pick<IConfirm, 'type' | 'title' | 'content'>
 
-export const useAnthropicCheckPay = () => {
+const useAnthropicCheckPay = () => {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
@@ -28,7 +28,7 @@ export const useAnthropicCheckPay = () => {
   return confirm
 }
 
-export const useBillingPay = () => {
+const useBillingPay = () => {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
@@ -47,7 +47,7 @@ export const useBillingPay = () => {
   return confirm
 }
 
-export const useCheckNotion = () => {
+const useCheckNotion = () => {
   const router = useRouter()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const [canBinding, setCanBinding] = useState(false)

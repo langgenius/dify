@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
 import { matchAction, searchAnything } from '../actions'
 
-export type UseGotoAnythingResultsReturn = {
+type UseGotoAnythingResultsReturn = {
   searchResults: SearchResult[]
   dedupedResults: SearchResult[]
   groupedResults: Record<string, SearchResult[]>
@@ -15,7 +15,7 @@ export type UseGotoAnythingResultsReturn = {
   error: Error | null
 }
 
-export type UseGotoAnythingResultsOptions = {
+type UseGotoAnythingResultsOptions = {
   searchQueryDebouncedValue: string
   searchMode: string
   isCommandsMode: boolean
@@ -48,7 +48,7 @@ export const useGotoAnythingResults = (
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
-      // eslint-disable-next-line @tanstack/query/exhaustive-deps -- Actions intentionally excluded: contains non-serializable functions; actionKeys provides stable representation
+
       queryKey: [
         'goto-anything',
         'search-result',

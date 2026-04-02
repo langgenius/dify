@@ -17,7 +17,7 @@ import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 
-export type ISegmentAddProps = {
+type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined
   clearProcessStatus: () => void
   showNewSegmentModal: () => void

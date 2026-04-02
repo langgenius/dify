@@ -8,7 +8,7 @@ import { IS_CE_EDITION } from '@/config'
 import InvitationLink from './invitation-link'
 
 export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
-export type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
+type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
 
 type IInvitedModalProps = {
   invitationResults: InvitationResult[]

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { cn } from '@/utils/classnames'
 
-export type ISelectTypeItemProps = {
+type ISelectTypeItemProps = {
   type: InputVarType
   selected: boolean
   onClick: () => void

@@ -3,7 +3,7 @@ import type { FC, ReactNode } from 'react'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
-export type IFeaturePanelProps = {
+type IFeaturePanelProps = {
   className?: string
   headerIcon?: ReactNode
   title: ReactNode

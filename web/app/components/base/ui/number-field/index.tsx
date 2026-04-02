@@ -113,7 +113,7 @@ export function NumberFieldUnit({
   )
 }
 
-export const numberFieldControlsVariants = cva(
+const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
@@ -131,7 +131,7 @@ export function NumberFieldControls({
   )
 }
 
-export const numberFieldControlButtonVariants = cva(
+const numberFieldControlButtonVariants = cva(
   [
     'flex touch-manipulation select-none items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',

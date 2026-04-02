@@ -12,7 +12,7 @@ import { cn } from '@/utils/classnames'
 
 init({ data })
 
-export type AppIconProps = {
+type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
   rounded?: boolean
   iconType?: AppIconType | null

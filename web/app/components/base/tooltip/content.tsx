@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 
-export type ToolTipContentProps = {
+type ToolTipContentProps = {
   title?: ReactNode
   action?: ReactNode
 } & PropsWithChildren

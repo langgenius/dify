@@ -43,7 +43,7 @@ import useGenData from './use-gen-data'
 
 const i18nPrefix = 'generate'
 
-export type IGetAutomaticResProps = {
+type IGetAutomaticResProps = {
   mode: AppModeEnum
   isShow: boolean
   onClose: () => void

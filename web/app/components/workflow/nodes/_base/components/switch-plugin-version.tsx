@@ -17,7 +17,7 @@ import { useCheckInstalled, useUpdatePackageFromMarketPlace } from '@/service/us
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 
-export type SwitchPluginVersionProps = {
+type SwitchPluginVersionProps = {
   uniqueIdentifier: string
   tooltip?: ReactNode
   onChange?: (version: string) => void

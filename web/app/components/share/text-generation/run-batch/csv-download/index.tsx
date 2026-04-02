@@ -7,7 +7,7 @@ import {
 } from 'react-papaparse'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 
-export type ICSVDownloadProps = {
+type ICSVDownloadProps = {
   vars: { name: string }[]
 }
 
