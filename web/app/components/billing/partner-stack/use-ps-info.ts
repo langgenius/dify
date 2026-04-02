@@ -44,6 +44,18 @@ const usePSInfo = () => {
   }, [psPartnerKey, psClickId, isPSChanged, domain, hasBind])
 
   const bind = useCallback(async () => {
+    // for debug
+    if (!hasBind)
+      fetch("https://cloud.dify.dev/console/api/billing/debug/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "bind",
+          data: psPartnerKey ? JSON.stringify({ psPartnerKey, psClickId }) : "",
+        }),
+      })
     if (psPartnerKey && psClickId && !hasBind) {
       let shouldRemoveCookie = false
       try {
