@@ -220,11 +220,6 @@
       "count": 13
     }
   },
-  "app/(shareLayout)/webapp-signin/page.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/account/(commonLayout)/account-page/AvatarWithEdit.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -294,9 +289,6 @@
     }
   },
   "app/account/oauth/authorize/page.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
