@@ -1,16 +1,25 @@
-import type { FC, ReactNode } from 'react'
+import type {
+  FC,
+  ReactNode,
+} from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
 import copy from 'copy-to-clipboard'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
-import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
 import Button from '../../button'
+import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -23,20 +32,38 @@ type QuestionProps = {
   switchSibling?: (siblingMessageId: string) => void
   hideAvatar?: boolean
 }
-const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = true, switchSibling, hideAvatar }) => {
+
+const Question: FC<QuestionProps> = ({
+  item,
+  questionIcon,
+  theme,
+  enableEdit = true,
+  switchSibling,
+  hideAvatar,
+}) => {
   const { t } = useTranslation()
-  const { content, message_files } = item
-  const { onRegenerate } = useChatContext()
+
+  const {
+    content,
+    message_files,
+  } = item
+
+  const {
+    onRegenerate,
+  } = useChatContext()
+
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
   const [contentWidth, setContentWidth] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const handleEdit = useCallback(() => {
     setIsEditing(true)
     setEditedContent(content)
   }, [content])
+
   const handleResend = useCallback(() => {
     if (compositionEndTimerRef.current) {
       clearTimeout(compositionEndTimerRef.current)
@@ -46,6 +73,7 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
     setIsEditing(false)
     onRegenerate?.(item, { message: editedContent, files: message_files })
   }, [editedContent, message_files, item, onRegenerate])
+
   const handleCancelEditing = useCallback(() => {
     if (compositionEndTimerRef.current) {
       clearTimeout(compositionEndTimerRef.current)
@@ -55,28 +83,36 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
     setIsEditing(false)
     setEditedContent(content)
   }, [content])
+
   const handleEditInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== 'Enter' || e.shiftKey)
       return
+
     if (e.nativeEvent.isComposing)
       return
+
     if (isComposingRef.current) {
       e.preventDefault()
       return
     }
+
     e.preventDefault()
     handleResend()
   }, [handleResend])
+
   const clearCompositionEndTimer = useCallback(() => {
     if (!compositionEndTimerRef.current)
       return
+
     clearTimeout(compositionEndTimerRef.current)
     compositionEndTimerRef.current = null
   }, [])
+
   const handleCompositionStart = useCallback(() => {
     clearCompositionEndTimer()
     isComposingRef.current = true
   }, [clearCompositionEndTimer])
+
   const handleCompositionEnd = useCallback(() => {
     clearCompositionEndTimer()
     compositionEndTimerRef.current = setTimeout(() => {
@@ -84,6 +120,7 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
       compositionEndTimerRef.current = null
     }, 50)
   }, [clearCompositionEndTimer])
+
   const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'prev') {
       if (item.prevSibling)
@@ -94,11 +131,13 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
         switchSibling?.(item.nextSibling)
     }
   }, [switchSibling, item.prevSibling, item.nextSibling])
+
   const getContentWidth = () => {
     /* v8 ignore next 2 -- @preserve */
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
+
   useEffect(() => {
     /* v8 ignore next 2 -- @preserve */
     if (!contentRef.current)
@@ -111,16 +150,22 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
       resizeObserver.disconnect()
     }
   }, [])
+
   useEffect(() => {
     return () => {
       clearCompositionEndTimer()
     }
   }, [clearCompositionEndTimer])
+
   return (
     <div className="mb-2 flex justify-end last:mb-0">
       <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
-          <div data-testid="action-container" className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex" style={{ right: contentWidth + 8 }}>
+          <div
+            data-testid="action-container"
+            className="absolute hidden gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
+            style={{ right: contentWidth + 8 }}
+          >
             <ActionButton
               data-testid="copy-btn"
               onClick={() => {
@@ -137,14 +182,43 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
             )}
           </div>
         </div>
-        <div ref={contentRef} data-testid="question-content" className={cn('w-full px-4 py-3 text-sm', !isEditing && 'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 text-text-primary', isEditing && 'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg')} style={(!isEditing && theme?.chatBubbleColorStyle) ? CssTransform(theme.chatBubbleColorStyle) : {}}>
-          {!!message_files?.length && (<FileList className={cn(isEditing ? 'mb-3' : 'mb-2')} files={message_files} showDeleteAction={false} showDownloadAction={true} />)}
+        <div
+          ref={contentRef}
+          data-testid="question-content"
+          className={cn(
+            'w-full px-4 py-3 text-sm',
+            !isEditing && 'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 text-text-primary',
+            isEditing && 'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
+          )}
+          style={(!isEditing && theme?.chatBubbleColorStyle) ? CssTransform(theme.chatBubbleColorStyle) : {}}
+        >
+          {
+            !!message_files?.length && (
+              <FileList
+                className={cn(isEditing ? 'mb-3' : 'mb-2')}
+                files={message_files}
+                showDeleteAction={false}
+                showDownloadAction={true}
+              />
+            )
+          }
           {!isEditing
             ? <Markdown content={content} />
             : (
                 <div className="flex flex-col gap-4">
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
-                    <Textarea className={cn('w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular')} autoFocus minRows={1} value={editedContent} onChange={e => setEditedContent(e.target.value)} onKeyDown={handleEditInputKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} />
+                    <Textarea
+                      className={cn(
+                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-hidden body-lg-regular',
+                      )}
+                      autoFocus
+                      minRows={1}
+                      value={editedContent}
+                      onChange={e => setEditedContent(e.target.value)}
+                      onKeyDown={handleEditInputKeyDown}
+                      onCompositionStart={handleCompositionStart}
+                      onCompositionEnd={handleCompositionEnd}
+                    />
                   </div>
                   <div className="flex items-center justify-end gap-2">
                     <Button className="min-w-24" onClick={handleCancelEditing} data-testid="cancel-edit-btn">{t('operation.cancel', { ns: 'common' })}</Button>
@@ -152,20 +226,31 @@ const Question: FC<QuestionProps> = ({ item, questionIcon, theme, enableEdit = t
                   </div>
                 </div>
               )}
-          {!isEditing && (<ContentSwitch count={item.siblingCount} currentIndex={item.siblingIndex} prevDisabled={!item.prevSibling} nextDisabled={!item.nextSibling} switchSibling={handleSwitchSibling} />)}
+          {!isEditing && (
+            <ContentSwitch
+              count={item.siblingCount}
+              currentIndex={item.siblingIndex}
+              prevDisabled={!item.prevSibling}
+              nextDisabled={!item.nextSibling}
+              switchSibling={handleSwitchSibling}
+            />
+          )}
         </div>
         <div className="mt-1 h-[18px]" />
       </div>
       {!hideAvatar && (
         <div className="h-10 w-10 shrink-0">
-          {questionIcon || (
-            <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-              <div className="i-custom-public-avatar-user h-full w-full" />
-            </div>
-          )}
+          {
+            questionIcon || (
+              <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
+                <div className="i-custom-public-avatar-user h-full w-full" />
+              </div>
+            )
+          }
         </div>
       )}
     </div>
   )
 }
+
 export default memo(Question)

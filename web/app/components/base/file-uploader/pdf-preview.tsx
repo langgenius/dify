@@ -48,12 +48,12 @@ const PdfPreview: FC<PdfPreviewProps> = ({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 ${!isMobile && 'p-8'}`}
+      className={`fixed inset-0 z-1000 flex items-center justify-center bg-black/80 ${!isMobile && 'p-8'}`}
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
       <div
-        className="h-[95vh] max-h-full w-[100vw] max-w-full overflow-hidden"
+        className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"
         style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <PdfLoader

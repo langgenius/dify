@@ -7,7 +7,7 @@ const VariableLabelInText = (variablePayload: VariablePayload) => {
   return (
     <VariableLabel
       className={cn(
-        'h-[18px] space-x-[1px] rounded-[5px] px-1 shadow-xs',
+        'h-[18px] space-x-px rounded-[5px] px-1 shadow-xs',
       )}
       {...variablePayload}
     />

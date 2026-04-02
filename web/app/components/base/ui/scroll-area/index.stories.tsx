@@ -35,14 +35,14 @@ const labelClassName = 'text-text-tertiary system-xs-medium-uppercase tracking-[
 const titleClassName = 'text-text-primary system-sm-semibold'
 const bodyClassName = 'text-text-secondary system-sm-regular'
 const insetScrollAreaClassName = 'h-full p-1'
-const insetViewportClassName = 'rounded-[20px] bg-components-panel-bg'
-const insetScrollbarClassName = 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:[margin-inline-end:0.25rem] data-[orientation=horizontal]:mx-1 data-[orientation=horizontal]:mb-1'
-const storyButtonClassName = 'flex w-full items-center justify-between gap-3 rounded-xl border border-divider-subtle bg-components-panel-bg-alt px-3 py-2.5 text-left text-text-secondary transition-colors hover:bg-state-base-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
+const insetViewportClassName = 'radius-3xl bg-components-panel-bg'
+const insetScrollbarClassName = 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1 data-[orientation=horizontal]:mx-1 data-[orientation=horizontal]:mb-1'
+const storyButtonClassName = 'flex w-full items-center justify-between gap-3 rounded-xl border border-divider-subtle bg-components-panel-bg-alt px-3 py-2.5 text-left text-text-secondary transition-colors hover:bg-state-base-hover focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
 const sidebarScrollAreaClassName = 'h-full'
 const sidebarViewportClassName = 'overscroll-contain'
 const sidebarContentClassName = 'space-y-0.5'
-const sidebarScrollbarClassName = 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]'
-const appNavButtonClassName = 'group flex h-8 w-full items-center justify-between gap-3 rounded-lg px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
+const sidebarScrollbarClassName = 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:-me-3'
+const appNavButtonClassName = 'group flex h-8 w-full items-center justify-between gap-3 rounded-lg px-2 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover motion-reduce:transition-none'
 const appNavMetaClassName = 'shrink-0 rounded-md border border-divider-subtle bg-components-panel-bg-alt px-1.5 py-0.5 text-text-quaternary system-2xs-medium-uppercase tracking-[0.08em]'
 
 const releaseRows = [
@@ -123,7 +123,7 @@ const StoryCard = ({
   className?: string
   children: ReactNode
 }) => (
-  <section className={cn('min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5', className)}>
+  <section className={cn('min-w-0 radius-6xl border border-divider-subtle bg-background-body p-5', className)}>
     <div className="space-y-1">
       <div className={labelClassName}>{eyebrow}</div>
       <h3 className="text-pretty text-text-primary system-md-semibold">{title}</h3>
@@ -168,7 +168,7 @@ const VerticalPanelPane = () => (
 const StickyListPane = () => (
   <div className={cn(panelClassName, 'h-[360px]')}>
     <ScrollAreaRoot className={insetScrollAreaClassName}>
-      <ScrollAreaViewport className={cn(insetViewportClassName, '[mask-image:linear-gradient(to_bottom,transparent_0px,black_10px,black_calc(100%-14px),transparent_100%)]')}>
+      <ScrollAreaViewport className={cn(insetViewportClassName, 'mask-[linear-gradient(to_bottom,transparent_0px,black_10px,black_calc(100%-14px),transparent_100%)]')}>
         <ScrollAreaContent className="min-h-full">
           <div className="sticky top-0 z-10 border-b border-divider-subtle bg-components-panel-bg px-4 pb-3 pt-4">
             <div className={labelClassName}>Sticky header</div>
@@ -188,7 +188,7 @@ const StickyListPane = () => (
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <div className="truncate text-text-primary system-sm-semibold">{item.title}</div>
-                    <div className="line-clamp-2 break-words text-text-tertiary system-xs-regular">{item.note}</div>
+                    <div className="line-clamp-2 wrap-break-word text-text-tertiary system-xs-regular">{item.note}</div>
                   </div>
                   <span className="text-text-quaternary system-xs-medium">{item.id}</span>
                 </div>
@@ -312,7 +312,7 @@ const ScrollbarStatePane = ({
   }, [initialPosition, viewportId])
 
   return (
-    <div className="min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5">
+    <div className="min-w-0 radius-6xl border border-divider-subtle bg-background-body p-5">
       <div className="space-y-1">
         <div className={labelClassName}>{eyebrow}</div>
         <div className="text-text-primary system-md-semibold">{title}</div>
@@ -320,12 +320,12 @@ const ScrollbarStatePane = ({
       </div>
       <div className="mt-4 min-w-0 rounded-[24px] border border-divider-subtle bg-components-panel-bg p-3">
         <ScrollAreaRoot className="h-[320px] p-1">
-          <ScrollAreaViewport id={viewportId} className="rounded-[20px] bg-components-panel-bg">
+          <ScrollAreaViewport id={viewportId} className="radius-3xl bg-components-panel-bg">
             <ScrollAreaContent className="min-w-0 space-y-2 p-4 pr-6">
               {scrollbarShowcaseRows.map(item => (
                 <article key={item.title} className="min-w-0 rounded-xl border border-divider-subtle bg-components-panel-bg-alt p-3">
                   <div className="truncate text-text-primary system-sm-semibold">{item.title}</div>
-                  <div className="mt-1 break-words text-text-secondary system-sm-regular">{item.body}</div>
+                  <div className="mt-1 wrap-break-word text-text-secondary system-sm-regular">{item.body}</div>
                 </article>
               ))}
             </ScrollAreaContent>
@@ -340,7 +340,7 @@ const ScrollbarStatePane = ({
 }
 
 const HorizontalScrollbarShowcasePane = () => (
-  <div className="min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5">
+  <div className="min-w-0 radius-6xl border border-divider-subtle bg-background-body p-5">
     <div className="space-y-1">
       <div className={labelClassName}>Horizontal</div>
       <div className="text-text-primary system-md-semibold">Horizontal track reference</div>
@@ -348,7 +348,7 @@ const HorizontalScrollbarShowcasePane = () => (
     </div>
     <div className="mt-4 min-w-0 rounded-[24px] border border-divider-subtle bg-components-panel-bg p-3">
       <ScrollAreaRoot className="h-[240px] p-1">
-        <ScrollAreaViewport className="rounded-[20px] bg-components-panel-bg">
+        <ScrollAreaViewport className="radius-3xl bg-components-panel-bg">
           <ScrollAreaContent className="min-h-full min-w-max space-y-4 p-4 pb-6">
             <div className="space-y-1">
               <div className="text-text-primary system-sm-semibold">Horizontal scrollbar</div>
@@ -373,10 +373,10 @@ const HorizontalScrollbarShowcasePane = () => (
 )
 
 const OverlayPane = () => (
-  <div className="flex h-[420px] min-w-0 items-center justify-center rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(21,90,239,0.12),_transparent_45%),linear-gradient(180deg,rgba(16,24,40,0.03),transparent)] p-6">
+  <div className="flex h-[420px] min-w-0 items-center justify-center radius-6xl bg-[radial-gradient(circle_at_top,rgba(21,90,239,0.12),transparent_45%),linear-gradient(180deg,rgba(16,24,40,0.03),transparent)] p-6">
     <div className={cn(blurPanelClassName, 'w-full max-w-[360px]')}>
       <ScrollAreaRoot className="h-[320px] p-1">
-        <ScrollAreaViewport className="overscroll-contain rounded-[20px] bg-components-panel-bg-blur">
+        <ScrollAreaViewport className="overscroll-contain radius-3xl bg-components-panel-bg-blur">
           <ScrollAreaContent className="space-y-2 p-3 pr-6">
             <div className="sticky top-0 z-10 rounded-xl border border-divider-subtle bg-components-panel-bg-blur px-3 py-3 backdrop-blur-[6px]">
               <div className={labelClassName}>Overlay palette</div>
@@ -452,7 +452,7 @@ const ExploreSidebarWebAppsPane = () => {
 
   return (
     <div className="w-full max-w-[272px] rounded-[26px] border border-divider-subtle bg-background-body p-3 shadow-lg shadow-shadow-shadow-5">
-      <div className="space-y-5 rounded-[20px] bg-background-default-subtle p-3">
+      <div className="space-y-5 radius-3xl bg-background-default-subtle p-3">
         <div className="text-text-accent">
           <div className="flex h-8 items-center gap-2 rounded-lg bg-state-base-active px-2">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
@@ -651,7 +651,7 @@ export const PrimitiveComposition: Story = {
     <StoryCard
       eyebrow="Primitive"
       title="Minimal composition reference"
-      description="A stripped-down example for teams that want to start from the base API and add their own shell classes around it. The outer shell adds inset padding so the tracks sit inside the rounded surface instead of colliding with the panel corners."
+      description="A stripped-down example for teams that want to start from the base API and add their own shell classes around it. The outer shell adds inset padding so the tracks sit inside the rounded-sm surface instead of colliding with the panel corners."
     >
       <div className={cn(panelClassName, 'h-[260px] max-w-[420px]')}>
         <ScrollAreaRoot className={insetScrollAreaClassName}>

@@ -43,7 +43,7 @@ const InsertBlock = ({
       className={cn(
         'nopan nodrag',
         'absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 group-hover/insert:block',
-        open && '!block',
+        open && 'block!',
       )}
     >
       <BlockSelector

@@ -173,7 +173,7 @@ describe('BlockInput', () => {
       expect(textarea).toBeInTheDocument()
     })
 
-    it('should exit edit mode on blur', async () => {
+    it('should exit edit mode on blur-sm', async () => {
       render(<BlockInput value="Hello" />)
 
       const contentArea = screen.getByText('Hello')

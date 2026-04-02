@@ -109,7 +109,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
   return (
     <>
-      <div className="relative z-[1] mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
+      <div className="relative z-1 mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
           <div className="flex cursor-pointer items-center gap-0.5 py-0.5" onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>

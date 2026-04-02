@@ -63,7 +63,7 @@ export const DeleteConfirm = (props: Props) => {
           <AlertDialogTitle title={t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })} className="w-full truncate text-text-primary title-2xl-semi-bold">
             {t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+          <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
             {workflowsInUse > 0
               ? t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })
               : t(`${tPrefix}.content`, { ns: 'pluginTrigger' })}

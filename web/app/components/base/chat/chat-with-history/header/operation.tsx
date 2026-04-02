@@ -51,7 +51,7 @@ const Operation: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div
-          className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm"
+          className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
         >
           <div className={cn('system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover')} onClick={togglePin}>
             <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>

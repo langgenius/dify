@@ -104,7 +104,7 @@ const DocumentPicker: FC<Props> = ({
           </div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pt-2 shadow-lg backdrop-blur-[5px]">
           <SearchInput value={query} onChange={setQuery} className="mx-1" />
           {documentsList

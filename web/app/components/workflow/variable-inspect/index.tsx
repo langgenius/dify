@@ -46,7 +46,7 @@ const VariableInspectPanel: FC = () => {
         ref={triggerRef}
         className="absolute -top-1 left-0 flex h-1 w-full cursor-row-resize resize-y items-center justify-center"
       >
-        <div className="h-0.5 w-10 rounded-sm bg-state-base-handle hover:w-full hover:bg-state-accent-solid active:w-full active:bg-state-accent-solid"></div>
+        <div className="h-0.5 w-10 rounded-xs bg-state-base-handle hover:w-full hover:bg-state-accent-solid active:w-full active:bg-state-accent-solid"></div>
       </div>
       <div
         ref={containerRef}

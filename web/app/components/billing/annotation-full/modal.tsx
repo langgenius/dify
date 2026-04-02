@@ -24,7 +24,7 @@ const AnnotationFullModal: FC<Props> = ({
       isShow={show}
       onClose={onHide}
       closable
-      className="!p-0"
+      className="p-0!"
     >
       <GridMask wrapperClassName="rounded-lg" canvasClassName="rounded-lg" gradientClassName="rounded-lg">
         <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out">

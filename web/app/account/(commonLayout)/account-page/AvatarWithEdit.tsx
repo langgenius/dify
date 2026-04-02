@@ -133,7 +133,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       </div>
 
       <Dialog open={isShowAvatarPicker} onOpenChange={open => !open && setIsShowAvatarPicker(false)}>
-        <DialogContent className="!w-[362px] !p-0">
+        <DialogContent className="w-[362px]! p-0!">
           <ImageInput onImageInput={handleImageInput} cropShape="round" />
           <Divider className="m-0" />
 
@@ -150,7 +150,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       </Dialog>
 
       <Dialog open={isShowDeleteConfirm} onOpenChange={open => !open && setIsShowDeleteConfirm(false)}>
-        <DialogContent className="!w-[362px] !p-6">
+        <DialogContent className="w-[362px]! p-6!">
           <div className="mb-3 text-text-primary title-2xl-semi-bold">{t('avatar.deleteTitle', { ns: 'common' })}</div>
           <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
 

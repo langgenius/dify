@@ -14,7 +14,7 @@ const MarkdownButton = ({ node }: any) => {
     <Button
       variant={variant}
       size={size}
-      className={cn('!h-auto min-h-8 select-none whitespace-normal !px-3')}
+      className={cn('h-auto! min-h-8 select-none whitespace-normal px-3!')}
       onClick={() => {
         if (link && isValidUrl(link)) {
           window.open(link, '_blank')

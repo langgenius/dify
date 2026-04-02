@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .surface {
   border: 0.5px solid var(--color-components-panel-border, rgba(16, 24, 40, 0.08));
   background:

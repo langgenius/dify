@@ -35,7 +35,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         >
           <div className={cn(
             'flex h-9 min-h-[56px] cursor-pointer items-center gap-1 bg-transparent px-3 py-2 hover:bg-background-section-burn',
-            open && '!bg-background-section-burn hover:bg-background-section-burn',
+            open && 'bg-background-section-burn! hover:bg-background-section-burn',
           )}
           >
             <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
@@ -46,8 +46,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             </div>
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1040]">
-          <div className="relative w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg  backdrop-blur-sm">
+        <PortalToFollowElemContent className="z-1040">
+          <div className="relative w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg  backdrop-blur-xs">
             <div className="p-1">
               <div className="cursor-pointer rounded-lg py-2.5 pl-3 pr-2 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => onChange('llm')}>
                 <div className="item-center flex gap-1">

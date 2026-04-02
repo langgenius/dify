@@ -98,10 +98,10 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             className="flex cursor-pointer items-center rounded-md
                      p-2
                      transition-all
-                     duration-150 hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt"
+                     duration-150 hover:bg-state-base-hover aria-selected:bg-state-base-hover-alt"
             onSelect={() => onCommandSelect(item.shortcut)}
           >
-            <span className="min-w-[4.5rem] text-left font-mono text-xs text-text-tertiary">
+            <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
               {item.shortcut}
             </span>
             <span className="ml-3 text-sm text-text-secondary">

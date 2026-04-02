@@ -65,7 +65,7 @@ const List = ({
   }, [onSelect])
 
   return (
-    <div className={cn('max-w-[100%] p-1', className)}>
+    <div className={cn('max-w-full p-1', className)}>
       {!!tools.length && (
         isFlatView
           ? (

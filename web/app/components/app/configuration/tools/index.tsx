@@ -125,7 +125,7 @@ const Tools = () => {
           !expanded && !!externalDataToolsConfig.length && (
             <>
               <div className="mr-3 text-xs text-gray-500">{t('feature.tools.toolsInUse', { ns: 'appDebug', count: externalDataToolsConfig.length })}</div>
-              <div className="mr-1 h-3.5 w-[1px] bg-gray-200" />
+              <div className="mr-1 h-3.5 w-px bg-gray-200" />
             </>
           )
         }
@@ -149,7 +149,7 @@ const Tools = () => {
                   <div className="flex grow items-center">
                     <AppIcon
                       size="large"
-                      className="mr-2 !h-6 !w-6 rounded-md border-[0.5px] border-black/5"
+                      className="mr-2 h-6! w-6! rounded-md border-[0.5px] border-black/5"
                       icon={item.icon}
                       background={item.icon_background}
                     />
@@ -185,7 +185,7 @@ const Tools = () => {
                   >
                     <RiDeleteBinLine className="h-4 w-4 text-gray-500 group-hover/action:text-[#D92D20]" />
                   </div>
-                  <div className="ml-2 mr-3 hidden h-3.5 w-[1px] bg-gray-200 group-hover:block" />
+                  <div className="ml-2 mr-3 hidden h-3.5 w-px bg-gray-200 group-hover:block" />
                   <Switch
                     size="lg"
                     value={item.enabled ?? false}

@@ -52,7 +52,7 @@ const DisplayContent = (props: DisplayContentProps) => {
   }, [previewType, schemaType, jsonString])
 
   return (
-    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline outline-1 outline-components-input-border-active', className)}>
+    <div className={cn('flex h-full flex-col radius-lg bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline-solid outline-1 outline-components-input-border-active', className)}>
       <div className="flex shrink-0 items-center justify-end p-1">
         {previewType === PreviewType.Markdown && (
           <div className="system-xs-semibold-uppercase flex grow items-center px-2 py-0.5 text-text-secondary">
@@ -74,8 +74,8 @@ const DisplayContent = (props: DisplayContentProps) => {
           onChange={setViewMode}
           size="small"
           padding="with"
-          activeClassName="!text-text-accent-light-mode-only"
-          btnClassName="!pl-1.5 !pr-0.5 gap-[3px]"
+          activeClassName="text-text-accent-light-mode-only!"
+          btnClassName="pl-1.5! pr-0.5! gap-[3px]"
           className="shrink-0"
         />
       </div>

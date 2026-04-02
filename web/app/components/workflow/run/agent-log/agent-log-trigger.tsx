@@ -19,7 +19,7 @@ const AgentLogTrigger = ({
 
   return (
     <div
-      className="cursor-pointer rounded-[10px] bg-components-button-tertiary-bg"
+      className="cursor-pointer radius-lg bg-components-button-tertiary-bg"
       onClick={() => {
         onShowAgentOrToolLog({ message_id: nodeInfo.id, children: agentLog || [] } as AgentLogItemWithChildren)
       }}
@@ -36,7 +36,7 @@ const AgentLogTrigger = ({
           )
         }
         <div
-          className="system-xs-regular-uppercase flex shrink-0 cursor-pointer items-center px-[1px] text-text-tertiary"
+          className="system-xs-regular-uppercase flex shrink-0 cursor-pointer items-center px-px text-text-tertiary"
         >
           {t('detail', { ns: 'runLog' })}
           <RiArrowRightLine className="ml-0.5 h-3.5 w-3.5" />

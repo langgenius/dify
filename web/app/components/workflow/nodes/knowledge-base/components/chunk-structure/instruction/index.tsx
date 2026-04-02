@@ -16,8 +16,8 @@ const Instruction = ({
   const docLink = useDocLink()
 
   return (
-    <div className={cn('flex flex-col gap-y-2 overflow-hidden rounded-[10px] bg-workflow-process-bg p-4', className)}>
-      <div className="relative flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
+    <div className={cn('flex flex-col gap-y-2 overflow-hidden radius-lg bg-workflow-process-bg p-4', className)}>
+      <div className="relative flex size-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
         <AddChunks className="size-5 text-text-accent" />
         <Line className="absolute -left-px bottom-[-76px]" type="vertical" />
         <Line className="absolute -right-px bottom-[-76px]" type="vertical" />

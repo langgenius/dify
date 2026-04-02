@@ -91,7 +91,7 @@ const TryApp: FC<Props> = ({
             )}
           </div>
         </div>
-        <div className="mx-auto mt-4 flex h-[0] w-[769px] grow flex-col">
+        <div className="mx-auto mt-4 flex h-0 w-[769px] grow flex-col">
           {!isHideTryNotice && (
             <Alert className="mb-4 shrink-0" message={t('tryApp.tryInfo', { ns: 'explore' })} onHide={hideTryNotice} />
           )}

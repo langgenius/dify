@@ -46,7 +46,7 @@ const PlanUpgradeModal: FC<Props> = ({
       onClose={onClose}
       closable={false}
       clickOutsideNotClose
-      className={`${styles.surface} w-[580px] rounded-2xl !p-0`}
+      className={`${styles.surface} w-[580px] rounded-2xl p-0!`}
     >
       <div className="relative">
         <div
@@ -79,7 +79,7 @@ const PlanUpgradeModal: FC<Props> = ({
           size="custom"
           isShort
           onClick={handleUpgrade}
-          className="!h-8 !rounded-lg px-2"
+          className="h-8! rounded-lg! px-2"
           labelKey="triggerLimitModal.upgrade"
           loc="trigger-events-limit-modal"
         />

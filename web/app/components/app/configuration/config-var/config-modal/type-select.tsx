@@ -67,9 +67,9 @@ const TypeSelector: FC<Props> = ({
         </div>
 
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[61]">
+      <PortalToFollowElemContent className="z-61">
         <div
-          className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div

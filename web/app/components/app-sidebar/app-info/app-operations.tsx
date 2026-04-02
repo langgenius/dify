@@ -130,7 +130,7 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-[1px]"
+            className="gap-px"
             tabIndex={-1}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
@@ -143,7 +143,7 @@ const AppOperations = ({
           id="more-measure"
           size="small"
           variant="secondary"
-          className="gap-[1px]"
+          className="gap-px"
           tabIndex={-1}
         >
           <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
@@ -159,7 +159,7 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-[1px]"
+            className="gap-px"
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
@@ -179,7 +179,7 @@ const AppOperations = ({
               <Button
                 size="small"
                 variant="secondary"
-                className="gap-[1px]"
+                className="gap-px"
               >
                 <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
                 <span className="text-components-button-secondary-text system-xs-medium">
@@ -187,8 +187,8 @@ const AppOperations = ({
                 </span>
               </Button>
             </PortalToFollowElemTrigger>
-            <PortalToFollowElemContent className="z-[30]">
-              <div className="flex min-w-[264px] flex-col rounded-[12px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
+            <PortalToFollowElemContent className="z-30">
+              <div className="flex min-w-[264px] flex-col radius-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
                 {moreOperations.map(item => item.type === 'divider'
                   ? (
                       <div key={item.id} className="my-1 h-px bg-divider-subtle" />

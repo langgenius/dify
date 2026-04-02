@@ -367,7 +367,7 @@ const SelectionContextmenu = () => {
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem
-            className="justify-between px-3 text-text-secondary data-[highlighted]:bg-state-destructive-hover data-[highlighted]:text-text-destructive"
+            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
             data-testid="selection-contextmenu-item-delete"
             onClick={handleDeleteNodes}
           >

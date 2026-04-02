@@ -91,7 +91,7 @@ const Header = () => {
 
   return (
     <div className="flex h-[56px] items-center">
-      <div className="flex min-w-0 flex-[1] items-center pl-3 pr-2 min-[1280px]:pr-3">
+      <div className="flex min-w-0 flex-1 items-center pl-3 pr-2 min-[1280px]:pr-3">
         {renderLogo()}
         <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
         <WorkspaceProvider>
@@ -105,7 +105,7 @@ const Header = () => {
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
       </div>
-      <div className="flex min-w-0 flex-[1] items-center justify-end pl-2 pr-3 min-[1280px]:pl-3">
+      <div className="flex min-w-0 flex-1 items-center justify-end pl-2 pr-3 min-[1280px]:pl-3">
         <EnvNav />
         <div className="mr-2">
           <PluginsNav />

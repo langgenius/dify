@@ -20,7 +20,7 @@ const Field: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className={cn(className)}>
-      <div className="!leading-8 text-text-secondary system-sm-semibold">
+      <div className="leading-8! text-text-secondary system-sm-semibold">
         {title}
         {isOptional && (
           <span className="ml-1 text-text-tertiary system-xs-regular">

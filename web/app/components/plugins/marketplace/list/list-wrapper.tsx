@@ -55,9 +55,17 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
       }}
       className="relative flex grow flex-col bg-background-default-subtle px-12 pt-2"
     >
-      {isSearchMode && <ListTopInfo />}
-      <div className="relative flex grow flex-col">
-        {isLoading && page === 1 && (
+      {
+        plugins && (
+          <div className="mb-4 flex items-center pt-3">
+            <div className="title-xl-semi-bold text-text-primary">{t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}</div>
+            <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
+            <SortDropdown />
+          </div>
+        )
+      }
+      {
+        isLoading && page === 1 && (
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <Loading />
           </div>

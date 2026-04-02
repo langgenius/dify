@@ -114,7 +114,7 @@ const InputsPanel = ({ onRun }: Props) => {
             >
               <FormItem
                 autoFocus={index === 0}
-                className="!block"
+                className="block!"
                 payload={variable}
                 value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}

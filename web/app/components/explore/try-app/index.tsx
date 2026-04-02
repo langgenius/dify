@@ -67,7 +67,7 @@ const TryApp: FC<Props> = ({
             <Button
               size="large"
               variant="tertiary"
-              className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
+              className="flex size-7 items-center justify-center radius-lg p-0 text-components-button-tertiary-text"
               onClick={onClose}
             >
               <span className="i-ri-close-line size-5" />

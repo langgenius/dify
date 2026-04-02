@@ -49,7 +49,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
   }
   return (
     <Markdown
-      className={cn('!mt-0.5 !text-text-secondary', isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20', className)}
+      className={cn('mt-0.5! text-text-secondary!', isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20', className)}
       content={sign_content || content || ''}
       customDisallowedElements={['input']}
     />

@@ -10,7 +10,7 @@ export const Mask = ({
 }: MaskProps) => {
   return (
     <div className={cn(
-      'h-12 bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg',
+      'h-12 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg',
       className,
     )}
     />

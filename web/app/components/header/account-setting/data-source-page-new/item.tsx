@@ -30,7 +30,7 @@ const Item = ({
         renaming && (
           <div className="flex w-full items-center space-x-1">
             <Input
-              wrapperClassName="grow rounded-[6px]"
+              wrapperClassName="grow radius-sm"
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
@@ -82,7 +82,7 @@ const Item = ({
           connected
         </div>
       </div>
-      <div className="ml-3 mr-2 h-3 w-[1px] bg-divider-regular"></div>
+      <div className="ml-3 mr-2 h-3 w-px bg-divider-regular"></div>
       <Operator
         credentialItem={credentialItem}
         onAction={onAction}

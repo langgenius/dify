@@ -38,7 +38,7 @@ const InputFieldEditorPanel = ({
       className={cn(
         'relative mr-1 flex h-fit max-h-full w-[400px] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9',
         'transition-all duration-300 ease-in-out',
-        floatingRight && 'absolute right-0 z-[100]',
+        floatingRight && 'absolute right-0 z-100',
       )}
       style={{
         width: `${floatingRightWidth}px`,

@@ -55,11 +55,11 @@ const ActivateForm = () => {
       {checkRes && !checkRes.is_valid && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
-            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
+            <div className="mb-3 flex h-20 w-20 items-center justify-center radius-3xl border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
             <h2 className="text-[32px] font-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant="primary" className="w-full !text-sm">
+            <Button variant="primary" className="w-full text-sm!">
               <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
             </Button>
           </div>

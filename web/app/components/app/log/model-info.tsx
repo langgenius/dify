@@ -59,7 +59,7 @@ const ModelInfo: FC<Props> = ({
     <div className={cn('flex items-center rounded-lg')}>
       <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pl-1.5 pr-2">
         <ModelIcon
-          className="!h-5 !w-5"
+          className="h-5! w-5!"
           provider={currentProvider}
           modelName={currentModel?.model}
         />
@@ -87,7 +87,7 @@ const ModelInfo: FC<Props> = ({
               <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className="z-[1002]">
+          <PortalToFollowElemContent className="z-1002">
             <div className="relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pb-2 pt-3 shadow-xl">
               <div className="system-sm-semibold-uppercase mb-1 h-6 text-text-secondary">{t('detail.modelParams', { ns: 'appLog' })}</div>
               <div className="py-1">

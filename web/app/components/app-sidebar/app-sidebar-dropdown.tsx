@@ -60,7 +60,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
           }}
         >
           <PortalToFollowElemTrigger onClick={handleTrigger}>
-            <div className={cn('flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-sm hover:bg-background-default-hover', open && 'bg-background-default-hover')}>
+            <div className={cn('flex cursor-pointer items-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover', open && 'bg-background-default-hover')}>
               <AppIcon
                 size="small"
                 iconType={appDetail.icon_type}
@@ -71,7 +71,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
               <RiMenuLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className="z-[1000]">
+          <PortalToFollowElemContent className="z-1000">
             <div className={cn('w-[305px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg')}>
               <div className="p-2">
                 <div

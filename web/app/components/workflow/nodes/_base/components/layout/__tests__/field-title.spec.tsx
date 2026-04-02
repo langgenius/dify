@@ -39,12 +39,12 @@ describe('FieldTitle', () => {
     const header = screen.getByText('Models').closest('.group\\/collapse')
     const arrow = container.querySelector('[aria-hidden="true"]')
 
-    expect(arrow).toHaveClass('rotate-[270deg]')
+    expect(arrow).toHaveClass('rotate-270')
 
     fireEvent.click(header!)
 
     expect(onCollapse).toHaveBeenCalledWith(false)
-    expect(arrow).not.toHaveClass('rotate-[270deg]')
+    expect(arrow).not.toHaveClass('rotate-270')
   })
 
   it('should respect controlled collapsed state and ignore clicks when disabled', () => {
@@ -62,6 +62,6 @@ describe('FieldTitle', () => {
     fireEvent.click(screen.getByText('Controlled').closest('.group\\/collapse')!)
 
     expect(onCollapse).not.toHaveBeenCalled()
-    expect(container.querySelector('[aria-hidden="true"]')).not.toHaveClass('rotate-[270deg]')
+    expect(container.querySelector('[aria-hidden="true"]')).not.toHaveClass('rotate-270')
   })
 })

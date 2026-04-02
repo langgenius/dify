@@ -323,7 +323,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       />
 
       <div
-        className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
+        className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
       >
         <Button
           onClick={onCancel}

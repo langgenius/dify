@@ -28,7 +28,7 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
   return (
     <div
-      className={cn(isChecked ? 'border-[2px] border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm' : 'border border-components-card-border', 'mb-2 flex h-9 w-[150px] cursor-pointer items-center space-x-2 rounded-xl bg-components-panel-on-panel-item-bg pl-3 hover:bg-components-panel-on-panel-item-bg-hover')}
+      className={cn(isChecked ? 'border-2 border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm' : 'border border-components-card-border', 'mb-2 flex h-9 w-[150px] cursor-pointer items-center space-x-2 rounded-xl bg-components-panel-on-panel-item-bg pl-3 hover:bg-components-panel-on-panel-item-bg-hover')}
       onClick={() => onClick(value)}
     >
       <Radio isChecked={isChecked} />
@@ -52,12 +52,12 @@ const ConfigCredential: FC<Props> = ({
       positionCenter={positionCenter}
       onHide={onHide}
       title={t('createTool.authMethod.title', { ns: 'tools' })!}
-      dialogClassName="z-[60]"
-      dialogBackdropClassName="z-[70]"
-      panelClassName="mt-2 !w-[520px] h-fit z-[80]"
-      maxWidthClassName="!max-w-[520px]"
+      dialogClassName="z-60"
+      dialogBackdropClassName="z-70"
+      panelClassName="mt-2 w-[520px]! h-fit z-80"
+      maxWidthClassName="max-w-[520px]!"
       height="fit-content"
-      headerClassName="!border-b-divider-regular"
+      headerClassName="border-b-divider-regular!"
       body={(
         <div className="px-6 pt-2">
           <div className="space-y-4">

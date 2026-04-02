@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .google-icon {
   background: url(../../assets/google.svg) center center no-repeat;
   background-size: 16px 16px;

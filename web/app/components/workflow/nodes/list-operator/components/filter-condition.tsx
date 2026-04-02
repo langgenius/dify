@@ -131,7 +131,7 @@ const ValueInput = ({
         items={selectOptions}
         defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
         onSelect={item => onChange(item.value)}
-        className="!text-[13px]"
+        className="text-[13px]!"
         wrapperClassName="grow h-8"
         placeholder="Select value"
       />
@@ -164,7 +164,7 @@ const ValueInput = ({
         availableNodes={availableNodesWithParent}
         onFocusChange={handleFocusChange}
         placeholder={!readOnly ? t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })! : ''}
-        placeholderClassName="!leading-[21px]"
+        placeholderClassName="leading-[21px]!"
       />
     )
   }

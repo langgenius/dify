@@ -407,7 +407,7 @@ describe('MCPModal', () => {
   })
 
   describe('URL Blur Handler', () => {
-    it('should trigger URL blur handler when URL input loses focus', () => {
+    it('should trigger URL blur-sm handler when URL input loses focus', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
@@ -418,7 +418,7 @@ describe('MCPModal', () => {
       expect(urlInput).toHaveValue('  https://test.com/mcp  ')
     })
 
-    it('should handle URL blur with empty value', () => {
+    it('should handle URL blur-sm with empty value', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')

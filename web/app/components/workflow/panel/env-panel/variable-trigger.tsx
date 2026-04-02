@@ -53,7 +53,7 @@ const VariableTrigger = ({
           <span className="system-sm-medium">{t('env.envPanelButton', { ns: 'workflow' })}</span>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <VariableModal
           env={env}
           onSave={onSave}

@@ -166,8 +166,8 @@ const ToolPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className="z-[1002]">
-        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
+      <PortalToFollowElemContent className="z-1002">
+        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
           <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
@@ -183,7 +183,7 @@ const ToolPicker: FC<Props> = ({
           </div>
           <AllTools
             className="mt-1"
-            toolContentClassName="max-w-[100%]"
+            toolContentClassName="max-w-full"
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect as OnSelectBlock}

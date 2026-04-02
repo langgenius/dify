@@ -44,7 +44,7 @@ const TagArea = React.forwardRef<HTMLDivElement, TagAreaProps>(({
     </div>
     <div
       className={cn(
-        'absolute right-0 top-0 z-[5] h-full w-20 bg-tag-selector-mask-bg group-hover:bg-tag-selector-mask-hover-bg',
+        'absolute right-0 top-0 z-5 h-full w-20 bg-tag-selector-mask-bg group-hover:bg-tag-selector-mask-hover-bg',
         isHoveringTagSelector && 'hidden',
       )}
     />

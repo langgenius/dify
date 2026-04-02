@@ -41,8 +41,8 @@ const NodeControl: FC<NodeControlProps> = ({
       className={`
       absolute -top-7 right-0 hidden h-7 pb-1
       ${!pluginInstallLocked && 'group-hover:flex'}
-      ${data.selected && '!flex'}
-      ${open && '!flex'}
+      ${data.selected && 'flex!'}
+      ${open && 'flex!'}
       `}
     >
       <div
@@ -87,7 +87,7 @@ const NodeControl: FC<NodeControlProps> = ({
           data={data}
           offset={0}
           onOpenChange={handleOpenChange}
-          triggerClassName="!w-5 !h-5"
+          triggerClassName="w-5! h-5!"
         />
       </div>
     </div>

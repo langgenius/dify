@@ -123,4 +123,214 @@ describe('SortDropdown', () => {
       expect(screen.getByText('Most Popular')).toBeInTheDocument()
     })
   })
+
+  // ================================
+  // Context Integration Tests
+  // ================================
+  describe('Context Integration', () => {
+    it('should read sort value from context', () => {
+      mockSort = { sortBy: 'version_updated_at', sortOrder: 'DESC' }
+      render(<SortDropdown />)
+
+      expect(screen.getByText('Recently Updated')).toBeInTheDocument()
+    })
+
+    it('should call context handleSortChange on selection', () => {
+      render(<SortDropdown />)
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      const content = screen.getByTestId('portal-content')
+      fireEvent.click(within(content).getByText('First Released'))
+
+      expect(mockHandleSortChange).toHaveBeenCalledWith({
+        sortBy: 'created_at',
+        sortOrder: 'ASC',
+      })
+    })
+
+    it('should update display when context sort changes', () => {
+      const { rerender } = render(<SortDropdown />)
+
+      expect(screen.getByText('Most Popular')).toBeInTheDocument()
+
+      // Simulate context change
+      mockSort = { sortBy: 'created_at', sortOrder: 'ASC' }
+      rerender(<SortDropdown />)
+
+      expect(screen.getByText('First Released')).toBeInTheDocument()
+    })
+
+    it('should use selector pattern correctly', () => {
+      render(<SortDropdown />)
+
+      // Component should have called useMarketplaceContext with selector functions
+      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Accessibility Tests
+  // ================================
+  describe('Accessibility', () => {
+    it('should have cursor pointer on trigger', () => {
+      const { container } = render(<SortDropdown />)
+
+      const trigger = container.querySelector('.cursor-pointer')
+      expect(trigger).toBeInTheDocument()
+    })
+
+    it('should have cursor pointer on options', () => {
+      render(<SortDropdown />)
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      const content = screen.getByTestId('portal-content')
+      const options = content.querySelectorAll('.cursor-pointer')
+      expect(options.length).toBeGreaterThan(0)
+    })
+
+    it('should have visible focus indicators via hover styles', () => {
+      render(<SortDropdown />)
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      const content = screen.getByTestId('portal-content')
+      const option = content.querySelector('.hover\\:bg-components-panel-on-panel-item-bg-hover')
+      expect(option).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Translation Tests
+  // ================================
+  describe('Translations', () => {
+    it('should call translation for sortBy label', () => {
+      render(<SortDropdown />)
+
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortBy', { ns: 'plugin' })
+    })
+
+    it('should call translation for all sort options', () => {
+      render(<SortDropdown />)
+
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.mostPopular', { ns: 'plugin' })
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' })
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.newlyReleased', { ns: 'plugin' })
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.firstReleased', { ns: 'plugin' })
+    })
+  })
+
+  // ================================
+  // Portal Component Integration Tests
+  // ================================
+  describe('Portal Component Integration', () => {
+    it('should pass open state to PortalToFollowElem', () => {
+      render(<SortDropdown />)
+
+      const wrapper = screen.getByTestId('portal-wrapper')
+      expect(wrapper).toHaveAttribute('data-open', 'false')
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      expect(wrapper).toHaveAttribute('data-open', 'true')
+    })
+
+    it('should render trigger content inside PortalToFollowElemTrigger', () => {
+      render(<SortDropdown />)
+
+      const trigger = screen.getByTestId('portal-trigger')
+      expect(within(trigger).getByText('Sort by')).toBeInTheDocument()
+      expect(within(trigger).getByText('Most Popular')).toBeInTheDocument()
+    })
+
+    it('should render options inside PortalToFollowElemContent', () => {
+      render(<SortDropdown />)
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      const content = screen.getByTestId('portal-content')
+      expect(within(content).getByText('Most Popular')).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Visual Style Tests
+  // ================================
+  describe('Visual Styles', () => {
+    it('should apply correct trigger container styles', () => {
+      const { container } = render(<SortDropdown />)
+
+      const triggerDiv = container.querySelector('.flex.h-8.cursor-pointer.items-center.rounded-lg')
+      expect(triggerDiv).toBeInTheDocument()
+    })
+
+    it('should apply secondary text color to sort by label', () => {
+      const { container } = render(<SortDropdown />)
+
+      const label = container.querySelector('.text-text-secondary')
+      expect(label).toBeInTheDocument()
+      expect(label?.textContent).toBe('Sort by')
+    })
+
+    it('should apply primary text color to selected option', () => {
+      const { container } = render(<SortDropdown />)
+
+      const selected = container.querySelector('.text-text-primary.system-sm-medium')
+      expect(selected).toBeInTheDocument()
+    })
+
+    it('should apply tertiary text color to arrow icon', () => {
+      const { container } = render(<SortDropdown />)
+
+      const arrow = container.querySelector('.text-text-tertiary')
+      expect(arrow).toBeInTheDocument()
+    })
+
+    it('should apply accent text color to check icon when option selected', () => {
+      mockSort = { sortBy: 'install_count', sortOrder: 'DESC' }
+      const { container } = render(<SortDropdown />)
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      const checkIcon = container.querySelector('.text-text-accent')
+      expect(checkIcon).toBeInTheDocument()
+    })
+
+    it('should apply blur-sm backdrop to dropdown container', () => {
+      render(<SortDropdown />)
+
+      fireEvent.click(screen.getByTestId('portal-trigger'))
+
+      const content = screen.getByTestId('portal-content')
+      const container = content.querySelector('.backdrop-blur-xs')
+      expect(container).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // All Sort Options Click Tests
+  // ================================
+  describe('All Sort Options Click Handlers', () => {
+    const testCases = [
+      { text: 'Most Popular', sortBy: 'install_count', sortOrder: 'DESC' },
+      { text: 'Recently Updated', sortBy: 'version_updated_at', sortOrder: 'DESC' },
+      { text: 'Newly Released', sortBy: 'created_at', sortOrder: 'DESC' },
+      { text: 'First Released', sortBy: 'created_at', sortOrder: 'ASC' },
+    ]
+
+    it.each(testCases)(
+      'should call handleSortChange with { sortBy: "$sortBy", sortOrder: "$sortOrder" } when clicking "$text"',
+      ({ text, sortBy, sortOrder }) => {
+        render(<SortDropdown />)
+
+        fireEvent.click(screen.getByTestId('portal-trigger'))
+
+        const content = screen.getByTestId('portal-content')
+        fireEvent.click(within(content).getByText(text))
+
+        expect(mockHandleSortChange).toHaveBeenCalledWith({ sortBy, sortOrder })
+      },
+    )
+  })
 })

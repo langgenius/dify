@@ -132,7 +132,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {(status === 'running' || status === 'paused') && (
-              <div className="h-2 w-16 animate-pulse rounded-sm bg-text-quaternary" />
+              <div className="h-2 w-16 animate-pulse rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && status !== 'paused' && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
@@ -143,7 +143,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {(status === 'running' || status === 'paused') && (
-              <div className="h-2 w-20 animate-pulse rounded-sm bg-text-quaternary" />
+              <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && status !== 'paused' && (
               <span>{`${tokens || 0} Tokens`}</span>
@@ -206,7 +206,7 @@ const StatusPanel: FC<ResultProps> = ({
                       <div className="system-xs-medium truncate text-text-secondary" key={reason}>{reason}</div>
                     ))
                   : (
-                      <div className="h-2 w-20 animate-pulse rounded-sm bg-text-quaternary" />
+                      <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
                     )
               }
             </div>

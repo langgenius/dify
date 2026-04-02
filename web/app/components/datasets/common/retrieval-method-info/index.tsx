@@ -35,7 +35,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         title={t(`retrieval.${type}.title`, { ns: 'dataset' })}
         description={t(`retrieval.${type}.description`, { ns: 'dataset' })}
         noRadio
-        chosenConfigWrapClassName="!pb-3"
+        chosenConfigWrapClassName="pb-3!"
         chosenConfig={(
           <div className="flex flex-wrap text-xs font-normal leading-[18px]">
             {value.reranking_model.reranking_model_name && (

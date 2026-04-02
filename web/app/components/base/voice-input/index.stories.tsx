@@ -59,7 +59,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
             className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
             onClick={handleStop}
           >
-            <div className="h-5 w-5 rounded bg-primary-600" />
+            <div className="h-5 w-5 rounded-sm bg-primary-600" />
           </div>
         )}
 

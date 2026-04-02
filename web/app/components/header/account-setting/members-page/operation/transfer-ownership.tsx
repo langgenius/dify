@@ -48,7 +48,7 @@ const TransferOwnership = ({ onOperate }: Props) => {
               leaveTo="transform opacity-0 scale-95"
             >
               <MenuItems
-                className={cn('absolute right-0 top-[52px] z-10 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm')}
+                className={cn('absolute right-0 top-[52px] z-10 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs')}
               >
                 <div className="p-1">
                   <MenuItem>

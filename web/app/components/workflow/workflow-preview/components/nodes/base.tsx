@@ -39,7 +39,7 @@ const BaseCard = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px] border-transparent',
+        'flex rounded-2xl border-2 border-transparent',
       )}
       style={{
         width: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.width : 'auto',
@@ -64,7 +64,7 @@ const BaseCard = ({
           <NodeTargetHandle
             id={id}
             data={data}
-            handleClassName="!top-4 !-left-[9px] !translate-y-0"
+            handleClassName="top-4! -left-[9px]! translate-y-0!"
             handleId="target"
           />
           {
@@ -72,7 +72,7 @@ const BaseCard = ({
               <NodeSourceHandle
                 id={id}
                 data={data}
-                handleClassName="!top-4 !-right-[9px] !translate-y-0"
+                handleClassName="top-4! -right-[9px]! translate-y-0!"
                 handleId="source"
               />
             )
@@ -100,7 +100,7 @@ const BaseCard = ({
                   </div>
                 )}
                 >
-                  <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning ">
+                  <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] text-text-warning ">
                     {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
                   </div>
                 </Tooltip>
@@ -130,7 +130,7 @@ const BaseCard = ({
         }
         {
           data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
+            <div className="system-xs-regular whitespace-pre-line wrap-break-word px-3 pb-2 pt-1 text-text-tertiary">
               {data.desc}
             </div>
           )

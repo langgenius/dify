@@ -30,7 +30,7 @@ export const NodeTargetHandle = memo(({
         type="target"
         position={Position.Left}
         className={cn(
-          'z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
+          'z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
           'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           !connected && 'after:opacity-0',
@@ -60,7 +60,7 @@ export const NodeSourceHandle = memo(({
       type="source"
       position={Position.Right}
       className={cn(
-        'group/handle z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
+        'group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
         'after:absolute after:right-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
         'transition-all hover:scale-125',
         !connected && 'after:opacity-0',

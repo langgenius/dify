@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .popup {
   left: 4px;
   transform: translateX(-100%);

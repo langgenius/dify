@@ -229,7 +229,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     <Modal
       isShow
       onClose={noop}
-      className="!mt-14 !w-[600px] !max-w-none !p-6"
+      className="mt-14! w-[600px]! max-w-none! p-6!"
     >
       <div className="flex items-center justify-between">
         <div className="text-text-primary title-2xl-semi-bold">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
@@ -305,7 +305,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <textarea
                 value={localeData.config?.keywords || ''}
                 onChange={handleDataKeywordsChange}
-                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-none"
+                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
                 placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
               />
               <div className="absolute bottom-2 right-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">

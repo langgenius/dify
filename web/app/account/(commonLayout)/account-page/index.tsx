@@ -217,7 +217,7 @@ export default function AccountPage() {
       {
         editNameModalVisible && (
           <Dialog open={editNameModalVisible} onOpenChange={open => !open && setEditNameModalVisible(false)}>
-            <DialogContent className="!w-[420px] !p-6">
+            <DialogContent className="w-[420px]! p-6!">
               <div className="mb-6 text-text-primary title-2xl-semi-bold">{t('account.editName', { ns: 'common' })}</div>
               <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
               <Input
@@ -242,7 +242,7 @@ export default function AccountPage() {
       {
         editPasswordModalVisible && (
           <Dialog open={editPasswordModalVisible} onOpenChange={open => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}>
-            <DialogContent className="!w-[420px] !p-6">
+            <DialogContent className="w-[420px]! p-6!">
               <div className="mb-6 text-text-primary title-2xl-semi-bold">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
               {userProfile.is_password_set && (
                 <>

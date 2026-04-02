@@ -134,8 +134,8 @@ const ToolPicker: FC<Props> = ({
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
+      <PortalToFollowElemContent className="z-1000">
+        <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-xs')}>
           <div className="p-2 pb-1">
             <SearchBox
               search={query}

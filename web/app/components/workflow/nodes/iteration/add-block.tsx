@@ -50,7 +50,7 @@ const AddBlock = ({
     return (
       <div className={cn(
         'system-sm-medium relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
-        `${nodesReadOnly && '!cursor-not-allowed bg-components-button-secondary-bg-disabled'}`,
+        `${nodesReadOnly && 'cursor-not-allowed! bg-components-button-secondary-bg-disabled'}`,
         open && 'bg-components-button-secondary-bg-hover',
       )}
       >
@@ -70,7 +70,7 @@ const AddBlock = ({
         onSelect={handleSelect}
         trigger={renderTriggerElement}
         triggerInnerClassName="inline-flex"
-        popupClassName="!min-w-[256px]"
+        popupClassName="min-w-[256px]!"
         availableBlocksTypes={availableNextBlocks}
       />
     </div>

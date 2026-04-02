@@ -92,11 +92,11 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
     >
       {isEmbedding && (
         <div
-          className="absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+          className="absolute left-0 top-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
           style={{ width: `${percent}%` }}
         />
       )}
-      <div className="z-[1] flex h-full items-center gap-1 pl-[6px] pr-2">
+      <div className="z-1 flex h-full items-center gap-1 pl-[6px] pr-2">
         <SourceTypeIcon
           sourceType={sourceType}
           name={name}

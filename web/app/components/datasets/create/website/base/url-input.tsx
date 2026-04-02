@@ -41,7 +41,7 @@ const UrlInput: FC<Props> = ({
         variant="primary"
         onClick={handleOnRun}
         loading={isRunning}
-        spinnerClassName="!ml-0"
+        spinnerClassName="ml-0!"
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>

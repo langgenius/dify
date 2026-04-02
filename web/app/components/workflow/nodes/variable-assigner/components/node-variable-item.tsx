@@ -94,7 +94,7 @@ const NodeVariableItem = ({
   return (
     <div className={cn(
       'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
-      showBorder && '!bg-state-base-hover',
+      showBorder && 'bg-state-base-hover!',
       className,
     )}
     >
@@ -102,14 +102,14 @@ const NodeVariableItem = ({
         {
           node && (
             <>
-              <div className="shrink-0 p-[1px]">
+              <div className="shrink-0 p-px">
                 <VarBlockIcon
-                  className="!text-text-primary"
+                  className="text-text-primary!"
                   type={node.data.type}
                 />
               </div>
               <div
-                className="mx-0.5 shrink-[1000] truncate text-xs font-medium text-text-secondary"
+                className="mx-0.5 shrink-1000 truncate text-xs font-medium text-text-secondary"
                 title={node?.data.title}
               >
                 {node?.data.title}

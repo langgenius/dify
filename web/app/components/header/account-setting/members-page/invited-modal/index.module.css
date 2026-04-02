@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .modal {
   padding: 32px !important;
   width: 480px !important;

@@ -61,7 +61,7 @@ const UpdateDSLModal = ({
               <Button
                 size="small"
                 variant="secondary"
-                className="z-[1000]"
+                className="z-1000"
                 onClick={onBackup}
               >
                 <RiFileDownloadLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
@@ -80,7 +80,7 @@ const UpdateDSLModal = ({
             <Uploader
               file={currentFile}
               updateFile={handleFile}
-              className="!mt-0 w-full"
+              className="mt-0! w-full"
               accept=".pipeline"
               displayName="PIPELINE"
             />

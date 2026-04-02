@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .copyIcon {
   background-image: url(~@/app/components/develop/secret-key/assets/copy.svg);
   background-position: center;

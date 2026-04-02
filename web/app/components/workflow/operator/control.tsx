@@ -55,7 +55,7 @@ const Control = () => {
       <TipPopup title={t('nodes.note.addNote', { ns: 'workflow' })}>
         <div
           className={cn(
-            'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
+            'ml-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={addNote}
@@ -67,7 +67,7 @@ const Control = () => {
       <TipPopup title={t('common.pointerMode', { ns: 'workflow' })} shortcuts={['v']}>
         <div
           className={cn(
-            'mr-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
+            'mr-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Pointer ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}

@@ -94,7 +94,7 @@ const InstallPluginDropdown = ({
             <RiArrowDownSLine className="ml-1 h-4 w-4" />
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
+        <PortalToFollowElemContent className="z-1002">
           <div className="shadows-shadow-lg flex w-[200px] flex-col items-start rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 pb-2">
             <span className="system-xs-medium-uppercase flex items-start self-stretch pb-0.5 pl-2 pr-3 pt-1 text-text-tertiary">
               {t('installFrom', { ns: 'plugin' })}
@@ -110,7 +110,7 @@ const InstallPluginDropdown = ({
               {installMethods.map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}
-                  className="flex w-full !cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
+                  className="flex w-full cursor-pointer! items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
                   onClick={() => {
                     if (action === 'local') {
                       fileInputRef.current?.click()

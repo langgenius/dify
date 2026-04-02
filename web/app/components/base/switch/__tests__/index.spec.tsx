@@ -58,7 +58,7 @@ describe('Switch', () => {
     render(<Switch value={false} disabled onChange={onChange} />)
 
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('data-[disabled]:cursor-not-allowed')
+    expect(switchElement).toHaveClass('data-disabled:cursor-not-allowed')
     expect(switchElement).toHaveAttribute('data-disabled', '')
 
     await user.click(switchElement)
@@ -68,7 +68,7 @@ describe('Switch', () => {
   it('should apply correct size classes', () => {
     const { rerender } = render(<Switch value={false} size="xs" />)
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'rounded-[2px]')
+    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'radius-2xs')
 
     rerender(<Switch value={false} size="sm" />)
     expect(switchElement).toHaveClass('h-3', 'w-5')
@@ -90,8 +90,8 @@ describe('Switch', () => {
     const switchElement = screen.getByRole('switch')
     const thumb = getThumb(switchElement)
 
-    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked', 'data-[checked]:bg-components-toggle-bg')
-    expect(thumb).toHaveClass('data-[checked]:translate-x-[14px]')
+    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked', 'data-checked:bg-components-toggle-bg')
+    expect(thumb).toHaveClass('data-checked:translate-x-[14px]')
     expect(thumb).not.toHaveAttribute('data-checked')
 
     rerender(<Switch value={true} />)
@@ -104,8 +104,8 @@ describe('Switch', () => {
     const switchElement = screen.getByRole('switch')
 
     expect(switchElement).toHaveClass(
-      'data-[disabled]:bg-components-toggle-bg-unchecked-disabled',
-      'data-[disabled]:data-[checked]:bg-components-toggle-bg-disabled',
+      'data-disabled:bg-components-toggle-bg-unchecked-disabled',
+      'data-disabled:data-checked:bg-components-toggle-bg-disabled',
     )
     expect(switchElement).toHaveAttribute('data-disabled', '')
 
@@ -114,7 +114,7 @@ describe('Switch', () => {
     expect(switchElement).toHaveAttribute('data-checked', '')
   })
 
-  it('should have focus-visible ring styles', () => {
+  it('should have focus-visible ring-3 styles', () => {
     render(<Switch value={false} />)
     const switchElement = screen.getByRole('switch')
     expect(switchElement).toHaveClass('focus-visible:ring-2')
@@ -133,7 +133,7 @@ describe('Switch', () => {
       render(<Switch value={false} loading onChange={onChange} />)
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('data-[disabled]:cursor-not-allowed')
+      expect(switchElement).toHaveClass('data-disabled:cursor-not-allowed')
       expect(switchElement).toHaveAttribute('aria-busy', 'true')
       expect(switchElement).toHaveAttribute('data-disabled', '')
 
@@ -186,10 +186,10 @@ describe('SwitchSkeleton', () => {
   it('should apply correct skeleton size classes', () => {
     const { rerender } = render(<SwitchSkeleton size="xs" data-testid="s" />)
     const el = screen.getByTestId('s')
-    expect(el).toHaveClass('h-2.5', 'w-3.5', 'rounded-[2px]')
+    expect(el).toHaveClass('h-2.5', 'w-3.5', 'radius-2xs')
 
     rerender(<SwitchSkeleton size="lg" data-testid="s" />)
-    expect(el).toHaveClass('h-5', 'w-9', 'rounded-[6px]')
+    expect(el).toHaveClass('h-5', 'w-9', 'radius-sm')
   })
 
   it('should apply custom className to skeleton', () => {

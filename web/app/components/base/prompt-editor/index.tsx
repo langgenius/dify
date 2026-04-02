@@ -156,7 +156,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig: InitialConfigType = {
     theme: {
-      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:!line-clamp-none',
+      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:line-clamp-none!',
     },
     namespace: 'prompt-editor',
     nodes: [
@@ -218,7 +218,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           contentEditable={(
             <ContentEditable
               className={cn(
-                'group/editable text-text-secondary outline-none group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
+                'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
                 compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
                 className,
               )}

@@ -24,7 +24,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
     <Button
       className={cn(
         'rounded-lg border border-transparent p-2',
-        theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
+        theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
       )}
       disabled={disabled}
       onClick={handleClick}

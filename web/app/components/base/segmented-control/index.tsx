@@ -137,7 +137,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
               </div>
             )}
             {!isLast && !isSelected && !isNextSelected && (
-              <div data-testid={`segmented-control-divider-${index}`} className="absolute right-[-1px] top-0 flex h-full items-center">
+              <div data-testid={`segmented-control-divider-${index}`} className="absolute -right-px top-0 flex h-full items-center">
                 <Divider type="vertical" className="mx-0 h-3.5" />
               </div>
             )}

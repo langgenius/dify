@@ -63,7 +63,7 @@ const FileFromLinkOrLocal = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} asChild>
         {trigger(open)}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1001]">
+      <PortalToFollowElemContent className="z-1001">
         <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
           {
             showFromLink && (
@@ -74,7 +74,7 @@ const FileFromLinkOrLocal = ({
                 )}
                 >
                   <input
-                    className="mr-0.5 block grow appearance-none bg-transparent px-1 outline-none system-sm-regular"
+                    className="mr-0.5 block grow appearance-none bg-transparent px-1 outline-hidden system-sm-regular"
                     placeholder={fileLinkPlaceholderText}
                     value={url}
                     onChange={(e) => {
@@ -106,9 +106,9 @@ const FileFromLinkOrLocal = ({
           {
             showFromLink && showFromLocal && (
               <div className="flex h-7 items-center p-2 text-text-quaternary system-2xs-medium-uppercase">
-                <div className="mr-2 h-px w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]" />
+                <div className="mr-2 h-px w-[93px] bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
                 OR
-                <div className="ml-2 h-px w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]" />
+                <div className="ml-2 h-px w-[93px] bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
               </div>
             )
           }

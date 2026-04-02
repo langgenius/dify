@@ -73,7 +73,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     <Modal
       isShow={true}
       onClose={foldAnimInto}
-      wrapperClassName="z-[9999]"
+      wrapperClassName="z-9999"
       className={cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0')}
       closable
     >

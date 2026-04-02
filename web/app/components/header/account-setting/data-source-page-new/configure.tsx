@@ -84,7 +84,7 @@ const Configure = ({
             {t('dataSource.configure', { ns: 'common' })}
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
+        <PortalToFollowElemContent className="z-1002">
           <div className="w-[240px] space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
             {
               !!canOAuth && (
@@ -105,9 +105,9 @@ const Configure = ({
             {
               !!canApiKey && !!canOAuth && (
                 <div className="flex h-4 items-center p-2 text-text-quaternary system-2xs-medium-uppercase">
-                  <div className="mr-2 h-[1px] grow bg-gradient-to-l from-[rgba(16,24,40,0.08)]" />
+                  <div className="mr-2 h-px grow bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
                   OR
-                  <div className="ml-2 h-[1px] grow bg-gradient-to-r from-[rgba(16,24,40,0.08)]" />
+                  <div className="ml-2 h-px grow bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
                 </div>
               )
             }

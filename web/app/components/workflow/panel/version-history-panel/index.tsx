@@ -266,7 +266,7 @@ export const VersionHistoryPanel = ({
                   ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
                   : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
               </div>
-              <div className="system-xs-medium-uppercase py-[1px] text-text-accent">
+              <div className="system-xs-medium-uppercase py-px text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}
               </div>
             </div>

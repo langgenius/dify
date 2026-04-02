@@ -96,7 +96,7 @@ const Options = ({
           disabled={runDisabled || isRunning}
           loading={isRunning}
           className="shrink-0 gap-x-0.5"
-          spinnerClassName="!ml-0"
+          spinnerClassName="ml-0!"
         >
           <RiPlayLargeLine className="size-4" />
           <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.running`, { ns: 'datasetCreation' })}</span>

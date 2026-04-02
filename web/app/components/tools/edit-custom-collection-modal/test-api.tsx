@@ -67,10 +67,10 @@ const TestApi: FC<Props> = ({
         positionCenter={positionCenter}
         onHide={onHide}
         title={`${t('test.title', { ns: 'tools' })}  ${toolName}`}
-        panelClassName="mt-2 !w-[600px]"
-        maxWidthClassName="!max-w-[600px]"
+        panelClassName="mt-2 w-[600px]!"
+        maxWidthClassName="max-w-[600px]!"
         height="calc(100vh - 16px)"
-        headerClassName="!border-b-divider-regular"
+        headerClassName="border-b-divider-regular!"
         body={(
           <div className="overflow-y-auto px-6 pt-2">
             <div className="space-y-4">
@@ -103,7 +103,7 @@ const TestApi: FC<Props> = ({
                               value={parametersValue[item.name] || ''}
                               onChange={e => setParametersValue({ ...parametersValue, [item.name]: e.target.value })}
                               type="text"
-                              className="!hover:border-transparent !hover:bg-transparent !focus:border-transparent !focus:bg-transparent !border-transparent !bg-transparent"
+                              className="!hover:border-transparent !hover:bg-transparent !focus:border-transparent !focus:bg-transparent border-transparent! bg-transparent!"
                             />
                           </td>
                         </tr>

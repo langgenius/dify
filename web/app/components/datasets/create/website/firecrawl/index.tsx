@@ -206,7 +206,7 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl">
+          <div className="relative left-[-16px] mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning
               && (<Crawling className="mt-2" crawledNum={crawlResult?.current || 0} totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0} />)}
             {showError && (<ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />)}

@@ -87,7 +87,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         ref={ref}
         style={styleCss}
         className={cn(
-          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
+          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
           inputVariants({ size }),
           showLeftIcon && 'pl-[26px]',
           showLeftIcon && size === 'large' && 'pl-7',
@@ -110,7 +110,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       />
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <div
-          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
+          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-px')}
           onClick={onClear}
           data-testid="input-clear"
         >
@@ -124,7 +124,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
           <CopyFeedbackNew
             content={String(value ?? '')}
-            className="!h-7 !w-7 hover:bg-transparent"
+            className="h-7! w-7! hover:bg-transparent"
           />
         </div>
       )}

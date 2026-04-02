@@ -62,7 +62,7 @@ const ButtonStyleDropdown: FC<Props> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-sm">
+        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-xs">
           <div className="system-md-medium text-text-primary">{t(`${i18nPrefix}.userActions.chooseStyle`, { ns: 'workflow' })}</div>
           <div className="mt-2 flex w-[324px] flex-wrap gap-1">
             <div

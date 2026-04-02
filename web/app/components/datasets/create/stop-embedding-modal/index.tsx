@@ -28,7 +28,7 @@ const StopEmbeddingModal = ({
     <Modal
       isShow={show}
       onClose={onHide}
-      className={cn(s.modal, '!max-w-[480px]', 'px-8')}
+      className={cn(s.modal, 'max-w-[480px]!', 'px-8')}
     >
       <div className={s.icon} />
       <span className={s.close} onClick={onHide} />

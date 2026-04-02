@@ -55,7 +55,7 @@ export const FieldTitle = memo(({
                 aria-hidden
                 className={cn(
                   'i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
-                  collapsedMerged && 'rotate-[270deg]',
+                  collapsedMerged && 'rotate-270',
                 )}
               />
             )

@@ -71,7 +71,7 @@ const Button = ({
       aria-busy={loading || undefined}
     >
       {children}
-      {loading && <Spinner loading={loading} className={cn('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
+      {loading && <Spinner loading={loading} className={cn('ml-1! h-3! w-3! border-2! text-white!', spinnerClassName)} />}
     </BaseButton>
   )
 }

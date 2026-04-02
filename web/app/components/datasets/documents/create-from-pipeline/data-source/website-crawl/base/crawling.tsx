@@ -31,14 +31,14 @@ const Item = React.memo(({
   return (
     <div className="flex gap-x-2 px-2 py-[5px]">
       <div className="py-0.5">
-        <Block className="size-4 rounded-[4px]" />
+        <Block className="size-4 radius-xs" />
       </div>
       <div className="flex grow flex-col">
         <div className="flex h-5 w-full items-center">
-          <Block className={cn('h-2.5 rounded-sm', firstLineWidth)} />
+          <Block className={cn('h-2.5 rounded-xs', firstLineWidth)} />
         </div>
         <div className="flex h-[18px] w-full items-center">
-          <Block className={cn('h-1.5 rounded-sm', secondLineWidth)} />
+          <Block className={cn('h-1.5 rounded-xs', secondLineWidth)} />
         </div>
       </div>
     </div>
@@ -74,8 +74,8 @@ const Crawling = ({
       </div>
       <div className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
         <div className="flex items-center gap-x-2 px-4 py-2">
-          <Block className="size-4 rounded-[4px]" />
-          <Block className="h-2.5 w-14 rounded-sm" />
+          <Block className="size-4 radius-xs" />
+          <Block className="h-2.5 w-14 rounded-xs" />
         </div>
         <div className="flex flex-col gap-px border-t border-divider-subtle bg-background-default-subtle p-2">
           {itemsConfig.map((item, index) => (

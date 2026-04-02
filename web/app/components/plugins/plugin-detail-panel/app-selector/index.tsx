@@ -158,8 +158,8 @@ const AppSelector: FC<Props> = ({
             appDetail={currentAppInfo}
           />
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1000]">
-          <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+        <PortalToFollowElemContent className="z-1000">
+          <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="flex flex-col gap-1 px-4 py-3">
               <div className="flex h-6 items-center text-text-secondary system-sm-semibold">{t('appSelector.label', { ns: 'app' })}</div>
               <AppPicker

@@ -151,7 +151,7 @@ const ImagePreviewer = ({
 
   return createPortal(
     <div
-      className="image-previewer fixed inset-0 z-[10000] flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]"
+      className="image-previewer fixed inset-0 z-10000 flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]"
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
@@ -159,7 +159,7 @@ const ImagePreviewer = ({
         <Button
           variant="tertiary"
           onClick={onClose}
-          className="size-9 rounded-[10px] p-0"
+          className="size-9 radius-lg p-0"
           size="large"
         >
           <RiCloseLine className="size-5" />

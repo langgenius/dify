@@ -397,7 +397,7 @@ describe('PermissionSelector', () => {
   describe('Disabled State', () => {
     it('should apply disabled styles when disabled', () => {
       const { container } = render(<PermissionSelector {...defaultProps} disabled={true} />)
-      // When disabled, the component has !cursor-not-allowed class (escaped in Tailwind)
+      // When disabled, the component has cursor-not-allowed! class (escaped in Tailwind)
       const triggerElement = container.querySelector('[class*="cursor-not-allowed"]')
       expect(triggerElement).toBeInTheDocument()
     })

@@ -40,7 +40,7 @@ const Field: FC<Props> = ({
           <div className="relative flex select-none">
             {hasChildren && (
               <RiArrowDropDownLine
-                className={cn('absolute left-[-18px] top-[50%] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary', fold && 'rotate-[270deg] text-text-accent')}
+                className={cn('absolute left-[-18px] top-[50%] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary', fold && 'rotate-270 text-text-accent')}
                 onClick={toggleFold}
               />
             )}

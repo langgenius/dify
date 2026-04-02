@@ -34,7 +34,7 @@ const BasicContent: FC<BasicContentProps> = ({
   return (
     <Markdown
       className={cn(
-        item.isError && '!text-[#F04438]',
+        item.isError && 'text-[#F04438]!',
       )}
       content={displayContent}
       data-testid="basic-content-markdown"

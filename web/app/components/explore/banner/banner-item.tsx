@@ -191,7 +191,7 @@ export const BannerItem: FC<BannerItemProps> = ({
                   />
                 ))}
               </div>
-              <div className="hidden h-[1px] flex-1 bg-divider-regular min-[1380px]:block" />
+              <div className="hidden h-px flex-1 bg-divider-regular min-[1380px]:block" />
             </div>
           </div>
         </div>
@@ -202,7 +202,7 @@ export const BannerItem: FC<BannerItemProps> = ({
         <img
           src={imgSrc}
           alt={title}
-          className="aspect-[4/3] h-full max-w-[296px] rounded-xl"
+          className="aspect-4/3 h-full max-w-[296px] rounded-xl"
         />
       </div>
     </div>

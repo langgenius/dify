@@ -20,7 +20,7 @@ const SummaryText = ({
       <div className="system-xs-medium-uppercase text-text-tertiary">{t('segment.summary', { ns: 'datasetDocuments' })}</div>
       <Textarea
         className={cn(
-          'body-sm-regular w-full resize-none bg-transparent leading-6 text-text-secondary outline-none',
+          'body-sm-regular w-full resize-none bg-transparent leading-6 text-text-secondary outline-hidden',
         )}
         placeholder={t('segment.summaryPlaceholder', { ns: 'datasetDocuments' })}
         minRows={1}

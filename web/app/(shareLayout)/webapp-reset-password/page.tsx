@@ -84,7 +84,7 @@ export default function CheckCode() {
         </div>
       </form>
       <div className="py-2">
-        <div className="h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+        <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
       <Link href={`/webapp-signin?${searchParams.toString()}`} className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary">
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">

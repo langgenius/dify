@@ -93,7 +93,7 @@ describe('ContextBlockComponent', () => {
       const { container } = render(
         <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
       )
-      expect(container.firstChild).toHaveClass('!border-[#9B8AFB]')
+      expect(container.firstChild).toHaveClass('border-[#9B8AFB]!')
     })
 
     it('should not apply selected border class when isSelected is false', () => {
@@ -101,7 +101,7 @@ describe('ContextBlockComponent', () => {
       const { container } = render(
         <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
       )
-      expect(container.firstChild).not.toHaveClass('!border-[#9B8AFB]')
+      expect(container.firstChild).not.toHaveClass('border-[#9B8AFB]!')
     })
 
     it('should apply open background class when dropdown is open', () => {

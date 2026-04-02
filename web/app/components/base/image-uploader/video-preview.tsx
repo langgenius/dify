@@ -12,7 +12,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
   onCancel,
 }) => {
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8" onClick={e => e.stopPropagation()} data-testid="video-preview">
+    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8" onClick={e => e.stopPropagation()} data-testid="video-preview">
       <div>
         <video controls title={title} autoPlay={false} preload="metadata" data-testid="video-element">
           <source

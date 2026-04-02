@@ -113,7 +113,7 @@ function Confirm({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10000000] flex items-center justify-center bg-background-overlay"
+      className="fixed inset-0 z-10000000 flex items-center justify-center bg-background-overlay"
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -126,7 +126,7 @@ function Confirm({
             <Tooltip
               popupContent={title}
               disabled={!isTitleTruncated}
-              portalContentClassName="!z-[10000001]"
+              portalContentClassName="z-10000001!"
               asChild={false}
               triggerClassName="w-full"
             >
@@ -134,7 +134,7 @@ function Confirm({
                 {title}
               </div>
             </Tooltip>
-            <div className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">{content}</div>
+            <div className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">{content}</div>
             {confirmInputLabel && (
               <div className="mt-2">
                 <label className="mb-1 block text-text-secondary system-sm-regular">
@@ -142,7 +142,7 @@ function Confirm({
                 </label>
                 <input
                   type="text"
-                  className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-none focus:ring-1"
+                  className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-hidden focus:ring-1"
                   placeholder={confirmInputPlaceholder}
                   value={confirmInputValue}
                   onChange={e => onConfirmInputChange?.(e.target.value)}

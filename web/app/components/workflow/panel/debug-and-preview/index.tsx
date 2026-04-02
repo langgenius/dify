@@ -87,7 +87,7 @@ const DebugAndPreview = () => {
         ref={triggerRef}
         className="absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
       >
-        <div className="h-10 w-0.5 rounded-sm bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
+        <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
       <div
         ref={containerRef}
@@ -118,7 +118,7 @@ const DebugAndPreview = () => {
                 {expanded && <div className="absolute bottom-[-17px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
               </div>
             )}
-            <div className="mx-3 h-3.5 w-[1px] bg-divider-regular"></div>
+            <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <div
               className="flex h-6 w-6 cursor-pointer items-center justify-center"
               onClick={handleCancelDebugAndPreviewPanel}

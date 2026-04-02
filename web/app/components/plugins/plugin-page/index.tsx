@@ -162,7 +162,36 @@ const PluginPage = ({
             {!isPluginsTab && <SearchBoxWrapper />}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {isExploringMarketplace && <SubmitRequestDropdown />}
+            {
+              isExploringMarketplace && (
+                <>
+                  <Link
+                    href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                    target="_blank"
+                  >
+                    <Button
+                      variant="ghost"
+                      className="text-text-tertiary"
+                    >
+                      {t('requestAPlugin', { ns: 'plugin' })}
+                    </Button>
+                  </Link>
+                  <Link
+                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
+                    target="_blank"
+                  >
+                    <Button
+                      className="px-3"
+                      variant="secondary-accent"
+                    >
+                      <RiBookOpenLine className="mr-1 h-4 w-4" />
+                      {t('publishPlugins', { ns: 'plugin' })}
+                    </Button>
+                  </Link>
+                  <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
+                </>
+              )
+            }
             <PluginTasks />
             {canManagement && (
               <InstallPluginDropdown

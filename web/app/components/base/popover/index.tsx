@@ -67,7 +67,7 @@ export default function CustomPopover({
                 ref={buttonRef}
                 disabled={disabled}
                 className={cn(
-                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-none',
+                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-hidden',
                   open && 'border-components-button-secondary-border bg-components-button-secondary-bg-hover',
                   (btnClassName && typeof btnClassName === 'string') && btnClassName,
                   (btnClassName && typeof btnClassName !== 'string') && btnClassName?.(open),

@@ -61,7 +61,7 @@ const PanelOperator = ({
           <RiMoreFill className="h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <PanelOperatorPopup
           id={id}
           data={data}

@@ -70,7 +70,7 @@ const WrappedDatePicker = ({
       onClear={handleDateChange}
       renderTrigger={renderTrigger}
       triggerWrapClassName="w-full"
-      popupZIndexClassname="z-[1000]"
+      popupZIndexClassname="z-1000"
     />
   )
 }

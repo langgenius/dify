@@ -104,7 +104,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     }
   }
   return (
-    <Modal isShow={show} onClose={noop} wrapperClassName="z-[1002]" className="!w-[420px] !p-6">
+    <Modal isShow={show} onClose={noop} wrapperClassName="z-1002" className="w-[420px]! p-6!">
       <div data-testid="transfer-modal-close" className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
         <div className="i-ri-close-line h-5 w-5 text-text-tertiary" />
       </div>
@@ -120,10 +120,10 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           </div>
           <div className="pt-3"></div>
           <div className="space-y-2">
-            <Button data-testid="transfer-modal-send-code" className="!w-full" variant="primary" onClick={sendCodeToOriginEmail}>
+            <Button data-testid="transfer-modal-send-code" className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
               {t('members.transferModal.sendVerifyCode', { ns: 'common' })}
             </Button>
-            <Button data-testid="transfer-modal-cancel" className="!w-full" onClick={onClose}>
+            <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
@@ -140,13 +140,13 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           </div>
           <div className="pt-3">
             <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('members.transferModal.codeLabel', { ns: 'common' })}</div>
-            <Input data-testid="transfer-modal-code-input" className="!w-full" placeholder={t('members.transferModal.codePlaceholder', { ns: 'common' })} value={code} onChange={e => setCode(e.target.value)} maxLength={6} />
+            <Input data-testid="transfer-modal-code-input" className="w-full!" placeholder={t('members.transferModal.codePlaceholder', { ns: 'common' })} value={code} onChange={e => setCode(e.target.value)} maxLength={6} />
           </div>
           <div className="mt-3 space-y-2">
-            <Button data-testid="transfer-modal-continue" disabled={code.length !== 6} className="!w-full" variant="primary" onClick={handleVerifyOriginEmail}>
+            <Button data-testid="transfer-modal-continue" disabled={code.length !== 6} className="w-full!" variant="primary" onClick={handleVerifyOriginEmail}>
               {t('members.transferModal.continue', { ns: 'common' })}
             </Button>
-            <Button data-testid="transfer-modal-cancel" className="!w-full" onClick={onClose}>
+            <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
@@ -173,10 +173,10 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <MemberSelector exclude={[userProfile.id]} value={newOwner} onSelect={setNewOwner} />
           </div>
           <div className="mt-4 space-y-2">
-            <Button data-testid="transfer-modal-submit" disabled={!newOwner || isTransfer} className="!w-full" variant="warning" onClick={handleTransfer}>
+            <Button data-testid="transfer-modal-submit" disabled={!newOwner || isTransfer} className="w-full!" variant="warning" onClick={handleTransfer}>
               {t('members.transferModal.transfer', { ns: 'common' })}
             </Button>
-            <Button data-testid="transfer-modal-cancel" className="!w-full" onClick={onClose}>
+            <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>

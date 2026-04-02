@@ -196,7 +196,7 @@ const ViewAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName="!max-w-[800px]"
+        maxWidthClassName="max-w-[800px]!"
         title={(
           <TabSlider
             className="relative top-[9px] shrink-0"
@@ -204,7 +204,7 @@ const ViewAnnotationModal: FC<Props> = ({
             onChange={v => setActiveTab(v as TabType)}
             options={tabs}
             noBorderBottom
-            itemClassName="!pb-3.5"
+            itemClassName="pb-3.5!"
           />
         )}
         body={(

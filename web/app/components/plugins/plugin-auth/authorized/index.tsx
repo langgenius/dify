@@ -206,7 +206,7 @@ const Authorized = ({
                 )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[100]">
+        <PortalToFollowElemContent className="z-100">
           <div className={cn(
             'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
@@ -300,7 +300,7 @@ const Authorized = ({
             {
               !notAllowCustomCredential && (
                 <>
-                  <div className="h-[1px] bg-divider-subtle"></div>
+                  <div className="h-px bg-divider-subtle"></div>
                   <div className="p-2">
                     <Authorize
                       pluginPayload={pluginPayload}

@@ -373,7 +373,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {enableBilling && isFreePlan && (
                       <div className="h-[18px] select-none">
                         <PremiumBadge size="s" color="blue" allowHover={true} onClick={handlePlanClick}>
-                          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
                           <div className="system-xs-medium">
                             <span className="p-1">
                               {t('upgradeBtn.encourageShort', { ns: 'billing' })}

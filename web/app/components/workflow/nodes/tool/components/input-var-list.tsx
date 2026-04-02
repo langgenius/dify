@@ -197,7 +197,7 @@ const InputVarList: FC<Props> = ({
                   availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
                   placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
-                  placeholderClassName="!leading-[21px]"
+                  placeholderClassName="leading-[21px]!"
                 />
               )}
               {(isNumber || isSelect) && (
@@ -239,7 +239,7 @@ const InputVarList: FC<Props> = ({
               )}
               {isModelSelector && (
                 <ModelParameterModal
-                  popupClassName="!w-[387px]"
+                  popupClassName="w-[387px]!"
                   isAdvancedMode
                   isInWorkflow
                   value={varInput as any}

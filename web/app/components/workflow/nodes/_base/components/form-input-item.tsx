@@ -390,7 +390,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isModelSelector && isConstant && (
         <ModelParameterModal
-          popupClassName="!w-[387px]"
+          popupClassName="w-[387px]!"
           isAdvancedMode
           isInWorkflow
           value={varInput?.value}

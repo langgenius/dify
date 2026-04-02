@@ -20,7 +20,7 @@ const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
     <div
       className={cn(
         'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 hover:border-[#7839ee]',
-        isSelected && '!border-[#7839ee] hover:!border-[#7839ee]',
+        isSelected && 'border-[#7839ee]! hover:border-[#7839ee]!',
       )}
       ref={ref}
     >

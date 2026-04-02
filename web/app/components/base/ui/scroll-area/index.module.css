@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .scrollbar::before,
 .scrollbar::after {
   content: '';

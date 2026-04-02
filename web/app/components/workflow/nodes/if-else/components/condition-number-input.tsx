@@ -76,10 +76,10 @@ const ConditionNumberInput = ({
             size="small"
           >
             {capitalize(numberVarType)}
-            <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
+            <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1000]">
+        <PortalToFollowElemContent className="z-1000">
           <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
             {
               options.map(option => (
@@ -102,7 +102,7 @@ const ConditionNumberInput = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      <div className="mx-1 h-4 w-[1px] bg-divider-regular"></div>
+      <div className="mx-1 h-4 w-px bg-divider-regular"></div>
       <div className="ml-0.5 w-0 grow">
         {
           numberVarType === NumberVarType.variable && (
@@ -134,7 +134,7 @@ const ConditionNumberInput = ({
                   )
                 }
               </PortalToFollowElemTrigger>
-              <PortalToFollowElemContent className="z-[1000]">
+              <PortalToFollowElemContent className="z-1000">
                 <div className={cn('w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
@@ -149,7 +149,7 @@ const ConditionNumberInput = ({
           numberVarType === NumberVarType.constant && (
             <div className=" relative">
               <input
-                className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
+                className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
                 type="number"
                 value={value}
                 onChange={e => onValueChange(e.target.value)}

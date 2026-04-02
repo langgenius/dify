@@ -26,7 +26,7 @@ const PreviewPanel = () => {
       className={cn(
         'mr-1 flex h-full flex-col overflow-y-auto rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
         'transition-all duration-300 ease-in-out',
-        floatingRight && 'absolute right-0 z-[100]',
+        floatingRight && 'absolute right-0 z-100',
       )}
       style={{
         width: `${floatingRightWidth}px`,

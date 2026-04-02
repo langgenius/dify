@@ -131,7 +131,7 @@ function renderDropdownMenuPopup({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-[1002] outline-none', className)}
+        className={cn('z-1002 outline-hidden', className)}
         {...positionerProps}
       >
         <Menu.Popup

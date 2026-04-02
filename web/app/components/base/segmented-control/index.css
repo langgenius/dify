@@ -1,81 +1,109 @@
-@tailwind components;
+@utility segmented-control {
+  @apply flex items-center bg-components-segmented-control-bg-normal gap-x-px;
+}
 
-@layer components {
-  .segmented-control {
-    @apply flex items-center bg-components-segmented-control-bg-normal gap-x-px
+@utility segmented-control-regular {
+  @apply rounded-lg;
+
+  &.padding {
+    @apply p-0.5;
+  }
+}
+
+@utility segmented-control-large {
+  @apply rounded-lg;
+
+  &.padding {
+    @apply p-0.5;
+  }
+}
+
+@utility padding {
+  &.segmented-control-large {
+    @apply p-0.5;
   }
 
-  .segmented-control-regular,
-  .segmented-control-large {
-    @apply rounded-lg
+  & .segmented-control-regular {
+    @apply p-0.5;
   }
 
-  .segmented-control-large.padding,
-  .segmented-control-regular.padding {
-    @apply p-0.5
+  &.segmented-control-small {
+    @apply p-px;
+  }
+}
+
+@utility segmented-control-small {
+  @apply rounded-md;
+
+  &.padding {
+    @apply p-px;
+  }
+}
+
+@utility no-padding {
+  @apply border-[0.5px] border-divider-subtle;
+}
+
+@utility segmented-control-item {
+  @apply flex items-center justify-center relative border-[0.5px] border-transparent;
+}
+
+@utility segmented-control-item-regular {
+  @apply px-2 h-7 gap-x-0.5 rounded-lg;
+}
+
+@utility segmented-control-item-small {
+  @apply p-px h-[22px] rounded-md;
+}
+
+@utility segmented-control-item-large {
+  @apply px-2.5 h-8 gap-x-0.5 rounded-lg;
+}
+
+@utility segmented-control-item-disabled {
+  @apply cursor-not-allowed text-text-disabled;
+}
+
+@utility default {
+  @apply hover:bg-state-base-hover text-text-tertiary hover:text-text-secondary;
+}
+
+@utility active {
+  @apply border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3 text-text-secondary;
+
+  &.accent {
+    @apply text-text-accent;
   }
 
-  .segmented-control-small {
-    @apply rounded-md
+  &.accent-light {
+    @apply text-text-accent-light-mode-only;
   }
+}
 
-  .segmented-control-small.padding {
-    @apply p-px
-  }
+@utility disabled {
+  @apply cursor-not-allowed text-text-disabled hover:text-text-disabled bg-transparent hover:bg-transparent;
+}
 
-  .no-padding {
-    @apply border-[0.5px] border-divider-subtle
+@utility accent {
+  &.active {
+    @apply text-text-accent;
   }
+}
 
-  .segmented-control-item {
-    @apply flex items-center justify-center relative border-[0.5px] border-transparent
+@utility accent-light {
+  &.active {
+    @apply text-text-accent-light-mode-only;
   }
+}
 
-  .segmented-control-item-regular {
-    @apply px-2 h-7 gap-x-0.5 rounded-lg
-  }
+@utility item-text-regular {
+  @apply p-0.5;
+}
 
-  .segmented-control-item-small {
-    @apply p-px h-[22px] rounded-md
-  }
+@utility item-text-small {
+  @apply p-0.5 pr-1;
+}
 
-  .segmented-control-item-large {
-    @apply px-2.5 h-8 gap-x-0.5 rounded-lg
-  }
-
-  .segmented-control-item-disabled {
-    @apply cursor-not-allowed text-text-disabled
-  }
-
-  .default {
-    @apply hover:bg-state-base-hover text-text-tertiary hover:text-text-secondary
-  }
-
-  .active {
-    @apply border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3 text-text-secondary
-  }
-
-  .disabled {
-    @apply cursor-not-allowed text-text-disabled hover:text-text-disabled bg-transparent hover:bg-transparent
-  }
-
-  .active.accent {
-    @apply text-text-accent
-  }
-
-  .active.accent-light {
-    @apply text-text-accent-light-mode-only
-  }
-
-  .item-text-regular {
-    @apply p-0.5
-  }
-
-  .item-text-small {
-    @apply p-0.5 pr-1
-  }
-
-  .item-text-large {
-    @apply px-0.5
-  }
+@utility item-text-large {
+  @apply px-0.5;
 }

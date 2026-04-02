@@ -82,7 +82,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         items={versions}
         installedValue={updatePayload?.originalPackageInfo.version}
         placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) || ''}
-        popupClassName="w-[512px] z-[1001]"
+        popupClassName="w-[512px] z-1001"
         triggerClassName="text-components-input-text-filled"
       />
       <label
@@ -97,7 +97,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         items={packages}
         readonly={!selectedVersion}
         placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) || ''}
-        popupClassName="w-[512px] z-[1001]"
+        popupClassName="w-[512px] z-1001"
         triggerClassName="text-components-input-text-filled"
       />
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">

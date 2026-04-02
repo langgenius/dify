@@ -96,7 +96,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         readonly={readOnly}
       />
       <div className="px-4 py-2">
-        <Divider className="!my-0 !h-px !bg-divider-subtle" />
+        <Divider className="my-0! h-px! bg-divider-subtle!" />
       </div>
       {/* form content */}
       <div
@@ -179,7 +179,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           )}
         </div>
         {!inputs.user_actions.length && (
-          <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
+          <div className="system-xs-regular flex items-center justify-center radius-lg bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">
@@ -196,7 +196,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         )}
       </div>
       <div className="px-4 py-2">
-        <Divider className="!my-0 !h-px !bg-divider-subtle" />
+        <Divider className="my-0! h-px! bg-divider-subtle!" />
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">

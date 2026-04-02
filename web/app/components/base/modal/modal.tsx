@@ -61,7 +61,7 @@ const Modal = ({
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent
-        className={cn('z-[9998] flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
+        className={cn('z-9998 flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
         onClick={clickOutsideNotClose ? noop : onClose}
       >
         <div
@@ -109,7 +109,7 @@ const Modal = ({
                     >
                       {extraButtonText || t('operation.remove', { ns: 'common' })}
                     </Button>
-                    <div className="mx-3 h-4 w-[1px] bg-divider-regular"></div>
+                    <div className="mx-3 h-4 w-px bg-divider-regular"></div>
                   </>
                 )
               }

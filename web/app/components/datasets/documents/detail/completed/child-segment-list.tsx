@@ -114,7 +114,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         className="child-chunk"
         labelClassName={isFocused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
         labelInnerClassName="text-[10px] font-semibold align-bottom leading-6"
-        contentClassName={cn('!leading-6', isFocused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
+        contentClassName={cn('leading-6!', isFocused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
         showDivider={false}
         onClick={(e) => {
           e.stopPropagation()
@@ -131,7 +131,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   const renderContent = () => {
     if (childChunks.length > 0) {
       return (
-        <FormattedText className={cn('flex w-full flex-col !leading-6', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+        <FormattedText className={cn('flex w-full flex-col leading-6!', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
           {childChunks.map(renderChildChunkItem)}
         </FormattedText>
       )
@@ -191,7 +191,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           <Input
             showLeftIcon
             showClearIcon
-            wrapperClassName="!w-52"
+            wrapperClassName="w-52!"
             value={inputValue}
             onChange={e => handleInputChange?.(e.target.value)}
             onClear={() => handleInputChange?.('')}

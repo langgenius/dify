@@ -45,7 +45,7 @@ const Marketplace = ({
           />
         )}
         <div className="pb-3 pt-4">
-          <div className="title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent">
+          <div className="title-2xl-semi-bold bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent">
             {t('marketplace.moreFrom', { ns: 'plugin' })}
           </div>
           <div className="body-md-regular flex items-center text-center text-text-tertiary">

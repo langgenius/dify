@@ -50,7 +50,7 @@ function CopyButton({ code }: { code: string }) {
   return (
     <button
       type="button"
-      className={cn('group/button absolute right-4 top-1.5 overflow-hidden rounded-full py-1 pl-2 pr-3 text-2xs font-medium opacity-0 backdrop-blur transition focus:opacity-100 group-hover:opacity-100', copied
+      className={cn('group/button absolute right-4 top-1.5 overflow-hidden rounded-full py-1 pl-2 pr-3 text-2xs font-medium opacity-0 backdrop-blur-sm transition focus:opacity-100 group-hover:opacity-100', copied
         ? 'bg-emerald-400/10 ring-1 ring-inset ring-emerald-400/20'
         : 'hover:bg-white/7.5 dark:bg-white/2.5 bg-white/5 dark:hover:bg-white/5')}
       onClick={() => {
@@ -150,7 +150,7 @@ function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderPro
   const hasTabs = (tabTitles?.length ?? 0) > 1
 
   return (
-    <div className="flex min-h-[calc(theme(spacing.12)+1px)] flex-wrap items-start gap-x-4 border-b border-zinc-700 bg-zinc-800 px-4 dark:border-zinc-800 dark:bg-transparent">
+    <div className="flex min-h-[calc(--spacing(12)+1px)] flex-wrap items-start gap-x-4 border-b border-zinc-700 bg-zinc-800 px-4 dark:border-zinc-800 dark:bg-transparent">
       {title && (
         <h3 className="mr-auto pt-3 text-xs font-semibold text-white">
           {title}
@@ -161,7 +161,7 @@ function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderPro
           {tabTitles!.map((tabTitle, tabIndex) => (
             <Tab
               key={tabIndex}
-              className={cn('border-b py-3 transition focus:[&:not(:focus-visible)]:outline-none', tabIndex === selectedIndex
+              className={cn('border-b py-3 transition focus:not-focus-visible:outline-hidden', tabIndex === selectedIndex
                 ? 'border-emerald-500 text-emerald-400'
                 : 'border-transparent text-zinc-400 hover:text-zinc-300')}
             >

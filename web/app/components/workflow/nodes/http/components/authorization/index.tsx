@@ -166,7 +166,7 @@ const Authorization: FC<Props> = ({
                     availableNodes={availableNodesWithParent}
                     onFocusChange={setIsFocus}
                     placeholder={' '}
-                    placeholderClassName="!leading-[21px]"
+                    placeholderClassName="leading-[21px]!"
                   />
                 </div>
               </Field>

@@ -280,7 +280,7 @@ const ChatWrapper = () => {
           imageUrl={appData?.site.icon_url}
         />
         <div className="max-w-[768px] px-4">
-          <Markdown className="!text-text-tertiary !body-2xl-regular" content={welcomeMessage.content} />
+          <Markdown className="text-text-tertiary! body-2xl-regular!" content={welcomeMessage.content} />
         </div>
       </div>
     )

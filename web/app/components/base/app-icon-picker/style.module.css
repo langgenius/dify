@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .container {
     display: flex;
     flex-direction: column;

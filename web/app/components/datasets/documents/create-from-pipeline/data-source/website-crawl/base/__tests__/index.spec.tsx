@@ -722,7 +722,7 @@ describe('ErrorMessage', () => {
       expect(container.firstChild).toHaveClass('border-components-panel-border')
     })
 
-    it('should have rounded corners', () => {
+    it('should have rounded-sm corners', () => {
       const { container } = render(<ErrorMessage {...defaultProps} />)
 
       expect(container.firstChild).toHaveClass('rounded-xl')

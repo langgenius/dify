@@ -32,7 +32,7 @@ const ImageUploader = () => {
       <div
         ref={dropRef}
         className={cn(
-          'relative flex h-16 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-tertiary',
+          'relative flex h-16 flex-col items-center justify-center gap-1 radius-lg border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-tertiary',
           dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >

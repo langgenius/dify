@@ -945,7 +945,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         )}
-        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
+        popupClassName={(isHighlight && !isChatMode) ? '' : 'hidden!'}
       >
         <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular')}>
           {value || '-'}
@@ -987,7 +987,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>
@@ -1035,7 +1035,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg"
+        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 p-0! max-w-[640px]! rounded-xl bg-components-panel-bg"
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

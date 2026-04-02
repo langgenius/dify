@@ -198,7 +198,7 @@ const ConfigContent: FC<Props> = ({
             <div className="mb-2 mr-2 shrink-0 text-text-secondary system-xs-semibold-uppercase">
               {t('rerankSettings', { ns: 'dataset' })}
             </div>
-            <Divider bgStyle="gradient" className="m-0 !h-px" />
+            <Divider bgStyle="gradient" className="m-0 h-px!" />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
@@ -369,7 +369,7 @@ const ConfigContent: FC<Props> = ({
           </div>
           <ModelParameterModal
             isInWorkflow={isInWorkflow}
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isAdvancedMode={true}
             provider={model?.provider}
             completionParams={model?.completion_params}

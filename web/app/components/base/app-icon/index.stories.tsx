@@ -8,7 +8,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Reusable avatar for applications and workflows. Supports emoji or uploaded imagery, rounded mode, edit overlays, and multiple sizes.',
+        component: 'Reusable avatar for applications and workflows. Supports emoji or uploaded imagery, rounded-sm mode, edit overlays, and multiple sizes.',
       },
     },
   },

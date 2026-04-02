@@ -82,7 +82,7 @@ const ProviderPanel: FC<Props> = ({
       <div className="flex items-center justify-between space-x-1">
         <div className="flex items-center">
           <Icon className="h-6" />
-          {isChosen && <div className="system-2xs-medium-uppercase ml-1 flex h-4 items-center rounded-[4px] border border-text-accent-secondary px-1 text-text-accent-secondary">{t(`${I18N_PREFIX}.inUse`, { ns: 'app' })}</div>}
+          {isChosen && <div className="system-2xs-medium-uppercase ml-1 flex h-4 items-center radius-xs border border-text-accent-secondary px-1 text-text-accent-secondary">{t(`${I18N_PREFIX}.inUse`, { ns: 'app' })}</div>}
         </div>
         {!readOnly && (
           <div className="flex items-center justify-between space-x-1">

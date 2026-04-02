@@ -256,7 +256,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             <div className="flex items-center justify-between pb-10 pt-5">
               <div className="flex cursor-pointer items-center gap-1 text-text-tertiary system-xs-regular" onClick={onCreateFromTemplate}>
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
-                <div className="p-[1px]">
+                <div className="p-px">
                   <RiArrowRightLine className="h-3.5 w-3.5" />
                 </div>
               </div>
@@ -322,7 +322,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
         cn(`relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl
       border-[0.5px] border-components-option-card-option-border
       bg-components-panel-on-panel-item-bg p-3 shadow-xs hover:shadow-md`, active
-          ? 'shadow-md outline outline-[1.5px] outline-components-option-card-option-selected-border'
+          ? 'shadow-md outline-solid outline-[1.5px] outline-components-option-card-option-selected-border'
           : '')
       }
       onClick={onClick}

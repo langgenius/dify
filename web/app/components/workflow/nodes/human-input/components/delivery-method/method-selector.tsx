@@ -88,7 +88,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
-        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-1">
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', webAppDeliveryInfo.disabled && 'cursor-not-allowed bg-transparent hover:bg-transparent')}
@@ -102,7 +102,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 })
               }}
             >
-              <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
+              <div className={cn('radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
                 <RiRobot2Fill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
@@ -137,7 +137,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             >
               <div
                 className={cn(
-                  'rounded-[4px] border border-divider-regular bg-components-icon-bg-blue-solid p-1',
+                  'radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-1',
                   emailDeliveryInfo.added && 'opacity-50',
                 )}
               >
@@ -155,7 +155,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', 'cursor-not-allowed bg-transparent hover:bg-transparent')}
             >
-              <div className={cn('rounded-[4px] border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
+              <div className={cn('radius-xs border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
                 <Slack className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
@@ -170,7 +170,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', 'cursor-not-allowed bg-transparent hover:bg-transparent')}
             >
-              <div className={cn('rounded-[4px] border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
+              <div className={cn('radius-xs border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
                 <Teams className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
@@ -185,7 +185,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', 'cursor-not-allowed bg-transparent hover:bg-transparent')}
             >
-              <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5', 'opacity-50')}>
+              <div className={cn('radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5', 'opacity-50')}>
                 <RiDiscordFill className="h-5 w-5 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
@@ -199,9 +199,9 @@ const MethodSelector: FC<MethodSelectorProps> = ({
           </div>
         </div>
         {!IS_CE_EDITION && (
-          <div className="mt-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+          <div className="mt-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="flex items-center gap-2 px-4 py-3">
-              <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-midnight-solid p-1')}>
+              <div className={cn('radius-xs border border-divider-regular bg-components-icon-bg-midnight-solid p-1')}>
                 <RiLightbulbFlashFill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className="system-sm-regular text-text-secondary">

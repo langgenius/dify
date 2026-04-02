@@ -52,7 +52,7 @@ const Chatbot = () => {
       <div
         className={cn(
           'flex flex-col rounded-2xl',
-          isMobile ? 'h-[calc(100vh_-_60px)] shadow-xs' : 'h-[100vh] bg-chatbot-bg',
+          isMobile ? 'h-[calc(100vh-60px)] shadow-xs' : 'h-screen bg-chatbot-bg',
         )}
         style={isMobile ? Object.assign({}, CssTransform(themeBuilder?.theme?.backgroundHeaderColorStyle ?? '')) : {}}
       >
@@ -64,7 +64,7 @@ const Chatbot = () => {
           theme={themeBuilder?.theme}
           onCreateNewChat={handleNewConversation}
         />
-        <div className={cn('flex grow flex-col overflow-y-auto', isMobile && 'm-[0.5px] !h-[calc(100vh_-_3rem)] rounded-2xl bg-chatbot-bg')}>
+        <div className={cn('flex grow flex-col overflow-y-auto', isMobile && 'm-[0.5px] h-[calc(100vh-3rem)]! rounded-2xl bg-chatbot-bg')}>
           {appChatListDataLoading && (
             <Loading type="app" />
           )}

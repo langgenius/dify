@@ -40,11 +40,11 @@ const PromptToast = ({
           <RiSparklingFill className="size-3.5 text-components-input-border-active-prompt-1" />
           <span className={cn(s.optimizationNoteText, 'system-xs-semibold-uppercase')}>{t('generate.optimizationNote', { ns: 'appDebug' })}</span>
         </div>
-        <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && 'rotate-[-90deg]')} onClick={toggleFold} />
+        <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && '-rotate-90')} onClick={toggleFold} />
       </div>
       {!isFold && (
         <div className="pb-4 pr-4">
-          <Markdown className="!text-sm" content={message} />
+          <Markdown className="text-sm!" content={message} />
         </div>
       )}
     </div>

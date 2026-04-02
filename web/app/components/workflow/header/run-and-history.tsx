@@ -65,7 +65,7 @@ const RunAndHistory = ({
       {
         showPreviewButton && <PreviewMode />
       }
-      <div className="mx-0.5 h-3.5 w-[1px] bg-divider-regular"></div>
+      <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />
       <Checklist disabled={nodesReadOnly} />
     </div>

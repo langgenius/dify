@@ -465,8 +465,8 @@ describe('LanguageSelect', () => {
       const props = createDefaultProps()
       const { container } = render(<LanguageSelect {...props} />)
 
-      // Assert - Check for tertiary button classes (uses ! prefix for important)
-      expect(container.querySelector('.\\!bg-components-button-tertiary-bg')).toBeInTheDocument()
+      // Assert - Check for tertiary button classes (Tailwind v4 uses ! suffix)
+      expect(container.querySelector('.bg-components-button-tertiary-bg\\!')).toBeInTheDocument()
     })
 
     it('should apply hover styling class to options', () => {

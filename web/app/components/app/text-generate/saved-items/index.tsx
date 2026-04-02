@@ -56,7 +56,7 @@ const SavedItems: FC<ISavedItemsProps> = ({
                     </span>
                   </div>
                   <div className="absolute bottom-1 right-2">
-                    <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                    <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                       {isShowTextToSpeech && <NewAudioButton value={answer} />}
                       <ActionButton onClick={() => {
                         copy(answer)

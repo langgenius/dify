@@ -213,7 +213,7 @@ const DetailHeader = ({
                     <Button
                       variant="secondary-accent"
                       size="small"
-                      className="!h-5"
+                      className="h-5!"
                       onClick={handleTriggerLatestUpdate}
                     >
                       {t('detailPanel.operation.update', { ns: 'plugin' })}

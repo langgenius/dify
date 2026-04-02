@@ -31,19 +31,19 @@ const ChatPreviewCard = ({
           <Button variant="secondary-accent" className="w-full justify-center">
             <span className="i-ri-edit-box-line mr-1 h-4 w-4" />
             <div className="p-1 opacity-20">
-              <div className="h-2 w-[94px] rounded-sm bg-text-accent-light-mode-only"></div>
+              <div className="h-2 w-[94px] rounded-xs bg-text-accent-light-mode-only"></div>
             </div>
           </Button>
         </div>
         <div className="grow px-3 pt-5">
           <div className="flex h-8 items-center px-3 py-1">
-            <div className="h-2 w-14 rounded-sm bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-14 rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
           <div className="flex h-8 items-center px-3 py-1">
-            <div className="h-2 w-[168px] rounded-sm bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-[168px] rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
           <div className="flex h-8 items-center px-3 py-1">
-            <div className="h-2 w-[128px] rounded-sm bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-[128px] rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
         </div>
         <div className="flex shrink-0 items-center justify-between p-3">
@@ -65,10 +65,10 @@ const ChatPreviewCard = ({
           <div className="w-[720px] rounded-2xl border border-divider-subtle bg-chat-bubble-bg px-4 py-3">
             <div className="mb-1 text-text-primary body-md-regular">Hello! How can I assist you today?</div>
             <Button size="small">
-              <div className="h-2 w-[144px] rounded-sm bg-text-quaternary opacity-20"></div>
+              <div className="h-2 w-[144px] rounded-xs bg-text-quaternary opacity-20"></div>
             </Button>
           </div>
-          <div className="flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 text-text-placeholder shadow-md backdrop-blur-sm body-lg-regular">Talk to Dify</div>
+          <div className="flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 text-text-placeholder shadow-md backdrop-blur-xs body-lg-regular">Talk to Dify</div>
         </div>
       </div>
     </div>

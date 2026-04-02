@@ -119,7 +119,7 @@ const DropDown = ({
           <RiMoreFill className="size-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[60]">
+      <PortalToFollowElemContent className="z-60">
         <Menu
           showDelete={!isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}

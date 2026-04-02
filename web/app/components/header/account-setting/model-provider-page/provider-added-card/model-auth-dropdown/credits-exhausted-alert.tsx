@@ -59,7 +59,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             </span>
           </div>
         </div>
-        <div className="h-1 overflow-hidden rounded-[6px] bg-components-progress-error-bg">
+        <div className="h-1 overflow-hidden radius-sm bg-components-progress-error-bg">
           <div
             className="h-full rounded-l-[6px] bg-components-progress-error-progress"
             style={{ width: `${usagePercent}%` }}

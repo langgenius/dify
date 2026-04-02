@@ -37,7 +37,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   })()
   return (
     <div className={cn(
-      'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-sm',
+      'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
       className,
     )}
     >

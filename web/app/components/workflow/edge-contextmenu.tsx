@@ -48,7 +48,7 @@ const EdgeContextmenu = () => {
         popupClassName="rounded-lg"
       >
         <ContextMenuItem
-          className="justify-between gap-4 px-3 text-text-secondary data-[highlighted]:bg-state-destructive-hover data-[highlighted]:text-text-destructive"
+          className="justify-between gap-4 px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
           onClick={() => handleEdgeDeleteById(edgeMenu.edgeId)}
         >
           <span>{t('common:operation.delete')}</span>

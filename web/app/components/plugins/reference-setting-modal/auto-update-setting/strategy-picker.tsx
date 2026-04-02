@@ -63,7 +63,7 @@ const StrategyPicker = ({
           <RiArrowDownSLine className="h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[99]">
+      <PortalToFollowElemContent className="z-99">
         <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (

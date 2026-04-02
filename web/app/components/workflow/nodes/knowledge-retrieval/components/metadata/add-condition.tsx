@@ -71,7 +71,7 @@ const AddCondition = ({
                   key={metadata.name}
                   className="system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover"
                 >
-                  <div className="mr-1 p-[1px]">
+                  <div className="mr-1 p-px">
                     <MetadataIcon type={metadata.type} />
                   </div>
                   <div

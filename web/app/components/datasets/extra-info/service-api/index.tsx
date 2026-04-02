@@ -49,7 +49,7 @@ const ServiceApi = ({
             <div className="system-sm-medium grow text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[10]">
+        <PortalToFollowElemContent className="z-10">
           <Card
             apiBaseUrl={apiBaseUrl}
           />

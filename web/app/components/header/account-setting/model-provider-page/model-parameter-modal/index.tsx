@@ -145,7 +145,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       <PopoverTrigger
         render={(
-          <button type="button" className="block w-full border-none bg-transparent p-0 text-left [color:inherit] [font:inherit]">
+          <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
             {
               renderTrigger
                 ? renderTrigger({

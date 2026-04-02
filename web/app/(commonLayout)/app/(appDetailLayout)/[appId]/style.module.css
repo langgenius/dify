@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .app {
     flex-grow: 1;
     height: 0;

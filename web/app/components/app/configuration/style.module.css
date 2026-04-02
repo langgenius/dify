@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .advancedPromptMode {
   position: relative;
 }

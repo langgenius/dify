@@ -106,7 +106,7 @@ const OptionCard = memo(({
             </div>
           )
         }
-        <div className="grow py-1 pt-[1px]">
+        <div className="grow py-1 pt-px">
           <div className="flex items-center">
             <div className="system-sm-medium flex grow items-center text-text-secondary">
               {title}

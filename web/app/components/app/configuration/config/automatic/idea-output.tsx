@@ -36,7 +36,7 @@ const IdeaOutput: FC<Props> = ({
           {t(`${i18nPrefix}.optional`, { ns: 'appDebug' })}
           )
         </div>
-        <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
+        <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-px -rotate-90')} />
       </div>
       {!isFoldIdeaOutput && (
         <Textarea

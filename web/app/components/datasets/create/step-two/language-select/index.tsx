@@ -38,7 +38,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
         </div>
       )}
       btnElement={(
-        <div className={cn('inline-flex items-center gap-x-[1px]', disabled && 'cursor-not-allowed')}>
+        <div className={cn('inline-flex items-center gap-x-px', disabled && 'cursor-not-allowed')}>
           <span className={cn(
             'system-xs-semibold px-[3px] text-components-button-tertiary-text',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
@@ -54,10 +54,10 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
         </div>
       )}
       btnClassName={() => cn(
-        '!hover:bg-components-button-tertiary-bg !mx-1 rounded-md !border-0 !bg-components-button-tertiary-bg !px-1.5 !py-1',
+        '!hover:bg-components-button-tertiary-bg mx-1! rounded-md border-0! bg-components-button-tertiary-bg! px-1.5! py-1!',
         disabled ? 'bg-components-button-tertiary-bg-disabled' : '',
       )}
-      className="!left-1 !z-20 h-fit !w-[140px] !translate-x-0"
+      className="left-1! z-20! h-fit w-[140px]! translate-x-0!"
     />
   )
 }

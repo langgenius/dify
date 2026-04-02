@@ -24,7 +24,7 @@ const ManageInputField = ({
           {t('inputField.create', { ns: 'pipeline' })}
         </div>
       </div>
-      <div className="mx-1 h-3 w-[1px] shrink-0 bg-divider-regular"></div>
+      <div className="mx-1 h-3 w-px shrink-0 bg-divider-regular"></div>
       <div
         className="system-xs-medium flex h-8 shrink-0 cursor-pointer items-center justify-center px-3 text-text-tertiary"
         onClick={onManage}

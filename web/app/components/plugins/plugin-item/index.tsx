@@ -108,7 +108,7 @@ const PluginItem: FC<Props> = ({
         <CornerMark text={categoriesMap[category].label} />
         {/* Header */}
         <div className="flex">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border-[1px] border-components-panel-border-subtle">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <img
               className="h-full w-full"
               src={iconSrc}

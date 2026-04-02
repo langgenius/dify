@@ -432,7 +432,7 @@ describe('ModelParameterTrigger', () => {
       const { container } = render(<>{triggerContent}</>)
 
       expect(container.firstChild).toHaveClass('bg-state-base-hover')
-      expect(container.firstChild).toHaveClass('!bg-[#FFFAEB]')
+      expect(container.firstChild).toHaveClass('bg-[#FFFAEB]!')
     })
   })
 

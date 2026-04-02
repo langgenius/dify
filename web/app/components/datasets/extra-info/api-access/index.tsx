@@ -52,7 +52,7 @@ const ApiAccess = ({
             />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[10]">
+        <PortalToFollowElemContent className="z-10">
           <Card
             apiEnabled={apiEnabled}
           />

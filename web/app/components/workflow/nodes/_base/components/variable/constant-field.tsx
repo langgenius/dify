@@ -43,7 +43,7 @@ const ConstantField: FC<Props> = ({
     <>
       {(schema.type === FormTypeEnum.select || schema.type === FormTypeEnum.dynamicSelect) && (
         <SimpleSelect
-          wrapperClassName="w-full !h-8"
+          wrapperClassName="w-full h-8!"
           className="flex items-center"
           disabled={readonly}
           defaultValue={value}
@@ -57,7 +57,7 @@ const ConstantField: FC<Props> = ({
       {schema.type === FormTypeEnum.textNumber && (
         <input
           type="number"
-          className="h-8 w-full overflow-hidden rounded-lg bg-workflow-block-parma-bg p-2 text-[13px] font-normal leading-8 text-text-secondary placeholder:text-gray-400 focus:outline-none"
+          className="h-8 w-full overflow-hidden rounded-lg bg-workflow-block-parma-bg p-2 text-[13px] font-normal leading-8 text-text-secondary placeholder:text-gray-400 focus:outline-hidden"
           value={value}
           onChange={handleStaticChange}
           readOnly={readonly}

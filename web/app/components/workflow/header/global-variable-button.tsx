@@ -27,7 +27,7 @@ const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
     <Button
       className={cn(
         'rounded-lg border border-transparent p-2',
-        theme === 'dark' && showGlobalVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
+        theme === 'dark' && showGlobalVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
       )}
       disabled={disabled}
       onClick={handleClick}

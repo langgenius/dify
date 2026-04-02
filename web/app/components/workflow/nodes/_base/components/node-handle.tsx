@@ -78,7 +78,7 @@ export const NodeTargetHandle = memo(({
         type="target"
         position={Position.Left}
         className={cn(
-          'z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
+          'z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
           'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
@@ -105,9 +105,9 @@ export const NodeTargetHandle = memo(({
               triggerClassName={open => `
                 hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
-                group-hover:!flex
-                ${data.selected && '!flex'}
-                ${open && '!flex'}
+                group-hover:flex!
+                ${data.selected && 'flex!'}
+                ${open && 'flex!'}
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
@@ -189,7 +189,7 @@ export const NodeSourceHandle = memo(({
       type="source"
       position={Position.Right}
       className={cn(
-        'group/handle z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
+        'group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
         'after:absolute after:right-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
         'transition-all hover:scale-125',
         data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
@@ -223,9 +223,9 @@ export const NodeSourceHandle = memo(({
             triggerClassName={open => `
               hidden absolute top-0 left-0 pointer-events-none
               ${nodeSelectorClassName}
-              group-hover:!flex
-              ${data.selected && '!flex'}
-              ${open && '!flex'}
+              group-hover:flex!
+              ${data.selected && 'flex!'}
+              ${open && 'flex!'}
             `}
             availableBlocksTypes={availableNextBlocks}
           />

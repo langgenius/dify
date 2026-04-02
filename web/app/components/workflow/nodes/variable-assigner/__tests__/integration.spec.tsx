@@ -410,7 +410,7 @@ describe('variable-assigner path', () => {
 
       expect(container).toHaveTextContent('workflow.nodes.variableAssigner.varNotSet')
       const groupCard = container.querySelector('.relative.rounded-lg') as HTMLElement
-      expect(groupCard).toHaveClass('!border-text-accent')
+      expect(groupCard).toHaveClass('border-text-accent!')
 
       fireEvent.mouseEnter(groupCard)
       fireEvent.mouseLeave(groupCard)
@@ -432,7 +432,7 @@ describe('variable-assigner path', () => {
       )
 
       expect(container).toHaveTextContent('Source Node:source-node.initialVar:false')
-      expect(container.querySelector('.relative.rounded-lg')).toHaveClass('!border-dashed')
+      expect(container.querySelector('.relative.rounded-lg')).toHaveClass('border-dashed!')
 
       await user.click(container.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement)
       await user.click(screen.getByRole('button', { name: 'confirm-add-variable' }))
@@ -468,7 +468,7 @@ describe('variable-assigner path', () => {
         },
       )
 
-      expect(container.querySelector('.relative.rounded-lg')).toHaveClass('!border-dashed')
+      expect(container.querySelector('.relative.rounded-lg')).toHaveClass('border-dashed!')
 
       rerender(
         <NodeGroupItem

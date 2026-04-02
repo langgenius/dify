@@ -37,12 +37,12 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-[1002] outline-none', className)}
+        className={cn('z-1002 outline-hidden', className)}
       >
         <BaseTooltip.Popup
           className={cn(
-            variant === 'default' && 'max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
-            'origin-[var(--transform-origin)] transition-[opacity] data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 data-[instant]:transition-none motion-reduce:transition-none',
+            variant === 'default' && 'max-w-[300px] wrap-break-word rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
+            'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:transition-none motion-reduce:transition-none',
             popupClassName,
           )}
           {...props}

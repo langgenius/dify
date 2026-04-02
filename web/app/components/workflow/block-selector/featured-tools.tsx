@@ -259,7 +259,7 @@ function FeaturedToolUninstalledItem({
       <Tooltip
         position="right"
         needsDelay={false}
-        popupClassName="!p-0 !px-3 !py-2.5 !w-[224px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
+        popupClassName="p-0! px-3! py-2.5! w-[224px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
         popupContent={(
           <div>
             <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={plugin.icon} />

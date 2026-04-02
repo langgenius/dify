@@ -35,10 +35,10 @@ const ViewFormDropdown = ({
           <div className={cn('i-ri-chat-settings-line h-[18px] w-[18px] shrink-0', iconColor)} />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[99]">
+      <PortalToFollowElemContent className="z-99">
         <div
           data-testid="view-form-dropdown-content"
-          className="w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm"
+          className="w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs"
         >
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />

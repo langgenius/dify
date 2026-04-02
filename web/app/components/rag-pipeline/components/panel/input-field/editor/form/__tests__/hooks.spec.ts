@@ -233,7 +233,7 @@ describe('useConfigurations', () => {
     expect(mockSetFieldValue).not.toHaveBeenCalled()
   })
 
-  it('should auto-fill label from variable name on blur', () => {
+  it('should auto-fill label from variable name on blur-sm', () => {
     mockGetFieldValue.mockReturnValue('')
 
     const { result } = renderHook(() =>

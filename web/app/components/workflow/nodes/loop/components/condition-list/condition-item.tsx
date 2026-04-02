@@ -250,7 +250,7 @@ const ConditionItem = ({
                 )}
 
           </div>
-          <div className="mx-1 h-3 w-[1px] bg-divider-regular"></div>
+          <div className="mx-1 h-3 w-px bg-divider-regular"></div>
           <ConditionOperator
             disabled={!canChooseOperator}
             varType={condition.varType}

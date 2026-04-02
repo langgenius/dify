@@ -147,7 +147,7 @@ const AllStartBlocks = ({
                   }}
                 />
                 <div className="px-3">
-                  <Divider className="!h-px" />
+                  <Divider className="h-px!" />
                 </div>
               </>
             )}

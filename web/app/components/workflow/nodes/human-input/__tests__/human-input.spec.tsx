@@ -116,7 +116,7 @@ const createHumanInputNode = (overrides?: Partial<HumanInputNodeType>): Node => 
 })
 
 const createStartNode = (): Node => ({
-  id: 'start-1',
+  id: 'inset-s-1',
   type: 'custom',
   position: { x: 100, y: 200 },
   data: {
@@ -143,7 +143,7 @@ describe('DSL Import with Human Input Node', () => {
       const humanInputNode = createHumanInputNode()
       const startNode = createStartNode()
       const nodes = [startNode, humanInputNode]
-      const edges = [createEdge('start-1', 'human-input-1')]
+      const edges = [createEdge('inset-s-1', 'human-input-1')]
 
       const result = preprocessNodesAndEdges(nodes as Node[], edges as Edge[])
 
@@ -171,7 +171,7 @@ describe('DSL Import with Human Input Node', () => {
       const humanInputNode = createHumanInputNode()
       const startNode = createStartNode()
       const nodes = [startNode, humanInputNode]
-      const edges = [createEdge('start-1', 'human-input-1')]
+      const edges = [createEdge('inset-s-1', 'human-input-1')]
 
       const result = initialNodes(nodes as Node[], edges as Edge[])
 
@@ -501,7 +501,7 @@ describe('DSL Import with Human Input Node', () => {
       const startNode = createStartNode()
       const humanInputNode = createHumanInputNode()
       const endNode: Node = {
-        id: 'end-1',
+        id: 'inset-e-1',
         type: 'custom',
         position: { x: 700, y: 200 },
         data: {
@@ -514,8 +514,8 @@ describe('DSL Import with Human Input Node', () => {
 
       const nodes = [startNode, humanInputNode, endNode]
       const edges = [
-        createEdge('start-1', 'human-input-1'),
-        createEdge('human-input-1', 'end-1', 'approve', 'target'),
+        createEdge('inset-s-1', 'human-input-1'),
+        createEdge('human-input-1', 'inset-e-1', 'approve', 'target'),
       ]
 
       const processed = preprocessNodesAndEdges(nodes as Node[], edges as Edge[])
@@ -550,7 +550,7 @@ describe('DSL Import with Human Input Node', () => {
 
       const nodes = [startNode, humanInputNode, approveEndNode, rejectEndNode]
       const edges = [
-        createEdge('start-1', 'human-input-1'),
+        createEdge('inset-s-1', 'human-input-1'),
         createEdge('human-input-1', 'approve-end', 'approve', 'target'),
         createEdge('human-input-1', 'reject-end', 'reject', 'target'),
       ]

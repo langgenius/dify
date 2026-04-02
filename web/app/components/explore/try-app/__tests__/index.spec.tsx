@@ -246,7 +246,7 @@ describe('TryApp (main index.tsx)', () => {
       await waitFor(() => {
         const buttons = document.body.querySelectorAll('button')
         const closeButton = Array.from(buttons).find(btn =>
-          btn.querySelector('svg') || btn.className.includes('rounded-[10px]'),
+          btn.querySelector('svg') || btn.className.includes('radius-lg'),
         )
         expect(closeButton).toBeInTheDocument()
 

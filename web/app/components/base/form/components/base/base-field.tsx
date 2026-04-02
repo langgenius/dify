@@ -281,7 +281,7 @@ const BaseField = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular',
+                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular',
                         value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
                         inputClassName,
@@ -310,7 +310,7 @@ const BaseField = ({
                 value={value}
                 onChange={v => field.handleChange(v)}
               >
-                <Radio value={true} className="!mr-1">True</Radio>
+                <Radio value={true} className="mr-1!">True</Radio>
                 <Radio value={false}>False</Radio>
               </Radio.Group>
             )

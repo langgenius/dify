@@ -79,7 +79,7 @@ function Confirm({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10000000] flex items-center justify-center bg-background-overlay"
+      className="fixed inset-0 z-10000000 flex items-center justify-center bg-background-overlay"
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -106,7 +106,7 @@ function Confirm({
                 </>
               )}
             </div>
-            <Button variant="primary" className="!w-20" onClick={onConfirm}>{t('operation.ok', { ns: 'common' })}</Button>
+            <Button variant="primary" className="w-20!" onClick={onConfirm}>{t('operation.ok', { ns: 'common' })}</Button>
           </div>
         </div>
       </div>

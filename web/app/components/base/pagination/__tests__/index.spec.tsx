@@ -143,7 +143,7 @@ describe('CustomizedPagination', () => {
       expect(screen.getByText('/')).toBeInTheDocument()
     })
 
-    it('should confirm input on blur', () => {
+    it('should confirm input on blur-sm', () => {
       vi.useFakeTimers()
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={0} onChange={onChange} />)
@@ -201,7 +201,7 @@ describe('CustomizedPagination', () => {
       const onLimitChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
 
-      const container = screen.getByText('25').closest('div.flex.items-center.gap-\\[1px\\]')!
+      const container = screen.getByText('25').closest('.bg-components-segmented-control-bg-normal')!
 
       fireEvent.mouseEnter(container)
       // I18n mock returns ns.key
@@ -221,10 +221,10 @@ describe('CustomizedPagination', () => {
     it('should call onLimitChange with 10 when 10 option is clicked', () => {
       const onLimitChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
-      // The limit selector contains options 10, 25, 50.
-      // Query specifically within the limit container
-      const container = screen.getByText('25').closest('div.flex.items-center.gap-\\[1px\\]')!
+
+      const container = screen.getByText('25').closest('.bg-components-segmented-control-bg-normal')!
       const option10 = Array.from(container.children).find(el => el.textContent === '10')!
+
       fireEvent.click(option10)
       expect(onLimitChange).toHaveBeenCalledWith(10)
     })

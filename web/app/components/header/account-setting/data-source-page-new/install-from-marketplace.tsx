@@ -46,7 +46,7 @@ const InstallFromMarketplace = ({
 
   return (
     <div className="mb-2">
-      <Divider className="!mt-4 h-px" />
+      <Divider className="mt-4! h-px" />
       <div className="flex items-center justify-between">
         <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />

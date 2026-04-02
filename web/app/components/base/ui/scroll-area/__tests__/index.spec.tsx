@@ -117,8 +117,8 @@ describe('scroll-area wrapper', () => {
           'transition-opacity',
           'motion-reduce:transition-none',
           'pointer-events-none',
-          'data-[hovering]:pointer-events-auto',
-          'data-[scrolling]:pointer-events-auto',
+          'data-hovering:pointer-events-auto',
+          'data-scrolling:pointer-events-auto',
           'data-[orientation=vertical]:absolute',
           'data-[orientation=vertical]:inset-y-0',
           'data-[orientation=vertical]:w-3',
@@ -127,7 +127,7 @@ describe('scroll-area wrapper', () => {
         expect(thumb).toHaveAttribute('data-orientation', 'vertical')
         expect(thumb).toHaveClass(
           'shrink-0',
-          'rounded-[4px]',
+          'radius-xs',
           'bg-state-base-handle',
           'transition-[background-color]',
           'motion-reduce:transition-none',
@@ -155,8 +155,8 @@ describe('scroll-area wrapper', () => {
           'transition-opacity',
           'motion-reduce:transition-none',
           'pointer-events-none',
-          'data-[hovering]:pointer-events-auto',
-          'data-[scrolling]:pointer-events-auto',
+          'data-hovering:pointer-events-auto',
+          'data-scrolling:pointer-events-auto',
           'data-[orientation=horizontal]:absolute',
           'data-[orientation=horizontal]:inset-x-0',
           'data-[orientation=horizontal]:h-3',
@@ -165,7 +165,7 @@ describe('scroll-area wrapper', () => {
         expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
         expect(thumb).toHaveClass(
           'shrink-0',
-          'rounded-[4px]',
+          'radius-xs',
           'bg-state-base-handle',
           'transition-[background-color]',
           'motion-reduce:transition-none',
@@ -186,7 +186,7 @@ describe('scroll-area wrapper', () => {
           'size-full',
           'min-h-0',
           'min-w-0',
-          'outline-none',
+          'outline-hidden',
           'focus-visible:ring-1',
           'focus-visible:ring-inset',
           'focus-visible:ring-components-input-border-hover',
@@ -197,14 +197,14 @@ describe('scroll-area wrapper', () => {
 
     it('should let callers control scrollbar inset spacing via margin-based className overrides', async () => {
       renderScrollArea({
-        verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
+        verticalScrollbarClassName: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:-me-3',
         horizontalScrollbarClassName: 'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-2',
       })
 
       await waitFor(() => {
         expect(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
           'data-[orientation=vertical]:my-2',
-          'data-[orientation=vertical]:[margin-inline-end:-0.75rem]',
+          'data-[orientation=vertical]:-me-3',
         )
         expect(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
           'data-[orientation=horizontal]:mx-2',

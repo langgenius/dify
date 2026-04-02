@@ -285,7 +285,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       extraButtonVariant="secondary"
       onExtraButtonClick={handleBack}
       clickOutsideNotClose
-      wrapperClassName="!z-[101]"
+      wrapperClassName="z-101!"
       bottomSlot={currentStep === EditStep.EditCredentials ? <EncryptedBottom /> : null}
     >
       {pluginDetail && (

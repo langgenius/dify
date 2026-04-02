@@ -63,7 +63,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
-        'z-[99]',
+        'z-99',
       )}
       >
         <div

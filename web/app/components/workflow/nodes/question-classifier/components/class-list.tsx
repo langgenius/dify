@@ -130,7 +130,7 @@ const ClassList: FC<Props> = ({
                   <div
                     key={item.id}
                     className={cn(
-                      'group relative rounded-[10px] bg-components-panel-bg',
+                      'group relative radius-lg bg-components-panel-bg',
                       `-ml-${HANDLE_SIDE_WIDTH} min-h-[40px] px-0 py-0`,
                     )}
                     style={{

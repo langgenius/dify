@@ -68,7 +68,7 @@ const MCPList = ({
       <div
         className={cn(
           'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
-          !list.length && 'h-[calc(100vh_-_136px)] overflow-hidden',
+          !list.length && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
         <NewMCPCard handleCreate={handleCreate} />

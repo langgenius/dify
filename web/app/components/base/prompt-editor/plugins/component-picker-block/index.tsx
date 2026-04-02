@@ -302,7 +302,7 @@ const ComponentPicker = ({
       //
       // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
       // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"
+      anchorClassName="z-999999 translate-y-[calc(-100%-3px)]"
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

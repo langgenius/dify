@@ -338,14 +338,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {/* action buttons */}
               <div className="absolute bottom-1 right-2 flex items-center">
                 {!isInWebApp && (appSourceType !== AppSourceType.installedApp) && !isResponding && (
-                  <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                  <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                     <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
                       <RiFileList3Line className="h-4 w-4" />
                       {/* <div>{t('common.operation.log')}</div> */}
                     </ActionButton>
                   </div>
                 )}
-                <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                   {moreLikeThis && !isTryApp && (
                     <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
                       <RiSparklingLine className="h-4 w-4" />
@@ -384,7 +384,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   )}
                 </div>
                 {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
-                  <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                  <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                     {!feedback?.rating && (
                       <>
                         <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>

@@ -90,62 +90,16 @@ const SearchBoxWrapper = ({
   const isDropdownOpen = hasDraft && (isFocused || isHoveringDropdown)
 
   return (
-    <PortalToFollowElem
-      placement="bottom-start"
-      offset={8}
-      open={isDropdownOpen}
-      onOpenChange={setIsFocused}
-    >
-      <PortalToFollowElemTrigger asChild>
-        <div>
-          <Input
-            wrapperClassName={cn('w-[100px] min-w-[80px] shrink-0 rounded-lg sm:w-[160px] md:w-[200px] lg:w-[300px]', wrapperClassName)}
-            className={cn('h-9 bg-components-input-bg-normal', inputClassName)}
-            showLeftIcon
-            value={inputValue}
-            placeholder={t('searchInMarketplace', { ns: 'plugin' })}
-            onChange={(e) => {
-              setDraftSearch(e.target.value)
-            }}
-            onFocus={() => {
-              setDraftSearch(committedSearch)
-              setIsFocused(true)
-            }}
-            onBlur={() => {
-              if (!isHoveringDropdown) {
-                if (!draftSearch.trim()) {
-                  handleSearchTextChange('')
-                  setSearchMode(null)
-                }
-                setIsFocused(false)
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter')
-                handleSubmit()
-            }}
-          />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent
-        className="z-[1001]"
-        onMouseEnter={() => setIsHoveringDropdown(true)}
-        onMouseLeave={() => setIsHoveringDropdown(false)}
-        onMouseDown={(event) => {
-          event.preventDefault()
-        }}
-      >
-        <SearchDropdown
-          query={debouncedDraft.trim()}
-          plugins={dropdownPlugins}
-          templates={dropdownTemplates}
-          creators={dropdownCreators}
-          includeSource={includeSource}
-          onShowAll={() => handleSubmit(debouncedDraft)}
-          isLoading={dropdownQuery.isLoading}
-        />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+    <SearchBox
+      wrapperClassName="z-11 mx-auto w-[640px] shrink-0"
+      inputClassName="w-full"
+      search={searchPluginText}
+      onSearchChange={handleSearchPluginTextChange}
+      tags={filterPluginTags}
+      onTagsChange={handleFilterPluginTagsChange}
+      placeholder={t('searchPlugins', { ns: 'plugin' })}
+      usedInMarketplace
+    />
   )
 }
 

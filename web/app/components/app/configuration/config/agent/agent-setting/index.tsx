@@ -50,7 +50,7 @@ const AgentSetting: FC<Props> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex justify-end overflow-hidden p-2"
+      className="fixed inset-0 z-100 flex justify-end overflow-hidden p-2"
       style={{
         backgroundColor: 'rgba(16, 24, 40, 0.20)',
       }}
@@ -151,7 +151,7 @@ const AgentSetting: FC<Props> = ({
 
         </div>
         <div
-          className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
+          className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
         >
           <Button
             onClick={onCancel}

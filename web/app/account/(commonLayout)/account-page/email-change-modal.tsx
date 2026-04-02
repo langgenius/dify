@@ -182,7 +182,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
 
   return (
     <Dialog open={show} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="!w-[420px] !p-6">
+      <DialogContent className="w-[420px]! p-6!">
         <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
           <RiCloseLine className="h-5 w-5 text-text-tertiary" />
         </div>
@@ -203,14 +203,14 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="pt-3"></div>
             <div className="space-y-2">
               <Button
-                className="!w-full"
+                className="w-full!"
                 variant="primary"
                 onClick={sendCodeToOriginEmail}
               >
                 {t('account.changeEmail.sendVerifyCode', { ns: 'common' })}
               </Button>
               <Button
-                className="!w-full"
+                className="w-full!"
                 onClick={onClose}
               >
                 {t('operation.cancel', { ns: 'common' })}
@@ -234,7 +234,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="pt-3">
               <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
               <Input
-                className="!w-full"
+                className="w-full!"
                 placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
                 value={code}
                 onChange={e => setCode(e.target.value)}
@@ -244,14 +244,14 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="mt-3 space-y-2">
               <Button
                 disabled={code.length !== 6}
-                className="!w-full"
+                className="w-full!"
                 variant="primary"
                 onClick={handleVerifyOriginEmail}
               >
                 {t('account.changeEmail.continue', { ns: 'common' })}
               </Button>
               <Button
-                className="!w-full"
+                className="w-full!"
                 onClick={onClose}
               >
                 {t('operation.cancel', { ns: 'common' })}
@@ -277,7 +277,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="pt-3">
               <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('account.changeEmail.emailLabel', { ns: 'common' })}</div>
               <Input
-                className="!w-full"
+                className="w-full!"
                 placeholder={t('account.changeEmail.emailPlaceholder', { ns: 'common' })}
                 value={mail}
                 onChange={e => handleNewEmailValueChange(e.target.value)}
@@ -293,14 +293,14 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="mt-3 space-y-2">
               <Button
                 disabled={!mail || newEmailExited || unAvailableEmail || isCheckingEmail || !isValidEmail(mail)}
-                className="!w-full"
+                className="w-full!"
                 variant="primary"
                 onClick={sendCodeToNewEmail}
               >
                 {t('account.changeEmail.sendVerifyCode', { ns: 'common' })}
               </Button>
               <Button
-                className="!w-full"
+                className="w-full!"
                 onClick={onClose}
               >
                 {t('operation.cancel', { ns: 'common' })}
@@ -324,7 +324,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="pt-3">
               <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
               <Input
-                className="!w-full"
+                className="w-full!"
                 placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
                 value={code}
                 onChange={e => setCode(e.target.value)}
@@ -334,14 +334,14 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="mt-3 space-y-2">
               <Button
                 disabled={code.length !== 6}
-                className="!w-full"
+                className="w-full!"
                 variant="primary"
                 onClick={submitNewEmail}
               >
                 {t('account.changeEmail.changeTo', { ns: 'common', email: mail })}
               </Button>
               <Button
-                className="!w-full"
+                className="w-full!"
                 onClick={onClose}
               >
                 {t('operation.cancel', { ns: 'common' })}

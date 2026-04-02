@@ -39,7 +39,7 @@ function PresetsParameter({ onSelect }: PresetsParameterProps) {
           <Button
             size="small"
             variant="secondary"
-            className="data-[popup-open]:bg-state-base-hover"
+            className="data-popup-open:bg-state-base-hover"
           />
         )}
       >

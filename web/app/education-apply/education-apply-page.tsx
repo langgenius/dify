@@ -72,7 +72,7 @@ const EducationApplyAge = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[31] overflow-y-auto bg-background-body p-6">
+    <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
       <div className="mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
           className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
@@ -156,7 +156,7 @@ const EducationApplyAge = () => {
           >
             {t('submit', { ns: 'education' })}
           </Button>
-          <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
+          <div className="mb-4 mt-5 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
             className="flex items-center text-text-accent system-xs-regular"
             href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}

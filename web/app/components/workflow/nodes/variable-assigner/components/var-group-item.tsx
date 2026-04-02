@@ -106,7 +106,7 @@ const VarGroupItem: FC<Props> = ({
       title={groupEnabled
         ? (
             <div className="flex items-center">
-              <div className="flex items-center !normal-case">
+              <div className="flex items-center normal-case!">
                 <Folder className="mr-0.5 h-3.5 w-3.5" />
                 {(!isEditGroupName)
                   ? (
@@ -117,7 +117,7 @@ const VarGroupItem: FC<Props> = ({
                   : (
                       <input
                         type="text"
-                        className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-none"
+                        className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
                         // style={{
                         //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
                         // }}

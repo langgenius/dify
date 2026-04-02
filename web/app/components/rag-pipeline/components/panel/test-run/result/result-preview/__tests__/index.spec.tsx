@@ -828,7 +828,7 @@ describe('ResultPreview', () => {
 
       const { container } = render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
-      const gradientDividers = container.querySelectorAll('.bg-gradient-to-r, .bg-gradient-to-l')
+      const gradientDividers = container.querySelectorAll('.bg-linear-to-r, .bg-linear-to-l')
       expect(gradientDividers.length).toBeGreaterThanOrEqual(2)
     })
   })

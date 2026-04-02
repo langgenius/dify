@@ -88,7 +88,7 @@ describe('HistoryBlockComponent', () => {
     )
 
     const wrapper = container.firstElementChild
-    expect(wrapper).toHaveClass('!border-[#F670C7]')
+    expect(wrapper).toHaveClass('border-[#F670C7]!')
     expect(wrapper).toHaveClass('bg-[#FCE7F6]')
   })
 

@@ -145,12 +145,12 @@ const GotoAnything: FC<Props> = ({
         isShow={show}
         onClose={modalClose}
         closable={false}
-        className="!w-[480px] !p-0"
+        className="w-[480px]! p-0!"
         highPriority={true}
       >
         <div className="flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl">
           <Command
-            className="outline-none"
+            className="outline-hidden"
             value={cmdVal}
             onValueChange={setCmdVal}
             disablePointerSelection

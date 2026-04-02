@@ -179,7 +179,7 @@ describe('ParameterItem', () => {
     expect(screen.getByRole('spinbutton')).toHaveValue(0)
   })
 
-  it('should reset input to actual bound value on blur', () => {
+  it('should reset input to actual bound value on blur-sm', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'float', min: 0, max: 1 })} />)
     const input = screen.getByRole('spinbutton')
     fireEvent.change(input, { target: { value: '5' } })

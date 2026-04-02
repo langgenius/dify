@@ -88,13 +88,13 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             className={`
               flex h-8 max-w-[200px] cursor-pointer items-center rounded-lg px-2
               ${open && 'bg-state-base-hover'}
-              ${!isEmpty && !isActive && '!bg-[#FFFAEB]'}
+              ${!isEmpty && !isActive && 'bg-[#FFFAEB]!'}
             `}
           >
             {
               iconProvider && !isEmpty && (
                 <ModelIcon
-                  className="mr-1 !h-4 !w-4"
+                  className="mr-1 h-4! w-4!"
                   provider={iconProvider}
                   modelName={currentModel?.model || modelAndParameter.model}
                 />
@@ -102,7 +102,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             }
             {
               (!iconProvider || isEmpty) && (
-                <div className="mr-1 flex h-4 w-4 items-center justify-center rounded">
+                <div className="mr-1 flex h-4 w-4 items-center justify-center rounded-sm">
                   <span className="i-custom-vender-line-shapes-cube-outline h-4 w-4 text-text-accent" />
                 </div>
               )

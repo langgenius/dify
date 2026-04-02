@@ -30,7 +30,7 @@ const ConfigModel = ({
       >
         <RiScales3Line className="mr-0.5 h-3 w-3" />
         {t('modelProvider.auth.authorizationError', { ns: 'common' })}
-        <Indicator color="orange" className="absolute right-[-1px] top-[-1px] h-1.5 w-1.5" />
+        <Indicator color="orange" className="absolute -right-px -top-px h-1.5 w-1.5" />
       </div>
     )
   }

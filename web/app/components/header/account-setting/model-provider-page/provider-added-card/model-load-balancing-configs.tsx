@@ -261,7 +261,7 @@ const ModelLoadBalancingConfigs = ({
       </div>
 
       {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
-        <GridMask canvasClassName="!rounded-xl">
+        <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div
               className={cn('text-gradient text-sm font-semibold leading-tight', s.textGradient)}

@@ -81,7 +81,7 @@ const StrategyDetail: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <>
         {/* header */}
@@ -136,7 +136,7 @@ const StrategyDetail: FC<Props> = ({
             {detail.output_schema && (
               <>
                 <div className="px-4">
-                  <Divider className="!mt-2" />
+                  <Divider className="mt-2!" />
                 </div>
                 <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">OUTPUT</div>
                 {outputSchema.length > 0 && (

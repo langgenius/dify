@@ -60,7 +60,7 @@ const OperationDropdown: FC<Props> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
-        <div className="w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
+        <div className="w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs">
           <div
             className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-base-hover"
             onClick={() => {

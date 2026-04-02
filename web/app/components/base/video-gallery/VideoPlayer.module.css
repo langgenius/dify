@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .videoPlayer {
   position: relative;
   width: 100%;
