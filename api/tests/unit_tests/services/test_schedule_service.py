@@ -684,100 +684,98 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
-    def test_sync_schedule_create_new(self, mock_select, mock_service, mock_db):
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.sessionmaker")
+    def test_sync_schedule_create_new(self, mock_sessionmaker, mock_select, mock_service, mock_db):
         """Test creating new schedule when none exists."""
         mock_session = MagicMock()
         mock_db.engine = MagicMock()
-        mock_session.__enter__ = MagicMock(return_value=mock_session)
-        mock_session.__exit__ = MagicMock(return_value=None)
-        sessionmaker = MagicMock(return_value=MagicMock(begin=MagicMock(return_value=mock_session)))
-        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.sessionmaker", sessionmaker):
-            mock_session.scalar.return_value = None  # No existing plan
+        mock_sessionmaker.return_value.begin.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=None)
 
-            # Mock extract_schedule_config to return a ScheduleConfig object
-            mock_config = Mock(spec=ScheduleConfig)
-            mock_config.node_id = "start"
-            mock_config.cron_expression = "30 10 * * *"
-            mock_config.timezone = "UTC"
-            mock_service.extract_schedule_config.return_value = mock_config
+        mock_session.scalar.return_value = None  # No existing plan
 
-            mock_new_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_service.create_schedule.return_value = mock_new_plan
+        # Mock extract_schedule_config to return a ScheduleConfig object
+        mock_config = Mock(spec=ScheduleConfig)
+        mock_config.node_id = "start"
+        mock_config.cron_expression = "30 10 * * *"
+        mock_config.timezone = "UTC"
+        mock_service.extract_schedule_config.return_value = mock_config
 
-            workflow = Mock(spec=Workflow)
-            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+        mock_new_plan = Mock(spec=WorkflowSchedulePlan)
+        mock_service.create_schedule.return_value = mock_new_plan
 
-            assert result == mock_new_plan
-            mock_service.create_schedule.assert_called_once()
-            mock_session.commit.assert_not_called()
+        workflow = Mock(spec=Workflow)
+        result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+
+        assert result == mock_new_plan
+        mock_service.create_schedule.assert_called_once()
+        mock_session.commit.assert_not_called()
 
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
-    def test_sync_schedule_update_existing(self, mock_select, mock_service, mock_db):
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.sessionmaker")
+    def test_sync_schedule_update_existing(self, mock_sessionmaker, mock_select, mock_service, mock_db):
         """Test updating existing schedule."""
         mock_session = MagicMock()
         mock_db.engine = MagicMock()
-        mock_session.__enter__ = MagicMock(return_value=mock_session)
-        mock_session.__exit__ = MagicMock(return_value=None)
-        sessionmaker = MagicMock(return_value=MagicMock(begin=MagicMock(return_value=mock_session)))
+        mock_sessionmaker.return_value.begin.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=None)
 
-        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.sessionmaker", sessionmaker):
-            mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_existing_plan.id = "existing-plan-id"
-            mock_session.scalar.return_value = mock_existing_plan
+        mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
+        mock_existing_plan.id = "existing-plan-id"
+        mock_session.scalar.return_value = mock_existing_plan
 
-            # Mock extract_schedule_config to return a ScheduleConfig object
-            mock_config = Mock(spec=ScheduleConfig)
-            mock_config.node_id = "start"
-            mock_config.cron_expression = "0 12 * * *"
-            mock_config.timezone = "America/New_York"
-            mock_service.extract_schedule_config.return_value = mock_config
+        # Mock extract_schedule_config to return a ScheduleConfig object
+        mock_config = Mock(spec=ScheduleConfig)
+        mock_config.node_id = "start"
+        mock_config.cron_expression = "0 12 * * *"
+        mock_config.timezone = "America/New_York"
+        mock_service.extract_schedule_config.return_value = mock_config
 
-            mock_updated_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_service.update_schedule.return_value = mock_updated_plan
+        mock_updated_plan = Mock(spec=WorkflowSchedulePlan)
+        mock_service.update_schedule.return_value = mock_updated_plan
 
-            workflow = Mock(spec=Workflow)
-            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+        workflow = Mock(spec=Workflow)
+        result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
-            assert result == mock_updated_plan
-            mock_service.update_schedule.assert_called_once()
-            # Verify the arguments passed to update_schedule
-            call_args = mock_service.update_schedule.call_args
-            assert call_args.kwargs["session"] == mock_session
-            assert call_args.kwargs["schedule_id"] == "existing-plan-id"
-            updates_obj = call_args.kwargs["updates"]
-            assert isinstance(updates_obj, SchedulePlanUpdate)
-            assert updates_obj.node_id == "start"
-            assert updates_obj.cron_expression == "0 12 * * *"
-            assert updates_obj.timezone == "America/New_York"
-            mock_session.commit.assert_not_called()
+        assert result == mock_updated_plan
+        mock_service.update_schedule.assert_called_once()
+        # Verify the arguments passed to update_schedule
+        call_args = mock_service.update_schedule.call_args
+        assert call_args.kwargs["session"] == mock_session
+        assert call_args.kwargs["schedule_id"] == "existing-plan-id"
+        updates_obj = call_args.kwargs["updates"]
+        assert isinstance(updates_obj, SchedulePlanUpdate)
+        assert updates_obj.node_id == "start"
+        assert updates_obj.cron_expression == "0 12 * * *"
+        assert updates_obj.timezone == "America/New_York"
+        mock_session.commit.assert_not_called()
 
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
-    def test_sync_schedule_remove_when_no_config(self, mock_select, mock_service, mock_db):
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.sessionmaker")
+    def test_sync_schedule_remove_when_no_config(self, mock_sessionmaker, mock_select, mock_service, mock_db):
         """Test removing schedule when no schedule config in workflow."""
         mock_session = MagicMock()
         mock_db.engine = MagicMock()
-        mock_session.__enter__ = MagicMock(return_value=mock_session)
-        mock_session.__exit__ = MagicMock(return_value=None)
-        sessionmaker = MagicMock(return_value=MagicMock(begin=MagicMock(return_value=mock_session)))
+        mock_sessionmaker.return_value.begin.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=None)
 
-        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.sessionmaker", sessionmaker):
-            mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
-            mock_existing_plan.id = "existing-plan-id"
-            mock_session.scalar.return_value = mock_existing_plan
+        mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
+        mock_existing_plan.id = "existing-plan-id"
+        mock_session.scalar.return_value = mock_existing_plan
 
-            mock_service.extract_schedule_config.return_value = None  # No schedule config
+        mock_service.extract_schedule_config.return_value = None  # No schedule config
 
-            workflow = Mock(spec=Workflow)
-            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+        workflow = Mock(spec=Workflow)
+        result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
-            assert result is None
-            # Now using ScheduleService.delete_schedule instead of session.delete
-            mock_service.delete_schedule.assert_called_once_with(session=mock_session, schedule_id="existing-plan-id")
-            mock_session.commit.assert_not_called()
+        assert result is None
+        # Now using ScheduleService.delete_schedule instead of session.delete
+        mock_service.delete_schedule.assert_called_once_with(session=mock_session, schedule_id="existing-plan-id")
+        mock_session.commit.assert_not_called()
 
 
 @pytest.fixture

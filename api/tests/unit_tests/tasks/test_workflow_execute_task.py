@@ -14,15 +14,14 @@ from models.workflow import Workflow, WorkflowRun
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response, _resume_app_execution
 
 
-class _FakeSessionContext:
-    def __init__(self, session: MagicMock):
-        self._session = session
-
-    def __enter__(self) -> MagicMock:
-        return self._session
-
-    def __exit__(self, exc_type, exc, tb) -> bool:
-        return False
+def _make_sessionmaker_mock(session: MagicMock) -> MagicMock:
+    """Create a mock sessionmaker whose .begin() context manager yields *session*."""
+    sm = MagicMock()
+    ctx = MagicMock()
+    ctx.__enter__ = MagicMock(return_value=session)
+    ctx.__exit__ = MagicMock(return_value=False)
+    sm.return_value.begin.return_value = ctx
+    return sm
 
 
 def _build_advanced_chat_generate_entity(conversation_id: str | None) -> AdvancedChatAppGenerateEntity:
@@ -120,7 +119,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(m
     session.get.side_effect = _session_get
     session.scalar.return_value = message
 
-    mocker.patch("tasks.app_generate.workflow_execute_task.Session", return_value=_FakeSessionContext(session))
+    mocker.patch("tasks.app_generate.workflow_execute_task.sessionmaker", _make_sessionmaker_mock(session))
     mocker.patch("tasks.app_generate.workflow_execute_task._resolve_user_for_run", return_value=MagicMock())
     resume_advanced_chat = mocker.patch("tasks.app_generate.workflow_execute_task._resume_advanced_chat")
     mocker.patch("tasks.app_generate.workflow_execute_task._resume_workflow")
@@ -191,7 +190,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
 
     session.get.side_effect = _session_get
 
-    mocker.patch("tasks.app_generate.workflow_execute_task.Session", return_value=_FakeSessionContext(session))
+    mocker.patch("tasks.app_generate.workflow_execute_task.sessionmaker", _make_sessionmaker_mock(session))
     mocker.patch("tasks.app_generate.workflow_execute_task._resolve_user_for_run", return_value=MagicMock())
     resume_advanced_chat = mocker.patch("tasks.app_generate.workflow_execute_task._resume_advanced_chat")
 

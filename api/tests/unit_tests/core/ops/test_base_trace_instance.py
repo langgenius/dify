@@ -20,12 +20,15 @@ class ConcreteTraceInstance(BaseTraceInstance):
 @pytest.fixture
 def mock_db_session(monkeypatch):
     mock_session = MagicMock(spec=Session)
-    mock_session.__enter__.return_value = mock_session
-    mock_session.__exit__.return_value = None
 
-    mock_session_class = MagicMock(return_value=mock_session)
+    mock_begin_ctx = MagicMock()
+    mock_begin_ctx.__enter__ = MagicMock(return_value=mock_session)
+    mock_begin_ctx.__exit__ = MagicMock(return_value=None)
 
-    monkeypatch.setattr("core.ops.base_trace_instance.Session", mock_session_class)
+    mock_sessionmaker = MagicMock()
+    mock_sessionmaker.return_value.begin.return_value = mock_begin_ctx
+
+    monkeypatch.setattr("core.ops.base_trace_instance.sessionmaker", mock_sessionmaker)
     monkeypatch.setattr("core.ops.base_trace_instance.db", MagicMock())
     return mock_session
 
