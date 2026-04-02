@@ -11,18 +11,23 @@ import {
   TextEditorSection,
 } from '../value-content-sections'
 
-const mockToast = Object.assign(vi.fn(), {
-  success: vi.fn(),
-  error: vi.fn(),
-  warning: vi.fn(),
-  info: vi.fn(),
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
   dismiss: vi.fn(),
   update: vi.fn(),
   promise: vi.fn(),
-})
+}))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor', () => ({

@@ -13,19 +13,27 @@ class MockFileReader {
 }
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
+const toastMocks = vi.hoisted(() => {
+  const call = vi.fn()
+  return {
+    call,
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+  toast: Object.assign(toastMocks.api, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 const mockEmit = vi.fn()
 const mockImportDSL = vi.fn()
@@ -193,7 +201,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     })
 
     it('should call onImport on successful import', async () => {
@@ -264,7 +272,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
     })
 
     it('should switch to version mismatch modal on PENDING status', async () => {
@@ -343,7 +351,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when importDSL throws', async () => {
@@ -358,7 +366,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when pipeline_id is missing on success', async () => {
@@ -377,7 +385,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
   })
 
@@ -436,7 +444,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
@@ -469,7 +477,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when confirm throws exception', async () => {
@@ -482,7 +490,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when confirm succeeds but pipeline_id is missing', async () => {
@@ -498,7 +506,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {

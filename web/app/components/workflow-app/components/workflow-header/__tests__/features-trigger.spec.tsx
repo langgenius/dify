@@ -19,19 +19,23 @@ const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
   dismiss: vi.fn(),
   update: vi.fn(),
   promise: vi.fn(),
-}
+}))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 const mockHandleCheckBeforePublish = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -383,7 +387,7 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
       })
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
     })
@@ -429,7 +433,7 @@ describe('FeaturesTrigger', () => {
         expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
         expect(useAppStore.getState().appDetail).toBeDefined()
       })
@@ -466,7 +470,7 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalled()
       })
-      expect(mockNotify).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
       expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
       expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()

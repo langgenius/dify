@@ -12,19 +12,23 @@ import { useMembers } from '@/service/use-common'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SettingsModal from './index'
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
   dismiss: vi.fn(),
   update: vi.fn(),
   promise: vi.fn(),
-}
+}))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
@@ -389,7 +393,7 @@ describe('SettingsModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
         message: 'datasetSettings.form.nameError',
       }))
@@ -413,7 +417,7 @@ describe('SettingsModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
         type: 'error',
         message: 'appDebug.datasetConfig.rerankModelRequired',
       }))
@@ -455,7 +459,7 @@ describe('SettingsModal', () => {
           permission: DatasetPermission.allTeamMembers,
         }),
       }))
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       }))
@@ -539,7 +543,7 @@ describe('SettingsModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
       })
     })
   })

@@ -268,10 +268,6 @@ describe('AudioPlayer — waveform generation', () => {
     await advanceWaveformTimer()
 
     expect(toastSpy).toHaveBeenCalledWith('Web Audio API is not supported in this browser')
-    const toastFound = Array.from(document.body.querySelectorAll('div')).some(
-      d => d.textContent?.includes('Web Audio API is not supported in this browser'),
-    )
-    expect(toastFound).toBe(true)
   })
 
   it('should set audio unavailable when URL is not http/https', async () => {

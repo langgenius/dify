@@ -15,6 +15,10 @@ const mockState = vi.hoisted(() => ({
   mockHandleRestart: vi.fn(),
   mockSetFeatures: vi.fn(),
   mockEventEmitterEmit: vi.fn(),
+  mockToastCall: vi.fn(),
+  mockToastDismiss: vi.fn(),
+  mockToastUpdate: vi.fn(),
+  mockToastPromise: vi.fn(),
   mockText2speechDefaultModel: null as unknown,
   mockStoreState: {
     currentLogItem: null as unknown,
@@ -40,6 +44,22 @@ const mockState = vi.hoisted(() => ({
       }>
     }>,
   },
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(mockState.mockToastCall, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      mockState.mockToastCall({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      mockState.mockToastCall({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      mockState.mockToastCall({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      mockState.mockToastCall({ type: 'info', message, ...options })),
+    dismiss: mockState.mockToastDismiss,
+    update: mockState.mockToastUpdate,
+    promise: mockState.mockToastPromise,
+  }),
 }))
 
 vi.mock('@/app/components/app/configuration/debug/chat-user-input', () => ({
@@ -214,19 +234,27 @@ vi.mock('./debug-with-multiple-model', () => ({
   ),
 }))
 
-vi.mock('./debug-with-single-model', () => ({
-  default: React.forwardRef((props: { checkCanSend: () => boolean }, ref) => {
+vi.mock('./debug-with-single-model', () => {
+  function DebugWithSingleModelMock({
+    checkCanSend,
+    ref,
+  }: {
+    checkCanSend: () => boolean
+    ref?: React.Ref<{ handleRestart: () => void }>
+  }) {
     React.useImperativeHandle(ref, () => ({
       handleRestart: mockState.mockHandleRestart,
     }))
 
     return (
       <div data-testid="debug-with-single-model">
-        <button type="button" data-testid="single-check-can-send" onClick={() => props.checkCanSend()}>Check</button>
+        <button type="button" data-testid="single-check-can-send" onClick={() => checkCanSend()}>Check</button>
       </div>
     )
-  }),
-}))
+  }
+
+  return { default: DebugWithSingleModelMock }
+})
 
 const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugContextValue => ({
   readonly: false,
@@ -375,20 +403,6 @@ const renderDebug = (options: {
   props?: Partial<DebugProps>
 } = {}) => {
   const onSetting = vi.fn()
-  const notify = vi.fn()
-  const mockToast = {
-    success: (message: string, options?: Record<string, unknown>) => notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => notify({ type: 'info', message, ...options }),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }
-
-  vi.mock('@/app/components/base/ui/toast', () => ({
-    toast: mockToast,
-  }))
   const props: ComponentProps<typeof Debug> = {
     isAPIKeySet: true,
     onSetting,
@@ -404,13 +418,14 @@ const renderDebug = (options: {
   }
 
   render(
-    <ConfigContext.Provider value={createContextValue(options.contextValue)}>
-      <Debug {...props} />
-    </ConfigContext.Provider>,
-
+    React.createElement(
+      ConfigContext.Provider,
+      { value: createContextValue(options.contextValue) },
+      <Debug {...props} />,
+    ),
   )
 
-  return { onSetting, notify, props }
+  return { onSetting, notify: mockState.mockToastCall, props }
 }
 
 describe('Debug', () => {

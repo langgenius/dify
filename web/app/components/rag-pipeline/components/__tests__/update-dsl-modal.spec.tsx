@@ -15,19 +15,27 @@ class MockFileReader {
 
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
+const toastMocks = vi.hoisted(() => {
+  const call = vi.fn()
+  return {
+    call,
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+  toast: Object.assign(toastMocks.api, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 const mockEmit = vi.fn()
 vi.mock('@/context/event-emitter', () => ({
@@ -375,7 +383,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
         }))
       })
@@ -455,7 +463,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'warning',
         }))
       })
@@ -483,7 +491,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -511,7 +519,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -535,7 +543,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(importButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -788,7 +796,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
         }))
       })
@@ -830,7 +838,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -869,7 +877,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -911,7 +919,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })

@@ -240,9 +240,7 @@ describe('ConfigParamModal', () => {
     const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
-    expect(toastErrorSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    )
+    expect(toastErrorSpy).toHaveBeenCalledWith('common.modelProvider.embeddingModel.required')
   })
 
   it('should call onHide when cancel is clicked and not loading', () => {

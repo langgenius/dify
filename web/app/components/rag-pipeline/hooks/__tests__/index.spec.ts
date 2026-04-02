@@ -24,7 +24,9 @@ import { usePipelineTemplate } from '../use-pipeline-template'
 const _mockGetState = vi.fn()
 const mockUseStore = vi.fn()
 const mockUseWorkflowStore = vi.fn()
-const mockToastError = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  error: vi.fn(),
+}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => mockUseStore(selector),
@@ -33,7 +35,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
-    error: mockToastError,
+    error: toastMocks.error,
   },
 }))
 
