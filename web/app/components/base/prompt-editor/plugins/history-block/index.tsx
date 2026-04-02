@@ -24,7 +24,7 @@ export type RoleName = {
   assistant: string
 }
 
-export type HistoryBlockProps = {
+type HistoryBlockProps = {
   roleName: RoleName
   onEditRole: () => void
   onInsert?: () => void

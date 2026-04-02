@@ -99,4 +99,4 @@ export const consoleRouterContract = {
   },
 }
 
-export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>
+type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>

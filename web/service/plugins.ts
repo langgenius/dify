@@ -54,11 +54,11 @@ export const uploadGitHub = async (repoUrl: string, selectedVersion: string, sel
   })
 }
 
-export const fetchIcon = (tenantId: string, fileName: string) => {
+const fetchIcon = (tenantId: string, fileName: string) => {
   return get(`workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`)
 }
 
-export const fetchManifest = async (uniqueIdentifier: string) => {
+const fetchManifest = async (uniqueIdentifier: string) => {
   return get<PluginDeclaration>(`/workspaces/current/plugin/fetch-manifest?plugin_unique_identifier=${uniqueIdentifier}`)
 }
 
@@ -81,15 +81,15 @@ export const fetchPluginInfoFromMarketPlace = async ({
   return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
-export const fetchMarketplaceCollections = ({ url }: { url: string }): Promise<MarketplaceCollectionsResponse> => {
+const fetchMarketplaceCollections = ({ url }: { url: string }): Promise<MarketplaceCollectionsResponse> => {
   return get<MarketplaceCollectionsResponse>(url)
 }
 
-export const fetchMarketplaceCollectionPlugins = ({ url }: { url: string }): Promise<MarketplaceCollectionPluginsResponse> => {
+const fetchMarketplaceCollectionPlugins = ({ url }: { url: string }): Promise<MarketplaceCollectionPluginsResponse> => {
   return get<MarketplaceCollectionPluginsResponse>(url)
 }
 
-export const fetchPluginTasks = async () => {
+const fetchPluginTasks = async () => {
   return get<PluginTasksResponse>('/workspaces/current/plugin/tasks?page=1&page_size=255')
 }
 
@@ -97,7 +97,7 @@ export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
 }
 
-export const updatePermission = async (permissions: Permissions) => {
+const updatePermission = async (permissions: Permissions) => {
   return post('/workspaces/current/plugin/permission/change', { body: permissions })
 }
 

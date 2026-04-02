@@ -15,7 +15,7 @@ export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
 }
 
-export const fetchCollectionDetail = (collectionName: string) => {
+const fetchCollectionDetail = (collectionName: string) => {
   return get<Collection>(`/workspaces/current/tool-provider/${collectionName}/info`)
 }
 
@@ -133,7 +133,7 @@ export const saveWorkflowToolProvider = (payload: WorkflowToolProviderRequest & 
   })
 }
 
-export const fetchWorkflowToolDetailByAppID = (appID: string) => {
+const fetchWorkflowToolDetailByAppID = (appID: string) => {
   return get<WorkflowToolProviderResponse>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appID}`)
 }
 

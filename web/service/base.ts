@@ -51,7 +51,7 @@ export type IOnThought = (though: ThoughtItem) => void
 export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
-export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
+type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
@@ -173,7 +173,7 @@ function formatURL(url: string, isPublicAPI: boolean) {
   return `${urlPrefix}${urlWithoutProtocol}`
 }
 
-export function format(text: string) {
+function format(text: string) {
   let res = text.trim()
   if (res.startsWith('\n'))
     res = res.replace('\n', '')
@@ -856,7 +856,7 @@ export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
-export const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return put<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 

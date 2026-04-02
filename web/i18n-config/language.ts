@@ -1,7 +1,7 @@
 import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
 
-export type Item = {
+type Item = {
   value: number | string
   name: string
   example: string

@@ -19,7 +19,7 @@ import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/a
 import { cn } from '@/utils/classnames'
 import { useVariableAssigner } from '../../hooks'
 
-export type AddVariableProps = {
+type AddVariableProps = {
   variableAssignerNodeId: string
   variableAssignerNodeData: VariableAssignerNodeType
   availableVars: NodeOutPutVar[]

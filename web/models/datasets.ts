@@ -474,7 +474,7 @@ export type NotionInfo = {
   pages: DataSourceNotionPage[]
   credential_id: string
 }
-export type NotionPage = {
+type NotionPage = {
   page_id: string
   type: string
 }
@@ -550,7 +550,7 @@ export type DocumentDetailResponse = FullDocumentDetail
 export const SEGMENT_STATUS_LIST = ['waiting', 'completed', 'error', 'indexing']
 export type SegmentStatus = typeof SEGMENT_STATUS_LIST[number]
 
-export type SegmentsQuery = {
+type SegmentsQuery = {
   page?: string
   limit: number
   // status?: SegmentStatus
@@ -785,7 +785,7 @@ export type ChildSegmentsResponse = {
   limit: number
 }
 
-export type UpdateDocumentParams = {
+type UpdateDocumentParams = {
   datasetId: string
   documentId: string
 }
@@ -819,7 +819,7 @@ export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.Comp
   external: ExternalKnowledgeBase,
 }
 
-export const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | ChunkingMode.parentChild, React.ComponentType<{ className: string }>> = {
+const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | ChunkingMode.parentChild, React.ComponentType<{ className: string }>> = {
   [ChunkingMode.text]: GeneralChunk,
   [ChunkingMode.qa]: QuestionAndAnswer,
   [ChunkingMode.parentChild]: ParentChildChunk,

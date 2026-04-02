@@ -5,7 +5,7 @@ export type CommonResponse = {
   result: 'success' | 'fail'
 }
 
-export type FileDownloadResponse = {
+type FileDownloadResponse = {
   id: string
   name: string
   size: number
@@ -62,7 +62,7 @@ export type LangGeniusVersionResponse = {
   current_env: string
 }
 
-export type TenantInfoResponse = {
+type TenantInfoResponse = {
   name: string
   created_at: string
   providers: Array<{
@@ -100,7 +100,7 @@ export type ProviderAzureToken = {
 export type ProviderAnthropicToken = {
   anthropic_api_key?: string
 }
-export type ProviderTokenType = {
+type ProviderTokenType = {
   [ProviderName.OPENAI]: string
   [ProviderName.AZURE_OPENAI]: ProviderAzureToken
   [ProviderName.ANTHROPIC]: ProviderAnthropicToken
@@ -117,7 +117,7 @@ export type Provider = {
   }
 }[ProviderName]
 
-export type ProviderHosted = Provider & {
+type ProviderHosted = Provider & {
   quota_type: string
   quota_limit: number
   quota_used: number
@@ -179,7 +179,7 @@ export type DataSourceNotionWorkspace = {
   pages: DataSourceNotionPage[]
 }
 
-export type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
+type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
 
 export type DataSourceNotion = {
   id: string
@@ -188,7 +188,7 @@ export type DataSourceNotion = {
   source_info: DataSourceNotionWorkspace
 }
 
-export enum DataSourceCategory {
+enum DataSourceCategory {
   website = 'website',
 }
 export enum DataSourceProvider {
@@ -197,17 +197,17 @@ export enum DataSourceProvider {
   waterCrawl = 'watercrawl',
 }
 
-export type FirecrawlConfig = {
+type FirecrawlConfig = {
   api_key: string
   base_url: string
 }
 
-export type WatercrawlConfig = {
+type WatercrawlConfig = {
   api_key: string
   base_url: string
 }
 
-export type DataSourceItem = {
+type DataSourceItem = {
   id: string
   category: DataSourceCategory
   provider: DataSourceProvider
@@ -216,7 +216,7 @@ export type DataSourceItem = {
   updated_at: number
 }
 
-export type DataSources = {
+type DataSources = {
   sources: DataSourceItem[]
 }
 
@@ -300,7 +300,7 @@ export type ModerateResponse = {
   text: string
 }
 
-export type ModerationService = (
+type ModerationService = (
   url: string,
   body: {
     app_id: string

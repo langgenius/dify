@@ -6,9 +6,9 @@ import type {
 } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
-export const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
+const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
 
-export type CompletionParamType = typeof CompletionParams[number]
+type CompletionParamType = typeof CompletionParams[number]
 
 export type CompletionParamsType = {
   max_tokens: number
@@ -279,7 +279,7 @@ export type WorkflowLogsResponse = {
   total: number
   page: number
 }
-export type WorkflowLogsRequest = {
+type WorkflowLogsRequest = {
   keyword: string
   status: string
   page: number

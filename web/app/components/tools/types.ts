@@ -6,7 +6,7 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-export enum LOC {
+enum LOC {
   tools = 'tools',
   app = 'app',
 }

@@ -70,7 +70,7 @@ export const useInvalidateCheckInstalled = () => {
 }
 
 const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
-export const useRecommendedMarketplacePlugins = ({
+const useRecommendedMarketplacePlugins = ({
   collection = '__recommended-plugins-tools',
   enabled = true,
   limit = 15,
@@ -231,7 +231,7 @@ export const useVersionListOfPlugin = (pluginID: string) => {
     queryFn: () => getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, { params: { page: 1, page_size: 100 } }),
   })
 }
-export const useInvalidateVersionListOfPlugin = () => {
+const useInvalidateVersionListOfPlugin = () => {
   const queryClient = useQueryClient()
   return (pluginID: string) => {
     queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'versions', pluginID] })
@@ -473,7 +473,7 @@ export const useRemoveAutoUpgrade = () => {
   })
 }
 
-export const useMutationPluginsFromMarketplace = () => {
+const useMutationPluginsFromMarketplace = () => {
   return useMutation({
     mutationFn: (pluginsSearchParams: PluginsSearchParams) => {
       const {
@@ -519,7 +519,7 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
   })
 }
 
-export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
+const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginListOrBundleList', pluginsSearchParams],
     queryFn: () => {
@@ -632,7 +632,7 @@ export const useMutationClearTaskPlugin = () => {
   })
 }
 
-export const useMutationClearAllTaskPlugin = () => {
+const useMutationClearAllTaskPlugin = () => {
   return useMutation({
     mutationFn: () => {
       return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')

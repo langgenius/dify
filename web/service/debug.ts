@@ -4,7 +4,7 @@ import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
 
-export type BasicAppFirstRes = {
+type BasicAppFirstRes = {
   prompt: string
   variables: string[]
   opening_statement: string
@@ -19,7 +19,7 @@ export type GenRes = {
   error?: string
 }
 
-export type CodeGenRes = {
+type CodeGenRes = {
   code: string
   language: string[]
   error?: string
@@ -75,7 +75,7 @@ export const generateRule = (body: Record<string, any>) => {
   })
 }
 
-export const fetchModelParams = (providerName: string, modelId: string) => {
+const fetchModelParams = (providerName: string, modelId: string) => {
   return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
     params: {
       model: modelId,

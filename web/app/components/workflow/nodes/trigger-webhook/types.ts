@@ -2,9 +2,9 @@ import type { CommonNodeType, Variable, VarType } from '@/app/components/workflo
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 
-export type ArrayElementType = 'string' | 'number' | 'boolean' | 'object'
+type ArrayElementType = 'string' | 'number' | 'boolean' | 'object'
 
-export const getArrayElementType = (arrayType: `array[${ArrayElementType}]`): ArrayElementType => {
+const getArrayElementType = (arrayType: `array[${ArrayElementType}]`): ArrayElementType => {
   const arrayRegex = /^array\[(.+)\]$/
   const match = arrayRegex.exec(arrayType)
   return (match?.[1] as ArrayElementType) || 'string'

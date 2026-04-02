@@ -173,7 +173,7 @@ export const useAuthorizeMCP = () => {
   })
 }
 
-export const useUpdateMCPAuthorizationToken = () => {
+const useUpdateMCPAuthorizationToken = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
     mutationFn: (payload: { provider_id: string, authorization_code: string }) => {
@@ -275,14 +275,14 @@ export const useRefreshMCPServerCode = () => {
   })
 }
 
-export const useBuiltinProviderInfo = (providerName: string) => {
+const useBuiltinProviderInfo = (providerName: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],
     queryFn: () => get<Collection>(`/workspaces/current/tool-provider/builtin/${providerName}/info`),
   })
 }
 
-export const useInvalidateBuiltinProviderInfo = () => {
+const useInvalidateBuiltinProviderInfo = () => {
   const queryClient = useQueryClient()
   return (providerName: string) => {
     queryClient.invalidateQueries(
@@ -301,7 +301,7 @@ export const useBuiltinTools = (providerName: string) => {
   })
 }
 
-export const useUpdateProviderCredentials = ({
+const useUpdateProviderCredentials = ({
   onSuccess,
 }: {
   onSuccess?: () => void
@@ -320,7 +320,7 @@ export const useUpdateProviderCredentials = ({
   })
 }
 
-export const useRemoveProviderCredentials = ({
+const useRemoveProviderCredentials = ({
   onSuccess,
 }: {
   onSuccess?: () => void

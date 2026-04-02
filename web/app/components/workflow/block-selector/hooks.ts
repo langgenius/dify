@@ -22,7 +22,7 @@ export const useBlocks = () => {
   })
 }
 
-export const useStartBlocks = () => {
+const useStartBlocks = () => {
   const { t } = useTranslation()
 
   return START_BLOCKS.map((block) => {

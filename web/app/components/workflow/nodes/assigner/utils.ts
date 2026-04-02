@@ -2,11 +2,11 @@ import type { AssignerNodeType } from './types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { AssignerNodeInputType, WriteMode } from './types'
 
-export const checkNodeValid = (_payload: AssignerNodeType) => {
+const checkNodeValid = (_payload: AssignerNodeType) => {
   return true
 }
 
-export const formatOperationName = (type: string) => {
+const formatOperationName = (type: string) => {
   if (type === 'over-write')
     return 'Overwrite'
   return type.charAt(0).toUpperCase() + type.slice(1)

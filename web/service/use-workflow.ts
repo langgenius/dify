@@ -188,7 +188,7 @@ export const useResetToLastRunValue = (flowType: FlowType, flowId: string) => {
   })
 }
 
-export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
+const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
 export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
   return useQuery({
     enabled: !!flowId,

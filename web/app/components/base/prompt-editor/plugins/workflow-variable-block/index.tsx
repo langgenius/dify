@@ -20,7 +20,7 @@ export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_WORK
 export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
 
-export type WorkflowVariableBlockProps = {
+type WorkflowVariableBlockProps = {
   getWorkflowNode: (nodeId: string) => Node
   onInsert?: () => void
   onDelete?: () => void

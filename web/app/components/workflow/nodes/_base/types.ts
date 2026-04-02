@@ -14,13 +14,13 @@ export type ResourceVarInputs = Record<string, {
 }>
 
 // Base resource interface
-export type BaseResource = {
+type BaseResource = {
   name: string
   [key: string]: any
 }
 
 // Base resource provider interface
-export type BaseResourceProvider = {
+type BaseResourceProvider = {
   plugin_id?: string
   name: string
   [key: string]: any

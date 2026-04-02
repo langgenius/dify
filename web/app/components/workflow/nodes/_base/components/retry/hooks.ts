@@ -27,7 +27,7 @@ export const useRetryConfig = (
   }
 }
 
-export const useRetryDetailShowInSingleRun = () => {
+const useRetryDetailShowInSingleRun = () => {
   const [retryDetails, setRetryDetails] = useState<NodeTracing[] | undefined>()
 
   const handleRetryDetailsChange = useCallback((details: NodeTracing[] | undefined) => {

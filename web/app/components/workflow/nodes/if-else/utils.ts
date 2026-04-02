@@ -17,8 +17,8 @@ const notTranslateKey = [
 ] as const
 
 type NotTranslateOperator = typeof notTranslateKey[number]
-export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
-export type IfElseOptionName = I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+type IfElseOptionName = I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
 
 export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
 export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator

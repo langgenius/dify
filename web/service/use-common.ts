@@ -277,7 +277,7 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
   })
 }
 
-export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
+const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
   return useQuery({
     queryKey: commonQueryKeys.defaultModel(type),
     queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
@@ -304,7 +304,7 @@ type DataSourceIntegratesOptions = {
   initialData?: { data: DataSourceNotion[] }
 }
 
-export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {}) => {
+const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {}) => {
   const { enabled = true, initialData } = options
   return useQuery<{ data: DataSourceNotion[] }>({
     queryKey: commonQueryKeys.dataSourceIntegrates,
@@ -314,7 +314,7 @@ export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {
   })
 }
 
-export const useInvalidDataSourceIntegrates = () => {
+const useInvalidDataSourceIntegrates = () => {
   return useInvalid(commonQueryKeys.dataSourceIntegrates)
 }
 
@@ -332,7 +332,7 @@ export const useCodeBasedExtensions = (module: string) => {
   })
 }
 
-export const useNotionConnection = (enabled: boolean) => {
+const useNotionConnection = (enabled: boolean) => {
   return useQuery<{ data: string }>({
     queryKey: commonQueryKeys.notionConnection,
     queryFn: () => get<{ data: string }>('/oauth/data-source/notion'),

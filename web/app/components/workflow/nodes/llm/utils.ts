@@ -5,7 +5,7 @@ import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import { extractPluginId } from '../../utils/plugin'
 import { ArrayType, Type } from './types'
 
-export const checkNodeValid = (_payload: LLMNodeType) => {
+const checkNodeValid = (_payload: LLMNodeType) => {
   return true
 }
 
@@ -59,7 +59,7 @@ export const getHasChildren = (schema: Field) => {
     return schema.items && schema.items.type === Type.object && schema.items.properties && Object.keys(schema.items.properties).length > 0
 }
 
-export const getTypeOf = (target: any) => {
+const getTypeOf = (target: any) => {
   if (target === null)
     return 'null'
   if (typeof target !== 'object') {
@@ -73,7 +73,7 @@ export const getTypeOf = (target: any) => {
   }
 }
 
-export const inferType = (value: any): Type => {
+const inferType = (value: any): Type => {
   const type = getTypeOf(value)
   if (type === 'array')
     return Type.array
@@ -173,7 +173,7 @@ export const getValidationErrorMessage = (errors: Array<ValidationError | string
 }
 
 // Previous Not support boolean type, so transform boolean to string when paste it into schema editor
-export const convertBooleanToString = (schema: any) => {
+const convertBooleanToString = (schema: any) => {
   if (schema.type === Type.boolean)
     schema.type = Type.string
   if (schema.type === Type.array && schema.items && schema.items.type === Type.boolean)

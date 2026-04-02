@@ -75,7 +75,7 @@ export const useAllTriggerPlugins = (enabled = true) => {
   })
 }
 
-export const useTriggerPluginsByType = (triggerType: string, enabled = true) => {
+const useTriggerPluginsByType = (triggerType: string, enabled = true) => {
   return useQuery<TriggerWithProvider[]>({
     queryKey: consoleQuery.triggers.list.queryKey({ input: { query: { type: triggerType } } }),
     queryFn: async () => {
@@ -108,7 +108,7 @@ export const useTriggerSubscriptions = (provider: string, enabled = true) => {
   })
 }
 
-export const useInvalidateTriggerSubscriptions = () => {
+const useInvalidateTriggerSubscriptions = () => {
   const queryClient = useQueryClient()
   return (provider: string) => {
     queryClient.invalidateQueries({
@@ -220,7 +220,7 @@ export const useDeleteTriggerSubscription = () => {
   })
 }
 
-export type UpdateTriggerSubscriptionPayload = {
+type UpdateTriggerSubscriptionPayload = {
   subscriptionId: string
   name?: string
   properties?: Record<string, unknown>
@@ -363,7 +363,7 @@ export const useTriggerPluginDynamicOptions = (payload: {
 
 // ===== Cache Invalidation Helpers =====
 
-export const useInvalidateTriggerOAuthConfig = () => {
+const useInvalidateTriggerOAuthConfig = () => {
   const queryClient = useQueryClient()
   return (provider: string) => {
     queryClient.invalidateQueries({

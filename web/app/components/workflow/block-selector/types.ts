@@ -125,7 +125,7 @@ export type DataSourceItem = {
 }
 
 // Backend API types - exact match with Python definitions
-export type TriggerParameter = {
+type TriggerParameter = {
   multiple: boolean
   name: string
   label: TypeWithI18N
@@ -170,24 +170,24 @@ export type TriggerCredentialField = {
   placeholder?: TypeWithI18N
 }
 
-export type TriggerSubscriptionSchema = {
+type TriggerSubscriptionSchema = {
   parameters_schema: TriggerParameter[]
   properties_schema: TriggerCredentialField[]
 }
 
-export type TriggerIdentity = {
+type TriggerIdentity = {
   author: string
   name: string
   label: TypeWithI18N
   provider: string
 }
 
-export type TriggerDescription = {
+type TriggerDescription = {
   human: TypeWithI18N
   llm: TypeWithI18N
 }
 
-export type TriggerApiEntity = {
+type TriggerApiEntity = {
   name: string
   identity: TriggerIdentity
   description: TypeWithI18N
@@ -272,7 +272,7 @@ export type TriggerOAuthClientParams = {
   scope?: string
 }
 
-export type TriggerOAuthResponse = {
+type TriggerOAuthResponse = {
   authorization_url: string
   subscription_builder: TriggerSubscriptionBuilder
 }

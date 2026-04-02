@@ -105,14 +105,14 @@ export const useAppList = (params: AppListParams, options?: { enabled?: boolean 
   })
 }
 
-export const useAppFullList = () => {
+const useAppFullList = () => {
   return useQuery<AppListResponse>({
     queryKey: useAppFullListKey,
     queryFn: () => get<AppListResponse>('/apps', { params: { page: 1, limit: 100, name: '' } }),
   })
 }
 
-export const useInvalidateAppFullList = () => {
+const useInvalidateAppFullList = () => {
   return useInvalid(useAppFullListKey)
 }
 

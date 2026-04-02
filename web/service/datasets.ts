@@ -58,7 +58,7 @@ export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export type MetadataType = 'all' | 'only' | 'without'
 
-export const fetchDatasetDetail = (datasetId: string): Promise<DataSet> => {
+const fetchDatasetDetail = (datasetId: string): Promise<DataSet> => {
   return get<DataSet>(`/datasets/${datasetId}`)
 }
 
@@ -72,7 +72,7 @@ export const updateDatasetSetting = ({
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
 }
 
-export const fetchDatasetRelatedApps = (datasetId: string): Promise<RelatedAppResponse> => {
+const fetchDatasetRelatedApps = (datasetId: string): Promise<RelatedAppResponse> => {
   return get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`)
 }
 
@@ -95,7 +95,7 @@ export const deleteDataset = (datasetID: string): Promise<DataSet> => {
   return del<DataSet>(`/datasets/${datasetID}`)
 }
 
-export const fetchExternalAPIList = ({ url }: { url: string }): Promise<ExternalAPIListResponse> => {
+const fetchExternalAPIList = ({ url }: { url: string }): Promise<ExternalAPIListResponse> => {
   return get<ExternalAPIListResponse>(url)
 }
 
@@ -126,7 +126,7 @@ export const createExternalKnowledgeBase = ({ body }: { body: CreateKnowledgeBas
 export const fetchDefaultProcessRule = ({ url }: { url: string }): Promise<ProcessRuleResponse> => {
   return get<ProcessRuleResponse>(url)
 }
-export const fetchProcessRule = ({ params: { documentId } }: { params: { documentId: string } }): Promise<ProcessRuleResponse> => {
+const fetchProcessRule = ({ params: { documentId } }: { params: { documentId: string } }): Promise<ProcessRuleResponse> => {
   return get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } })
 }
 
@@ -138,10 +138,10 @@ export const createDocument = ({ datasetId, body }: { datasetId: string, body: C
   return post<createDocumentResponse>(`/datasets/${datasetId}/documents`, { body })
 }
 
-export const fetchIndexingEstimate = ({ datasetId, documentId }: CommonDocReq): Promise<IndexingEstimateResponse> => {
+const fetchIndexingEstimate = ({ datasetId, documentId }: CommonDocReq): Promise<IndexingEstimateResponse> => {
   return get<IndexingEstimateResponse>(`/datasets/${datasetId}/documents/${documentId}/indexing-estimate`, {})
 }
-export const fetchIndexingEstimateBatch = ({ datasetId, batchId }: BatchReq): Promise<IndexingEstimateResponse> => {
+const fetchIndexingEstimateBatch = ({ datasetId, batchId }: BatchReq): Promise<IndexingEstimateResponse> => {
   return get<IndexingEstimateResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-estimate`, {})
 }
 
@@ -179,7 +179,7 @@ export const downloadDocumentsZip = ({ datasetId, documentIds }: DocumentDownloa
   })
 }
 
-export const preImportNotionPages = ({ url, datasetId }: { url: string, datasetId?: string }): Promise<{ notion_info: DataSourceNotionWorkspace[] }> => {
+const preImportNotionPages = ({ url, datasetId }: { url: string, datasetId?: string }): Promise<{ notion_info: DataSourceNotionWorkspace[] }> => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
 
@@ -188,15 +188,15 @@ export const modifyDocMetadata = ({ datasetId, documentId, body }: CommonDocReq 
 }
 
 // hit testing
-export const hitTesting = ({ datasetId, queryText, retrieval_model }: { datasetId: string, queryText: string, retrieval_model: RetrievalConfig }): Promise<HitTestingResponse> => {
+const hitTesting = ({ datasetId, queryText, retrieval_model }: { datasetId: string, queryText: string, retrieval_model: RetrievalConfig }): Promise<HitTestingResponse> => {
   return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
 }
 
-export const externalKnowledgeBaseHitTesting = ({ datasetId, query, external_retrieval_model }: { datasetId: string, query: string, external_retrieval_model: { top_k: number, score_threshold: number, score_threshold_enabled: boolean } }): Promise<ExternalKnowledgeBaseHitTestingResponse> => {
+const externalKnowledgeBaseHitTesting = ({ datasetId, query, external_retrieval_model }: { datasetId: string, query: string, external_retrieval_model: { top_k: number, score_threshold: number, score_threshold_enabled: boolean } }): Promise<ExternalKnowledgeBaseHitTestingResponse> => {
   return post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, { body: { query, external_retrieval_model } })
 }
 
-export const fetchTestingRecords = ({ datasetId, params }: { datasetId: string, params: { page: number, limit: number } }): Promise<HitTestingRecordsResponse> => {
+const fetchTestingRecords = ({ datasetId, params }: { datasetId: string, params: { page: number, limit: number } }): Promise<HitTestingRecordsResponse> => {
   return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
 }
 
@@ -212,7 +212,7 @@ export const fetchNotionPagePreview = ({ pageID, pageType, credentialID }: { pag
   })
 }
 
-export const fetchApiKeysList = ({ url, params }: { url: string, params: Record<string, any> }): Promise<ApiKeysListResponse> => {
+const fetchApiKeysList = ({ url, params }: { url: string, params: Record<string, any> }): Promise<ApiKeysListResponse> => {
   return get<ApiKeysListResponse>(url, params)
 }
 
@@ -224,15 +224,15 @@ export const createApikey = ({ url, body }: { url: string, body: Record<string, 
   return post<CreateApiKeyResponse>(url, body)
 }
 
-export const fetchDataSources = (): Promise<CommonResponse> => {
+const fetchDataSources = (): Promise<CommonResponse> => {
   return get<CommonResponse>('api-key-auth/data-source')
 }
 
-export const createDataSourceApiKeyBinding = (body: Record<string, any>): Promise<CommonResponse> => {
+const createDataSourceApiKeyBinding = (body: Record<string, any>): Promise<CommonResponse> => {
   return post<CommonResponse>('api-key-auth/data-source/binding', { body })
 }
 
-export const removeDataSourceApiKeyBinding = (id: string): Promise<CommonResponse> => {
+const removeDataSourceApiKeyBinding = (id: string): Promise<CommonResponse> => {
   return del<CommonResponse>(`api-key-auth/data-source/${id}`)
 }
 
@@ -297,11 +297,11 @@ export type FileTypesRes = {
   allowed_extensions: string[]
 }
 
-export const fetchSupportFileTypes = ({ url }: { url: string }): Promise<FileTypesRes> => {
+const fetchSupportFileTypes = ({ url }: { url: string }): Promise<FileTypesRes> => {
   return get<FileTypesRes>(url)
 }
 
-export const getErrorDocs = ({ datasetId }: { datasetId: string }): Promise<ErrorDocsResponse> => {
+const getErrorDocs = ({ datasetId }: { datasetId: string }): Promise<ErrorDocsResponse> => {
   return get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`)
 }
 

@@ -37,7 +37,7 @@ export enum SelfHostedPlan {
   enterprise = 'enterprise',
 }
 
-export type SelfHostedPlanInfo = {
+type SelfHostedPlanInfo = {
   level: number
   price: number
   modelProviders: string
@@ -121,7 +121,7 @@ export type CurrentPlanInfoBackend = {
   human_input_email_delivery_enabled: boolean
 }
 
-export type SubscriptionItem = {
+type SubscriptionItem = {
   plan: Plan
   url: string
 }

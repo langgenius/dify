@@ -13,7 +13,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout, useUserProfile } from '@/service/use-common'
 
-export type IAppSelector = {
+type IAppSelector = {
   isMobile: boolean
 }
 

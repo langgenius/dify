@@ -10,7 +10,7 @@ export const MittContext = createContext<ContextValueType>({
   useSubscribe: noop,
 })
 
-export const useMittContext = () => {
+const useMittContext = () => {
   return useContext(MittContext)
 }
 

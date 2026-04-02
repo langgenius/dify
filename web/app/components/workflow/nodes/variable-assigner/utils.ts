@@ -1,7 +1,7 @@
 import type { Var } from '../../types'
 import { VarType } from '../../types'
 
-export const checkNodeValid = () => {
+const checkNodeValid = () => {
   return true
 }
 

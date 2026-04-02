@@ -44,7 +44,7 @@ export const useSetPluginDefaultCredential = (
   })
 }
 
-export const useGetPluginCredentialList = (
+const useGetPluginCredentialList = (
   url: string,
 ) => {
   return useQuery({

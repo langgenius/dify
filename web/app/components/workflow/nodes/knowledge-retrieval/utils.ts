@@ -13,7 +13,7 @@ import {
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-export const checkNodeValid = () => {
+const checkNodeValid = () => {
   return true
 }
 

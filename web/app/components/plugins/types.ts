@@ -143,7 +143,7 @@ export type ParametersSchema = {
   description: Record<Locale, string>
 }
 
-export type PropertiesSchema = {
+type PropertiesSchema = {
   type: FormTypeEnum
   name: string
   scope: any
@@ -353,7 +353,7 @@ export type GitHubUrlInfo = {
 }
 
 // endpoint
-export type EndpointOperationResponse = {
+type EndpointOperationResponse = {
   result: 'success' | 'error'
 }
 
@@ -364,7 +364,7 @@ export type EndpointsResponse = {
   total: number
   page: number
 }
-export type UpdateEndpointRequest = {
+type UpdateEndpointRequest = {
   endpoint_id: string
   settings: Record<string, any>
   name: string
@@ -464,7 +464,7 @@ export type MetaData = {
   package: string
 }
 
-export type InstalledPluginListResponse = {
+type InstalledPluginListResponse = {
   plugins: PluginDetail[]
 }
 

@@ -17,8 +17,8 @@ import { cn } from '@/utils/classnames'
 
 export const ContextMenu = BaseContextMenu.Root
 export const ContextMenuTrigger = BaseContextMenu.Trigger
-export const ContextMenuPortal = BaseContextMenu.Portal
-export const ContextMenuBackdrop = BaseContextMenu.Backdrop
+const ContextMenuPortal = BaseContextMenu.Portal
+const ContextMenuBackdrop = BaseContextMenu.Backdrop
 export const ContextMenuSub = BaseContextMenu.SubmenuRoot
 export const ContextMenuGroup = BaseContextMenu.Group
 export const ContextMenuRadioGroup = BaseContextMenu.RadioGroup
@@ -179,7 +179,7 @@ type ContextMenuIndicatorProps = Omit<React.ComponentPropsWithoutRef<'span'>, 'c
   children?: React.ReactNode
 }
 
-export function ContextMenuItemIndicator({
+function ContextMenuItemIndicator({
   className,
   children,
   ...props

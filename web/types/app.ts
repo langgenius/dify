@@ -16,7 +16,7 @@ export enum Theme {
   system = 'system',
 }
 
-export enum ProviderType {
+enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
   azure_openai = 'azure_openai',
@@ -27,7 +27,7 @@ export enum ProviderType {
   spark = 'spark',
 }
 
-export enum AppType {
+enum AppType {
   chat = 'chat',
   completion = 'completion',
 }
@@ -51,7 +51,7 @@ export enum RETRIEVE_METHOD {
   keywordSearch = 'keyword_search',
 }
 
-export type VariableInput = {
+type VariableInput = {
   key: string
   name: string
   value: string

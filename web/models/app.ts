@@ -51,7 +51,7 @@ export type AppTemplatesResponse = {
   data: AppTemplate[]
 }
 
-export type CreateAppResponse = App
+type CreateAppResponse = App
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 

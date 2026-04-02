@@ -23,7 +23,7 @@ export const INSERT_HITL_INPUT_BLOCK_COMMAND = createCommand('INSERT_HITL_INPUT_
 export const DELETE_HITL_INPUT_BLOCK_COMMAND = createCommand('DELETE_HITL_INPUT_BLOCK_COMMAND')
 export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
 
-export type HITLInputProps = {
+type HITLInputProps = {
   onInsert?: () => void
   onDelete?: () => void
 }

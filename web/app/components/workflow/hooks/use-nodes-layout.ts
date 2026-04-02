@@ -23,7 +23,7 @@ const layoutOptions = {
 
 const elk = new ELK()
 
-export const getLayoutedNodes = async (nodes: Node[], edges: Edge[]) => {
+const getLayoutedNodes = async (nodes: Node[], edges: Edge[]) => {
   const graph = {
     id: 'root',
     layoutOptions,
@@ -59,7 +59,7 @@ export const getLayoutedNodes = async (nodes: Node[], edges: Edge[]) => {
   }
 }
 
-export const useNodesLayout = () => {
+const useNodesLayout = () => {
   const store = useStoreApi()
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()

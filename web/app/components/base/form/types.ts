@@ -82,7 +82,7 @@ export type FormSchema = {
   }
 }
 
-export type FormValues = Record<string, any>
+type FormValues = Record<string, any>
 
 export type GetValuesOptions = {
   needTransformWhenSecretFieldIsPristine?: boolean

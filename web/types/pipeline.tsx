@@ -6,7 +6,7 @@ export type DataSourceNodeProcessingResponse = {
   completed: number
 }
 
-export type DataSourceNodeError = {
+type DataSourceNodeError = {
   event: 'datasource_error'
   message: string
   code?: string

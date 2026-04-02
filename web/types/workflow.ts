@@ -402,7 +402,7 @@ export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
-export type ChatRunHistoryResponse = {
+type ChatRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
@@ -439,7 +439,7 @@ export type UpdateWorkflowParams = {
   releaseNotes: string
 }
 
-export type PanelExposedType = {
+type PanelExposedType = {
   singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
 }
 

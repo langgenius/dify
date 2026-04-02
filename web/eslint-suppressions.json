@@ -265,6 +265,9 @@
   "app/account/(commonLayout)/avatar.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/account/(commonLayout)/delete-account/components/check-email.tsx": {
@@ -713,6 +716,11 @@
       "count": 3
     }
   },
+  "app/components/app/configuration/config-var/config-modal/config.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/config-var/config-modal/field.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -1119,6 +1127,11 @@
       "count": 6
     }
   },
+  "app/components/app/configuration/debug/debug-with-multiple-model/context.ts": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    }
+  },
   "app/components/app/configuration/debug/debug-with-multiple-model/debug-item.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -1376,6 +1389,14 @@
       "count": 1
     }
   },
+  "app/components/app/overview/apikey-info-panel/apikey-info-panel.test-utils.tsx": {
+    "style/comma-dangle": {
+      "count": 1
+    },
+    "style/no-multi-spaces": {
+      "count": 1
+    }
+  },
   "app/components/app/overview/apikey-info-panel/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -1402,6 +1423,9 @@
     }
   },
   "app/components/app/overview/app-chart.tsx": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 13
     }
@@ -1473,6 +1497,9 @@
     },
     "ts/no-explicit-any": {
       "count": 4
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/app/text-generate/item/result-tab.tsx": {
@@ -1651,6 +1678,9 @@
   "app/components/base/amplitude/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
+    },
+    "style/no-multi-spaces": {
+      "count": 1
     }
   },
   "app/components/base/amplitude/utils.ts": {
@@ -2037,6 +2067,11 @@
       "count": 1
     }
   },
+  "app/components/base/chat/chat/context.ts": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    }
+  },
   "app/components/base/chat/chat/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 2
@@ -2069,6 +2104,9 @@
   "app/components/base/chat/chat/type.ts": {
     "ts/no-explicit-any": {
       "count": 5
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/chat/chat/utils.ts": {
@@ -2128,7 +2166,13 @@
   },
   "app/components/base/chat/types.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 2
+    },
+    "style/no-trailing-spaces": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 4
     }
   },
   "app/components/base/chat/utils.ts": {
@@ -2199,6 +2243,9 @@
     }
   },
   "app/components/base/date-and-time-picker/calendar/days-of-week.tsx": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -2575,7 +2622,7 @@
   },
   "app/components/base/file-uploader/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 5
     }
   },
   "app/components/base/file-uploader/pdf-highlighter-adapter.tsx": {
@@ -2689,6 +2736,11 @@
       "count": 2
     }
   },
+  "app/components/base/form/form-scenarios/demo/types.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/base/form/form-scenarios/input-field/field.tsx": {
     "react/component-hook-factories": {
       "count": 1
@@ -2736,12 +2788,20 @@
       "count": 3
     }
   },
+  "app/components/base/form/index.tsx": {
+    "style/no-multi-spaces": {
+      "count": 1
+    }
+  },
   "app/components/base/form/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
     },
     "ts/no-explicit-any": {
       "count": 16
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/form/utils/secret-input/index.ts": {
@@ -2759,7 +2819,7 @@
       "count": 1
     },
     "react-refresh/only-export-components": {
-      "count": 4
+      "count": 1
     }
   },
   "app/components/base/grid-mask/index.stories.tsx": {
@@ -2784,12 +2844,18 @@
   },
   "app/components/base/icons/src/public/billing/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 4
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 3
     }
   },
   "app/components/base/icons/src/public/common/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 16
+      "count": 6
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 3
     }
   },
   "app/components/base/icons/src/public/education/index.ts": {
@@ -2804,12 +2870,15 @@
   },
   "app/components/base/icons/src/public/knowledge/dataset-card/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 4
     }
   },
   "app/components/base/icons/src/public/knowledge/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 8
+      "count": 6
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/base/icons/src/public/knowledge/online-drive/index.ts": {
@@ -2819,7 +2888,10 @@
   },
   "app/components/base/icons/src/public/llm/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 50
+      "count": 9
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 7
     }
   },
   "app/components/base/icons/src/public/model/index.ts": {
@@ -2829,7 +2901,7 @@
   },
   "app/components/base/icons/src/public/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/base/icons/src/public/plugins/index.ts": {
@@ -2839,7 +2911,10 @@
   },
   "app/components/base/icons/src/public/thought/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/base/icons/src/public/tracing/index.ts": {
@@ -2854,32 +2929,47 @@
   },
   "app/components/base/icons/src/vender/knowledge/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 16
+      "count": 15
     }
   },
   "app/components/base/icons/src/vender/line/alertsAndFeedback/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 9
+      "count": 6
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/communication/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 6
+      "count": 3
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/development/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 14
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/base/icons/src/vender/line/editor/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 8
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/base/icons/src/vender/line/education/index.ts": {
@@ -2889,17 +2979,26 @@
   },
   "app/components/base/icons/src/vender/line/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 11
+      "count": 7
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/financeAndECommerce/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 4
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 30
+      "count": 12
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 5
     }
   },
   "app/components/base/icons/src/vender/line/images/index.ts": {
@@ -2909,17 +3008,26 @@
   },
   "app/components/base/icons/src/vender/line/layout/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/mediaAndDevices/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 6
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/others/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 7
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/shapes/index.ts": {
@@ -2929,7 +3037,10 @@
   },
   "app/components/base/icons/src/vender/line/time/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/users/index.ts": {
@@ -2944,7 +3055,10 @@
   },
   "app/components/base/icons/src/vender/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 9
+      "count": 8
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/pipeline/index.ts": {
@@ -2959,7 +3073,10 @@
   },
   "app/components/base/icons/src/vender/solid/FinanceAndECommerce/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/alertsAndFeedback/index.ts": {
@@ -2969,37 +3086,52 @@
   },
   "app/components/base/icons/src/vender/solid/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 3
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/communication/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 6
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/base/icons/src/vender/solid/development/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 13
+      "count": 4
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/editor/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/education/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/base/icons/src/vender/solid/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/base/icons/src/vender/solid/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 18
+      "count": 11
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 3
     }
   },
   "app/components/base/icons/src/vender/solid/layout/index.ts": {
@@ -3009,7 +3141,10 @@
   },
   "app/components/base/icons/src/vender/solid/mediaAndDevices/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 3
     }
   },
   "app/components/base/icons/src/vender/solid/security/index.ts": {
@@ -3019,12 +3154,18 @@
   },
   "app/components/base/icons/src/vender/solid/shapes/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/users/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/base/icons/src/vender/system/index.ts": {
@@ -3034,7 +3175,7 @@
   },
   "app/components/base/icons/src/vender/workflow/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 31
+      "count": 30
     }
   },
   "app/components/base/icons/utils.ts": {
@@ -3210,7 +3351,7 @@
   },
   "app/components/base/markdown-blocks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 11
+      "count": 10
     }
   },
   "app/components/base/markdown-blocks/link.tsx": {
@@ -3470,6 +3611,9 @@
     }
   },
   "app/components/base/premium-badge/index.tsx": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -3580,6 +3724,9 @@
     },
     "react-refresh/only-export-components": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
@@ -3606,6 +3753,9 @@
     },
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
@@ -3665,6 +3815,9 @@
     },
     "react-refresh/only-export-components": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/request-url-block/component.tsx": {
@@ -3707,6 +3860,9 @@
     },
     "react-refresh/only-export-components": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
@@ -4004,6 +4160,9 @@
   "app/components/base/text-generation/types.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 5
     }
   },
   "app/components/base/textarea/index.stories.tsx": {
@@ -4016,6 +4175,9 @@
   },
   "app/components/base/textarea/index.tsx": {
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "style/no-multi-spaces": {
       "count": 1
     }
   },
@@ -4047,6 +4209,9 @@
   "app/components/base/ui/context-menu/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 3
     }
   },
   "app/components/base/ui/dialog/index.tsx": {
@@ -4056,6 +4221,9 @@
   },
   "app/components/base/ui/dropdown-menu/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -4082,11 +4250,17 @@
   "app/components/base/ui/scroll-area/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/base/ui/select/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 3
     }
   },
   "app/components/base/ui/slider/index.stories.tsx": {
@@ -4264,6 +4438,9 @@
   "app/components/billing/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 4
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "app/components/billing/upgrade-btn/index.tsx": {
@@ -4390,7 +4567,7 @@
   },
   "app/components/datasets/common/image-uploader/store.tsx": {
     "react-refresh/only-export-components": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/datasets/common/retrieval-method-info/index.tsx": {
@@ -4574,7 +4751,10 @@
   },
   "app/components/datasets/create/step-one/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/datasets/create/step-one/upgrade-card.tsx": {
@@ -4631,7 +4811,21 @@
   },
   "app/components/datasets/create/step-two/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 6
+    },
+    "style/comma-dangle": {
+      "count": 1
+    },
+    "style/no-multi-spaces": {
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 4
+    }
+  },
+  "app/components/datasets/create/step-two/hooks/use-document-creation.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
@@ -4640,6 +4834,24 @@
     },
     "react/set-state-in-effect": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/step-two/hooks/use-indexing-estimate.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/step-two/hooks/use-preview-state.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/create/step-two/hooks/use-segmentation-state.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/datasets/create/step-two/index.tsx": {
@@ -4807,7 +5019,10 @@
   },
   "app/components/datasets/documents/components/document-list/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/datasets/documents/components/document-list/components/sort-header.tsx": {
@@ -4896,6 +5111,11 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/local-file/components/upload-dropzone.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/documents/create-from-pipeline/data-source/local-file/constants.ts": {
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -5189,11 +5409,17 @@
   },
   "app/components/datasets/documents/detail/completed/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 5
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 5
     }
   },
   "app/components/datasets/documents/detail/completed/hooks/use-search-filter.ts": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -5273,7 +5499,18 @@
   },
   "app/components/datasets/documents/detail/embedding/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
       "count": 2
+    },
+    "style/no-trailing-spaces": {
+      "count": 4
+    }
+  },
+  "app/components/datasets/documents/detail/embedding/hooks/use-embedding-status.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/datasets/documents/detail/embedding/skeleton/index.tsx": {
@@ -6012,7 +6249,16 @@
   },
   "app/components/goto-anything/actions/commands/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 2
+    },
+    "style/comma-dangle": {
+      "count": 1
+    },
+    "style/no-multi-spaces": {
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 2
     }
   },
   "app/components/goto-anything/actions/commands/registry.ts": {
@@ -6022,7 +6268,7 @@
   },
   "app/components/goto-anything/actions/commands/slash.tsx": {
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -6035,7 +6281,10 @@
   },
   "app/components/goto-anything/actions/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 6
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/goto-anything/actions/types.ts": {
@@ -6055,7 +6304,10 @@
   },
   "app/components/goto-anything/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 4
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 4
     }
   },
   "app/components/goto-anything/components/result-item.tsx": {
@@ -6078,7 +6330,10 @@
   },
   "app/components/goto-anything/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 8
+      "count": 4
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 4
     }
   },
   "app/components/goto-anything/hooks/use-goto-anything-results.ts": {
@@ -6237,6 +6492,9 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/header/account-setting/key-validator/index.tsx": {
@@ -6329,8 +6587,14 @@
     "erasable-syntax-only/enums": {
       "count": 11
     },
+    "style/indent": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 4
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
@@ -6428,7 +6692,7 @@
   },
   "app/components/header/account-setting/model-provider-page/model-auth/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 8
+      "count": 7
     }
   },
   "app/components/header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.tsx": {
@@ -6484,6 +6748,11 @@
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "app/components/header/account-setting/model-provider-page/model-parameter-modal/derive-trigger-status.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
@@ -6953,6 +7222,11 @@
       "count": 3
     }
   },
+  "app/components/plugins/marketplace/types.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -7130,6 +7404,9 @@
   "app/components/plugins/plugin-detail-panel/detail-header/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
+    },
+    "style/no-multi-spaces": {
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/detail-header/index.tsx": {
@@ -7294,9 +7571,12 @@
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 2
     },
     "react-refresh/only-export-components": {
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
       "count": 1
     }
   },
@@ -7347,7 +7627,10 @@
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 8
+      "count": 7
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
@@ -7386,7 +7669,15 @@
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/tool-selector/hooks/use-tool-selector-state.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/index.tsx": {
@@ -7616,6 +7907,9 @@
     },
     "ts/no-explicit-any": {
       "count": 30
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 4
     }
   },
   "app/components/plugins/update-plugin/downgrade-warning.tsx": {
@@ -7881,6 +8175,9 @@
   "app/components/rag-pipeline/store/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/rag-pipeline/utils/index.ts": {
@@ -8217,6 +8514,9 @@
     },
     "ts/no-explicit-any": {
       "count": 4
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/tools/workflow-tool/configure-button.tsx": {
@@ -8317,10 +8617,19 @@
   "app/components/workflow-app/store/workflow/workflow-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/__tests__/fixtures.ts": {
     "no-barrel-files/no-barrel-files": {
+      "count": 2
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
       "count": 2
     }
   },
@@ -8386,6 +8695,9 @@
   },
   "app/components/workflow/block-selector/hooks.ts": {
     "react/set-state-in-effect": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -8508,6 +8820,9 @@
   },
   "app/components/workflow/block-selector/types.ts": {
     "erasable-syntax-only/enums": {
+      "count": 4
+    },
+    "unused-imports/no-unused-vars": {
       "count": 4
     }
   },
@@ -8672,6 +8987,9 @@
   "app/components/workflow/hooks-store/store.ts": {
     "ts/no-explicit-any": {
       "count": 6
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
@@ -8719,6 +9037,9 @@
   },
   "app/components/workflow/hooks/use-nodes-layout.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -9135,6 +9456,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/_base/components/retry/hooks.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/_base/components/retry/retry-on-node.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -9393,6 +9719,9 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/agent/components/model-bar.tsx": {
@@ -9507,6 +9836,9 @@
   "app/components/workflow/nodes/assigner/utils.ts": {
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/code/default.ts": {
@@ -9553,6 +9885,11 @@
       "count": 2
     }
   },
+  "app/components/workflow/nodes/constants.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/data-source-empty/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -9593,6 +9930,9 @@
       "count": 1
     },
     "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "style/indent": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -9963,6 +10303,11 @@
       "count": 5
     }
   },
+  "app/components/workflow/nodes/if-else/utils.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/iteration-start/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -10164,6 +10509,11 @@
       "count": 4
     }
   },
+  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -10230,6 +10580,11 @@
   "app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
+    }
+  },
+  "app/components/workflow/nodes/knowledge-retrieval/utils.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/list-operator/components/extract-input.tsx": {
@@ -10380,7 +10735,7 @@
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context.tsx": {
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/edit-card/actions.tsx": {
@@ -10474,6 +10829,9 @@
     },
     "ts/no-explicit-any": {
       "count": 10
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/loop-start/index.tsx": {
@@ -10593,6 +10951,9 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/loop/use-config.ts": {
@@ -10603,6 +10964,11 @@
   "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "app/components/workflow/nodes/loop/utils.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
@@ -10915,6 +11281,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -10944,6 +11315,11 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
+    }
+  },
+  "app/components/workflow/nodes/trigger-webhook/types.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/trigger-webhook/utils/render-output-vars.tsx": {
@@ -10990,6 +11366,11 @@
   "app/components/workflow/nodes/variable-assigner/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
+    }
+  },
+  "app/components/workflow/nodes/variable-assigner/utils.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "app/components/workflow/note-node/index.tsx": {
@@ -11591,6 +11972,9 @@
     },
     "ts/no-explicit-any": {
       "count": 8
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 3
     }
   },
   "app/components/workflow/update-dsl-modal.tsx": {
@@ -11748,7 +12132,7 @@
   },
   "app/components/workflow/workflow-history-store.tsx": {
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/workflow/workflow-preview/components/error-handle-on-node.tsx": {
@@ -11982,6 +12366,11 @@
       "count": 1
     }
   },
+  "context/event-emitter.ts": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    }
+  },
   "context/external-api-panel-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -11994,7 +12383,7 @@
   },
   "context/global-public-context.tsx": {
     "react-refresh/only-export-components": {
-      "count": 4
+      "count": 3
     }
   },
   "context/hooks/use-trigger-events-limit-modal.ts": {
@@ -12002,8 +12391,16 @@
       "count": 3
     }
   },
+  "context/mitt-context.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "context/modal-context-provider.tsx": {
     "no-barrel-files/no-barrel-files": {
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -12016,6 +12413,9 @@
     }
   },
   "context/modal-context.ts": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -12025,9 +12425,32 @@
       "count": 1
     }
   },
+  "context/provider-context.ts": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    }
+  },
   "context/web-app-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
+    }
+  },
+  "context/workspace-context.ts": {
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    }
+  },
+  "contract/router.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "eslint.config.mjs": {
+    "no-unused-vars": {
+      "count": 2
+    },
+    "unused-imports/no-unused-imports": {
+      "count": 2
     }
   },
   "hooks/use-async-window-open.spec.ts": {
@@ -12079,6 +12502,11 @@
   },
   "i18n-config/index.ts": {
     "no-barrel-files/no-barrel-files": {
+      "count": 1
+    }
+  },
+  "i18n-config/language.ts": {
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -12145,6 +12573,9 @@
   "models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "models/common.ts": {
@@ -12153,6 +12584,9 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 9
     }
   },
   "models/datasets.ts": {
@@ -12161,6 +12595,9 @@
     },
     "ts/no-explicit-any": {
       "count": 5
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 4
     }
   },
   "models/debug.ts": {
@@ -12169,6 +12606,9 @@
     },
     "ts/no-explicit-any": {
       "count": 4
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 10
     }
   },
   "models/log.ts": {
@@ -12177,6 +12617,9 @@
     },
     "ts/no-explicit-any": {
       "count": 7
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 3
     }
   },
   "models/pipeline.ts": {
@@ -12185,6 +12628,9 @@
     },
     "ts/no-explicit-any": {
       "count": 6
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "models/share.ts": {
@@ -12192,6 +12638,9 @@
       "count": 1
     },
     "ts/no-explicit-any": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -12218,10 +12667,16 @@
   "service/apps.ts": {
     "ts/no-explicit-any": {
       "count": 17
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 15
     }
   },
   "service/base.ts": {
     "ts/no-explicit-any": {
+      "count": 3
+    },
+    "unused-imports/no-unused-vars": {
       "count": 3
     }
   },
@@ -12233,11 +12688,17 @@
   "service/datasets.ts": {
     "ts/no-explicit-any": {
       "count": 8
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 16
     }
   },
   "service/debug.ts": {
     "ts/no-explicit-any": {
       "count": 6
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "service/fetch.ts": {
@@ -12251,6 +12712,19 @@
   "service/knowledge/use-dataset.ts": {
     "@tanstack/query/exhaustive-deps": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "service/knowledge/use-hit-testing.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "service/plugins.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 6
     }
   },
   "service/share.ts": {
@@ -12259,6 +12733,14 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "service/tools.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "service/try-app.ts": {
@@ -12269,6 +12751,9 @@
   "service/use-apps.ts": {
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "service/use-common.ts": {
@@ -12277,6 +12762,9 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 4
     }
   },
   "service/use-endpoints.ts": {
@@ -12295,11 +12783,17 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "service/use-plugins-auth.ts": {
     "ts/no-explicit-any": {
       "count": 4
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "service/use-plugins.ts": {
@@ -12311,11 +12805,27 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "service/use-strategy.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "service/use-tools.ts": {
     "ts/no-explicit-any": {
       "count": 2
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 5
+    }
+  },
+  "service/use-triggers.ts": {
+    "unused-imports/no-unused-vars": {
+      "count": 3
     }
   },
   "service/use-workflow.ts": {
@@ -12324,6 +12834,9 @@
     },
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "service/utils.spec.ts": {
@@ -12342,6 +12855,9 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 3
     }
   },
   "types/assets.d.ts": {
@@ -12367,6 +12883,9 @@
   "types/pipeline.tsx": {
     "ts/no-explicit-any": {
       "count": 3
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
     }
   },
   "types/react-18-input-autosize.d.ts": {
@@ -12377,6 +12896,9 @@
   "types/workflow.ts": {
     "ts/no-explicit-any": {
       "count": 17
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 2
     }
   },
   "utils/clipboard.ts": {

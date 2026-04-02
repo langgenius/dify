@@ -65,7 +65,7 @@ export type PromptVariable = {
   json_schema?: string | Record<string, any>
 }
 
-export type CompletionParams = {
+type CompletionParams = {
   max_tokens: number
   temperature: number
   top_p: number
@@ -74,7 +74,7 @@ export type CompletionParams = {
   stop?: string[]
 }
 
-export type ModelId = 'gpt-3.5-turbo' | 'text-davinci-003'
+type ModelId = 'gpt-3.5-turbo' | 'text-davinci-003'
 
 export type PromptConfig = {
   prompt_template: string
@@ -159,7 +159,7 @@ export type ModelConfig = {
   dataSets: any[]
   agentConfig: AgentConfig
 }
-export type DatasetConfigItem = {
+type DatasetConfigItem = {
   enable: boolean
   value: number
 }
@@ -197,39 +197,39 @@ export type DatasetConfigs = {
   metadata_model_config?: NodeModelConfig
 }
 
-export type DebugRequestBody = {
+type DebugRequestBody = {
   inputs: Inputs
   query: string
   completion_params: CompletionParams
   model_config: ModelConfig
 }
 
-export type DebugResponse = {
+type DebugResponse = {
   id: string
   answer: string
   created_at: string
 }
 
-export type DebugResponseStream = {
+type DebugResponseStream = {
   id: string
   data: string
   created_at: string
 }
 
-export type FeedBackRequestBody = {
+type FeedBackRequestBody = {
   message_id: string
   rating: 'like' | 'dislike'
   content?: string
   from_source: 'api' | 'log'
 }
 
-export type FeedBackResponse = {
+type FeedBackResponse = {
   message_id: string
   rating: 'like' | 'dislike'
 }
 
 // Log session list
-export type LogSessionListQuery = {
+type LogSessionListQuery = {
   keyword?: string
   start?: string // format datetime(YYYY-mm-dd HH:ii)
   end?: string // format datetime(YYYY-mm-dd HH:ii)
@@ -237,7 +237,7 @@ export type LogSessionListQuery = {
   limit: number // default 20. 1-100
 }
 
-export type LogSessionListResponse = {
+type LogSessionListResponse = {
   data: {
     id: string
     conversation_id: string
@@ -251,7 +251,7 @@ export type LogSessionListResponse = {
 }
 
 // log session detail and debug
-export type LogSessionDetailResponse = {
+type LogSessionDetailResponse = {
   id: string
   conversation_id: string
   model_provider: string

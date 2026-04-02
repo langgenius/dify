@@ -72,9 +72,6 @@ export enum ModelFeatureEnum {
 }
 
 export enum ModelFeatureTextEnum {
-  toolCall = 'Tool Call',
-  multiToolCall = 'Multi Tool Call',
-  agentThought = 'Agent Thought',
   vision = 'Vision',
   video = 'Video',
   document = 'Document',
@@ -90,7 +87,7 @@ export enum ModelStatusEnum {
   credentialRemoved = 'credential-removed',
 }
 
-export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
+const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
   'no-configure': {
     en_US: 'No Configure',
     zh_Hans: '未配置凭据',
@@ -171,8 +168,6 @@ export enum CurrentSystemQuotaTypeEnum {
 
 export enum QuotaUnitEnum {
   times = 'times',
-  tokens = 'tokens',
-  credits = 'credits',
 }
 
 export type QuotaConfiguration = {
@@ -203,7 +198,7 @@ export type CustomModelCredential = CustomModel & {
   current_credential_name?: string
 }
 
-export type CredentialWithModel = Credential & {
+type CredentialWithModel = Credential & {
   model: string
   model_type: ModelTypeEnum
 }

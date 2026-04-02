@@ -23,7 +23,7 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   score_threshold: 0.5,
 }
 
-export type UseIndexingConfigOptions = {
+type UseIndexingConfigOptions = {
   initialIndexType?: IndexingType
   initialEmbeddingModel?: DefaultModel
   initialRetrievalConfig?: RetrievalConfig
@@ -140,4 +140,4 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
   }
 }
 
-export type IndexingConfig = ReturnType<typeof useIndexingConfig>
+type IndexingConfig = ReturnType<typeof useIndexingConfig>

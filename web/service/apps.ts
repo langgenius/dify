@@ -16,7 +16,7 @@ export const fetchAppDetailDirect = async ({ url, id }: { url: string, id: strin
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 
-export const fetchAppTemplates = ({ url }: { url: string }): Promise<AppTemplatesResponse> => {
+const fetchAppTemplates = ({ url }: { url: string }): Promise<AppTemplatesResponse> => {
   return get<AppTemplatesResponse>(url)
 }
 
@@ -112,12 +112,12 @@ export const updateAppSiteStatus = ({ url, body }: { url: string, body: Record<s
   return post<AppDetailResponse>(url, { body })
 }
 
-export const updateAppApiStatus = ({ url, body }: { url: string, body: Record<string, any> }): Promise<AppDetailResponse> => {
+const updateAppApiStatus = ({ url, body }: { url: string, body: Record<string, any> }): Promise<AppDetailResponse> => {
   return post<AppDetailResponse>(url, { body })
 }
 
 // path: /apps/{appId}/rate-limit
-export const updateAppRateLimit = ({ url, body }: { url: string, body: Record<string, any> }): Promise<AppDetailResponse> => {
+const updateAppRateLimit = ({ url, body }: { url: string, body: Record<string, any> }): Promise<AppDetailResponse> => {
   return post<AppDetailResponse>(url, { body })
 }
 
@@ -129,27 +129,27 @@ export const updateAppSiteConfig = ({ url, body }: { url: string, body: Record<s
   return post<AppDetailResponse>(url, { body })
 }
 
-export const getAppDailyMessages = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyMessagesResponse> => {
+const getAppDailyMessages = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyMessagesResponse> => {
   return get<AppDailyMessagesResponse>(url, { params })
 }
 
-export const getAppDailyConversations = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyConversationsResponse> => {
+const getAppDailyConversations = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyConversationsResponse> => {
   return get<AppDailyConversationsResponse>(url, { params })
 }
 
-export const getWorkflowDailyConversations = ({ url, params }: { url: string, params: Record<string, any> }): Promise<WorkflowDailyConversationsResponse> => {
+const getWorkflowDailyConversations = ({ url, params }: { url: string, params: Record<string, any> }): Promise<WorkflowDailyConversationsResponse> => {
   return get<WorkflowDailyConversationsResponse>(url, { params })
 }
 
-export const getAppStatistics = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppStatisticsResponse> => {
+const getAppStatistics = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppStatisticsResponse> => {
   return get<AppStatisticsResponse>(url, { params })
 }
 
-export const getAppDailyEndUsers = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyEndUsersResponse> => {
+const getAppDailyEndUsers = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppDailyEndUsersResponse> => {
   return get<AppDailyEndUsersResponse>(url, { params })
 }
 
-export const getAppTokenCosts = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppTokenCostsResponse> => {
+const getAppTokenCosts = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppTokenCostsResponse> => {
   return get<AppTokenCostsResponse>(url, { params })
 }
 
@@ -158,11 +158,11 @@ export const updateAppModelConfig = ({ url, body }: { url: string, body: Record<
 }
 
 // For temp testing
-export const fetchAppListNoMock = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppListResponse> => {
+const fetchAppListNoMock = ({ url, params }: { url: string, params: Record<string, any> }): Promise<AppListResponse> => {
   return get<AppListResponse>(url, params)
 }
 
-export const fetchApiKeysList = ({ url, params }: { url: string, params: Record<string, any> }): Promise<ApiKeysListResponse> => {
+const fetchApiKeysList = ({ url, params }: { url: string, params: Record<string, any> }): Promise<ApiKeysListResponse> => {
   return get<ApiKeysListResponse>(url, params)
 }
 
@@ -174,19 +174,19 @@ export const createApikey = ({ url, body }: { url: string, body: Record<string, 
   return post<CreateApiKeyResponse>(url, body)
 }
 
-export const validateOpenAIKey = ({ url, body }: { url: string, body: { token: string } }): Promise<ValidateOpenAIKeyResponse> => {
+const validateOpenAIKey = ({ url, body }: { url: string, body: { token: string } }): Promise<ValidateOpenAIKeyResponse> => {
   return post<ValidateOpenAIKeyResponse>(url, { body })
 }
 
-export const updateOpenAIKey = ({ url, body }: { url: string, body: { token: string } }): Promise<UpdateOpenAIKeyResponse> => {
+const updateOpenAIKey = ({ url, body }: { url: string, body: { token: string } }): Promise<UpdateOpenAIKeyResponse> => {
   return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
-export const generationIntroduction = ({ url, body }: { url: string, body: { prompt_template: string } }): Promise<GenerationIntroductionResponse> => {
+const generationIntroduction = ({ url, body }: { url: string, body: { prompt_template: string } }): Promise<GenerationIntroductionResponse> => {
   return post<GenerationIntroductionResponse>(url, { body })
 }
 
-export const fetchAppVoices = ({ appId, language }: { appId: string, language?: string }): Promise<AppVoicesListResponse> => {
+const fetchAppVoices = ({ appId, language }: { appId: string, language?: string }): Promise<AppVoicesListResponse> => {
   language = language || 'en-US'
   return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
 }

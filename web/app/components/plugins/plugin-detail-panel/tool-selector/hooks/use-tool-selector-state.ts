@@ -18,7 +18,7 @@ import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'
 
-export type UseToolSelectorStateProps = {
+type UseToolSelectorStateProps = {
   value?: ToolValue
   onSelect: (tool: ToolValue) => void
   onSelectMultiple?: (tool: ToolValue[]) => void
@@ -248,4 +248,4 @@ export const useToolSelectorState = ({
   }
 }
 
-export type ToolSelectorState = ReturnType<typeof useToolSelectorState>
+type ToolSelectorState = ReturnType<typeof useToolSelectorState>

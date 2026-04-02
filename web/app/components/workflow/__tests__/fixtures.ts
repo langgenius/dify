@@ -88,7 +88,7 @@ export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Par
   } as Edge
 }
 
-export function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Edge[] } {
+function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Edge[] } {
   const nodes: Node[] = []
   const edges: Edge[] = []
 
@@ -163,7 +163,7 @@ export function createNodeTracing(
   }
 }
 
-export function createToolWithProvider(
+function createToolWithProvider(
   overrides?: Partial<ToolWithProvider>,
 ): ToolWithProvider {
   return {
@@ -185,5 +185,3 @@ export function createToolWithProvider(
     ...overrides,
   }
 }
-
-export { BlockEnum, NodeRunningStatus }

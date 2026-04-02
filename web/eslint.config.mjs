@@ -1,6 +1,6 @@
 // @ts-check
 
-import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
 import pluginReact from '@eslint-react/eslint-plugin'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
@@ -24,7 +24,7 @@ import dify from './plugins/eslint/index.js'
 // See: tailwind-css-plugin.ts
 process.env.TAILWIND_MODE ??= 'ESLINT'
 
-const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
+const disableRuleAutoFix = true
 
 const plugins = pluginReact.configs.all.plugins
 

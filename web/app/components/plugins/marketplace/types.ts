@@ -51,7 +51,7 @@ export type CollectionsAndPluginsSearchParams = {
   type?: 'plugin' | 'bundle'
 }
 
-export type SearchParams = {
+type SearchParams = {
   language?: string
   q?: string
   tags?: string

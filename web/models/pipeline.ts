@@ -53,7 +53,7 @@ export type PipelineTemplateByIdResponse = {
   created_by: string
 }
 
-export type CreateFormData = {
+type CreateFormData = {
   name: string
   appIcon: AppIconSelection
   description: string

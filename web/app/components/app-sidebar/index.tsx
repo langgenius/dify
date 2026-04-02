@@ -17,7 +17,7 @@ import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
-export type IAppDetailNavProps = {
+type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   navigation: Array<{
     name: string

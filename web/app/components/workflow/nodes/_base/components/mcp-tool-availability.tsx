@@ -8,7 +8,7 @@ type MCPToolAvailabilityContextValue = {
 
 const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue | undefined>(undefined)
 
-export type MCPToolAvailability = {
+type MCPToolAvailability = {
   allowed: boolean
   versionSupported?: boolean
 }

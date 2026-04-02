@@ -31,6 +31,6 @@ export const useStrategyProviderDetail = (agentProvider: string, options?: Query
   })
 }
 
-export const useInvalidateStrategyProviderDetail = (agentProvider: string) => {
+const useInvalidateStrategyProviderDetail = (agentProvider: string) => {
   return useInvalid([NAME_SPACE, 'detail', agentProvider])
 }

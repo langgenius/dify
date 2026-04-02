@@ -1,4 +1,4 @@
-export const jsonObjectWrap = {
+const jsonObjectWrap = {
   type: 'object',
   properties: {},
   required: [],

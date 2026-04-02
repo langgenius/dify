@@ -29,7 +29,7 @@ export type SubmitAnnotationFunc = (
   content: string,
 ) => Promise<any>
 
-export type DisplayScene = 'web' | 'console'
+type DisplayScene = 'web' | 'console'
 
 export type ToolInfoInThought = {
   name: string

@@ -10,7 +10,7 @@ import {
 
 const NAME_SPACE = 'embedding'
 
-export type EmbeddingStatusType = 'indexing' | 'splitting' | 'parsing' | 'cleaning' | 'completed' | 'paused' | 'error' | 'waiting' | ''
+type EmbeddingStatusType = 'indexing' | 'splitting' | 'parsing' | 'cleaning' | 'completed' | 'paused' | 'error' | 'waiting' | ''
 
 const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning'] as const
 const TERMINAL_STATUSES = ['completed', 'error', 'paused'] as const

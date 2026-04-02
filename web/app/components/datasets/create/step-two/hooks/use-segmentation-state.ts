@@ -35,7 +35,7 @@ export const defaultParentChildConfig: ParentChildConfig = {
   },
 }
 
-export type UseSegmentationStateOptions = {
+type UseSegmentationStateOptions = {
   initialSegmentationType?: ProcessMode
   initialSummaryIndexSetting?: SummaryIndexSettingType
 }
@@ -231,4 +231,4 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   }
 }
 
-export type SegmentationState = ReturnType<typeof useSegmentationState>
+type SegmentationState = ReturnType<typeof useSegmentationState>

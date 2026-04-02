@@ -57,7 +57,7 @@ export type CaseItem = {
 export type HandleAddCondition = (valueSelector: ValueSelector, varItem: Var) => void
 export type HandleRemoveCondition = (conditionId: string) => void
 export type HandleUpdateCondition = (conditionId: string, newCondition: Condition) => void
-export type HandleUpdateConditionLogicalOperator = (value: LogicalOperator) => void
+type HandleUpdateConditionLogicalOperator = (value: LogicalOperator) => void
 
 export type HandleToggleConditionLogicalOperator = () => void
 

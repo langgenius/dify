@@ -188,7 +188,7 @@ export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => 
   })
 }
 
-export const useInvalidateExternalKnowledgeApiList = () => {
+const useInvalidateExternalKnowledgeApiList = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({

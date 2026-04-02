@@ -38,7 +38,7 @@ import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
 
-export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
+const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams, enabled = true) => {
   return useQuery<PipelineTemplateListResponse>({
     queryKey: [...PipelineTemplateListQueryKeyPrefix, params],
@@ -224,7 +224,7 @@ export const useRunPublishedPipeline = (
   })
 }
 
-export const useDataSourceCredentials = (provider: string, pluginId: string, onSuccess: (value: ToolCredential[]) => void) => {
+const useDataSourceCredentials = (provider: string, pluginId: string, onSuccess: (value: ToolCredential[]) => void) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'datasource-credentials', provider, pluginId],
     queryFn: async () => {
@@ -237,7 +237,7 @@ export const useDataSourceCredentials = (provider: string, pluginId: string, onS
   })
 }
 
-export const useUpdateDataSourceCredentials = (
+const useUpdateDataSourceCredentials = (
 ) => {
   const queryClient = useQueryClient()
   return useMutation({

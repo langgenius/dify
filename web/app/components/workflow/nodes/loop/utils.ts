@@ -16,7 +16,7 @@ const notTranslateKey = [
 ] as const
 
 type NotTranslateOperator = typeof notTranslateKey[number]
-export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
 
 export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
 export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator
@@ -171,7 +171,7 @@ export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator)
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
-export const branchNameCorrect = (branches: Branch[]) => {
+const branchNameCorrect = (branches: Branch[]) => {
   const branchLength = branches.length
   if (branchLength < 2)
     throw new Error('if-else node branch number must than 2')

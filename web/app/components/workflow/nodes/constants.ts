@@ -1,7 +1,7 @@
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { TransferMethod } from '@/types/app'
 
-export const CUSTOM_NODE_TYPE = 'custom'
+const CUSTOM_NODE_TYPE = 'custom'
 
 type OptionItem = {
   value: string

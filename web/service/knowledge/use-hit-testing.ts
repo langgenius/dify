@@ -14,7 +14,7 @@ const NAME_SPACE = 'hit-testing'
 
 const HitTestingRecordsKey = [NAME_SPACE, 'records']
 
-export const useHitTestingRecords = (params: HitTestingRecordsRequest) => {
+const useHitTestingRecords = (params: HitTestingRecordsRequest) => {
   const { datasetId, page, limit } = params
   return useQuery({
     queryKey: [...HitTestingRecordsKey, datasetId, page, limit],
@@ -22,7 +22,7 @@ export const useHitTestingRecords = (params: HitTestingRecordsRequest) => {
   })
 }
 
-export const useInvalidateHitTestingRecords = (datasetId: string) => {
+const useInvalidateHitTestingRecords = (datasetId: string) => {
   return useInvalid([...HitTestingRecordsKey, datasetId])
 }
 
