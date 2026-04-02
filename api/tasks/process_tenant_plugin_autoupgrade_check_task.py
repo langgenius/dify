@@ -6,6 +6,7 @@ import typing
 import click
 from celery import shared_task
 
+from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
@@ -171,6 +172,15 @@ def process_tenant_plugin_autoupgrade_check_task(
                                 fg="green",
                             )
                         )
+
+                        # Ensure the new package file exists on disk before upgrading.
+                        # If it's missing (e.g. PVC was recreated), download from marketplace.
+                        try:
+                            manager.decode_plugin_from_identifier(tenant_id, new_unique_identifier)
+                        except Exception:
+                            pkg = download_plugin_pkg(new_unique_identifier)
+                            manager.upload_pkg(tenant_id, pkg, verify_signature=False)
+
                         _ = manager.upgrade_plugin(
                             tenant_id,
                             original_unique_identifier,
