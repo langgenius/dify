@@ -1,3 +1,5 @@
+import type { ModelProviderQuotaGetPaid } from './model-provider'
+
 export enum SSOProtocol {
   SAML = 'saml',
   OIDC = 'oidc',
@@ -26,6 +28,7 @@ type License = {
 }
 
 export type SystemFeatures = {
+  trial_models: ModelProviderQuotaGetPaid[]
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
@@ -59,9 +62,12 @@ export type SystemFeatures = {
     allow_email_code_login: boolean
     allow_email_password_login: boolean
   }
+  enable_trial_app: boolean
+  enable_explore_banner: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
+  trial_models: [],
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
     restrict_to_marketplace_only: false,
@@ -98,38 +104,6 @@ export const defaultSystemFeatures: SystemFeatures = {
     allow_email_code_login: false,
     allow_email_password_login: false,
   },
-}
-
-export enum DatasetAttr {
-  DATA_API_PREFIX = 'data-api-prefix',
-  DATA_PUBLIC_API_PREFIX = 'data-public-api-prefix',
-  DATA_MARKETPLACE_API_PREFIX = 'data-marketplace-api-prefix',
-  DATA_MARKETPLACE_URL_PREFIX = 'data-marketplace-url-prefix',
-  DATA_PUBLIC_EDITION = 'data-public-edition',
-  DATA_PUBLIC_AMPLITUDE_API_KEY = 'data-public-amplitude-api-key',
-  DATA_PUBLIC_COOKIE_DOMAIN = 'data-public-cookie-domain',
-  DATA_PUBLIC_SUPPORT_MAIL_LOGIN = 'data-public-support-mail-login',
-  DATA_PUBLIC_SENTRY_DSN = 'data-public-sentry-dsn',
-  DATA_PUBLIC_MAINTENANCE_NOTICE = 'data-public-maintenance-notice',
-  DATA_PUBLIC_SITE_ABOUT = 'data-public-site-about',
-  DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS = 'data-public-text-generation-timeout-ms',
-  DATA_PUBLIC_MAX_TOOLS_NUM = 'data-public-max-tools-num',
-  DATA_PUBLIC_MAX_PARALLEL_LIMIT = 'data-public-max-parallel-limit',
-  DATA_PUBLIC_TOP_K_MAX_VALUE = 'data-public-top-k-max-value',
-  DATA_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = 'data-public-indexing-max-segmentation-tokens-length',
-  DATA_PUBLIC_LOOP_NODE_MAX_COUNT = 'data-public-loop-node-max-count',
-  DATA_PUBLIC_MAX_ITERATIONS_NUM = 'data-public-max-iterations-num',
-  DATA_PUBLIC_MAX_TREE_DEPTH = 'data-public-max-tree-depth',
-  DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME = 'data-public-allow-unsafe-data-scheme',
-  DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER = 'data-public-enable-website-jinareader',
-  DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL = 'data-public-enable-website-firecrawl',
-  DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL = 'data-public-enable-website-watercrawl',
-  DATA_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX = 'data-public-enable-single-dollar-latex',
-  NEXT_PUBLIC_ZENDESK_WIDGET_KEY = 'next-public-zendesk-widget-key',
-  NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT = 'next-public-zendesk-field-id-environment',
-  NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION = 'next-public-zendesk-field-id-version',
-  NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL = 'next-public-zendesk-field-id-email',
-  NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID = 'next-public-zendesk-field-id-workspace-id',
-  NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN = 'next-public-zendesk-field-id-plan',
-  DATA_PUBLIC_BATCH_CONCURRENCY = 'data-public-batch-concurrency',
+  enable_trial_app: false,
+  enable_explore_banner: false,
 }

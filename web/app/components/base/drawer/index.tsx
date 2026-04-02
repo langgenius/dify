@@ -1,6 +1,5 @@
 'use client'
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
-import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Button from '../button'
@@ -55,20 +54,20 @@ export default function Drawer({
         if (!clickOutsideNotOpen)
           onClose()
       }}
-      className={cn('fixed inset-0 z-[30] overflow-y-auto', dialogClassName)}
+      className={cn('fixed inset-0 z-30 overflow-y-auto', dialogClassName)}
     >
-      <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center', containerClassName)}>
+      <div className={cn('flex h-screen w-screen justify-end', positionCenter && 'justify-center!', containerClassName)}>
         {/* mask */}
         {!noOverlay && (
           <DialogBackdrop
-            className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
+            className={cn('fixed inset-0 z-40', mask && 'bg-black/30', dialogBackdropClassName)}
             onClick={() => {
               if (!clickOutsideNotOpen)
                 onClose()
             }}
           />
         )}
-        <div className={cn('relative z-[50] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
+        <div className={cn('relative z-50 flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
           <>
             <div className="flex justify-between">
               {title && (
@@ -81,7 +80,18 @@ export default function Drawer({
               )}
               {showClose && (
                 <DialogTitle className="mb-4 flex cursor-pointer items-center" as="div">
-                  <XMarkIcon className="h-4 w-4 text-text-tertiary" onClick={onClose} />
+                  <span
+                    className="i-heroicons-x-mark h-4 w-4 text-text-tertiary"
+                    onClick={onClose}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ')
+                        onClose()
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t('operation.close', { ns: 'common' })}
+                    data-testid="close-icon"
+                  />
                 </DialogTitle>
               )}
             </div>

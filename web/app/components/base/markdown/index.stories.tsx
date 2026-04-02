@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import { Markdown } from '.'
 
@@ -50,7 +50,7 @@ const MarkdownDemo = ({
       <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Markdown renderer</div>
       <Markdown
         content={content}
-        className={compact ? '!text-sm leading-relaxed' : ''}
+        className={compact ? 'text-sm! leading-relaxed' : ''}
       />
     </div>
   )

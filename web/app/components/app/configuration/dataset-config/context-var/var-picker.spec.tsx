@@ -5,7 +5,7 @@ import * as React from 'react'
 import VarPicker from './var-picker'
 
 // Mock external dependencies only
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))

@@ -41,7 +41,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
   return (
     <div
       tabIndex={-1}
-      className={cn('absolute bottom-2 right-0 top-14 z-10 flex outline-none')}
+      className={cn('absolute bottom-2 right-0 top-14 z-10 flex outline-hidden')}
     >
       <div
         className={cn(
@@ -54,7 +54,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
             <div className="body-xs-regular self-stretch text-text-tertiary">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
             <a
               className="flex cursor-pointer items-center justify-center gap-1 self-stretch"
-              href={docLink('/use-dify/knowledge/connect-external-knowledge-base')}
+              href={docLink('/use-dify/knowledge/external-knowledge-api')}
               target="_blank"
             >
               <RiBookOpenLine className="h-3 w-3 text-text-accent" />

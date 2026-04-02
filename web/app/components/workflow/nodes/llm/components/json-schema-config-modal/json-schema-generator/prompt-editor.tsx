@@ -62,8 +62,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           {t('modelProvider.model', { ns: 'common' })}
         </div>
         <ModelParameterModal
-          popupClassName="!w-[448px]"
-          portalToFollowElemContentClassName="z-[1000]"
+          popupClassName="w-[448px]!"
           isAdvancedMode={true}
           provider={model.provider}
           completionParams={model.completion_params}

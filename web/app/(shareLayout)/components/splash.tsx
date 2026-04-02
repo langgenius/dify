@@ -1,11 +1,11 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport, webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
 
@@ -31,7 +31,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout, shareCode])
+  }, [getSigninUrl, router, shareCode])
 
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {

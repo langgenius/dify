@@ -1,20 +1,20 @@
+import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { trackEvent } from '@/app/components/base/amplitude'
 
-import { ToastContext } from '@/app/components/base/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import CreateAppModal from './index'
 
 vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: any[]) => any) => {
-    const run = (...args: any[]) => fn(...args)
+  useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
+    const run = (...args: Parameters<T>) => fn(...args)
     const cancel = vi.fn()
     const flush = vi.fn()
     return { run, cancel, flush }
@@ -22,7 +22,7 @@ vi.mock('ahooks', () => ({
   useKeyPress: vi.fn(),
   useHover: () => false,
 }))
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -30,6 +30,16 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 vi.mock('@/service/apps', () => ({
   createApp: vi.fn(),
+}))
+const toastMocks = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: toastMocks.mockToastSuccess,
+    error: toastMocks.mockToastError,
+  },
 }))
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
@@ -47,7 +57,6 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-const mockNotify = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockCreateApp = vi.mocked(createApp)
@@ -55,6 +64,7 @@ const mockTrackEvent = vi.mocked(trackEvent)
 const mockGetRedirection = vi.mocked(getRedirection)
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseAppContext = vi.mocked(useAppContext)
+const { mockToastSuccess, mockToastError } = toastMocks
 
 const defaultPlanUsage = {
   buildApps: 0,
@@ -69,11 +79,7 @@ const defaultPlanUsage = {
 const renderModal = () => {
   const onClose = vi.fn()
   const onSuccess = vi.fn()
-  render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      <CreateAppModal show onClose={onClose} onSuccess={onSuccess} defaultAppMode={AppModeEnum.ADVANCED_CHAT} />
-    </ToastContext.Provider>,
-  )
+  render(<CreateAppModal show onClose={onClose} onSuccess={onSuccess} defaultAppMode={AppModeEnum.ADVANCED_CHAT} />)
   return { onClose, onSuccess }
 }
 
@@ -83,7 +89,7 @@ describe('CreateAppModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseRouter.mockReturnValue({ push: mockPush } as any)
+    mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     mockUseProviderContext.mockReturnValue({
       plan: {
         type: AppModeEnum.ADVANCED_CHAT,
@@ -92,10 +98,10 @@ describe('CreateAppModal', () => {
         reset: {},
       },
       enableBilling: true,
-    } as any)
+    } as unknown as ReturnType<typeof useProviderContext>)
     mockUseAppContext.mockReturnValue({
       isCurrentWorkspaceEditor: true,
-    } as any)
+    } as unknown as ReturnType<typeof useAppContext>)
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -118,13 +124,13 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
-    mockCreateApp.mockResolvedValue(mockApp as any)
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
+    mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Create' }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalledWith({
       name: 'My App',
@@ -139,7 +145,7 @@ describe('CreateAppModal', () => {
       app_mode: AppModeEnum.ADVANCED_CHAT,
       description: '',
     })
-    expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+    expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
@@ -152,10 +158,10 @@ describe('CreateAppModal', () => {
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Create' }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
-    expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'boom' })
+    expect(mockToastError).toHaveBeenCalledWith('boom')
     expect(onClose).not.toHaveBeenCalled()
   })
 })

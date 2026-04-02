@@ -7,6 +7,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
+from models.enums import DatasetMetadataType
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -64,7 +65,7 @@ class MetadataService:
                 raise ValueError("Metadata name already exists in Built-in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
+            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id, dataset_id=dataset_id).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
             old_name = metadata.name
@@ -100,7 +101,7 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
+            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id, dataset_id=dataset_id).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
             db.session.delete(metadata)
@@ -130,11 +131,11 @@ class MetadataService:
     @staticmethod
     def get_built_in_fields():
         return [
-            {"name": BuiltInField.document_name, "type": "string"},
-            {"name": BuiltInField.uploader, "type": "string"},
-            {"name": BuiltInField.upload_date, "type": "time"},
-            {"name": BuiltInField.last_update_date, "type": "time"},
-            {"name": BuiltInField.source, "type": "string"},
+            {"name": BuiltInField.document_name, "type": DatasetMetadataType.STRING},
+            {"name": BuiltInField.uploader, "type": DatasetMetadataType.STRING},
+            {"name": BuiltInField.upload_date, "type": DatasetMetadataType.TIME},
+            {"name": BuiltInField.last_update_date, "type": DatasetMetadataType.TIME},
+            {"name": BuiltInField.source, "type": DatasetMetadataType.STRING},
         ]
 
     @staticmethod
@@ -220,8 +221,8 @@ class MetadataService:
                     doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
-                db.session.commit()
-                # deal metadata binding
+
+                # deal metadata binding (in the same transaction as the doc_metadata update)
                 if not operation.partial_update:
                     db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
 
@@ -247,7 +248,9 @@ class MetadataService:
                     db.session.add(dataset_metadata_binding)
                 db.session.commit()
             except Exception:
+                db.session.rollback()
                 logger.exception("Update documents metadata failed")
+                raise
             finally:
                 redis_client.delete(lock_key)
 

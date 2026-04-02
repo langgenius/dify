@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ComponentProps } from 'react'
 import AppIcon from '.'
 
@@ -8,7 +8,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Reusable avatar for applications and workflows. Supports emoji or uploaded imagery, rounded mode, edit overlays, and multiple sizes.',
+        component: 'Reusable avatar for applications and workflows. Supports emoji or uploaded imagery, rounded-sm mode, edit overlays, and multiple sizes.',
       },
     },
   },

@@ -2,7 +2,9 @@ from typing import Any
 
 from flask import request
 from flask_restx import marshal
+from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -17,7 +19,7 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import current_account_with_tenant
@@ -27,6 +29,31 @@ from services.entities.knowledge_entities.knowledge_entities import SegmentUpdat
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.summary_index_service import SummaryIndexService
+
+
+def _marshal_segment_with_summary(segment, dataset_id: str) -> dict:
+    """Marshal a single segment and enrich it with summary content."""
+    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+    summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
+    segment_dict["summary"] = summary.summary_content if summary else None
+    return segment_dict
+
+
+def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict]:
+    """Marshal multiple segments and enrich them with summary content (batch query)."""
+    segment_ids = [segment.id for segment in segments]
+    summaries: dict = {}
+    if segment_ids:
+        summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
+        summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
+
+    result = []
+    for segment in segments:
+        segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+        segment_dict["summary"] = summaries.get(segment.id)
+        result.append(segment_dict)
+    return result
 
 
 class SegmentCreatePayload(BaseModel):
@@ -60,6 +87,7 @@ register_schema_models(
     service_api_ns,
     SegmentCreatePayload,
     SegmentListQuery,
+    SegmentUpdateArgs,
     SegmentUpdatePayload,
     ChildChunkCreatePayload,
     ChildChunkListQuery,
@@ -90,7 +118,9 @@ class SegmentApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Create single segment."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -102,9 +132,9 @@ class SegmentApi(DatasetApiResource):
         if not document.enabled:
             raise NotFound("Document is disabled.")
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -127,7 +157,7 @@ class SegmentApi(DatasetApiResource):
             for args_item in payload.segments:
                 SegmentService.segment_create_args_validate(args_item, document)
             segments = SegmentService.multi_create_segment(payload.segments, document, dataset)
-            return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form}, 200
+            return {"data": _marshal_segments_with_summary(segments, dataset_id), "doc_form": document.doc_form}, 200
         else:
             return {"error": "Segments is required"}, 400
 
@@ -148,7 +178,9 @@ class SegmentApi(DatasetApiResource):
         # check dataset
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
@@ -156,9 +188,9 @@ class SegmentApi(DatasetApiResource):
         if not document:
             raise NotFound("Document not found.")
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -189,7 +221,7 @@ class SegmentApi(DatasetApiResource):
         )
 
         response = {
-            "data": marshal(segments, segment_fields),
+            "data": _marshal_segments_with_summary(segments, dataset_id),
             "doc_form": document.doc_form,
             "total": total,
             "has_more": len(segments) == limit,
@@ -218,7 +250,9 @@ class DatasetSegmentApi(DatasetApiResource):
     def delete(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -232,7 +266,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return 204
+        return "", 204
 
     @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__])
     @service_api_ns.doc("update_segment")
@@ -252,7 +286,9 @@ class DatasetSegmentApi(DatasetApiResource):
     def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -261,10 +297,10 @@ class DatasetSegmentApi(DatasetApiResource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -285,7 +321,7 @@ class DatasetSegmentApi(DatasetApiResource):
         payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
 
         updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset)
-        return {"data": marshal(updated_segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _marshal_segment_with_summary(updated_segment, dataset_id), "doc_form": document.doc_form}, 200
 
     @service_api_ns.doc("get_segment")
     @service_api_ns.doc(description="Get a specific segment by ID")
@@ -299,7 +335,9 @@ class DatasetSegmentApi(DatasetApiResource):
     def get(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
         _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
@@ -313,7 +351,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
 
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _marshal_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
 
 @service_api_ns.route(
@@ -342,7 +380,9 @@ class ChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -357,9 +397,9 @@ class ChildChunkApi(DatasetApiResource):
             raise NotFound("Segment not found.")
 
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
@@ -400,7 +440,9 @@ class ChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Get child chunks."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -466,7 +508,9 @@ class DatasetChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Delete child chunk."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -498,7 +542,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return 204
+        return "", 204
 
     @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__])
     @service_api_ns.doc("update_child_chunk")
@@ -525,7 +569,9 @@ class DatasetChildChunkApi(DatasetApiResource):
         _, current_tenant_id = current_account_with_tenant()
         """Update child chunk."""
         # check dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 

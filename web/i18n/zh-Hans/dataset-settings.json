@@ -39,6 +39,12 @@
   "form.retrievalSettings": "检索设置",
   "form.save": "保存",
   "form.searchModel": "搜索模型",
+  "form.summaryAutoGen": "摘要自动生成",
+  "form.summaryAutoGenEnableTip": "启用后，将自动为新添加的文档生成摘要。已有的文档仍可以手动摘要。",
+  "form.summaryAutoGenTip": "将自动为新添加的文档生成摘要。已有的文档仍可以手动摘要。",
+  "form.summaryInstructions": "指令",
+  "form.summaryInstructionsPlaceholder": "描述自动生成摘要的规则或风格…",
+  "form.summaryModel": "摘要模型",
   "form.upgradeHighQualityTip": "一旦升级为高质量模式，将无法切换回经济模式。",
   "title": "知识库设置"
 }

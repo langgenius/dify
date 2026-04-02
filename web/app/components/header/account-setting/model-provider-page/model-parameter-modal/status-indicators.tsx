@@ -1,7 +1,7 @@
 import { RiErrorWarningFill } from '@remixicon/react'
-import Link from 'next/link'
 import Tooltip from '@/app/components/base/tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
+import Link from '@/next/link'
 import { useInstalledPluginList } from '@/service/use-plugins'
 
 type StatusIndicatorsProps = {
@@ -25,7 +25,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           </div>
         )}
         {linkText && linkHref && (
-          <div className="body-xs-regular z-[100] cursor-pointer text-text-accent">
+          <div className="body-xs-regular z-100 cursor-pointer text-text-accent">
             <Link
               href={linkHref}
               onClick={(e) => {

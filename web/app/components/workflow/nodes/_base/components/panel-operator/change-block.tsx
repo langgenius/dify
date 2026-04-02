@@ -1,4 +1,5 @@
 import type {
+  CommonNodeType,
   Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
@@ -16,6 +17,7 @@ import {
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 
 import { FlowType } from '@/types/common'
@@ -38,12 +40,17 @@ const ChangeBlock = ({
   } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
   const isChatMode = useIsChatMode()
   const flowType = useHooksStore(s => s.configsMap?.flowType)
-  const showStartTab = flowType !== FlowType.ragPipeline && !isChatMode
+  const nodes = useNodes()
+  const hasStartNode = useMemo(() => {
+    return nodes.some(n => (n.data as CommonNodeType | undefined)?.type === BlockEnum.Start)
+  }, [nodes])
+  const showStartTab = flowType !== FlowType.ragPipeline && (!isChatMode || nodeData.type === BlockEnum.Start || !hasStartNode)
   const ignoreNodeIds = useMemo(() => {
-    if (isTriggerNode(nodeData.type as BlockEnum))
+    if (isTriggerNode(nodeData.type as BlockEnum) || nodeData.type === BlockEnum.Start)
       return [nodeId]
     return undefined
   }, [nodeData.type, nodeId])
+  const allowStartNodeSelection = !hasStartNode
 
   const availableNodes = useMemo(() => {
     if (availablePrevBlocks.length && availableNextBlocks.length)
@@ -80,6 +87,7 @@ const ChangeBlock = ({
       showStartTab={showStartTab}
       ignoreNodeIds={ignoreNodeIds}
       forceEnableStartTab={nodeData.type === BlockEnum.Start}
+      allowUserInputSelection={allowStartNodeSelection}
     />
   )
 }

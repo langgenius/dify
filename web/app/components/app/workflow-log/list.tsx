@@ -81,6 +81,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </div>
       )
     }
+    if (status === 'paused') {
+      return (
+        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+          <Indicator color="yellow" />
+          <span className="text-util-colors-warning-warning-600">Pending</span>
+        </div>
+      )
+    }
     if (status === 'running') {
       return (
         <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
@@ -144,7 +152,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>
@@ -179,7 +187,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border"
+        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[600px]! rounded-xl border border-components-panel-border"
       >
         <DetailPanel
           onClose={onCloseDrawer}

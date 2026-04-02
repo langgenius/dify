@@ -33,12 +33,23 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.tracing!.push({
-        ...data,
-        status: NodeRunningStatus.Running,
-      })
-    }))
+    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
+    if (currentIndex && currentIndex > -1) {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing![currentIndex] = {
+          ...data,
+          status: NodeRunningStatus.Running,
+        }
+      }))
+    }
+    else {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing!.push({
+          ...data,
+          status: NodeRunningStatus.Running,
+        })
+      }))
+    }
 
     const {
       setViewport,

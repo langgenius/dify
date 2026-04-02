@@ -79,10 +79,10 @@ const FormItem: FC<Props> = ({
         <div className="flex h-full items-center">
           {!isChatVar && (
             <div className="flex items-center">
-              <div className="p-[1px]">
+              <div className="p-px">
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
-              <div className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-gray-700" title={nodeName}>
+              <div className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-text-secondary" title={nodeName}>
                 {nodeName}
               </div>
               <Line3 className="mr-0.5"></Line3>
@@ -108,7 +108,7 @@ const FormItem: FC<Props> = ({
   const isIteratorItemFile = isIterator && payload.isFileItem
   const singleFileValue = useMemo(() => {
     if (payload.variable === '#files#')
-      return value?.[0] || []
+      return value || []
 
     return value ? [value] : []
   }, [payload.variable, value])
@@ -124,19 +124,19 @@ const FormItem: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
-        <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+        <div className="mb-1 flex h-6 items-center gap-1 text-text-secondary system-sm-semibold">
           <div className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true
             ? (
-                <span className="system-xs-regular text-text-tertiary">
+                <span className="text-text-tertiary system-xs-regular">
                   {t('panel.optional_and_hidden', { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
-                  <span className="system-xs-regular text-text-tertiary">
+                  <span className="text-text-tertiary system-xs-regular">
                     {t('panel.optional', { ns: 'workflow' })}
                   </span>
                 )
@@ -215,7 +215,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+            className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
             placeholder={
               <div className="whitespace-pre">{jsonSchemaPlaceholder}</div>
             }

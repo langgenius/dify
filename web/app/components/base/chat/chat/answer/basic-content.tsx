@@ -15,8 +15,14 @@ const BasicContent: FC<BasicContentProps> = ({
     content,
   } = item
 
-  if (annotation?.logAnnotation)
-    return <Markdown content={annotation?.logAnnotation.content || ''} />
+  if (annotation?.logAnnotation) {
+    return (
+      <Markdown
+        content={annotation?.logAnnotation.content || ''}
+        data-testid="basic-content-markdown"
+      />
+    )
+  }
 
   // Preserve Windows UNC paths and similar backslash-heavy strings by
   // wrapping them in inline code so Markdown renders backslashes verbatim.
@@ -28,9 +34,10 @@ const BasicContent: FC<BasicContentProps> = ({
   return (
     <Markdown
       className={cn(
-        item.isError && '!text-[#F04438]',
+        item.isError && 'text-[#F04438]!',
       )}
       content={displayContent}
+      data-testid="basic-content-markdown"
     />
   )
 }

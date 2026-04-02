@@ -38,33 +38,22 @@ import {
   ensureStringArray,
 } from "./validation";
 import { FileUploadError, ValidationError } from "../errors/dify-error";
+import type { SdkFormData } from "../http/form-data";
 import { isFormData } from "../http/form-data";
 
-const warned = new Set<string>();
-const warnOnce = (message: string): void => {
-  if (warned.has(message)) {
-    return;
-  }
-  warned.add(message);
-  console.warn(message);
-};
-
-const ensureFormData = (form: unknown, context: string): void => {
+function ensureFormData(
+  form: unknown,
+  context: string
+): asserts form is SdkFormData {
   if (!isFormData(form)) {
     throw new FileUploadError(`${context} requires FormData`);
   }
-};
+}
 
 const ensureNonEmptyArray = (value: unknown, name: string): void => {
   if (!Array.isArray(value) || value.length === 0) {
     throw new ValidationError(`${name} must be a non-empty array`);
   }
-};
-
-const warnPipelineRoutes = (): void => {
-  warnOnce(
-    "RAG pipeline endpoints may be unavailable unless the service API registers dataset/rag_pipeline routes."
-  );
 };
 
 export class KnowledgeBaseClient extends DifyClient {
@@ -641,7 +630,6 @@ export class KnowledgeBaseClient extends DifyClient {
     datasetId: string,
     options?: DatasourcePluginListOptions
   ): Promise<DifyResponse<KnowledgeBaseResponse>> {
-    warnPipelineRoutes();
     ensureNonEmptyString(datasetId, "datasetId");
     ensureOptionalBoolean(options?.isPublished, "isPublished");
     return this.http.request({
@@ -658,7 +646,6 @@ export class KnowledgeBaseClient extends DifyClient {
     nodeId: string,
     request: DatasourceNodeRunRequest
   ): Promise<DifyStream<PipelineStreamEvent>> {
-    warnPipelineRoutes();
     ensureNonEmptyString(datasetId, "datasetId");
     ensureNonEmptyString(nodeId, "nodeId");
     ensureNonEmptyString(request.datasource_type, "datasource_type");
@@ -673,7 +660,6 @@ export class KnowledgeBaseClient extends DifyClient {
     datasetId: string,
     request: PipelineRunRequest
   ): Promise<DifyResponse<KnowledgeBaseResponse> | DifyStream<PipelineStreamEvent>> {
-    warnPipelineRoutes();
     ensureNonEmptyString(datasetId, "datasetId");
     ensureNonEmptyString(request.datasource_type, "datasource_type");
     ensureNonEmptyString(request.start_node_id, "start_node_id");
@@ -695,7 +681,6 @@ export class KnowledgeBaseClient extends DifyClient {
   async uploadPipelineFile(
     form: unknown
   ): Promise<DifyResponse<KnowledgeBaseResponse>> {
-    warnPipelineRoutes();
     ensureFormData(form, "uploadPipelineFile");
     return this.http.request({
       method: "POST",

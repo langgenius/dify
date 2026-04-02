@@ -1,5 +1,4 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
-import Image from 'next/image'
 import { cn } from '@/utils/classnames'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = props => (
@@ -23,7 +22,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   return (
     <div className={cn('relative flex h-full overflow-hidden rounded-t-xl', isActive && activeClassName, !disabled && 'cursor-pointer')}>
       <div className="relative flex size-14 items-center justify-center overflow-hidden">
-        {isActive && effectImg && <Image src={effectImg} className="absolute left-0 top-0 h-full w-full" alt="" width={56} height={56} />}
+        {isActive && effectImg && <img src={effectImg} className="absolute left-0 top-0 h-full w-full" alt="" width={56} height={56} />}
         <div className="p-1">
           <div className="flex size-8 justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md">
             {icon}
@@ -34,8 +33,8 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
         className={cn('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
       />
       <div className="flex-1 space-y-0.5 py-3 pr-4">
-        <div className="system-md-semibold text-text-secondary">{title}</div>
-        <div className="system-xs-regular text-text-tertiary">{description}</div>
+        <div className="text-text-secondary system-md-semibold">{title}</div>
+        <div className="text-text-tertiary system-xs-regular">{description}</div>
       </div>
     </div>
   )

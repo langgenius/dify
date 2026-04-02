@@ -29,11 +29,11 @@ class SpanHandler:
         """
         return f"{wrapped.__module__}.{wrapped.__qualname__}"
 
-    def _extract_arguments(
+    def _extract_arguments[T](
         self,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
+        wrapped: Callable[..., T],
+        args: tuple[object, ...],
+        kwargs: Mapping[str, object],
     ) -> dict[str, Any] | None:
         """
         Extract function arguments using inspect.signature.
@@ -59,13 +59,13 @@ class SpanHandler:
         except Exception:
             return None
 
-    def wrapper(
+    def wrapper[T](
         self,
         tracer: Any,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> Any:
+        wrapped: Callable[..., T],
+        args: tuple[object, ...],
+        kwargs: Mapping[str, object],
+    ) -> T:
         """
         Fully control the wrapper behavior.
 

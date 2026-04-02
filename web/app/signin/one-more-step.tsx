@@ -1,15 +1,15 @@
 'use client'
 import type { Reducer } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { SimpleSelect } from '@/app/components/base/select'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useOneMoreStep } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
 import Input from '../components/base/input'
@@ -70,7 +70,7 @@ const OneMoreStep = () => {
     }
     catch (error: any) {
       if (error && error.status === 400)
-        Toast.notify({ type: 'error', message: t('invalidInvitationCode', { ns: 'login' }) })
+        toast.error(t('invalidInvitationCode', { ns: 'login' }))
       dispatch({ type: 'failed', payload: null })
     }
   }

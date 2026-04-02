@@ -46,6 +46,11 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
 
         return self.session.scalar(query)
 
+    def list_by_run_id(self, run_id: str) -> Sequence[WorkflowTriggerLog]:
+        """List trigger logs for a workflow run."""
+        query = select(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id == run_id)
+        return list(self.session.scalars(query).all())
+
     def get_failed_for_retry(
         self, tenant_id: str, max_retry_count: int = 3, limit: int = 100
     ) -> Sequence[WorkflowTriggerLog]:
@@ -86,6 +91,16 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         )
 
         return list(self.session.scalars(query).all())
+
+    def get_by_workflow_run_id(self, workflow_run_id: str) -> WorkflowTriggerLog | None:
+        """Get the trigger log associated with a workflow run."""
+        query = (
+            select(WorkflowTriggerLog)
+            .where(WorkflowTriggerLog.workflow_run_id == workflow_run_id)
+            .order_by(WorkflowTriggerLog.created_at.desc())
+            .limit(1)
+        )
+        return self.session.scalar(query)
 
     def delete_by_run_ids(self, run_ids: Sequence[str]) -> int:
         """

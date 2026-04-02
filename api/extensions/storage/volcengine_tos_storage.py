@@ -60,7 +60,7 @@ class VolcengineTosStorage(BaseStorage):
             return False
         return True
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         if not self.bucket_name:
             return
         self.client.delete_object(bucket=self.bucket_name, key=filename)

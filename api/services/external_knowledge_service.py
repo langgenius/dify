@@ -4,12 +4,12 @@ from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 import httpx
+from graphon.nodes.http_request.exc import InvalidHttpMethodError
 from sqlalchemy import select
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities.metadata_entities import MetadataCondition
-from core.workflow.nodes.http_request.exc import InvalidHttpMethodError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import (
@@ -102,9 +102,9 @@ class ExternalDatasetService:
             raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
 
     @staticmethod
-    def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
+    def get_external_knowledge_api(external_knowledge_api_id: str, tenant_id: str) -> ExternalKnowledgeApis:
         external_knowledge_api: ExternalKnowledgeApis | None = (
-            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
+            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")

@@ -8,7 +8,7 @@ import {
   RiClipboardLine,
   RiFileList3Line,
   RiPlayList2Line,
-  RiReplay15Line,
+  RiResetLeftLine,
   RiSparklingFill,
   RiSparklingLine,
   RiThumbDownLine,
@@ -16,20 +16,23 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import { useParams } from 'next/navigation'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import HumanInputFilledFormList from '@/app/components/base/chat/chat/answer/human-input-filled-form-list'
+import HumanInputFormList from '@/app/components/base/chat/chat/answer/human-input-form-list'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
+import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
-import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
+import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
+import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import ResultTab from './result-tab'
 
@@ -53,7 +56,7 @@ export type IGenerationItemProps = {
   onFeedback?: (feedback: FeedbackType) => void
   onSave?: (messageId: string) => void
   isMobile?: boolean
-  isInstalledApp: boolean
+  appSourceType: AppSourceType
   installedAppId?: string
   taskId?: string
   controlClearMoreLikeThis?: number
@@ -87,7 +90,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   onSave,
   depth = 1,
   isMobile,
-  isInstalledApp,
+  appSourceType,
   installedAppId,
   taskId,
   controlClearMoreLikeThis,
@@ -100,6 +103,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { t } = useTranslation()
   const params = useParams()
   const isTop = depth === 1
+  const isTryApp = appSourceType === AppSourceType.tryApp
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
   const [childFeedback, setChildFeedback] = useState<FeedbackType>({
@@ -113,14 +117,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
+    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, appSourceType, installedAppId)
     setChildFeedback(childFeedback)
   }
 
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {
-    isInWebApp: true,
+    isInWebApp,
     content: completionRes,
     messageId: childMessageId,
     depth: depth + 1,
@@ -131,7 +135,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     onSave,
     isShowTextToSpeech,
     isMobile,
-    isInstalledApp,
+    appSourceType,
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
@@ -141,11 +145,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      Toast.notify({ type: 'warning', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
+    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,
@@ -201,16 +205,22 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
-  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length
+  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length || (workflowProcessData?.humanInputFormDataList && workflowProcessData?.humanInputFormDataList.length > 0) || (workflowProcessData?.humanInputFilledFormDataList && workflowProcessData?.humanInputFilledFormDataList.length > 0)
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
   }
   useEffect(() => {
-    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length)
+    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length || (workflowProcessData?.humanInputFormDataList && workflowProcessData?.humanInputFormDataList.length > 0) || (workflowProcessData?.humanInputFilledFormDataList && workflowProcessData?.humanInputFilledFormDataList.length > 0))
       switchTab('RESULT')
     else
       switchTab('DETAIL')
-  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText])
+  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText, workflowProcessData?.humanInputFormDataList, workflowProcessData?.humanInputFilledFormDataList])
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: { inputs: Record<string, string>, action: string }) => {
+    if (appSourceType === AppSourceType.installedApp)
+      await submitHumanInputFormService(formToken, formData)
+    else
+      await submitHumanInputForm(formToken, formData)
+  }, [appSourceType])
 
   return (
     <>
@@ -274,7 +284,24 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     )}
                   </div>
                   {!isError && (
-                    <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
+                    <>
+                      {currentTab === 'RESULT' && workflowProcessData.humanInputFormDataList && workflowProcessData.humanInputFormDataList.length > 0 && (
+                        <div className="px-4 pt-4">
+                          <HumanInputFormList
+                            humanInputFormDataList={workflowProcessData.humanInputFormDataList}
+                            onHumanInputFormSubmit={handleSubmitHumanInputForm}
+                          />
+                        </div>
+                      )}
+                      {currentTab === 'RESULT' && workflowProcessData.humanInputFilledFormDataList && workflowProcessData.humanInputFilledFormDataList.length > 0 && (
+                        <div className="px-4 pt-4">
+                          <HumanInputFilledFormList
+                            humanInputFilledFormDataList={workflowProcessData.humanInputFilledFormDataList}
+                          />
+                        </div>
+                      )}
+                      <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
+                    </>
                   )}
                 </>
               )}
@@ -310,21 +337,21 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               )}
               {/* action buttons */}
               <div className="absolute bottom-1 right-2 flex items-center">
-                {!isInWebApp && !isInstalledApp && !isResponding && (
-                  <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                {!isInWebApp && (appSourceType !== AppSourceType.installedApp) && !isResponding && (
+                  <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                     <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
                       <RiFileList3Line className="h-4 w-4" />
                       {/* <div>{t('common.operation.log')}</div> */}
                     </ActionButton>
                   </div>
                 )}
-                <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
-                  {moreLikeThis && (
+                <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+                  {moreLikeThis && !isTryApp && (
                     <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
                       <RiSparklingLine className="h-4 w-4" />
                     </ActionButton>
                   )}
-                  {isShowTextToSpeech && (
+                  {isShowTextToSpeech && !isTryApp && (
                     <NewAudioButton
                       id={messageId!}
                       voice={config?.text_to_speech?.voice}
@@ -339,7 +366,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           copy(copyContent)
                         else
                           copy(JSON.stringify(copyContent))
-                        Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                        toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                       }}
                     >
                       <RiClipboardLine className="h-4 w-4" />
@@ -347,17 +374,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   )}
                   {isInWebApp && isError && (
                     <ActionButton onClick={onRetry}>
-                      <RiReplay15Line className="h-4 w-4" />
+                      <RiResetLeftLine className="h-4 w-4" />
                     </ActionButton>
                   )}
-                  {isInWebApp && !isWorkflow && (
+                  {isInWebApp && !isWorkflow && !isTryApp && (
                     <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
                       <RiBookmark3Line className="h-4 w-4" />
                     </ActionButton>
                   )}
                 </div>
-                {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
-                  <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
+                  <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                     {!feedback?.rating && (
                       <>
                         <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>

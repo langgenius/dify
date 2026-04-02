@@ -3,31 +3,30 @@ import uuid
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
+from graphon.nodes.if_else.entities import IfElseNodeData
+from graphon.nodes.if_else.if_else_node import IfElseNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.utils.condition.entities import Condition, SubCondition, SubVariableCondition
+from graphon.variables import ArrayFileSegment
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod, FileType
-from core.variables import ArrayFileSegment
-from core.workflow.entities import GraphInitParams
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.nodes.if_else.entities import IfElseNodeData
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
-from core.workflow.nodes.node_factory import DifyNodeFactory
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
-from models.enums import UserFrom
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 def test_execute_if_else_result_true():
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -35,7 +34,7 @@ def test_execute_if_else_result_true():
     )
 
     # construct variable pool
-    pool = VariablePool(system_variables=SystemVariable(user_id="aaa", files=[]), user_inputs={})
+    pool = VariablePool(system_variables=build_system_variables(user_id="aaa", files=[]), user_inputs={})
     pool.add(["start", "array_contains"], ["ab", "def"])
     pool.add(["start", "array_not_contains"], ["ac", "def"])
     pool.add(["start", "contains"], "cabcde")
@@ -60,7 +59,7 @@ def test_execute_if_else_result_true():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "if-else",
@@ -129,11 +128,11 @@ def test_execute_if_else_result_false():
     # Create a simple graph for IfElse node testing
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -142,7 +141,7 @@ def test_execute_if_else_result_false():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
     )
@@ -154,7 +153,7 @@ def test_execute_if_else_result_false():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "if-else",
@@ -230,14 +229,18 @@ def test_array_file_contains_file_name():
 
     # Create properly configured mock for graph_init_params
     graph_init_params = Mock()
-    graph_init_params.tenant_id = "test_tenant"
-    graph_init_params.app_id = "test_app"
     graph_init_params.workflow_id = "test_workflow"
     graph_init_params.graph_config = {}
-    graph_init_params.user_id = "test_user"
-    graph_init_params.user_from = UserFrom.ACCOUNT
-    graph_init_params.invoke_from = InvokeFrom.SERVICE_API
     graph_init_params.call_depth = 0
+    graph_init_params.run_context = {
+        DIFY_RUN_CONTEXT_KEY: {
+            "tenant_id": "test_tenant",
+            "app_id": "test_app",
+            "user_id": "test_user",
+            "user_from": UserFrom.ACCOUNT,
+            "invoke_from": InvokeFrom.SERVICE_API,
+        }
+    }
 
     node = IfElseNode(
         id=str(uuid.uuid4()),
@@ -249,7 +252,6 @@ def test_array_file_contains_file_name():
     node.graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(
         value=[
             File(
-                tenant_id="1",
                 type=FileType.IMAGE,
                 transfer_method=FileTransferMethod.LOCAL_FILE,
                 related_id="1",
@@ -299,11 +301,11 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     """Test IfElseNode with boolean conditions using various operators"""
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -312,7 +314,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
 
     # construct variable pool with boolean values
     pool = VariablePool(
-        system_variables=SystemVariable(files=[], user_id="aaa"),
+        system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
@@ -324,7 +326,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_data = {
         "title": "Boolean Test",
@@ -354,11 +356,11 @@ def test_execute_if_else_boolean_false_conditions():
     """Test IfElseNode with boolean conditions that should evaluate to false"""
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -367,7 +369,7 @@ def test_execute_if_else_boolean_false_conditions():
 
     # construct variable pool with boolean values
     pool = VariablePool(
-        system_variables=SystemVariable(files=[], user_id="aaa"),
+        system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
@@ -378,7 +380,7 @@ def test_execute_if_else_boolean_false_conditions():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_data = {
         "title": "Boolean False Test",
@@ -423,11 +425,11 @@ def test_execute_if_else_boolean_cases_structure():
     """Test IfElseNode with boolean conditions using the new cases structure"""
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
@@ -436,7 +438,7 @@ def test_execute_if_else_boolean_cases_structure():
 
     # construct variable pool with boolean values
     pool = VariablePool(
-        system_variables=SystemVariable(files=[], user_id="aaa"),
+        system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
     pool.add(["start", "bool_false"], False)
@@ -446,7 +448,7 @@ def test_execute_if_else_boolean_cases_structure():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_data = {
         "title": "Boolean Cases Test",

@@ -22,7 +22,7 @@ const PublishToast = () => {
       <div
         className="relative flex w-[420px] space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg"
       >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-[0.4]">
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-[0.4]">
         </div>
         <div className="flex h-6 w-6 items-center justify-center">
           <RiInformation2Fill className="text-text-accent" />

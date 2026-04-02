@@ -14,7 +14,6 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { get } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,14 +30,16 @@ import Drawer from '@/app/components/base/drawer'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -67,6 +68,7 @@ type IDrawerContext = {
 }
 
 type StatusCount = {
+  paused: number
   success: number
   failed: number
   partial_success: number
@@ -92,9 +94,17 @@ const statusTdRender = (statusCount: StatusCount) => {
   if (!statusCount)
     return null
 
-  if (statusCount.partial_success + statusCount.failed === 0) {
+  if (statusCount.paused > 0) {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
+        <Indicator color="yellow" />
+        <span className="text-util-colors-warning-warning-600">Pending</span>
+      </div>
+    )
+  }
+  else if (statusCount.partial_success + statusCount.failed === 0) {
+    return (
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="green" />
         <span className="text-util-colors-green-green-600">Success</span>
       </div>
@@ -102,7 +112,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else if (statusCount.failed === 0) {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="green" />
         <span className="text-util-colors-green-green-600">Partial Success</span>
       </div>
@@ -110,7 +120,7 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
   else {
     return (
-      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <Indicator color="red" />
         <span className="text-util-colors-red-red-600">
           {statusCount.failed}
@@ -213,7 +223,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -295,7 +304,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       if (abortControllerRef.current === controller)
         abortControllerRef.current = null
     }
-  }, [detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+  }, [detail.id, hasMore, timezone, t, appDetail])
 
   // Derive chatItemTree, threadChatItems, and oldestAnswerIdRef from allChatItems
   useEffect(() => {
@@ -320,7 +329,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
     // Update pagination anchor ref with the oldest answer ID
     const answerItems = allChatItems.filter(item => item.isAnswer)
-    const oldestAnswer = answerItems[answerItems.length - 1]
+    const oldestAnswer = answerItems[0]
     if (oldestAnswer?.id)
       oldestAnswerIdRef.current = oldestAnswer.id
   }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
@@ -403,11 +412,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         return item
       }))
 
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }, [allChatItems, appDetail?.id, t])
@@ -503,58 +512,20 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     finally {
       setIsLoading(false)
     }
-  }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+  }, [detail.id, hasMore, isLoading, timezone, t, appDetail])
 
-  useEffect(() => {
+  const handleScroll = useCallback(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
-    const outerDiv = scrollableDiv?.parentElement
-    const chatContainer = document.querySelector('.mx-1.mb-1.grow.overflow-auto') as HTMLElement
-
-    let scrollContainer: HTMLElement | null = null
-
-    if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
-      scrollContainer = outerDiv
-    }
-    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
-      scrollContainer = scrollableDiv
-    }
-    else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
-      scrollContainer = chatContainer
-    }
-    else {
-      const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
-      for (let i = 0; i < possibleContainers.length; i++) {
-        const container = possibleContainers[i] as HTMLElement
-        if (container.scrollHeight > container.clientHeight) {
-          scrollContainer = container
-          break
-        }
-      }
-    }
-
-    if (!scrollContainer)
+    if (!scrollableDiv)
       return
+    const clientHeight = scrollableDiv.clientHeight
+    const scrollHeight = scrollableDiv.scrollHeight
+    const currentScrollTop = scrollableDiv.scrollTop
+    // currentScrollTop is negative due to column-reverse flex direction
+    const isNearTop = Math.abs(currentScrollTop) > scrollHeight - clientHeight - 40
 
-    const handleScroll = () => {
-      const currentScrollTop = scrollContainer!.scrollTop
-      const isNearTop = currentScrollTop < 30
-
-      if (isNearTop && hasMore && !isLoading) {
-        loadMoreMessages()
-      }
-    }
-
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0)
-        handleScroll()
-    }
-    scrollContainer.addEventListener('wheel', handleWheel, { passive: true })
-
-    return () => {
-      scrollContainer!.removeEventListener('scroll', handleScroll)
-      scrollContainer!.removeEventListener('wheel', handleWheel)
+    if (isNearTop && hasMore && !isLoading) {
+      loadMoreMessages()
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
@@ -590,9 +561,9 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
         <div className="shrink-0">
-          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
+          <div className="mb-0.5 text-text-primary system-xs-semibold-uppercase">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
           {isChatMode && (
-            <div className="system-2xs-regular-uppercase flex items-center text-text-secondary">
+            <div className="flex items-center text-text-secondary system-2xs-regular-uppercase">
               <Tooltip
                 popupContent={detail.id}
               >
@@ -602,7 +573,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+            <div className="text-text-secondary system-2xs-regular-uppercase">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
@@ -628,7 +599,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
+                  <div className="text-text-tertiary system-xs-semibold-uppercase">{t('table.header.output', { ns: 'appLog' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -638,12 +609,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   </div>
                 </div>
                 <TextGeneration
+                  appSourceType={AppSourceType.webApp}
                   className="mt-2"
                   content={detail.message.answer}
                   messageId={detail.message.id}
                   isError={false}
                   onRetry={noop}
-                  isInstalledApp={false}
                   supportFeedback
                   feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
                   onFeedback={feedback => onFeedback(detail.message.id, feedback)}
@@ -689,19 +660,10 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 height: '100%',
                 overflow: 'auto',
               }}
+              onScroll={handleScroll}
             >
               {/* Put the scroll bar always on the bottom */}
               <div className="flex w-full flex-col-reverse" style={{ position: 'relative' }}>
-                {/* Loading state indicator - only shown when loading */}
-                {hasMore && isLoading && (
-                  <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
-                    <div className="system-xs-regular text-text-tertiary">
-                      {t('detail.loading', { ns: 'appLog' })}
-                      ...
-                    </div>
-                  </div>
-                )}
-
                 <Chat
                   config={{
                     appId: appDetail?.id,
@@ -727,6 +689,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   switchSibling={switchSibling}
                 />
               </div>
+              {hasMore && (
+                <div className="py-3 text-center">
+                  <div className="text-text-tertiary system-xs-regular">
+                    {t('detail.loading', { ns: 'appLog' })}
+                    ...
+                  </div>
+                </div>
+              )}
             </div>
           )}
       </div>
@@ -763,7 +733,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } = useCompletionConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -773,11 +742,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -786,11 +755,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -812,7 +781,6 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
  */
 const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -821,11 +789,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -833,11 +801,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -977,9 +945,9 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         )}
-        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
+        popupClassName={(isHighlight && !isChatMode) ? '' : 'hidden!'}
       >
-        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap')}>
+        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -992,7 +960,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   return (
     <div className="relative mt-2 grow overflow-x-auto">
       <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-        <thead className="system-xs-medium-uppercase text-text-tertiary">
+        <thead className="text-text-tertiary system-xs-medium-uppercase">
           <tr>
             <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
@@ -1005,7 +973,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.time', { ns: 'appLog' })}</td>
           </tr>
         </thead>
-        <tbody className="system-sm-regular text-text-secondary">
+        <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
@@ -1019,7 +987,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>
@@ -1067,7 +1035,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg"
+        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 p-0! max-w-[640px]! rounded-xl bg-components-panel-bg"
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

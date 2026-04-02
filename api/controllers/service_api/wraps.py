@@ -1,33 +1,27 @@
 import logging
 import time
 from collections.abc import Callable
-from datetime import timedelta
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar
+from typing import Any, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
+from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
-
-P = ParamSpec("P")
-R = TypeVar("R")
-T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -47,13 +41,25 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
-    def decorator(view_func: Callable[P, R]):
+@overload
+def validate_app_token[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+@overload
+def validate_app_token[**P, R](
+    view: None = None, *, fetch_user_arg: FetchUserArg | None = None
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
+def validate_app_token[**P, R](
+    view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.query(App).where(App.id == api_token.app_id).first()
+            app_model = db.session.get(App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -63,7 +69,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
+            tenant = db.session.get(Tenant, app_model.tenant_id)
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
@@ -73,14 +79,14 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
-                    user_id = request.args.get("user")
-                elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
-                    user_id = request.get_json().get("user")
-                elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
-                    user_id = request.form.get("user")
-                else:
-                    user_id = None
+                user_id = None
+                match fetch_user_arg.fetch_from:
+                    case WhereisUserArg.QUERY:
+                        user_id = request.args.get("user")
+                    case WhereisUserArg.JSON:
+                        user_id = request.get_json().get("user")
+                    case WhereisUserArg.FORM:
+                        user_id = request.form.get("user")
 
                 if not user_id and fetch_user_arg.required:
                     raise ValueError("Arg user must be provided.")
@@ -97,8 +103,8 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
-                tenant_owner_info = (
-                    db.session.query(Tenant, Account)
+                tenant_owner_info = db.session.execute(
+                    select(Tenant, Account)
                     .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
                     .join(Account, TenantAccountJoin.account_id == Account.id)
                     .where(
@@ -106,8 +112,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                         TenantAccountJoin.role == "owner",
                         Tenant.status == TenantStatus.NORMAL,
                     )
-                    .one_or_none()
-                )
+                ).one_or_none()
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
@@ -127,7 +132,10 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
+def cloud_edition_billing_resource_check[**P, R](
+    resource: str,
+    api_token_type: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
@@ -157,7 +165,10 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
+def cloud_edition_billing_knowledge_limit_check[**P, R](
+    resource: str,
+    api_token_type: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -179,7 +190,10 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
+def cloud_edition_billing_rate_limit_check[**P, R](
+    resource: str,
+    api_token_type: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -216,10 +230,14 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
-    def decorator(view: Callable[Concatenate[T, P], R]):
-        @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+def validate_dataset_token(
+    view: Callable[..., Any] | None = None,
+) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(view_func)
+        def decorated(*args: Any, **kwargs: Any) -> Any:
+            api_token = validate_and_get_api_token("dataset")
+
             # get url path dataset_id from positional args or kwargs
             # Flask passes URL path parameters as positional arguments
             dataset_id = None
@@ -256,23 +274,28 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
             # Validate dataset if dataset_id is provided
             if dataset_id:
                 dataset_id = str(dataset_id)
-                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+                dataset = db.session.scalar(
+                    select(Dataset)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == api_token.tenant_id,
+                    )
+                    .limit(1)
+                )
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
-            api_token = validate_and_get_api_token("dataset")
-            tenant_account_join = (
-                db.session.query(Tenant, TenantAccountJoin)
+            tenant_account_join = db.session.execute(
+                select(Tenant, TenantAccountJoin)
                 .where(Tenant.id == api_token.tenant_id)
                 .where(TenantAccountJoin.tenant_id == Tenant.id)
                 .where(TenantAccountJoin.role.in_(["owner"]))
                 .where(Tenant.status == TenantStatus.NORMAL)
-                .one_or_none()
-            )  # TODO: only owner information is required, so only one is returned.
+            ).one_or_none()  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = db.session.query(Account).where(Account.id == ta.account_id).first()
+                account = db.session.get(Account, ta.account_id)
                 # Login admin
                 if account:
                     account.current_tenant = tenant
@@ -282,7 +305,10 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-            return view(api_token.tenant_id, *args, **kwargs)
+            if args and isinstance(args[0], Resource):
+                return view_func(args[0], api_token.tenant_id, *args[1:], **kwargs)
+
+            return view_func(api_token.tenant_id, *args, **kwargs)
 
         return decorated
 
@@ -296,7 +322,14 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
 
 def validate_and_get_api_token(scope: str | None = None):
     """
-    Validate and get API token.
+    Validate and get API token with Redis caching.
+
+    This function uses a two-tier approach:
+    1. First checks Redis cache for the token
+    2. If not cached, queries database and caches the result
+
+    The last_used_at field is updated asynchronously via Celery task
+    to avoid blocking the request.
     """
     auth_header = request.headers.get("Authorization")
     if auth_header is None or " " not in auth_header:
@@ -308,36 +341,27 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    current_time = naive_utc_now()
-    cutoff_time = current_time - timedelta(minutes=1)
-    with Session(db.engine, expire_on_commit=False) as session:
-        update_stmt = (
-            update(ApiToken)
-            .where(
-                ApiToken.token == auth_token,
-                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
-                ApiToken.type == scope,
-            )
-            .values(last_used_at=current_time)
-        )
-        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-        result = session.execute(update_stmt)
-        api_token = session.scalar(stmt)
+    # Try to get token from cache first
+    # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
+    cached_token = ApiTokenCache.get(auth_token, scope)
+    if cached_token is not None:
+        logger.debug("Token validation served from cache for scope: %s", scope)
+        # Record usage in Redis for later batch update (no Celery task per request)
+        record_token_usage(auth_token, scope)
+        return cast(ApiToken, cached_token)
 
-        if hasattr(result, "rowcount") and result.rowcount > 0:
-            session.commit()
-
-        if not api_token:
-            raise Unauthorized("Access token is invalid")
-
-    return api_token
+    # Cache miss - use Redis lock for single-flight mode
+    # This ensures only one request queries DB for the same token concurrently
+    return fetch_token_with_single_flight(auth_token, scope)
 
 
 class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
+        )
 
         if not dataset:
             raise NotFound("Dataset not found.")

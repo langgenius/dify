@@ -1,6 +1,6 @@
 'use client'
 import type { AppIconType } from '@/types/app'
-import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -12,11 +12,12 @@ import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import AppIconPicker from '../../base/app-icon-picker'
+import ShortcutsName from '../../workflow/shortcuts-name'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -80,7 +81,7 @@ const CreateAppModal = ({
 
   const submit = useCallback(() => {
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('appCustomize.nameRequired', { ns: 'explore' }) })
+      toast(t('appCustomize.nameRequired', { ns: 'explore' }), { type: 'error' })
       return
     }
     const isValid = maxActiveRequestsInput.trim() !== '' && !isNaN(Number(maxActiveRequestsInput))
@@ -116,7 +117,7 @@ const CreateAppModal = ({
       <Modal
         isShow={show}
         onClose={noop}
-        className="relative !max-w-[480px] px-8"
+        className="relative max-w-[480px]! px-8"
       >
         <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
@@ -165,7 +166,7 @@ const CreateAppModal = ({
               <div className="flex items-center justify-between">
                 <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  defaultValue={useIconAsAnswerIcon}
+                  value={useIconAsAnswerIcon}
                   onChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>
@@ -198,10 +199,7 @@ const CreateAppModal = ({
             onClick={handleSubmit}
           >
             <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-            <div className="flex gap-0.5">
-              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-            </div>
+            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
           </Button>
           <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
         </div>

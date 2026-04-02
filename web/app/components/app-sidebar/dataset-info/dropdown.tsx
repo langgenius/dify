@@ -1,20 +1,21 @@
 import type { DataSet } from '@/models/datasets'
 import { RiMoreFill } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import ActionButton from '../../base/action-button'
 import Confirm from '../../base/confirm'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
-import Toast from '../../base/toast'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
@@ -64,16 +65,11 @@ const DropDown = ({
         pipelineId: pipeline_id,
         include,
       })
-      const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      const url = URL.createObjectURL(file)
-      a.href = url
-      a.download = `${name}.pipeline`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
-      Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
   }, [dataset, exportPipelineConfig, handleTrigger, t])
 
@@ -85,7 +81,7 @@ const DropDown = ({
     }
     catch (e: any) {
       const res = await e.json()
-      Toast.notify({ type: 'error', message: res?.message || 'Unknown error' })
+      toast(res?.message || 'Unknown error', { type: 'error' })
     }
     finally {
       handleTrigger()
@@ -95,7 +91,7 @@ const DropDown = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
-      Toast.notify({ type: 'success', message: t('datasetDeleted', { ns: 'dataset' }) })
+      toast(t('datasetDeleted', { ns: 'dataset' }), { type: 'success' })
       invalidDatasetList()
       replace('/datasets')
     }
@@ -123,7 +119,7 @@ const DropDown = ({
           <RiMoreFill className="size-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[60]">
+      <PortalToFollowElemContent className="z-60">
         <Menu
           showDelete={!isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}

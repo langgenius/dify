@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -28,7 +27,7 @@ type SetupOptions = {
 }
 
 let mockFeatureStoreState: FeatureStoreState
-let mockSetFeatures: Mock
+let mockSetFeatures = vi.fn()
 const mockStore = {
   getState: vi.fn<() => FeatureStoreState>(() => mockFeatureStoreState),
 }

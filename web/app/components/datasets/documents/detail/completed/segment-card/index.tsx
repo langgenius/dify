@@ -19,13 +19,14 @@ import { useDocumentContext } from '../../context'
 import ChildSegmentList from '../child-segment-list'
 import Dot from '../common/dot'
 import { SegmentIndexTag } from '../common/segment-index-tag'
+import SummaryLabel from '../common/summary-label'
 import Tag from '../common/tag'
 import ParentChunkCardSkeleton from '../skeleton/parent-chunk-card-skeleton'
 import ChunkContent from './chunk-content'
 
 type ISegmentCardProps = {
   loading: boolean
-  detail?: SegmentDetailModel & { document?: { name: string } }
+  detail?: SegmentDetailModel & { document?: { name: string }, status?: string }
   onClick?: () => void
   onChangeSwitch?: (enabled: boolean, segId?: string) => Promise<void>
   onDelete?: (segId: string) => Promise<void>
@@ -43,7 +44,7 @@ type ISegmentCardProps = {
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({
-  detail = {},
+  detail = { status: '' },
   onClick,
   onChangeSwitch,
   onDelete,
@@ -67,6 +68,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     word_count,
     hit_count,
     answer,
+    summary,
     keywords,
     child_chunks = [],
     created_at,
@@ -168,7 +170,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <div className="flex items-center">
                   <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
                   {embeddingAvailable && (
-                    <div className="absolute -right-2.5 -top-2 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px]
+                    <div className="absolute -right-2.5 -top-2 z-20 hidden items-center gap-x-0.5 radius-lg border-[0.5px]
                       border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex"
                     >
                       {!archived && (
@@ -214,7 +216,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         <Switch
                           size="md"
                           disabled={archived || detail?.status !== 'completed'}
-                          defaultValue={enabled}
+                          value={enabled}
                           onChange={async (val) => {
                             await onChangeSwitch?.(val, id)
                           }}
@@ -237,6 +239,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         className={contentOpacity}
       />
       {images.length > 0 && <ImageList images={images} size="md" className="py-1" />}
+      {
+        summary && (
+          <SummaryLabel summary={summary} className="mt-2" />
+        )
+      }
       {isGeneralMode && (
         <div className={cn('flex flex-wrap items-center gap-2 py-1.5', contentOpacity)}>
           {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}

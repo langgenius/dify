@@ -1,8 +1,9 @@
 from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneConfig, MatrixoneVector
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    setup_mock_redis,
 )
+
+pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 class MatrixoneVectorTest(AbstractVectorTest):
