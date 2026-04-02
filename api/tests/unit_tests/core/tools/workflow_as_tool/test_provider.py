@@ -30,9 +30,14 @@ def _controller() -> WorkflowToolProviderController:
     return WorkflowToolProviderController(entity=entity, provider_id="provider-1")
 
 
-def _mock_session_with_begin() -> Mock:
-    """Return a mock session (no longer needs .begin() since sessionmaker().begin() handles that)."""
-    return Mock()
+def _mock_session_with_begin() -> MagicMock:
+    """Return a MagicMock session whose .begin() returns a context-manager."""
+    session = MagicMock()
+    begin_cm = MagicMock()
+    begin_cm.__enter__.return_value = None
+    begin_cm.__exit__.return_value = False
+    session.begin.return_value = begin_cm
+    return session
 
 
 def test_get_db_provider_tool_builds_entity():

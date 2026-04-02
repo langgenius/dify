@@ -298,10 +298,12 @@ class TestPluginAppBackwardsInvocation:
     def test_get_user_returns_end_user(self, mocker):
         session = MagicMock()
         session.scalar.side_effect = [MagicMock(id="end-user")]
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = None
-        mocker.patch("core.plugin.backwards_invocation.app.Session", return_value=session_ctx)
+        begin_ctx = MagicMock()
+        begin_ctx.__enter__.return_value = session
+        begin_ctx.__exit__.return_value = None
+        mock_factory = MagicMock()
+        mock_factory.begin.return_value = begin_ctx
+        mocker.patch("core.plugin.backwards_invocation.app.sessionmaker", return_value=mock_factory)
         mocker.patch("core.plugin.backwards_invocation.app.db", SimpleNamespace(engine=MagicMock()))
 
         user = PluginAppBackwardsInvocation._get_user("uid")
@@ -310,10 +312,12 @@ class TestPluginAppBackwardsInvocation:
     def test_get_user_falls_back_to_account_user(self, mocker):
         session = MagicMock()
         session.scalar.side_effect = [None, MagicMock(id="account-user")]
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = None
-        mocker.patch("core.plugin.backwards_invocation.app.Session", return_value=session_ctx)
+        begin_ctx = MagicMock()
+        begin_ctx.__enter__.return_value = session
+        begin_ctx.__exit__.return_value = None
+        mock_factory = MagicMock()
+        mock_factory.begin.return_value = begin_ctx
+        mocker.patch("core.plugin.backwards_invocation.app.sessionmaker", return_value=mock_factory)
         mocker.patch("core.plugin.backwards_invocation.app.db", SimpleNamespace(engine=MagicMock()))
 
         user = PluginAppBackwardsInvocation._get_user("uid")
@@ -322,10 +326,12 @@ class TestPluginAppBackwardsInvocation:
     def test_get_user_raises_when_user_not_found(self, mocker):
         session = MagicMock()
         session.scalar.side_effect = [None, None]
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = None
-        mocker.patch("core.plugin.backwards_invocation.app.Session", return_value=session_ctx)
+        begin_ctx = MagicMock()
+        begin_ctx.__enter__.return_value = session
+        begin_ctx.__exit__.return_value = None
+        mock_factory = MagicMock()
+        mock_factory.begin.return_value = begin_ctx
+        mocker.patch("core.plugin.backwards_invocation.app.sessionmaker", return_value=mock_factory)
         mocker.patch("core.plugin.backwards_invocation.app.db", SimpleNamespace(engine=MagicMock()))
 
         with pytest.raises(ValueError, match="user not found"):
