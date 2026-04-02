@@ -155,10 +155,13 @@ function ToastCard({
         'pointer-events-auto absolute top-0 right-0 w-[360px] max-w-[calc(100vw-2rem)] origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
-        '[transition:translate_500ms_cubic-bezier(0.22,1,0.36,1),scale_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
-        'translate-x-(--toast-swipe-movement-x) translate-y-[calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height)))] scale-(--toast-scale)',
-        'data-expanded:h-(--toast-height) data-expanded:translate-x-(--toast-swipe-movement-x) data-expanded:translate-y-[calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px))] data-expanded:scale-100',
-        'data-ending-style:translate-y-[calc(var(--toast-swipe-movement-y)-150%)] data-ending-style:opacity-0 data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:-translate-y-[150%] data-starting-style:opacity-0',
+        '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
+        '[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
+        'data-expanded:h-(--toast-height) data-expanded:[transform:translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px)))_scale(1)]',
+        'data-ending-style:[transform:translateY(-150%)] data-ending-style:opacity-0',
+        'data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]',
+        'data-ending-style:data-[swipe-direction=right]:[transform:translateX(calc(var(--toast-swipe-movement-x)+150%))]',
+        'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:[transform:translateY(-150%)] data-starting-style:opacity-0',
         'after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
       )}
     >
