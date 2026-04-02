@@ -1,0 +1,15 @@
+{
+  "name": "@dify/iconify-collections",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./generated": "./src/generated/collections.js"
+  },
+  "scripts": {
+    "generate": "node ./scripts/generate-collections.mjs"
+  },
+  "devDependencies": {
+    "iconify-import-svg": "catalog:"
+  }
+}
