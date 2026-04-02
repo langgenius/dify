@@ -384,6 +384,14 @@ vi.mock('../../../../viewer/media-file-preview', () => ({
   ),
 }))
 
+vi.mock('../../../../viewer/sqlite-file-preview', () => ({
+  default: ({ downloadUrl }: { downloadUrl: string }) => <div data-testid="sqlite-preview">{downloadUrl}</div>,
+}))
+
+vi.mock('../../../../viewer/pdf-file-preview', () => ({
+  default: ({ downloadUrl }: { downloadUrl: string }) => <div data-testid="pdf-preview">{downloadUrl}</div>,
+}))
+
 vi.mock('../../../../viewer/unsupported-file-download', () => ({
   default: ({ name, size, downloadUrl }: { name: string, size?: number, downloadUrl: string }) => (
     <div data-testid="unsupported-preview">{`${name}|${String(size)}|${downloadUrl}`}</div>
@@ -784,6 +792,73 @@ describe('FileContentPanel', () => {
       // Assert
       expect(screen.getByTestId('media-preview')).toHaveTextContent('image|https://example.com/image.png')
       expect(mocks.useSkillFileData).toHaveBeenCalledWith('app-1', 'file-1', 'download')
+    })
+
+    it('should render video preview for video files', () => {
+      mocks.fileTypeInfo = {
+        isMarkdown: false,
+        isCodeOrText: false,
+        isImage: false,
+        isVideo: true,
+        isPdf: false,
+        isSQLite: false,
+        isEditable: false,
+        isPreviewable: true,
+      }
+      mocks.fileData.downloadUrlData = { download_url: 'https://example.com/video.mp4' }
+      mocks.nodeMapData = new Map<string, AppAssetTreeView>([
+        ['file-1', createNode({ name: 'video.mp4', extension: 'mp4' })],
+      ])
+
+      render(<FileContentPanel />)
+
+      expect(screen.getByTestId('media-preview')).toHaveTextContent('video|https://example.com/video.mp4')
+    })
+
+    it('should render sqlite preview for database files', async () => {
+      mocks.fileTypeInfo = {
+        isMarkdown: false,
+        isCodeOrText: false,
+        isImage: false,
+        isVideo: false,
+        isPdf: false,
+        isSQLite: true,
+        isEditable: false,
+        isPreviewable: true,
+      }
+      mocks.fileData.downloadUrlData = { download_url: 'https://example.com/demo.db' }
+      mocks.nodeMapData = new Map<string, AppAssetTreeView>([
+        ['file-1', createNode({ name: 'demo.db', extension: 'db' })],
+      ])
+
+      render(<FileContentPanel />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('sqlite-preview')).toHaveTextContent('https://example.com/demo.db')
+      })
+    })
+
+    it('should render pdf preview for pdf files', async () => {
+      mocks.fileTypeInfo = {
+        isMarkdown: false,
+        isCodeOrText: false,
+        isImage: false,
+        isVideo: false,
+        isPdf: true,
+        isSQLite: false,
+        isEditable: false,
+        isPreviewable: true,
+      }
+      mocks.fileData.downloadUrlData = { download_url: 'https://example.com/demo.pdf' }
+      mocks.nodeMapData = new Map<string, AppAssetTreeView>([
+        ['file-1', createNode({ name: 'demo.pdf', extension: 'pdf' })],
+      ])
+
+      render(<FileContentPanel />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pdf-preview')).toHaveTextContent('https://example.com/demo.pdf')
+      })
     })
 
     it('should render unsupported download panel for non-previewable files', () => {

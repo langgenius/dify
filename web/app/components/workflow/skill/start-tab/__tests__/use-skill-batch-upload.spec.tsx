@@ -56,6 +56,16 @@ describe('useSkillBatchUpload', () => {
       expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 0, total: 3, failed: 0 })
     })
 
+    it('should clamp negative totals to zero when starting an upload', () => {
+      const { result } = renderHook(() => useSkillBatchUpload())
+
+      act(() => {
+        result.current.startUpload(-2)
+      })
+
+      expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 0, total: 0, failed: 0 })
+    })
+
     it('should update upload progress through the shared helper', () => {
       const { result } = renderHook(() => useSkillBatchUpload())
 
@@ -64,6 +74,16 @@ describe('useSkillBatchUpload', () => {
       })
 
       expect(mocks.workflowState.setUploadProgress).toHaveBeenCalledWith({ uploaded: 2, total: 5, failed: 0 })
+    })
+
+    it('should mark the upload as failed through the shared helper', () => {
+      const { result } = renderHook(() => useSkillBatchUpload())
+
+      act(() => {
+        result.current.failUpload()
+      })
+
+      expect(mocks.workflowState.setUploadStatus).toHaveBeenCalledWith('partial_error')
     })
   })
 
@@ -141,6 +161,26 @@ describe('useSkillBatchUpload', () => {
 
       expect(mocks.workflowState.openTab).toHaveBeenCalledWith('skill-md-id', { pinned: true })
       expect(openedId).toBe('skill-md-id')
+    })
+
+    it('should return null when no skill document exists in the created nodes', () => {
+      const { result } = renderHook(() => useSkillBatchUpload())
+
+      let openedId: string | null = 'placeholder'
+      act(() => {
+        openedId = result.current.openCreatedSkillDocument([
+          {
+            id: 'folder-id',
+            name: 'alpha',
+            node_type: 'folder',
+            size: 0,
+            children: [],
+          },
+        ])
+      })
+
+      expect(mocks.workflowState.openTab).not.toHaveBeenCalled()
+      expect(openedId).toBeNull()
     })
   })
 })

@@ -97,7 +97,7 @@ const FileTabs = () => {
         {openTabIds.map((fileId) => {
           const isArtifact = isArtifactTab(fileId)
           const node = isArtifact ? undefined : nodeMap?.get(fileId)
-          const artifactFileName = isArtifact ? getArtifactPath(fileId).split('/').pop() ?? fileId : undefined
+          const artifactFileName = isArtifact ? getArtifactPath(fileId).split('/').pop()! : undefined
           const name = isArtifact ? artifactFileName! : (node?.name ?? fileId)
           const extension = isArtifact ? getFileExtension(artifactFileName!) : node?.extension
           const isActive = activeTabId === fileId

@@ -176,6 +176,45 @@ describe('useFileDrop', () => {
       expect(store.getState().uploadStatus).toBe('idle')
     })
 
+    it('should ignore non-file items and null files from the drop payload', async () => {
+      const store = createWorkflowStore({})
+      const { result } = renderHook(() => useFileDrop(), { wrapper: createWrapper(store) })
+      const event = createDragEvent({
+        items: [
+          createDataTransferItem({ kind: 'string' }),
+          createDataTransferItem({ file: null }),
+        ],
+      })
+
+      await act(async () => {
+        await result.current.handleDrop(event as unknown as React.DragEvent, 'folder-null')
+      })
+
+      expect(mockPrepareSkillUploadFile).not.toHaveBeenCalled()
+      expect(mockUploadMutateAsync).not.toHaveBeenCalled()
+      expect(mockToastError).not.toHaveBeenCalled()
+    })
+
+    it('should handle drag payloads with missing item collections', async () => {
+      const store = createWorkflowStore({})
+      const { result } = renderHook(() => useFileDrop(), { wrapper: createWrapper(store) })
+      const event = {
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        dataTransfer: {
+          types: ['Files'],
+          dropEffect: 'none',
+        },
+      } as unknown as React.DragEvent
+
+      await act(async () => {
+        await result.current.handleDrop(event, null)
+      })
+
+      expect(mockPrepareSkillUploadFile).not.toHaveBeenCalled()
+      expect(mockUploadMutateAsync).not.toHaveBeenCalled()
+    })
+
     it('should upload valid files while rejecting directories in a mixed drop payload', async () => {
       const store = createWorkflowStore({})
       const { result } = renderHook(() => useFileDrop(), { wrapper: createWrapper(store) })

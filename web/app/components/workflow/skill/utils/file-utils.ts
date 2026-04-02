@@ -83,7 +83,8 @@ export function getFileExtension(name?: string, extension?: string): string {
     return extension.replace(/^\./, '').toLowerCase()
   if (!name)
     return ''
-  return name.split('.').pop()?.toLowerCase() ?? ''
+  const parts = name.split('.')
+  return parts[parts.length - 1].toLowerCase()
 }
 
 const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'wav', 'amr', 'mpga', 'ogg', 'flac', 'aac', 'wma', 'aiff', 'opus']
@@ -110,7 +111,7 @@ const EXTENSION_TO_ICON_TYPE = new Map<string, FileAppearanceTypeEnum>(
 )
 
 export function getFileIconType(name: string, ext?: string | null): FileAppearanceTypeEnum {
-  const extension = ext?.replace(/^\./, '').toLowerCase() ?? name.split('.').pop()?.toLowerCase() ?? ''
+  const extension = getFileExtension(name, ext ?? undefined)
   return EXTENSION_TO_ICON_TYPE.get(extension) ?? FileAppearanceTypeEnum.document
 }
 
@@ -143,7 +144,7 @@ export function isPdfFile(extension: string): boolean {
 }
 
 export function getFileLanguage(name: string): string {
-  const extension = name.split('.').pop()?.toLowerCase() ?? ''
+  const extension = getFileExtension(name)
 
   const languageMap: Record<string, string> = {
     md: 'markdown',

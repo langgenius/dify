@@ -37,6 +37,7 @@ export function useDownloadOperation({
         const { content } = await consoleClient.appAsset.getFileContent({
           params: { appId, nodeId },
         })
+        const textFileName = fileName!
         let rawText = content
         try {
           const parsed = JSON.parse(content) as { content?: string }
@@ -48,7 +49,7 @@ export function useDownloadOperation({
 
         downloadBlob({
           data: new Blob([rawText], { type: 'text/plain;charset=utf-8' }),
-          fileName: fileName || 'download.txt',
+          fileName: textFileName,
         })
       }
       else {
