@@ -1,6 +1,6 @@
 # OSOP Workflow Examples for Dify
 
-[OSOP](https://github.com/osopcloud/osop-spec) (Open Standard for Orchestration Protocols) is a YAML-based workflow definition format that provides a portable, platform-agnostic way to describe AI agent pipelines.
+[OSOP](https://github.com/Archie0125/osop-spec) (Open Standard for Orchestration Protocols) is a YAML-based workflow definition format that provides a portable, platform-agnostic way to describe AI agent pipelines.
 
 ## Why OSOP + Dify?
 
@@ -32,6 +32,6 @@ osop render dify-rag-chatbot.osop.yaml -o workflow.png
 
 ## Learn more
 
-- [OSOP Specification](https://github.com/osopcloud/osop-spec)
-- [OSOP Examples](https://github.com/osopcloud/osop-examples) — 30+ workflow templates
-- [OSOP Visual Editor](https://github.com/osopcloud/osop-editor)
+- [OSOP Specification](https://github.com/Archie0125/osop-spec)
+- [OSOP Examples](https://github.com/Archie0125/osop-examples) — 30+ workflow templates
+- [OSOP Visual Editor](https://github.com/Archie0125/osop-editor)
