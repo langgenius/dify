@@ -191,6 +191,7 @@ class TestWebhookServiceUnit:
         """Test webhook response generation with default values."""
         node_config = {"data": {}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 200
@@ -201,6 +202,7 @@ class TestWebhookServiceUnit:
         """Test webhook response generation with custom JSON response."""
         node_config = {"data": {"status_code": 201, "response_body": '{"result": "created", "id": 123}'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 201
@@ -211,6 +213,7 @@ class TestWebhookServiceUnit:
         """Test webhook response generation with custom text response."""
         node_config = {"data": {"status_code": 202, "response_body": "Request accepted for processing"}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 202
@@ -220,6 +223,7 @@ class TestWebhookServiceUnit:
         """Test webhook response generation with invalid JSON response."""
         node_config = {"data": {"status_code": 400, "response_body": '{"invalid": json}'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 400
@@ -229,6 +233,7 @@ class TestWebhookServiceUnit:
         """Test webhook response generation with empty response body."""
         node_config = {"data": {"status_code": 204, "response_body": ""}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 204
@@ -239,6 +244,7 @@ class TestWebhookServiceUnit:
         """Test webhook response generation with JSON array response."""
         node_config = {"data": {"status_code": 200, "response_body": '[{"id": 1}, {"id": 2}]'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 200
@@ -485,6 +491,7 @@ class TestWebhookServiceUnit:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             # Check that types are correctly converted
@@ -512,6 +519,7 @@ class TestWebhookServiceUnit:
             }
 
             with pytest.raises(ValueError, match="Invalid JSON body"):
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_data_validation_error(self):
@@ -532,6 +540,7 @@ class TestWebhookServiceUnit:
             }
 
             with pytest.raises(ValueError, match="HTTP method mismatch"):
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_debug_mode_parameter_handling(self):

@@ -550,6 +550,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+            # pyrefly: ignore [missing-attribute]
             app_model.access_mode = app_setting.access_mode
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)

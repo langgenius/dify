@@ -186,6 +186,7 @@ class TestAudioServiceMockedBehavior:
             message_id="msg_123",
         )
 
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert result["audio"] == "base64_audio_data"
 
 

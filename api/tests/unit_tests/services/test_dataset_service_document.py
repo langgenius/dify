@@ -88,7 +88,9 @@ class TestDocumentServiceMutations:
             pass
 
         current_user = FakeAccount()
+        # pyrefly: ignore [missing-attribute]
         current_user.id = "user-123"
+        # pyrefly: ignore [missing-attribute]
         current_user.current_tenant_id = "tenant-123"
 
         with (
@@ -373,6 +375,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             patch.object(DatasetService, "check_dataset_model_setting") as check_model_setting,
         ):
             with pytest.raises(NotFound, match="Document not found"):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
         check_model_setting.assert_called_once_with(dataset)
@@ -396,6 +399,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             patch.object(DatasetService, "check_dataset_model_setting"),
         ):
             with pytest.raises(ValueError, match="Document is not available"):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
     def test_update_document_with_dataset_id_upload_file_process_rule_and_name_override(self, account_context):
@@ -433,6 +437,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         ):
             mock_db.session.scalar.return_value = SimpleNamespace(id="file-1", name="upload.txt")
 
+            # pyrefly: ignore [bad-argument-type]
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
         assert result is document
@@ -481,6 +486,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             mock_db.session.scalar.return_value = None
 
             with pytest.raises(ValueError, match="Data source binding not found"):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
     def test_update_document_with_dataset_id_website_crawl_updates_segments_and_dispatches_task(self, account_context):
@@ -531,6 +537,7 @@ class TestDocumentServiceCreateValidation:
         knowledge_config = SimpleNamespace(data_source=None, process_rule=None)
 
         with pytest.raises(ValueError, match="Data source or Process rule is required"):
+            # pyrefly: ignore [bad-argument-type]
             DocumentService.document_create_args_validate(knowledge_config)
 
     def test_document_create_args_validate_delegates_to_sub_validators(self):
@@ -540,6 +547,7 @@ class TestDocumentServiceCreateValidation:
             patch.object(DocumentService, "data_source_args_validate") as validate_data_source,
             patch.object(DocumentService, "process_rule_args_validate") as validate_process_rule,
         ):
+            # pyrefly: ignore [bad-argument-type]
             DocumentService.document_create_args_validate(knowledge_config)
 
         validate_data_source.assert_called_once_with(knowledge_config)
@@ -558,6 +566,7 @@ class TestDocumentServiceCreateValidation:
         )
 
         with pytest.raises(ValueError, match="Data source type is invalid"):
+            # pyrefly: ignore [bad-argument-type]
             DocumentService.data_source_args_validate(knowledge_config)
 
     @pytest.mark.parametrize(
@@ -579,6 +588,7 @@ class TestDocumentServiceCreateValidation:
         knowledge_config = SimpleNamespace(data_source=SimpleNamespace(info_list=info_list))
 
         with pytest.raises(ValueError, match=message):
+            # pyrefly: ignore [bad-argument-type]
             DocumentService.data_source_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_clears_rules_for_automatic_mode(self):
@@ -630,7 +640,9 @@ class TestDocumentServiceCreateValidation:
 
         assert knowledge_config.process_rule is not None
         assert knowledge_config.process_rule.rules is not None
+        # pyrefly: ignore [bad-argument-type]
         assert len(knowledge_config.process_rule.rules.pre_processing_rules) == 1
+        # pyrefly: ignore [unsupported-operation]
         assert knowledge_config.process_rule.rules.pre_processing_rules[0].enabled is False
 
     def test_process_rule_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
@@ -762,11 +774,13 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
             with pytest.raises(ValueError, match="Indexing technique is invalid"):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
 
     def test_save_document_with_dataset_id_returns_empty_for_invalid_process_rule_mode(self, account_context):
         dataset = _make_dataset()
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"])
+        # pyrefly: ignore [bad-assignment]
         knowledge_config.process_rule = SimpleNamespace(mode="unsupported-mode", rules=None)
 
         with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
@@ -806,6 +820,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                 dataset,
                 knowledge_config,
                 account_context,
+                # pyrefly: ignore [bad-argument-type]
                 dataset_process_rule=dataset_process_rule,
             )
 
@@ -886,6 +901,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                 dataset,
                 knowledge_config,
                 account_context,
+                # pyrefly: ignore [bad-argument-type]
                 dataset_process_rule=dataset_process_rule,
             )
 
@@ -937,6 +953,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                 dataset,
                 knowledge_config,
                 account_context,
+                # pyrefly: ignore [bad-argument-type]
                 dataset_process_rule=dataset_process_rule,
             )
 
@@ -1091,6 +1108,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
             process_rule_cls.return_value = created_process_rule
             mock_db.session.scalar.return_value = SimpleNamespace(id="file-1", name="upload.txt")
 
+            # pyrefly: ignore [bad-argument-type]
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
         assert result is document
@@ -1118,6 +1136,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
             patch.object(DatasetService, "check_dataset_model_setting"),
         ):
             with pytest.raises(ValueError, match="No file info list found"):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
     def test_update_document_with_dataset_id_raises_when_upload_file_is_missing(self, account_context):
@@ -1141,6 +1160,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
             mock_db.session.scalar.return_value = None
 
             with pytest.raises(FileNotExistsError):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
     def test_update_document_with_dataset_id_requires_notion_info_list(self, account_context):
@@ -1156,6 +1176,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
             patch.object(DatasetService, "check_dataset_model_setting"),
         ):
             with pytest.raises(ValueError, match="No notion info list found"):
+                # pyrefly: ignore [bad-argument-type]
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
     def test_update_document_with_dataset_id_notion_import_updates_page_info(self, account_context):
@@ -1191,6 +1212,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
         ):
             mock_db.session.scalar.return_value = SimpleNamespace(id="binding-1")
 
+            # pyrefly: ignore [bad-argument-type]
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
         assert result is document
@@ -1490,6 +1512,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         assert process_rule_cls.call_args.kwargs == {
             "dataset_id": "dataset-1",
             "mode": "custom",
+            # pyrefly: ignore [missing-attribute]
             "rules": knowledge_config.process_rule.rules.model_dump_json(),
             "created_by": "user-1",
         }
@@ -1604,6 +1627,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     dataset,
                     knowledge_config,
                     account_context,
+                    # pyrefly: ignore [bad-argument-type]
                     dataset_process_rule=SimpleNamespace(id="rule-1"),
                 )
 
@@ -1627,5 +1651,6 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     dataset,
                     knowledge_config,
                     account_context,
+                    # pyrefly: ignore [bad-argument-type]
                     dataset_process_rule=SimpleNamespace(id="rule-1"),
                 )

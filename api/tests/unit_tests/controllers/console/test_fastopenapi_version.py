@@ -20,6 +20,7 @@ def app() -> Flask:
 
 
 def test_console_version_fastopenapi_returns_current_version(app: Flask):
+    # pyrefly: ignore [bad-argument-type]
     ext_fastopenapi.init_app(app)
 
     with patch("controllers.console.version.dify_config.CHECK_UPDATE_URL", None):

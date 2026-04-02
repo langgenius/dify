@@ -79,6 +79,7 @@ class TencentVector(BaseVector):
             self._enable_hybrid_search = True
             if self._has_collection():
                 coll = self._client.describe_collection(
+                    # pyrefly: ignore [bad-argument-type]
                     database_name=self._client_config.database, collection_name=self.collection_name
                 )
                 has_hybrid_search = False
@@ -86,11 +87,13 @@ class TencentVector(BaseVector):
                     if idx.name == "sparse_vector":
                         has_hybrid_search = True
                     elif idx.name == "vector":
+                        # pyrefly: ignore [missing-attribute]
                         self._dimension = idx.dimension
                 if not has_hybrid_search:
                     self._enable_hybrid_search = False
 
     def _init_database(self):
+        # pyrefly: ignore [bad-argument-type]
         return self._client.create_database_if_not_exists(database_name=self._client_config.database)
 
     def get_type(self) -> str:
@@ -106,6 +109,7 @@ class TencentVector(BaseVector):
     def _has_collection(self) -> bool:
         return bool(
             self._client.exists_collection(
+                # pyrefly: ignore [bad-argument-type]
                 database_name=self._client_config.database, collection_name=self.collection_name
             )
         )
@@ -151,14 +155,17 @@ class TencentVector(BaseVector):
             )
             indexes = [index_id, index_vector, index_metadate]
             if self._enable_hybrid_search:
+                # pyrefly: ignore [bad-argument-type]
                 indexes.append(index_sparse_vector)
             try:
                 self._client.create_collection(
+                    # pyrefly: ignore [bad-argument-type]
                     database_name=self._client_config.database,
                     collection_name=self._collection_name,
                     shard=self._client_config.shard,
                     replicas=self._client_config.replicas,
                     description="Collection for Dify",
+                    # pyrefly: ignore [bad-argument-type]
                     indexes=indexes,
                 )
             except VectorDBException as e:
@@ -170,13 +177,16 @@ class TencentVector(BaseVector):
                 )
                 indexes = [index_id, index_vector, index_metadate]
                 if self._enable_hybrid_search:
+                    # pyrefly: ignore [bad-argument-type]
                     indexes.append(index_sparse_vector)
                 self._client.create_collection(
+                    # pyrefly: ignore [bad-argument-type]
                     database_name=self._client_config.database,
                     collection_name=self._collection_name,
                     shard=self._client_config.shard,
                     replicas=self._client_config.replicas,
                     description="Collection for Dify",
+                    # pyrefly: ignore [bad-argument-type]
                     indexes=indexes,
                 )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
@@ -185,6 +195,7 @@ class TencentVector(BaseVector):
         self._create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -209,14 +220,17 @@ class TencentVector(BaseVector):
                     doc.__dict__["sparse_vector"] = bm25.encode_texts(texts[i])
                 docs.append(doc)
             self._client.upsert(
+                # pyrefly: ignore [bad-argument-type]
                 database_name=self._client_config.database,
                 collection_name=self.collection_name,
+                # pyrefly: ignore [bad-argument-type]
                 documents=docs,
                 timeout=self._client_config.timeout,
             )
 
     def text_exists(self, id: str) -> bool:
         docs = self._client.query(
+            # pyrefly: ignore [bad-argument-type]
             database_name=self._client_config.database, collection_name=self.collection_name, document_ids=[id]
         )
         if docs and len(docs) > 0:
@@ -237,11 +251,13 @@ class TencentVector(BaseVector):
             batch_ids = ids[start_idx:end_idx]
 
             self._client.delete(
+                # pyrefly: ignore [bad-argument-type]
                 database_name=self._client_config.database, collection_name=self.collection_name, document_ids=batch_ids
             )
 
     def delete_by_metadata_field(self, key: str, value: str):
         self._client.delete(
+            # pyrefly: ignore [bad-argument-type]
             database_name=self._client_config.database,
             collection_name=self.collection_name,
             filter=Filter(Filter.In(f"metadata.{key}", [value])),
@@ -253,9 +269,11 @@ class TencentVector(BaseVector):
         if document_ids_filter:
             filter = Filter(Filter.In("metadata.document_id", document_ids_filter))
         res = self._client.search(
+            # pyrefly: ignore [bad-argument-type]
             database_name=self._client_config.database,
             collection_name=self.collection_name,
             vectors=[query_vector],
+            # pyrefly: ignore [bad-argument-type]
             filter=filter,
             params=document.HNSWSearchParams(ef=kwargs.get("ef", 10)),
             retrieve_vector=False,
@@ -273,6 +291,7 @@ class TencentVector(BaseVector):
         if not self._enable_hybrid_search:
             return []
         res = self._client.hybrid_search(
+            # pyrefly: ignore [bad-argument-type]
             database_name=self._client_config.database,
             collection_name=self.collection_name,
             ann=[
@@ -284,6 +303,7 @@ class TencentVector(BaseVector):
             match=[
                 KeywordSearch(
                     field_name="sparse_vector",
+                    # pyrefly: ignore [bad-argument-type]
                     data=bm25.encode_queries(query),
                 ),
             ],
@@ -293,6 +313,7 @@ class TencentVector(BaseVector):
             ),
             retrieve_vector=False,
             limit=kwargs.get("top_k", 4),
+            # pyrefly: ignore [bad-argument-type]
             filter=filter,
         )
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -317,6 +338,7 @@ class TencentVector(BaseVector):
     def delete(self):
         if self._has_collection():
             self._client.drop_collection(
+                # pyrefly: ignore [bad-argument-type]
                 database_name=self._client_config.database, collection_name=self.collection_name
             )
 

@@ -20,6 +20,7 @@ class TestHostingModerationFeature:
             mock_check.return_value = True
 
             feature = HostingModerationFeature()
+            # pyrefly: ignore [bad-argument-type]
             result = feature.check(application_generate_entity, prompt_messages)
 
         assert result is True

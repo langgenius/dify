@@ -70,6 +70,7 @@ class PKCS1OAepCipher:
         if mgfunc:
             self._mgf = mgfunc
         else:
+            # pyrefly: ignore [bad-argument-type]
             self._mgf = lambda x, y: MGF1(x, y, self._hashObj)
 
         self._label = bytes(label)

@@ -1233,8 +1233,10 @@ class DatasetRetrieval:
                 reranking_model_name=retrieve_config.reranking_model["reranking_model_name"],
             )
 
+            # pyrefly: ignore [bad-argument-type]
             tools.append(tool)
 
+        # pyrefly: ignore [bad-return]
         return tools
 
     def calculate_keyword_score(self, query: str, documents: list[Document], top_k: int) -> list[Document]:

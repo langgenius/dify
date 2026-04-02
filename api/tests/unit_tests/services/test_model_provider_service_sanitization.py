@@ -71,6 +71,7 @@ def service_with_fake_configurations():
             return _FakeConfigurations(fake_provider_configuration)
 
     svc = ModelProviderService()
+    # pyrefly: ignore [bad-assignment]
     svc._get_provider_manager = lambda tenant_id: _FakeProviderManager()
     return svc
 

@@ -124,17 +124,28 @@ def _build_fake_couchbase_modules():
         def bucket(self, _name):
             return self._bucket
 
+    # pyrefly: ignore [missing-attribute]
     couchbase_auth.PasswordAuthenticator = PasswordAuthenticator
+    # pyrefly: ignore [missing-attribute]
     couchbase_cluster.Cluster = Cluster
+    # pyrefly: ignore [missing-attribute]
     couchbase_management_search.SearchIndex = SearchIndex
+    # pyrefly: ignore [missing-attribute]
     couchbase_options.ClusterOptions = ClusterOptions
+    # pyrefly: ignore [missing-attribute]
     couchbase_options.SearchOptions = SearchOptions
+    # pyrefly: ignore [missing-attribute]
     couchbase_vector.VectorQuery = VectorQuery
+    # pyrefly: ignore [missing-attribute]
     couchbase_vector.VectorSearch = VectorSearch
+    # pyrefly: ignore [missing-attribute]
     couchbase_search.QueryStringQuery = QueryStringQuery
+    # pyrefly: ignore [missing-attribute]
     couchbase_search.SearchRequest = SearchRequest
 
+    # pyrefly: ignore [missing-attribute]
     couchbase.search = couchbase_search
+    # pyrefly: ignore [missing-attribute]
     couchbase.management = couchbase_management
 
     return {

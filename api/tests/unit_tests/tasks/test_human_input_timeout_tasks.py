@@ -100,15 +100,19 @@ def test_is_global_timeout_uses_created_at():
     now = datetime(2025, 1, 1, 12, 0, 0)
     form = SimpleNamespace(created_at=now - timedelta(seconds=61), workflow_run_id="run-1")
 
+    # pyrefly: ignore [bad-argument-type]
     assert task_module._is_global_timeout(form, 60, now=now) is True
 
     form.workflow_run_id = None
+    # pyrefly: ignore [bad-argument-type]
     assert task_module._is_global_timeout(form, 60, now=now) is False
 
     form.workflow_run_id = "run-1"
     form.created_at = now - timedelta(seconds=59)
+    # pyrefly: ignore [bad-argument-type]
     assert task_module._is_global_timeout(form, 60, now=now) is False
 
+    # pyrefly: ignore [bad-argument-type]
     assert task_module._is_global_timeout(form, 0, now=now) is False
 
 

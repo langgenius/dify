@@ -166,6 +166,7 @@ class TestApiKeyAuthService:
         result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
 
         assert result == special_credentials
+        # pyrefly: ignore [unsupported-operation]
         assert result["config"]["api_key"] == "key_with_中文_and_special_chars_!@#$%"
 
     def test_delete_provider_auth_success(

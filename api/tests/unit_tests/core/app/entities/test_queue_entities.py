@@ -8,5 +8,6 @@ class TestQueueEntities:
 
     def test_get_stop_reason_for_unknown_stop_by(self):
         event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
+        # pyrefly: ignore [bad-assignment]
         event.stopped_by = "unknown"
         assert event.get_stop_reason() == "Stopped by unknown reason."

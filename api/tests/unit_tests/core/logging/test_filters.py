@@ -198,8 +198,11 @@ class TestIdentityContextFilter:
             pass
 
         mock_user = MockAccount()
+        # pyrefly: ignore [missing-attribute]
         mock_user.id = "account_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.current_tenant_id = "tenant_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.is_authenticated = True
 
         with (
@@ -221,8 +224,11 @@ class TestIdentityContextFilter:
             pass
 
         mock_user = MockAccount()
+        # pyrefly: ignore [missing-attribute]
         mock_user.id = "account_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.current_tenant_id = None
+        # pyrefly: ignore [missing-attribute]
         mock_user.is_authenticated = True
 
         with (
@@ -247,9 +253,13 @@ class TestIdentityContextFilter:
             pass
 
         mock_user = MockEndUser()
+        # pyrefly: ignore [missing-attribute]
         mock_user.id = "end_user_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.tenant_id = "tenant_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.type = "custom_type"
+        # pyrefly: ignore [missing-attribute]
         mock_user.is_authenticated = True
 
         with (
@@ -275,9 +285,13 @@ class TestIdentityContextFilter:
             pass
 
         mock_user = MockEndUser()
+        # pyrefly: ignore [missing-attribute]
         mock_user.id = "end_user_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.tenant_id = "tenant_id"
+        # pyrefly: ignore [missing-attribute]
         mock_user.type = None
+        # pyrefly: ignore [missing-attribute]
         mock_user.is_authenticated = True
 
         with (

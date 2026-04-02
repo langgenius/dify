@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -52,6 +53,7 @@ class TestModelProviderService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -61,6 +63,7 @@ class TestModelProviderService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -105,8 +108,10 @@ class TestModelProviderService:
         provider = Provider(
             tenant_id=tenant_id,
             provider_name=provider_name,
+            # pyrefly: ignore [bad-argument-type]
             provider_type="custom",
             is_valid=True,
+            # pyrefly: ignore [bad-argument-type]
             quota_type="free",
             quota_limit=1000,
             quota_used=0,
@@ -146,6 +151,7 @@ class TestModelProviderService:
             tenant_id=tenant_id,
             provider_name=provider_name,
             model_name=model_name,
+            # pyrefly: ignore [bad-argument-type]
             model_type=model_type,
             is_valid=True,
         )
@@ -184,6 +190,7 @@ class TestModelProviderService:
             tenant_id=tenant_id,
             provider_name=provider_name,
             model_name=model_name,
+            # pyrefly: ignore [bad-argument-type]
             model_type=model_type,
             enabled=True,
             load_balancing_enabled=False,

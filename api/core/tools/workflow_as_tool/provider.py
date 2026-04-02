@@ -235,6 +235,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 raise ValueError("app not found")
 
             user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
+            # pyrefly: ignore [bad-assignment]
             self.tools = [self._get_db_provider_tool(db_provider, app, session=session, user=user)]
 
         return self.tools

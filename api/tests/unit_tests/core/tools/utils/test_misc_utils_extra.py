@@ -109,6 +109,7 @@ def test_single_dataset_retriever_from_dataset_builds_name_and_description():
     dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1", name="Knowledge", description=None)
 
     tool = SingleDatasetRetrieverTool.from_dataset(
+        # pyrefly: ignore [bad-argument-type]
         dataset=dataset,
         retrieve_config=_retrieve_config(),
         return_resource=False,
@@ -327,6 +328,7 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
     with patch.object(multi_retriever_module, "db", SimpleNamespace(session=db_session)):
         with patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
             result = tool._retriever(
+                # pyrefly: ignore [bad-argument-type]
                 flask_app=_FakeFlaskApp(),
                 dataset_id="dataset-1",
                 query="hello",
@@ -373,6 +375,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model():
     with patch.object(multi_retriever_module, "db", SimpleNamespace(session=db_session)):
         with patch.object(multi_retriever_module.RetrievalService, "retrieve", return_value=documents) as retrieve_mock:
             tool._retriever(
+                # pyrefly: ignore [bad-argument-type]
                 flask_app=_FakeFlaskApp(),
                 dataset_id="dataset-1",
                 query="hello",

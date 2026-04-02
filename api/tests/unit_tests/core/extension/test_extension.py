@@ -26,6 +26,7 @@ class TestExtension:
             extension.init()
 
             # Check if internal state is updated
+            # pyrefly: ignore [missing-attribute]
             internal_state = Extension._Extension__module_extensions
             assert internal_state[ExtensionModule.MODERATION.value] == mock_mod_extensions
             assert internal_state[ExtensionModule.EXTERNAL_DATA_TOOL.value] == mock_ext_extensions

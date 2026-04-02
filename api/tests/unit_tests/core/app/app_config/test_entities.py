@@ -12,8 +12,10 @@ class TestAppConfigEntities:
         entity = VariableEntity(
             variable="query",
             label="Query",
+            # pyrefly: ignore [bad-argument-type]
             description=None,
             type=VariableEntityType.TEXT_INPUT,
+            # pyrefly: ignore [bad-argument-type]
             options=None,
         )
 

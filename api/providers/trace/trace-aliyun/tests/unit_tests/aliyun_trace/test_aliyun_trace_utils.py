@@ -170,6 +170,7 @@ def test_create_common_span_attributes():
 
 def test_format_retrieval_documents():
     # Not a list
+    # pyrefly: ignore [bad-argument-type]
     assert format_retrieval_documents("not a list") == []
 
     # Valid list
@@ -211,6 +212,7 @@ def test_format_retrieval_documents():
 
 def test_format_input_messages():
     # Not a dict
+    # pyrefly: ignore [bad-argument-type]
     assert format_input_messages(None) == serialize_json_data([])
 
     # No prompts
@@ -244,6 +246,7 @@ def test_format_input_messages():
 
 def test_format_output_messages():
     # Not a dict
+    # pyrefly: ignore [bad-argument-type]
     assert format_output_messages(None) == serialize_json_data([])
 
     # No text

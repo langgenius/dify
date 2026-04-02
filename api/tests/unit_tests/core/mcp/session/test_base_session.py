@@ -47,6 +47,7 @@ class MockNotificationParams(BaseModel):
     message: str
 
 
+# pyrefly: ignore [bad-specialization]
 class MockNotification(Notification[MockNotificationParams, str]):
     method: str = "test/notification"
     params: MockNotificationParams
@@ -60,6 +61,7 @@ class ReceiveNotification(RootModel[Union[CancelledNotification, MockNotificatio
     pass
 
 
+# pyrefly: ignore [bad-specialization]
 class MockSession(BaseSession[MockRequest, MockNotification, MockResult, ReceiveRequest, ReceiveNotification]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -73,6 +75,7 @@ class MockSession(BaseSession[MockRequest, MockNotification, MockResult, Receive
     def _received_notification(self, notification):
         self.received_notifications.append(notification)
 
+    # pyrefly: ignore [bad-param-name-override]
     def _handle_incoming(self, item):
         self.handled_incoming.append(item)
 
@@ -89,6 +92,7 @@ def test_request_responder_respond(streams):
     on_complete = MagicMock()
     request = ReceiveRequest(MockRequest(method="test", params=MockRequestParams(name="test")))
 
+    # pyrefly: ignore [bad-specialization]
     responder = RequestResponder(
         request_id=1, request_meta=None, request=request, session=session, on_complete=on_complete
     )
@@ -116,6 +120,7 @@ def test_request_responder_cancel(streams):
     on_complete = MagicMock()
     request = ReceiveRequest(MockRequest(method="test", params=MockRequestParams(name="test")))
 
+    # pyrefly: ignore [bad-specialization]
     responder = RequestResponder(
         request_id=1, request_meta=None, request=request, session=session, on_complete=on_complete
     )
@@ -144,7 +149,9 @@ def test_base_session_lifecycle(streams):
         assert s._executor is not None
         assert s._receiver_future is not None
 
+    # pyrefly: ignore [missing-attribute]
     session._receiver_future.result(timeout=5.0)
+    # pyrefly: ignore [missing-attribute]
     assert session._receiver_future.done()
 
 
@@ -536,6 +543,7 @@ def test_send_request_none_response(streams):
         try:
             msg = write_stream.get(timeout=2)
             req_id = msg.message.root.id
+            # pyrefly: ignore [bad-argument-type]
             session._response_streams[req_id].put(None)
         except:
             pass
@@ -595,6 +603,7 @@ def test_receive_loop_empty_coverage(streams):
 @pytest.mark.timeout(2)
 def test_base_methods_noop(streams):
     read_stream, write_stream = streams
+    # pyrefly: ignore [bad-specialization]
     session = BaseSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
     session._received_request(MagicMock())

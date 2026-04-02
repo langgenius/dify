@@ -119,6 +119,7 @@ def test_empty_query_behavior() -> None:
 
     # Assert
     assert len(empty_query) == 1
+    # pyrefly: ignore [missing-attribute]
     assert empty_query[0].message.text == "please input query"
 
 
@@ -131,6 +132,7 @@ def test_query_invocation_result() -> None:
 
     # Assert
     assert len(result) == 1
+    # pyrefly: ignore [missing-attribute]
     assert result[0].message.text == "result:hello"
 
 

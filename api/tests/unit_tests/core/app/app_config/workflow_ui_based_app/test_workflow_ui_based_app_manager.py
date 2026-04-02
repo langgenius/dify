@@ -137,6 +137,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
 
         # Assert
         assert len(result) == 1
+        # pyrefly: ignore [bad-index]
         assert result[0]["validated"]["variable"] == "var2"
 
     def test_list_value_removes_variable(self, mock_workflow, mock_rag_entity):
@@ -162,6 +163,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
 
         # Assert
         assert len(result) == 1
+        # pyrefly: ignore [bad-index]
         assert result[0]["validated"]["variable"] == "var2"
 
     @pytest.mark.parametrize(

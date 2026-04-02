@@ -76,6 +76,7 @@ def runner(mocker):
     runner.create_agent_thought = MagicMock(return_value="thought-id")
     runner.save_agent_thought = MagicMock()
     runner.update_prompt_message_tool = MagicMock()
+    # pyrefly: ignore [bad-assignment]
     runner.agent_callback = None
     runner.memory = None
     runner.history_prompt_messages = []
@@ -281,16 +282,22 @@ class TestRun:
         usage_1.prompt_tokens = 1
         usage_1.completion_tokens = 1
         usage_1.total_tokens = 2
+        # pyrefly: ignore [bad-assignment]
         usage_1.prompt_price = 1
+        # pyrefly: ignore [bad-assignment]
         usage_1.completion_price = 1
+        # pyrefly: ignore [bad-assignment]
         usage_1.total_price = 2
 
         usage_2 = LLMUsage.empty_usage()
         usage_2.prompt_tokens = 1
         usage_2.completion_tokens = 1
         usage_2.total_tokens = 2
+        # pyrefly: ignore [bad-assignment]
         usage_2.prompt_price = 1
+        # pyrefly: ignore [bad-assignment]
         usage_2.completion_price = 1
+        # pyrefly: ignore [bad-assignment]
         usage_2.total_price = 2
 
         action = AgentScratchpadUnit.Action(action_name="tool", action_input={})

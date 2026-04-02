@@ -24,6 +24,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -31,8 +32,10 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 2
         assert result[0].type == DatasourceMessage.MessageType.TEXT
+        # pyrefly: ignore [missing-attribute]
         assert result[0].message.text == "hello"
         assert result[1].type == DatasourceMessage.MessageType.LINK
+        # pyrefly: ignore [missing-attribute]
         assert result[1].message.text == "https://example.com"
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
@@ -57,6 +60,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1", conversation_id="conv1"
             )
         )
@@ -64,6 +68,7 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.IMAGE_LINK
+        # pyrefly: ignore [missing-attribute]
         assert result[0].message.text == "/files/datasources/file_id_123.png"
         assert result[0].meta == {"some": "meta"}
         mock_manager.create_file_by_url.assert_called_once_with(
@@ -86,6 +91,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -93,7 +99,9 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.TEXT
+        # pyrefly: ignore [missing-attribute]
         assert "Failed to download image" in result[0].message.text
+        # pyrefly: ignore [missing-attribute]
         assert "Download failed" in result[0].message.text
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
@@ -119,6 +127,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -126,6 +135,7 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.IMAGE_LINK
+        # pyrefly: ignore [missing-attribute]
         assert result[0].message.text == "/files/datasources/blob_id_456.jpg"
         mock_manager.create_file_by_raw.assert_called_once()
 
@@ -156,6 +166,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -163,6 +174,7 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.BINARY_LINK
+        # pyrefly: ignore [missing-attribute]
         assert result[0].message.text == "/files/datasources/blob_id_789.pdf"
 
     def test_transform_blob_message_invalid_type(self):
@@ -177,6 +189,7 @@ class TestDatasourceFileMessageTransformer:
         with pytest.raises(ValueError, match="unexpected message type"):
             list(
                 DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                    # pyrefly: ignore [bad-argument-type]
                     messages=iter(messages), user_id="user1", tenant_id="tenant1"
                 )
             )
@@ -200,6 +213,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -207,6 +221,7 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.IMAGE_LINK
+        # pyrefly: ignore [missing-attribute]
         assert result[0].message.text == "/files/datasources/related_123.png"
 
     def test_transform_file_tool_file_binary(self):
@@ -228,6 +243,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -235,6 +251,7 @@ class TestDatasourceFileMessageTransformer:
         # Verify
         assert len(result) == 1
         assert result[0].type == DatasourceMessage.MessageType.LINK
+        # pyrefly: ignore [missing-attribute]
         assert result[0].message.text == "/files/datasources/related_456.txt"
 
     def test_transform_file_other_transfer_method(self):
@@ -252,6 +269,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -270,6 +288,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )
@@ -306,12 +325,14 @@ class TestDatasourceFileMessageTransformer:
 
             result = list(
                 DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                    # pyrefly: ignore [bad-argument-type]
                     messages=iter(messages), user_id="user1", tenant_id="tenant1"
                 )
             )
 
             assert len(result) == 1
             assert result[0].type == DatasourceMessage.MessageType.BINARY_LINK
+            # pyrefly: ignore [missing-attribute]
             assert result[0].message.text == "/files/datasources/blob_id_no_name.bin"
 
     @patch("core.datasource.utils.message_transformer.ToolFileManager")
@@ -326,6 +347,7 @@ class TestDatasourceFileMessageTransformer:
         # Execute
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+                # pyrefly: ignore [bad-argument-type]
                 messages=iter(messages), user_id="user1", tenant_id="tenant1"
             )
         )

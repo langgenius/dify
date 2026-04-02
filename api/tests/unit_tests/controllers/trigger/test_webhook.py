@@ -9,6 +9,7 @@ import controllers.trigger.webhook as module
 
 @pytest.fixture(autouse=True)
 def mock_request():
+    # pyrefly: ignore [bad-assignment]
     module.request = types.SimpleNamespace(
         method="POST",
         headers={"x-test": "1"},
@@ -70,6 +71,7 @@ class TestHandleWebhook:
         response, status = module.handle_webhook("wh-1")
 
         assert status == 200
+        # pyrefly: ignore [bad-index]
         assert response["ok"] is True
         mock_trigger.assert_called_once()
 
@@ -81,6 +83,7 @@ class TestHandleWebhook:
         response, status = module.handle_webhook("wh-1")
 
         assert status == 400
+        # pyrefly: ignore [bad-index]
         assert response["error"] == "Bad Request"
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
@@ -98,6 +101,7 @@ class TestHandleWebhook:
         response, status = module.handle_webhook("wh-1")
 
         assert status == 500
+        # pyrefly: ignore [bad-index]
         assert response["error"] == "Internal server error"
 
 

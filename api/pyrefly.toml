@@ -2,9 +2,7 @@ project-includes = ["."]
 project-excludes = [
     ".venv",
     "migrations/",
-    "tests/",
 ]
 python-platform = "linux"
 python-version = "3.12"
 [errors]
-bad-override = false

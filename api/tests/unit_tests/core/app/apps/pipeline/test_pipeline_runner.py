@@ -62,6 +62,7 @@ def runner():
     workflow_node_execution_repository = MagicMock()
 
     return PipelineRunner(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=variable_loader,
@@ -140,6 +141,7 @@ def test_run_pipeline_not_found(mocker):
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
@@ -165,6 +167,7 @@ def test_run_workflow_not_initialized(mocker):
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
@@ -191,6 +194,7 @@ def test_run_single_iteration_path(mocker):
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
@@ -250,6 +254,7 @@ def test_run_normal_path_builds_graph(mocker):
     )
 
     runner = PipelineRunner(
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),

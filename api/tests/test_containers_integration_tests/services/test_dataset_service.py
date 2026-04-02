@@ -35,8 +35,10 @@ class DatasetServiceIntegrationDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
+        # pyrefly: ignore [bad-argument-type]
         tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()

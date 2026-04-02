@@ -33,6 +33,7 @@ def _db_provider() -> SimpleNamespace:
 
 
 def test_api_tool_provider_from_db_and_parse_tool_bundle():
+    # pyrefly: ignore [bad-argument-type]
     controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.API_KEY_HEADER)
     assert controller.provider_type == ToolProviderType.API
     assert any(c.name == "api_key_value" for c in controller.entity.credentials_schema)
@@ -43,14 +44,17 @@ def test_api_tool_provider_from_db_and_parse_tool_bundle():
 
 
 def test_api_tool_provider_from_db_query_auth_and_none_auth():
+    # pyrefly: ignore [bad-argument-type]
     query_controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.API_KEY_QUERY)
     assert any(c.name == "api_key_query_param" for c in query_controller.entity.credentials_schema)
 
+    # pyrefly: ignore [bad-argument-type]
     none_controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE)
     assert [c.name for c in none_controller.entity.credentials_schema] == ["auth_type"]
 
 
 def test_api_tool_provider_load_get_tools_and_get_tool():
+    # pyrefly: ignore [bad-argument-type]
     controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE)
     loaded = controller.load_bundled_tools(_db_provider().tools)
     assert len(loaded) == 1

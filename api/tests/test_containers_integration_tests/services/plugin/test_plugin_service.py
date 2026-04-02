@@ -47,6 +47,7 @@ class TestFetchLatestPluginVersion:
 
         result = PluginService.fetch_latest_plugin_version(["p1"])
 
+        # pyrefly: ignore [missing-attribute]
         assert result["p1"].version == "1.0.0"
         mock_marketplace.batch_fetch_plugin_manifests.assert_not_called()
 
@@ -65,6 +66,7 @@ class TestFetchLatestPluginVersion:
 
         result = PluginService.fetch_latest_plugin_version(["p1"])
 
+        # pyrefly: ignore [missing-attribute]
         assert result["p1"].version == "2.0.0"
         mock_redis.setex.assert_called_once()
 
@@ -374,6 +376,7 @@ class TestUninstall:
         pref = TenantPreferredModelProvider(
             tenant_id=tenant_id,
             provider_name=provider_name,
+            # pyrefly: ignore [bad-argument-type]
             preferred_provider_type="custom",
         )
         db_session_with_containers.add(pref)

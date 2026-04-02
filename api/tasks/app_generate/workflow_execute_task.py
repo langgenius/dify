@@ -437,6 +437,7 @@ def _resume_advanced_chat(
         raise
 
     if generate_entity.stream:
+        # pyrefly: ignore [unsafe-overlap]
         assert isinstance(response, Generator)
         _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
 
@@ -491,6 +492,7 @@ def _resume_workflow(
         raise
 
     if generate_entity.stream:
+        # pyrefly: ignore [unsafe-overlap]
         assert isinstance(response, Generator)
         _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
 

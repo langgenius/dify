@@ -130,6 +130,7 @@ def test_init_rejects_invalid_session_factory_type(monkeypatch: pytest.MonkeyPat
     )
     with pytest.raises(ValueError, match="Invalid session_factory type"):
         SQLAlchemyWorkflowNodeExecutionRepository(  # type: ignore[arg-type]
+            # pyrefly: ignore [bad-argument-type]
             session_factory=object(),
             user=_mock_account(),
             app_id=None,
@@ -143,6 +144,7 @@ def test_init_requires_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *_: SimpleNamespace(upload_file=Mock()),
     )
     user = _mock_account()
+    # pyrefly: ignore [read-only]
     user.current_tenant_id = None
     with pytest.raises(ValueError, match="User must have a tenant_id"):
         SQLAlchemyWorkflowNodeExecutionRepository(
@@ -237,11 +239,13 @@ def test_to_db_model_requires_creator_user_id_and_role(monkeypatch: pytest.Monke
     db_model = repo._to_db_model(execution)
     assert db_model.app_id == "app"
 
+    # pyrefly: ignore [bad-assignment]
     repo._creator_user_id = None
     with pytest.raises(ValueError, match="created_by is required"):
         repo._to_db_model(execution)
 
     repo._creator_user_id = "user"
+    # pyrefly: ignore [bad-assignment]
     repo._creator_user_role = None
     with pytest.raises(ValueError, match="created_by_role is required"):
         repo._to_db_model(execution)
@@ -264,6 +268,7 @@ def test_is_duplicate_key_error_and_regenerate_id(
     unique = Mock(spec=psycopg2.errors.UniqueViolation)
     duplicate_error = IntegrityError("dup", params=None, orig=unique)
     assert repo._is_duplicate_key_error(duplicate_error) is True
+    # pyrefly: ignore [bad-argument-type]
     assert repo._is_duplicate_key_error(IntegrityError("other", params=None, orig=None)) is False
 
     execution = _execution(execution_id="old-id")
@@ -402,8 +407,11 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
     off_in = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
     off_out = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
     off_proc = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA)
+    # pyrefly: ignore [bad-argument-type]
     off_in.file = SimpleNamespace(key="k-in")
+    # pyrefly: ignore [bad-argument-type]
     off_out.file = SimpleNamespace(key="k-out")
+    # pyrefly: ignore [bad-argument-type]
     off_proc.file = SimpleNamespace(key="k-proc")
     db_model.offload_data = [off_out, off_in, off_proc]
 
@@ -616,6 +624,7 @@ def test_save_retries_duplicate_and_logs_non_duplicate(
     execution = _execution(execution_id="id")
     unique = Mock(spec=psycopg2.errors.UniqueViolation)
     duplicate_error = IntegrityError("dup", params=None, orig=unique)
+    # pyrefly: ignore [bad-argument-type]
     other_error = IntegrityError("other", params=None, orig=None)
 
     calls = {"n": 0}
@@ -629,6 +638,7 @@ def test_save_retries_duplicate_and_logs_non_duplicate(
     monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "new-id")
     repo.save(execution)
     assert execution.id == "new-id"
+    # pyrefly: ignore [bad-index]
     assert repo._node_execution_cache[execution.node_execution_id] is not None
 
     caplog.set_level(logging.ERROR)

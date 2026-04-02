@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pytest
 import redis
 from redis.cluster import RedisCluster
+# pyrefly: ignore [missing-import]
 from testcontainers.redis import RedisContainer
 
 from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic

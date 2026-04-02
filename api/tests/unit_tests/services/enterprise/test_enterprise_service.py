@@ -236,6 +236,7 @@ class TestJoinDefaultWorkspace:
 
     def test_join_default_workspace_joined_without_workspace_id_raises(self):
         with pytest.raises(ValueError, match="workspace_id must be non-empty when joined is True"):
+            # pyrefly: ignore [unexpected-keyword]
             DefaultWorkspaceJoinResult(workspace_id="", joined=True, message="ok")
 
 
@@ -260,6 +261,7 @@ class TestTryJoinDefaultWorkspace:
         ):
             mock_config.ENTERPRISE_ENABLED = True
             mock_join.return_value = DefaultWorkspaceJoinResult(
+                # pyrefly: ignore [unexpected-keyword]
                 workspace_id="22222222-2222-2222-2222-222222222222",
                 joined=True,
                 message="ok",
@@ -279,6 +281,7 @@ class TestTryJoinDefaultWorkspace:
         ):
             mock_config.ENTERPRISE_ENABLED = True
             mock_join.return_value = DefaultWorkspaceJoinResult(
+                # pyrefly: ignore [unexpected-keyword]
                 workspace_id="",
                 joined=False,
                 message="no default workspace configured",

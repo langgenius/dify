@@ -87,6 +87,7 @@ class TidbOnQdrantVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config: TidbOnQdrantConfig, distance_func: str = "Cosine"):
         super().__init__(collection_name)
         self._client_config = config
+        # pyrefly: ignore [bad-argument-type]
         self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
         self._distance_func = distance_func.upper()
         self._group_id = group_id
@@ -469,9 +470,13 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                             new_cluster.get("qdrant_endpoint"),
                         )
                         new_tidb_auth_binding = TidbAuthBinding(
+                            # pyrefly: ignore [unsupported-operation]
                             cluster_id=new_cluster["cluster_id"],
+                            # pyrefly: ignore [unsupported-operation]
                             cluster_name=new_cluster["cluster_name"],
+                            # pyrefly: ignore [unsupported-operation]
                             account=new_cluster["account"],
+                            # pyrefly: ignore [unsupported-operation]
                             password=new_cluster["password"],
                             qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
                             tenant_id=dataset.tenant_id,

@@ -51,6 +51,7 @@ class TestSegmentServiceChildChunks:
             mock_redis.lock.return_value = _make_lock_context()
             mock_db.session.scalar.return_value = 2
 
+            # pyrefly: ignore [bad-argument-type]
             child_chunk = SegmentService.create_child_chunk("child content", segment, document, dataset)
 
         assert isinstance(child_chunk, ChildChunk)
@@ -79,6 +80,7 @@ class TestSegmentServiceChildChunks:
             vector_service.create_child_chunk_vector.side_effect = RuntimeError("vector failed")
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
+                # pyrefly: ignore [bad-argument-type]
                 SegmentService.create_child_chunk("child content", segment, document, dataset)
 
         mock_db.session.rollback.assert_called_once()
@@ -127,6 +129,7 @@ class TestSegmentServiceChildChunks:
                 ],
                 segment,
                 document,
+                # pyrefly: ignore [bad-argument-type]
                 dataset,
             )
 
@@ -164,6 +167,7 @@ class TestSegmentServiceChildChunks:
                     [ChildChunkUpdateArgs(id="child-a", content="updated content")],
                     segment,
                     document,
+                    # pyrefly: ignore [bad-argument-type]
                     dataset,
                 )
 
@@ -180,6 +184,7 @@ class TestSegmentServiceChildChunks:
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             result = SegmentService.update_child_chunk(
+                # pyrefly: ignore [bad-argument-type]
                 "new content", child_chunk, _make_segment(), _make_document(), dataset
             )
 
@@ -203,6 +208,7 @@ class TestSegmentServiceChildChunks:
             vector_service.delete_child_chunk_vector.side_effect = RuntimeError("delete failed")
 
             with pytest.raises(ChildChunkDeleteIndexError, match="delete failed"):
+                # pyrefly: ignore [bad-argument-type]
                 SegmentService.delete_child_chunk(child_chunk, dataset)
 
         mock_db.session.delete.assert_called_once_with(child_chunk)
@@ -463,11 +469,17 @@ class TestSegmentServiceMutations:
 
             result = SegmentService.multi_create_segment(segments, document, dataset)
 
+        # pyrefly: ignore [bad-argument-type]
         assert len(result) == 2
+        # pyrefly: ignore [not-iterable]
         assert [segment.position for segment in result] == [2, 3]
+        # pyrefly: ignore [not-iterable]
         assert [segment.tokens for segment in result] == [11, 13]
+        # pyrefly: ignore [not-iterable]
         assert all(segment.status == "error" for segment in result)
+        # pyrefly: ignore [not-iterable]
         assert all(segment.enabled is False for segment in result)
+        # pyrefly: ignore [not-iterable]
         assert all(segment.error == "vector failed" for segment in result)
         assert document.word_count == 5 + sum(len(item["content"]) + len(item["answer"]) for item in segments)
         vector_service.create_segments_vector.assert_called_once_with(
@@ -810,6 +822,7 @@ class TestSegmentServiceChildChunkTailHelpers:
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
                 SegmentService.update_child_chunk(
+                    # pyrefly: ignore [bad-argument-type]
                     "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset
                 )
 
@@ -824,6 +837,7 @@ class TestSegmentServiceChildChunkTailHelpers:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
+            # pyrefly: ignore [bad-argument-type]
             SegmentService.delete_child_chunk(child_chunk, dataset)
 
         mock_db.session.delete.assert_called_once_with(child_chunk)

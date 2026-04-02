@@ -153,7 +153,9 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Store session and service instances
         self.session = db_session_with_containers
+        # pyrefly: ignore [read-only]
         self.file_service = file_service
+        # pyrefly: ignore [read-only]
         self.workflow_run_service = workflow_run_service
 
         # Save test data to database
@@ -307,9 +309,11 @@ class TestPauseStatePersistenceLayerTestContainers:
             ("node2", "var2"): {"complex": "object"},
         }
         graph_runtime_state = self._create_graph_runtime_state(
+            # pyrefly: ignore [bad-argument-type]
             outputs=test_outputs,
             total_tokens=100,
             node_run_steps=5,
+            # pyrefly: ignore [bad-argument-type]
             variables=test_variables,
         )
 
@@ -374,6 +378,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             outputs=complex_outputs,
             total_tokens=250,
             node_run_steps=10,
+            # pyrefly: ignore [bad-argument-type]
             variables=complex_variables,
         )
 
@@ -386,6 +391,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.on_event(event)
 
         # Assert - Retrieve and verify
+        # pyrefly: ignore [missing-attribute]
         pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(self.test_workflow_run_id)
         assert pause_entity is not None
         assert pause_entity.workflow_execution_id == self.test_workflow_run_id
@@ -400,6 +406,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert retrieved_state["outputs"] == complex_outputs
         assert retrieved_state["total_tokens"] == 250
         assert retrieved_state["node_run_steps"] == 10
+        # pyrefly: ignore [missing-attribute]
         assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
     def test_database_transaction_handling(self, db_session_with_containers):
@@ -441,6 +448,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         # Create large state data to test storage
         large_outputs = {"data": "x" * 10000}  # 10KB of data
         graph_runtime_state = self._create_graph_runtime_state(
+            # pyrefly: ignore [bad-argument-type]
             outputs=large_outputs,
             total_tokens=1000,
         )
@@ -465,6 +473,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         storage_content = storage.load(pause_model.state_object_key).decode()
         resumption_context = WorkflowResumptionContext.loads(storage_content)
         assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
+        # pyrefly: ignore [missing-attribute]
         assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
     def test_workflow_with_different_creators(self, db_session_with_containers):
@@ -527,9 +536,11 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert pause_model is not None
 
         # Verify the state owner is the workflow creator
+        # pyrefly: ignore [missing-attribute]
         pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(different_workflow_run.id)
         assert pause_entity is not None
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
+        # pyrefly: ignore [missing-attribute]
         assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id
 
     def test_layer_ignores_non_pause_events(self, db_session_with_containers):

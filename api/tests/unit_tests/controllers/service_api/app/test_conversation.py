@@ -83,11 +83,13 @@ class TestConversationListQuery:
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             ConversationListQuery(limit=0)
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             ConversationListQuery(limit=101)
 
     @pytest.mark.parametrize(
@@ -452,6 +454,7 @@ class TestConversationService:
         mock_result.has_more = False
         mock_pagination.return_value = mock_result
 
+        # pyrefly: ignore [missing-argument]
         result = ConversationService.pagination_by_last_id(
             app_model=Mock(spec=App),
             user=Mock(spec=EndUser),

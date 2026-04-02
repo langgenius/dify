@@ -38,6 +38,7 @@ def _load_controller_module():
         stub.__path__ = ["controllers/web"]
         stub.__package__ = "controllers"
         stub.__spec__ = importlib.util.spec_from_loader(parent_module_name, loader=None, is_package=True)
+        # pyrefly: ignore [missing-attribute]
         stub.web_ns = Namespace("web", description="Web API", path="/")
         sys.modules[parent_module_name] = stub
 
@@ -48,6 +49,7 @@ def _load_controller_module():
         class WebApiResource:
             pass
 
+        # pyrefly: ignore [missing-attribute]
         wraps_stub.WebApiResource = WebApiResource
         sys.modules[wraps_module_name] = wraps_stub
 

@@ -32,6 +32,7 @@ def test_jsonify_form_definition() -> None:
     definition = SimpleNamespace(model_dump=lambda: {"fields": []})
     form = SimpleNamespace(get_definition=lambda: definition, expiration_time=expiration)
 
+    # pyrefly: ignore [bad-argument-type]
     response = _jsonify_form_definition(form)
 
     assert isinstance(response, Response)
@@ -44,6 +45,7 @@ def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-2"))
 
     with pytest.raises(NotFoundError):
+        # pyrefly: ignore [bad-argument-type]
         ConsoleHumanInputFormApi._ensure_console_access(form)
 
 

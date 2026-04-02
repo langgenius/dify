@@ -29,6 +29,7 @@ HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
 
 def test_get_default_config_without_filters_uses_literal_defaults():
     default_config = HttpRequestNode.get_default_config()
+    # pyrefly: ignore [bad-index]
     timeout = default_config["config"]["timeout"]
 
     assert default_config["type"] == "http-request"
@@ -38,7 +39,9 @@ def test_get_default_config_without_filters_uses_literal_defaults():
     assert timeout["max_connect_timeout"] == 10
     assert timeout["max_read_timeout"] == 600
     assert timeout["max_write_timeout"] == 600
+    # pyrefly: ignore [bad-index]
     assert default_config["config"]["ssl_verify"] is True
+    # pyrefly: ignore [bad-index]
     assert default_config["retry_config"]["max_retries"] == 3
 
 
@@ -54,6 +57,7 @@ def test_get_default_config_uses_injected_http_request_config():
     )
 
     default_config = HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: custom_config})
+    # pyrefly: ignore [bad-index]
     timeout = default_config["config"]["timeout"]
 
     assert timeout["connect"] == 3
@@ -62,7 +66,9 @@ def test_get_default_config_uses_injected_http_request_config():
     assert timeout["max_connect_timeout"] == 3
     assert timeout["max_read_timeout"] == 4
     assert timeout["max_write_timeout"] == 5
+    # pyrefly: ignore [bad-index]
     assert default_config["config"]["ssl_verify"] is False
+    # pyrefly: ignore [bad-index]
     assert default_config["retry_config"]["max_retries"] == 7
 
 
@@ -120,6 +126,7 @@ def _build_http_node(
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
+        # pyrefly: ignore [bad-argument-type]
         tool_file_manager_factory=ToolFileManager,
         file_manager=file_manager,
         file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),

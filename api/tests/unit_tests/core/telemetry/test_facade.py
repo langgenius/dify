@@ -41,9 +41,13 @@ def telemetry_test_setup(monkeypatch):
         def get_ops_trace_instance(app_id):
             return None
 
+    # pyrefly: ignore [missing-attribute]
     ops_stub.TraceQueueManager = StubTraceQueueManager
+    # pyrefly: ignore [missing-attribute]
     ops_stub.TraceTask = StubTraceTask
+    # pyrefly: ignore [missing-attribute]
     ops_stub.OpsTraceManager = StubOpsTraceManager
+    # pyrefly: ignore [missing-attribute]
     ops_stub.trace_manager_queue = MagicMock(spec=queue.Queue)
     monkeypatch.setitem(sys.modules, module_name, ops_stub)
 

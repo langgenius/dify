@@ -1,4 +1,5 @@
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -67,7 +68,9 @@ class TestWorkflowDraftVariableService:
         app.tenant_id = fake.uuid4()
         app.name = fake.company()
         app.description = fake.text()
+        # pyrefly: ignore [bad-argument-type]
         app.mode = "workflow"
+        # pyrefly: ignore [bad-argument-type]
         app.icon_type = "emoji"
         app.icon = "🤖"
         app.icon_background = "#FFEAD5"

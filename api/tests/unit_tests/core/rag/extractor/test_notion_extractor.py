@@ -3,6 +3,7 @@ from unittest import mock
 
 import httpx
 import pytest
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from core.rag.extractor import notion_extractor
@@ -432,6 +433,7 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
 
         doc_model = SimpleNamespace(id="doc-1", data_source_info_dict={"source": "notion"})
+        # pyrefly: ignore [bad-argument-type]
         extractor.update_last_edited_time(doc_model)
 
         assert execute_calls

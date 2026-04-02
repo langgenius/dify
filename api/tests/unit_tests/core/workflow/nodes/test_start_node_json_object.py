@@ -205,6 +205,7 @@ def test_json_object_invalid_json_schema_string():
     )
 
     # Bypass pydantic type validation on assignment to simulate an invalid JSON schema string
+    # pyrefly: ignore [bad-assignment]
     variable.json_schema = "{invalid-json-schema"
 
     variables = [variable]
@@ -285,6 +286,7 @@ def test_start_node_outputs_full_variable_pool_snapshot():
 
 
 def _build_prefixed_variable(node_id: str, name: str, value: object) -> Variable:
+    # pyrefly: ignore [bad-return]
     return segment_to_variable(
         segment=build_segment(value),
         selector=(node_id, name),

@@ -39,6 +39,7 @@ def test_installed_app_required_not_found():
         scalar_mock.return_value = None
 
         with pytest.raises(NotFound):
+            # pyrefly: ignore [bad-argument-type]
             view("app-id")
 
 
@@ -61,6 +62,7 @@ def test_installed_app_required_app_deleted():
         scalar_mock.return_value = installed_app
 
         with pytest.raises(NotFound):
+            # pyrefly: ignore [bad-argument-type]
             view("app-id")
 
 
@@ -80,6 +82,7 @@ def test_installed_app_required_success():
     ):
         scalar_mock.return_value = installed_app
 
+        # pyrefly: ignore [bad-argument-type]
         result = view("app-id")
         assert result == installed_app
 
@@ -154,6 +157,7 @@ def test_trial_app_required_not_allowed():
         scalar_mock.return_value = None
 
         with pytest.raises(TrialAppNotAllowed):
+            # pyrefly: ignore [bad-argument-type]
             view("app-id")
 
 
@@ -178,6 +182,7 @@ def test_trial_app_required_limit_exceeded():
         ]
 
         with pytest.raises(TrialAppLimitExceeded):
+            # pyrefly: ignore [bad-argument-type]
             view("app-id")
 
 
@@ -201,6 +206,7 @@ def test_trial_app_required_success():
             record,
         ]
 
+        # pyrefly: ignore [bad-argument-type]
         result = view("app-id")
         assert result == trial_app.app
 

@@ -91,6 +91,7 @@ def test_execute_template_transform():
         config=TemplateTransformNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
+        # pyrefly: ignore [bad-argument-type]
         jinja2_template_renderer=_SimpleJinja2Renderer(),
     )
 

@@ -18,6 +18,7 @@ def app() -> Flask:
 
 
 def test_console_ping_fastopenapi_returns_pong(app: Flask):
+    # pyrefly: ignore [bad-argument-type]
     ext_fastopenapi.init_app(app)
 
     client = app.test_client()

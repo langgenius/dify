@@ -238,6 +238,7 @@ def test_get_file_generator_returns_stream_when_found() -> None:
         storage.load_stream.return_value = stream
         with _patch_session_factory(session):
             result_stream, result_file = manager.get_file_generator_by_tool_file_id("tool123")
+            # pyrefly: ignore [bad-argument-type]
             assert list(result_stream) == [b"a", b"b"]
             assert result_file is not None
             assert result_file.related_id == "tool123"

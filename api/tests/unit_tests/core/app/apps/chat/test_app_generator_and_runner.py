@@ -33,6 +33,7 @@ class TestChatAppGenerator:
     def test_generate_requires_query(self):
         generator = ChatAppGenerator()
         with pytest.raises(ValueError):
+            # pyrefly: ignore [no-matching-overload]
             generator.generate(
                 app_model=SimpleNamespace(),
                 user=SimpleNamespace(),
@@ -44,6 +45,7 @@ class TestChatAppGenerator:
     def test_generate_rejects_non_string_query(self):
         generator = ChatAppGenerator()
         with pytest.raises(ValueError):
+            # pyrefly: ignore [no-matching-overload]
             generator.generate(
                 app_model=SimpleNamespace(),
                 user=SimpleNamespace(),
@@ -88,6 +90,7 @@ class TestChatAppGenerator:
             patch("core.app.apps.chat.app_generator.threading.Thread") as mock_thread,
         ):
             mock_thread.return_value.start.return_value = None
+            # pyrefly: ignore [no-matching-overload]
             result = generator.generate(app_model, user, args, InvokeFrom.DEBUGGER, streaming=False)
 
         assert result == {"ok": True}
@@ -100,6 +103,7 @@ class TestChatAppGenerator:
                     ChatAppGenerator, "_get_app_model_config", return_value=SimpleNamespace(to_dict=lambda: {})
                 ),
             ):
+                # pyrefly: ignore [no-matching-overload]
                 generator.generate(
                     app_model=SimpleNamespace(tenant_id="t1", id="a1", mode=AppMode.CHAT.value),
                     user=SimpleNamespace(id="u1", session_id="s1"),
@@ -121,7 +125,9 @@ class TestChatAppGenerator:
         ):
             generator._generate_worker(
                 flask_app=Mock(app_context=Mock(return_value=Mock(__enter__=Mock(), __exit__=Mock()))),
+                # pyrefly: ignore [bad-argument-type]
                 application_generate_entity=entity,
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=queue_manager,
                 conversation_id="c1",
                 message_id="m1",
@@ -137,7 +143,9 @@ class TestChatAppGenerator:
         ):
             generator._generate_worker(
                 flask_app=Mock(app_context=Mock(return_value=Mock(__enter__=Mock(), __exit__=Mock()))),
+                # pyrefly: ignore [bad-argument-type]
                 application_generate_entity=entity,
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=queue_manager,
                 conversation_id="c1",
                 message_id="m1",
@@ -165,6 +173,7 @@ class TestChatAppRunner:
 
         with patch("core.app.apps.chat.app_runner.db.session.scalar", return_value=None):
             with pytest.raises(ValueError):
+                # pyrefly: ignore [bad-argument-type]
                 runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
 
     def test_run_moderation_error_direct_output(self):
@@ -199,6 +208,7 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "moderation_for_inputs", side_effect=ModerationError("blocked")),
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
+            # pyrefly: ignore [bad-argument-type]
             runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
 
         mock_direct.assert_called_once()
@@ -239,6 +249,7 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
             queue_manager = DummyQueueManager()
+            # pyrefly: ignore [bad-argument-type]
             runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
 
         assert any(isinstance(item[0], QueueAnnotationReplyEvent) for item in queue_manager.published)
@@ -277,4 +288,5 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
             patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
         ):
+            # pyrefly: ignore [bad-argument-type]
             runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))

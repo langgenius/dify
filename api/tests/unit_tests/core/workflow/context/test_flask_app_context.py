@@ -150,6 +150,7 @@ class TestCaptureFlaskContext:
 
         ctx = capture_flask_context()
 
+        # pyrefly: ignore [missing-attribute]
         assert ctx._flask_app == mock_app
 
     @patch("context.flask_app_context.current_app", autospec=True)
@@ -202,8 +203,10 @@ class TestCaptureFlaskContext:
         ctx = capture_flask_context()
 
         # Context variables should be captured
+        # pyrefly: ignore [missing-attribute]
         assert ctx.context_vars is not None
         # Verify the variable is in the captured context
+        # pyrefly: ignore [bad-index]
         captured_value = ctx.context_vars[test_var]
         assert captured_value == "test_value"
 

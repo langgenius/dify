@@ -30,6 +30,7 @@ def test_absolute_mode_calls_from_time_range():
         patch("commands.retention.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
         patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
     ):
+        # pyrefly: ignore [not-callable]
         clean_expired_messages.callback(
             batch_size=200,
             graceful_period=21,
@@ -60,6 +61,7 @@ def test_relative_mode_before_days_only_calls_from_days():
         patch("commands.retention.MessagesCleanService.from_days", return_value=service) as mock_from_days,
         patch("commands.retention.MessagesCleanService.from_time_range") as mock_from_time_range,
     ):
+        # pyrefly: ignore [not-callable]
         clean_expired_messages.callback(
             batch_size=500,
             graceful_period=14,
@@ -91,6 +93,7 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
         patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
         patch("commands.retention.naive_utc_now", return_value=fixed_now),
     ):
+        # pyrefly: ignore [not-callable]
         clean_expired_messages.callback(
             batch_size=1000,
             graceful_period=21,
@@ -173,6 +176,7 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
 )
 def test_invalid_inputs_raise_usage_error(kwargs: dict, message: str):
     with pytest.raises(click.UsageError, match=re.escape(message)):
+        # pyrefly: ignore [not-callable]
         clean_expired_messages.callback(
             batch_size=1000,
             graceful_period=21,

@@ -30,7 +30,9 @@ def _build_fake_upstash_module():
             self.delete = MagicMock()
             self.reset = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     upstash_module.Vector = Vector
+    # pyrefly: ignore [missing-attribute]
     upstash_module.Index = Index
     return upstash_module
 

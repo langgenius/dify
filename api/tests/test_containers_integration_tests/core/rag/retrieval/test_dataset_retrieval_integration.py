@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -33,6 +34,7 @@ class TestGetAvailableDatasetsIntegration:
         # Create dataset
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -48,6 +50,7 @@ class TestGetAvailableDatasetsIntegration:
         for i in range(3):
             document = Document(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
@@ -68,11 +71,13 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
 
         # Assert
         assert len(result) == 1
         assert result[0].id == dataset.id
+        # pyrefly: ignore [missing-attribute]
         assert result[0].tenant_id == tenant.id
         assert result[0].name == dataset.name
 
@@ -93,6 +98,7 @@ class TestGetAvailableDatasetsIntegration:
 
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
@@ -105,6 +111,7 @@ class TestGetAvailableDatasetsIntegration:
         for i in range(2):
             document = Document(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
@@ -124,6 +131,7 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
 
         # Assert
@@ -146,6 +154,7 @@ class TestGetAvailableDatasetsIntegration:
 
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
@@ -158,6 +167,7 @@ class TestGetAvailableDatasetsIntegration:
         for i in range(2):
             document = Document(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
@@ -177,6 +187,7 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
 
         # Assert
@@ -199,6 +210,7 @@ class TestGetAvailableDatasetsIntegration:
 
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
@@ -211,6 +223,7 @@ class TestGetAvailableDatasetsIntegration:
         for i, status in enumerate([IndexingStatus.INDEXING, IndexingStatus.PARSING, IndexingStatus.SPLITTING]):
             document = Document(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,
@@ -230,6 +243,7 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
 
         # Assert
@@ -262,6 +276,7 @@ class TestGetAvailableDatasetsIntegration:
 
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="external",  # External provider
@@ -273,6 +288,7 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
 
         # Assert
@@ -306,6 +322,7 @@ class TestGetAvailableDatasetsIntegration:
         # Create dataset for tenant1
         dataset1 = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant1.id,
             name="Tenant 1 Dataset",
             provider="dify",
@@ -317,6 +334,7 @@ class TestGetAvailableDatasetsIntegration:
         # Create dataset for tenant2
         dataset2 = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant2.id,
             name="Tenant 2 Dataset",
             provider="dify",
@@ -348,11 +366,13 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act - request from tenant1, should only get tenant1's dataset
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant1.id, [dataset1.id, dataset2.id])
 
         # Assert
         assert len(result) == 1
         assert result[0].id == dataset1.id
+        # pyrefly: ignore [missing-attribute]
         assert result[0].tenant_id == tenant1.id
 
     def test_returns_empty_list_when_no_datasets_found(
@@ -374,6 +394,7 @@ class TestGetAvailableDatasetsIntegration:
 
         # Act
         dataset_retrieval = DatasetRetrieval()
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, [str(uuid.uuid4())])
 
         # Assert
@@ -397,6 +418,7 @@ class TestGetAvailableDatasetsIntegration:
         for i in range(3):
             dataset = Dataset(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 name=f"Dataset {i}",
                 provider="dify",
@@ -409,6 +431,7 @@ class TestGetAvailableDatasetsIntegration:
             # Add document
             document = Document(
                 id=str(uuid.uuid4()),
+                # pyrefly: ignore [missing-attribute]
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=0,
@@ -429,6 +452,7 @@ class TestGetAvailableDatasetsIntegration:
         # Act - request only dataset 0 and 2, not dataset 1
         dataset_retrieval = DatasetRetrieval()
         requested_ids = [datasets[0].id, datasets[2].id]
+        # pyrefly: ignore [missing-attribute]
         result = dataset_retrieval._get_available_datasets(tenant.id, requested_ids)
 
         # Assert
@@ -455,6 +479,7 @@ class TestKnowledgeRetrievalIntegration:
 
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
@@ -466,6 +491,7 @@ class TestKnowledgeRetrievalIntegration:
 
         document = Document(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -484,6 +510,7 @@ class TestKnowledgeRetrievalIntegration:
 
         # Create request
         request = KnowledgeRetrievalRequest(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             user_id=account.id,
             app_id=str(uuid.uuid4()),
@@ -524,6 +551,7 @@ class TestKnowledgeRetrievalIntegration:
         # Create dataset but no documents
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
@@ -534,6 +562,7 @@ class TestKnowledgeRetrievalIntegration:
         db_session_with_containers.commit()
 
         request = KnowledgeRetrievalRequest(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             user_id=account.id,
             app_id=str(uuid.uuid4()),
@@ -571,6 +600,7 @@ class TestKnowledgeRetrievalIntegration:
 
         dataset = Dataset(
             id=str(uuid.uuid4()),
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             name=fake.company(),
             provider="dify",
@@ -581,6 +611,7 @@ class TestKnowledgeRetrievalIntegration:
         db_session_with_containers.commit()
 
         request = KnowledgeRetrievalRequest(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=tenant.id,
             user_id=account.id,
             app_id=str(uuid.uuid4()),

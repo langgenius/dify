@@ -51,6 +51,7 @@ def test_webhook_parameter_creation():
 
     # Test validation - name is required
     with pytest.raises(ValidationError):
+        # pyrefly: ignore [missing-argument]
         WebhookParameter()
 
 
@@ -74,6 +75,7 @@ def test_webhook_body_parameter_creation():
 
     # Test validation - name is required
     with pytest.raises(ValidationError):
+        # pyrefly: ignore [missing-argument]
         WebhookBodyParameter()
 
 

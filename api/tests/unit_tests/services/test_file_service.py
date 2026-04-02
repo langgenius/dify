@@ -45,6 +45,7 @@ class TestFileService:
 
     def test_init_invalid_factory(self):
         with pytest.raises(AssertionError, match="must be a sessionmaker or an Engine."):
+            # pyrefly: ignore [bad-argument-type]
             FileService(session_factory="invalid")
 
     @patch("services.file_service.storage")

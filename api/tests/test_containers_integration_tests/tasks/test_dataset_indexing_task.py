@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import select
 
@@ -120,11 +121,13 @@ class TestDatasetIndexingTaskIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
+        # pyrefly: ignore [bad-argument-type]
         tenant = Tenant(name=fake.company(), status="normal")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()

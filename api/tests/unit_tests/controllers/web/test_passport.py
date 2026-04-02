@@ -37,8 +37,11 @@ def test_exchange_token_public_flow(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def _scalar_side_effect(*_args, **_kwargs):
         if not hasattr(_scalar_side_effect, "calls"):
+            # pyrefly: ignore [missing-attribute]
             _scalar_side_effect.calls = 0
+        # pyrefly: ignore [missing-attribute]
         _scalar_side_effect.calls += 1
+        # pyrefly: ignore [missing-attribute]
         return site if _scalar_side_effect.calls == 1 else app_model
 
     db_session = SimpleNamespace(scalar=_scalar_side_effect)
@@ -56,8 +59,11 @@ def test_exchange_token_requires_external(monkeypatch: pytest.MonkeyPatch) -> No
 
     def _scalar_side_effect(*_args, **_kwargs):
         if not hasattr(_scalar_side_effect, "calls"):
+            # pyrefly: ignore [missing-attribute]
             _scalar_side_effect.calls = 0
+        # pyrefly: ignore [missing-attribute]
         _scalar_side_effect.calls += 1
+        # pyrefly: ignore [missing-attribute]
         return site if _scalar_side_effect.calls == 1 else app_model
 
     db_session = SimpleNamespace(scalar=_scalar_side_effect)
@@ -74,8 +80,11 @@ def test_exchange_token_missing_session_id(monkeypatch: pytest.MonkeyPatch) -> N
 
     def _scalar_side_effect(*_args, **_kwargs):
         if not hasattr(_scalar_side_effect, "calls"):
+            # pyrefly: ignore [missing-attribute]
             _scalar_side_effect.calls = 0
+        # pyrefly: ignore [missing-attribute]
         _scalar_side_effect.calls += 1
+        # pyrefly: ignore [missing-attribute]
         if _scalar_side_effect.calls == 1:
             return site
         if _scalar_side_effect.calls == 2:

@@ -46,6 +46,7 @@ def test_convert_keeps_model_config_shape():
         }
     }
 
+    # pyrefly: ignore [bad-argument-type]
     result = ModelConfigManager.convert(config)
 
     assert result == ModelConfigEntity(

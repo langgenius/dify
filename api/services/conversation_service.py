@@ -128,6 +128,7 @@ class ConversationService:
         if auto_generate:
             return cls.auto_generate_name(app_model, conversation)
         else:
+            # pyrefly: ignore [bad-argument-type]
             conversation.name = name
             conversation.updated_at = naive_utc_now()
             db.session.commit()
@@ -198,6 +199,7 @@ class ConversationService:
             db.session.delete(conversation)
             db.session.commit()
 
+            # pyrefly: ignore [not-callable]
             delete_conversation_related_data.delay(conversation.id)
 
         except Exception as e:

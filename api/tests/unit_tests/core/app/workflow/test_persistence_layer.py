@@ -90,10 +90,14 @@ def _make_layer(
     layer = WorkflowPersistenceLayer(
         application_generate_entity=application_generate_entity,
         workflow_info=workflow_info,
+        # pyrefly: ignore [bad-argument-type]
         workflow_execution_repository=workflow_execution_repo,
+        # pyrefly: ignore [bad-argument-type]
         workflow_node_execution_repository=workflow_node_execution_repo,
+        # pyrefly: ignore [bad-argument-type]
         trace_manager=trace_manager,
     )
+    # pyrefly: ignore [bad-argument-type]
     layer.initialize(read_only_state, command_channel=None)
 
     return layer, workflow_execution_repo, workflow_node_execution_repo, runtime_state
@@ -102,8 +106,11 @@ def _make_layer(
 class TestWorkflowPersistenceLayer:
     def test_on_graph_start_resets_state(self):
         layer, _, _, _ = _make_layer()
+        # pyrefly: ignore [bad-assignment]
         layer._workflow_execution = object()
+        # pyrefly: ignore [unsupported-operation]
         layer._node_execution_cache["cached"] = object()
+        # pyrefly: ignore [unsupported-operation]
         layer._node_snapshots["cached"] = object()
         layer._node_sequence = 9
 
@@ -170,8 +177,11 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
 
         saved = exec_repo.saved[-1]
+        # pyrefly: ignore [missing-attribute]
         assert saved.status == WorkflowExecutionStatus.SUCCEEDED
+        # pyrefly: ignore [missing-attribute]
         assert saved.total_tokens == 3
+        # pyrefly: ignore [missing-attribute]
         assert saved.total_steps == 2
 
     def test_handle_graph_run_partial_succeeded_updates_execution(self):
@@ -179,6 +189,7 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_started()
         runtime_state.total_tokens = 5
         runtime_state.node_run_steps = 4
+        # pyrefly: ignore [bad-assignment]
         runtime_state._graph_execution = SimpleNamespace(exceptions_count=2)
 
         layer._handle_graph_run_partial_succeeded(
@@ -186,8 +197,11 @@ class TestWorkflowPersistenceLayer:
         )
 
         saved = exec_repo.saved[-1]
+        # pyrefly: ignore [missing-attribute]
         assert saved.status == WorkflowExecutionStatus.PARTIAL_SUCCEEDED
+        # pyrefly: ignore [missing-attribute]
         assert saved.exceptions_count == 2
+        # pyrefly: ignore [missing-attribute]
         assert saved.total_tokens == 5
 
     def test_handle_graph_run_failed_marks_nodes_and_enqueues_trace(self):
@@ -211,6 +225,7 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_failed(GraphRunFailedEvent(error="boom", exceptions_count=1))
 
         assert node_repo.saved
+        # pyrefly: ignore [missing-attribute]
         assert exec_repo.saved[-1].status == WorkflowExecutionStatus.FAILED
         assert trace_tasks
 
@@ -221,7 +236,9 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_aborted(GraphRunAbortedEvent(reason=None, outputs={}))
 
         saved = exec_repo.saved[-1]
+        # pyrefly: ignore [missing-attribute]
         assert saved.status == WorkflowExecutionStatus.STOPPED
+        # pyrefly: ignore [missing-attribute]
         assert saved.error_message
 
     def test_handle_graph_run_paused_updates_outputs(self):
@@ -233,8 +250,11 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_paused(GraphRunPausedEvent(outputs={"pause": True}))
 
         saved = exec_repo.saved[-1]
+        # pyrefly: ignore [missing-attribute]
         assert saved.status == WorkflowExecutionStatus.PAUSED
+        # pyrefly: ignore [missing-attribute]
         assert saved.outputs == {"pause": True}
+        # pyrefly: ignore [missing-attribute]
         assert saved.finished_at is None
 
     def test_handle_node_started_and_retry(self):

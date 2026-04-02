@@ -297,6 +297,7 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
 
 def test_get_tool_runtime_builtin_plugin_provider_deleted_raises():
     plugin_controller = object.__new__(PluginToolProviderController)
+    # pyrefly: ignore [bad-assignment]
     plugin_controller.entity = SimpleNamespace(credentials_schema=[{"name": "k"}], oauth_schema=None)
     plugin_controller.get_tool = Mock(return_value=Mock())
     plugin_controller.get_credentials_schema_by_type = Mock(return_value=[])
@@ -435,6 +436,7 @@ def test_get_agent_runtime_apply_runtime_parameters():
                 result = ToolManager.get_agent_tool_runtime(
                     tenant_id="tenant-1",
                     app_id="app-1",
+                    # pyrefly: ignore [bad-argument-type]
                     agent_tool=agent_tool,
                     user_id="user-1",
                     invoke_from=InvokeFrom.DEBUGGER,
@@ -482,6 +484,7 @@ def test_get_workflow_runtime_apply_runtime_parameters():
                     tenant_id="tenant-1",
                     app_id="app-1",
                     node_id="node-1",
+                    # pyrefly: ignore [bad-argument-type]
                     workflow_tool=workflow_tool,
                     user_id="user-1",
                     invoke_from=InvokeFrom.DEBUGGER,
@@ -518,6 +521,7 @@ def test_get_agent_runtime_raises_when_runtime_missing():
                     ToolManager.get_agent_tool_runtime(
                         tenant_id="tenant-1",
                         app_id="app-1",
+                        # pyrefly: ignore [bad-argument-type]
                         agent_tool=agent_tool,
                     )
 
@@ -624,6 +628,7 @@ def test_get_tool_label_loads_cache_and_handles_missing():
     ToolManager._builtin_tools_labels = {}
 
     def _load():
+        # pyrefly: ignore [unsupported-operation]
         ToolManager._builtin_tools_labels["tool-a"] = "Label A"
 
     with patch.object(ToolManager, "load_hardcoded_providers_cache", side_effect=_load):
@@ -651,6 +656,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
 def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch):
     hardcoded_controller = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(name="hardcoded")))
     plugin_controller = object.__new__(PluginToolProviderController)
+    # pyrefly: ignore [bad-assignment]
     plugin_controller.entity = SimpleNamespace(identity=SimpleNamespace(name="plugin-provider"))
 
     api_db_provider_good = SimpleNamespace(id="api-1")
@@ -675,6 +681,7 @@ def test_list_providers_from_api_covers_builtin_api_workflow_and_mcp(monkeypatch
         api_controller=api_controller,
         workflow_controller=workflow_controller,
     )
+    # pyrefly: ignore [bad-argument-type]
     providers = ToolManager.list_providers_from_api(user_id="user-1", tenant_id="tenant-1", typ="")
 
     names = {provider.name for provider in providers}
@@ -817,6 +824,7 @@ def test_generate_tool_icon_urls_missing_workflow_and_api_use_default():
 
 def test_get_tool_icon_for_builtin_provider_variants():
     plugin_provider = object.__new__(PluginToolProviderController)
+    # pyrefly: ignore [bad-assignment]
     plugin_provider.entity = SimpleNamespace(identity=SimpleNamespace(icon="plugin.svg"))
 
     with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_provider):
@@ -841,11 +849,13 @@ def test_get_tool_icon_for_api_workflow_and_mcp():
 
 def test_get_tool_icon_plugin_error_returns_default():
     plugin_provider = object.__new__(PluginToolProviderController)
+    # pyrefly: ignore [bad-assignment]
     plugin_provider.entity = SimpleNamespace(identity=SimpleNamespace(icon="plugin.svg"))
 
     with patch.object(ToolManager, "get_plugin_provider", return_value=plugin_provider):
         with patch.object(ToolManager, "generate_plugin_tool_icon_url", side_effect=RuntimeError("fail")):
             icon = ToolManager.get_tool_icon("tenant-1", ToolProviderType.PLUGIN, "plugin-provider")
+            # pyrefly: ignore [bad-index]
             assert icon["background"] == "#252525"
 
 

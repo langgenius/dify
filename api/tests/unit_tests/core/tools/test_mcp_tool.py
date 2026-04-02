@@ -61,6 +61,7 @@ def test_mcp_tool_text_and_json_processing_helpers():
 
     plain_messages = list(tool._process_text_content(TextContent(type="text", text="not-json")))
     assert plain_messages[0].type == ToolInvokeMessage.MessageType.TEXT
+    # pyrefly: ignore [missing-attribute]
     assert plain_messages[0].message.text == "not-json"
 
     list_messages = list(tool._process_json_content([{"k": 1}, {"k": 2}]))
@@ -71,6 +72,7 @@ def test_mcp_tool_text_and_json_processing_helpers():
     assert mixed_list_messages[0].type == ToolInvokeMessage.MessageType.TEXT
 
     primitive_messages = list(tool._process_json_content(123))
+    # pyrefly: ignore [missing-attribute]
     assert primitive_messages[0].message.text == "123"
 
 

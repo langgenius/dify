@@ -113,7 +113,9 @@ class TidbService:
             max_retries = 30
             while retry_count < max_retries:
                 cluster_response = TidbService.get_tidb_serverless_cluster(api_url, public_key, private_key, cluster_id)
+                # pyrefly: ignore [unsupported-operation]
                 if cluster_response["state"] == "ACTIVE":
+                    # pyrefly: ignore [unsupported-operation]
                     user_prefix = cluster_response["userPrefix"]
                     qdrant_endpoint = TidbService.extract_qdrant_endpoint(cluster_response)
                     logger.info(

@@ -45,10 +45,15 @@ def _build_fake_opensearch_modules():
 
     helpers = SimpleNamespace(bulk=MagicMock())
 
+    # pyrefly: ignore [missing-attribute]
     opensearchpy.OpenSearch = OpenSearch
+    # pyrefly: ignore [missing-attribute]
     opensearchpy.Urllib3AWSV4SignerAuth = Urllib3AWSV4SignerAuth
+    # pyrefly: ignore [missing-attribute]
     opensearchpy.Urllib3HttpConnection = Urllib3HttpConnection
+    # pyrefly: ignore [missing-attribute]
     opensearchpy.helpers = helpers
+    # pyrefly: ignore [missing-attribute]
     opensearchpy_helpers.BulkIndexError = BulkIndexError
 
     return {
@@ -122,6 +127,7 @@ def test_create_aws_managed_iam_auth(opensearch_module, monkeypatch):
             return "creds"
 
     boto3 = types.ModuleType("boto3")
+    # pyrefly: ignore [missing-attribute]
     boto3.Session = _Session
     monkeypatch.setitem(sys.modules, "boto3", boto3)
 

@@ -8,6 +8,7 @@ import controllers.trigger.trigger as module
 
 @pytest.fixture(autouse=True)
 def mock_request():
+    # pyrefly: ignore [bad-assignment]
     module.request = object()
 
 

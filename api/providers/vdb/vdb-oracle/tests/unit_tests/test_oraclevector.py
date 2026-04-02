@@ -15,7 +15,9 @@ from core.rag.models.document import Document
 def _build_fake_oracle_modules():
     jieba = types.ModuleType("jieba")
     jieba_posseg = types.ModuleType("jieba.posseg")
+    # pyrefly: ignore [missing-attribute]
     jieba_posseg.cut = MagicMock(return_value=[])
+    # pyrefly: ignore [missing-attribute]
     jieba.posseg = jieba_posseg
 
     oracledb = types.ModuleType("oracledb")
@@ -24,10 +26,15 @@ def _build_fake_oracle_modules():
     class Connection:
         pass
 
+    # pyrefly: ignore [missing-attribute]
     oracledb_connection.Connection = Connection
+    # pyrefly: ignore [missing-attribute]
     oracledb.defaults = SimpleNamespace(fetch_lobs=True)
+    # pyrefly: ignore [missing-attribute]
     oracledb.DB_TYPE_VECTOR = object()
+    # pyrefly: ignore [missing-attribute]
     oracledb.create_pool = MagicMock(return_value=MagicMock(release=MagicMock()))
+    # pyrefly: ignore [missing-attribute]
     oracledb.connect = MagicMock()
 
     return {
@@ -273,8 +280,11 @@ def _fake_nltk_module(*, missing_data=False):
                 raise LookupError("missing")
             return True
 
+    # pyrefly: ignore [missing-attribute]
     nltk.data = _Data()
+    # pyrefly: ignore [missing-attribute]
     nltk.word_tokenize = lambda text: text.split()
+    # pyrefly: ignore [missing-attribute]
     nltk_corpus.stopwords = SimpleNamespace(words=lambda _lang: ["and", "the"])
     return nltk, nltk_corpus
 

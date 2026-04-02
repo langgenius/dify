@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -98,6 +99,7 @@ class TestWorkflowAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
@@ -1628,6 +1630,7 @@ class TestWorkflowAppService:
 class TestLogView:
     def test_details_and_proxy_attributes(self):
         log = SimpleNamespace(id="log-1", status="succeeded")
+        # pyrefly: ignore [bad-argument-type]
         view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
 
         assert view.details == {"trigger_metadata": {"type": "plugin"}}

@@ -35,6 +35,7 @@ class TestWorkflowEventsApi:
 
         with app.test_request_context("/workflow/run-1/events"):
             with pytest.raises(NotFoundError):
+                # pyrefly: ignore [bad-argument-type]
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
@@ -54,6 +55,7 @@ class TestWorkflowEventsApi:
 
         with app.test_request_context("/workflow/run-1/events"):
             with pytest.raises(NotFoundError):
+                # pyrefly: ignore [bad-argument-type]
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
@@ -75,6 +77,7 @@ class TestWorkflowEventsApi:
 
         with app.test_request_context("/workflow/run-1/events"):
             with pytest.raises(NotFoundError):
+                # pyrefly: ignore [bad-argument-type]
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
@@ -94,6 +97,7 @@ class TestWorkflowEventsApi:
 
         with app.test_request_context("/workflow/run-1/events"):
             with pytest.raises(NotFoundError):
+                # pyrefly: ignore [bad-argument-type]
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.WorkflowResponseConverter")
@@ -122,6 +126,7 @@ class TestWorkflowEventsApi:
         mock_converter.workflow_run_result_to_finish_response.return_value = finish_response
 
         with app.test_request_context("/workflow/run-1/events"):
+            # pyrefly: ignore [bad-argument-type]
             response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
         assert response.mimetype == "text/event-stream"

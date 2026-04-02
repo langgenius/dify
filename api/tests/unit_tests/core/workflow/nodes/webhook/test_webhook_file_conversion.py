@@ -58,7 +58,9 @@ def create_webhook_node(
     )
 
     # Attach a lightweight app_config onto runtime state for tenant lookups
+    # pyrefly: ignore [missing-attribute]
     runtime_state.app_config = Mock()
+    # pyrefly: ignore [missing-attribute]
     runtime_state.app_config.tenant_id = tenant_id
 
     return node

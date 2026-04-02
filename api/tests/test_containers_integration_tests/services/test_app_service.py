@@ -1,6 +1,7 @@
 from unittest.mock import create_autospec, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -79,6 +80,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Verify app was created correctly
@@ -88,6 +90,7 @@ class TestAppService:
         assert app.icon_type == app_args["icon_type"]
         assert app.icon == app_args["icon"]
         assert app.icon_background == app_args["icon_background"]
+        # pyrefly: ignore [missing-attribute]
         assert app.tenant_id == tenant.id
         assert app.api_rph == app_args["api_rph"]
         assert app.api_rpm == app_args["api_rpm"]
@@ -137,11 +140,13 @@ class TestAppService:
                 "icon_background": "#4ECDC4",
             }
 
+            # pyrefly: ignore [missing-attribute]
             app = app_service.create_app(tenant.id, app_args, account)
 
             # Verify app mode was set correctly
             assert app.mode == mode
             assert app.name == app_args["name"]
+            # pyrefly: ignore [missing-attribute]
             assert app.tenant_id == tenant.id
             assert app.created_by == account.id
 
@@ -175,6 +180,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         created_app = app_service.create_app(tenant.id, app_args, account)
 
         # Get app using the service - needs current_user mock
@@ -225,6 +231,7 @@ class TestAppService:
                 "icon": "📱",
                 "icon_background": "#96CEB4",
             }
+            # pyrefly: ignore [missing-attribute]
             app_service.create_app(tenant.id, app_args, account)
 
         # Get paginated apps
@@ -234,6 +241,7 @@ class TestAppService:
             "mode": "chat",
         }
 
+        # pyrefly: ignore [missing-attribute]
         paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
 
         # Verify pagination results
@@ -244,6 +252,7 @@ class TestAppService:
 
         # Verify all apps belong to the correct tenant
         for app in paginated_apps.items:
+            # pyrefly: ignore [missing-attribute]
             assert app.tenant_id == tenant.id
             assert app.mode == "chat"
 
@@ -288,7 +297,9 @@ class TestAppService:
             "icon_background": "#4ECDC4",
         }
 
+        # pyrefly: ignore [missing-attribute]
         chat_app = app_service.create_app(tenant.id, chat_app_args, account)
+        # pyrefly: ignore [missing-attribute]
         completion_app = app_service.create_app(tenant.id, completion_app_args, account)
 
         # Test filter by mode
@@ -297,8 +308,11 @@ class TestAppService:
             "limit": 10,
             "mode": "chat",
         }
+        # pyrefly: ignore [missing-attribute]
         chat_apps = app_service.get_paginate_apps(account.id, tenant.id, chat_args)
+        # pyrefly: ignore [missing-attribute]
         assert len(chat_apps.items) == 1
+        # pyrefly: ignore [bad-index]
         assert chat_apps.items[0].mode == "chat"
 
         # Test filter by name
@@ -308,8 +322,11 @@ class TestAppService:
             "mode": "chat",
             "name": "Chat",
         }
+        # pyrefly: ignore [missing-attribute]
         filtered_apps = app_service.get_paginate_apps(account.id, tenant.id, name_args)
+        # pyrefly: ignore [missing-attribute]
         assert len(filtered_apps.items) == 1
+        # pyrefly: ignore [bad-index]
         assert "Chat" in filtered_apps.items[0].name
 
         # Test filter by created_by_me
@@ -319,7 +336,9 @@ class TestAppService:
             "mode": "completion",
             "is_created_by_me": True,
         }
+        # pyrefly: ignore [missing-attribute]
         my_apps = app_service.get_paginate_apps(account.id, tenant.id, created_by_me_args)
+        # pyrefly: ignore [missing-attribute]
         assert len(my_apps.items) == 1
 
     def test_get_paginate_apps_with_tag_filters(
@@ -354,6 +373,7 @@ class TestAppService:
             "icon": "🏷️",
             "icon_background": "#FFEAA7",
         }
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Mock TagService to return the app ID for tag filtering
@@ -368,9 +388,11 @@ class TestAppService:
                 "tag_ids": ["tag1", "tag2"],
             }
 
+            # pyrefly: ignore [missing-attribute]
             paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
 
             # Verify tag service was called
+            # pyrefly: ignore [missing-attribute]
             mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"])
 
             # Verify results
@@ -389,6 +411,7 @@ class TestAppService:
                 "tag_ids": ["nonexistent_tag"],
             }
 
+            # pyrefly: ignore [missing-attribute]
             paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
 
             # Should return None when no apps match tag filter
@@ -424,6 +447,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store original values
@@ -448,6 +472,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
+            # pyrefly: ignore [bad-argument-type]
             updated_app = app_service.update_app(app, update_args)
 
         # Verify updated fields
@@ -484,6 +509,7 @@ class TestAppService:
 
         app_service = AppService()
         app = app_service.create_app(
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             {
                 "name": fake.company(),
@@ -503,6 +529,7 @@ class TestAppService:
         with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app(
                 app,
+                # pyrefly: ignore [bad-typed-dict-key]
                 {
                     "name": "Updated App Name",
                     "description": "Updated app description",
@@ -536,6 +563,7 @@ class TestAppService:
 
         app_service = AppService()
         app = app_service.create_app(
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             {
                 "name": fake.company(),
@@ -556,6 +584,7 @@ class TestAppService:
             with pytest.raises(ValueError):
                 app_service.update_app(
                     app,
+                    # pyrefly: ignore [bad-typed-dict-key]
                     {
                         "name": "Updated App Name",
                         "description": "Updated app description",
@@ -596,6 +625,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store original name
@@ -649,6 +679,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store original values
@@ -710,6 +741,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store original site status
@@ -770,6 +802,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store original API status
@@ -830,6 +863,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store original values
@@ -881,6 +915,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store app ID for verification
@@ -894,6 +929,7 @@ class TestAppService:
             app_service.delete_app(app)
 
             # Verify async deletion task was called
+            # pyrefly: ignore [missing-attribute]
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
 
         # Verify app was deleted from database
@@ -933,6 +969,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Store app ID for verification
@@ -956,6 +993,7 @@ class TestAppService:
             )
 
             # Verify async deletion task was called
+            # pyrefly: ignore [missing-attribute]
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
 
         # Verify app was deleted from database
@@ -993,6 +1031,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Get app metadata
@@ -1032,6 +1071,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Get app code by ID
@@ -1072,6 +1112,7 @@ class TestAppService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create a site for the app
@@ -1079,8 +1120,10 @@ class TestAppService:
         site.app_id = app.id
         site.code = fake.postalcode()
         site.title = fake.company()
+        # pyrefly: ignore [bad-argument-type]
         site.status = "normal"
         site.default_language = "en-US"
+        # pyrefly: ignore [bad-argument-type]
         site.customize_token_strategy = "uuid"
 
         db_session_with_containers.add(site)
@@ -1125,6 +1168,7 @@ class TestAppService:
 
         # Attempt to create app with invalid mode
         with pytest.raises(ValueError, match="invalid mode value"):
+            # pyrefly: ignore [missing-attribute]
             app_service.create_app(tenant.id, app_args, account)
 
     def test_get_apps_with_special_characters_in_name(
@@ -1157,6 +1201,7 @@ class TestAppService:
 
         # Create apps with special characters in names
         app_with_percent = app_service.create_app(
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             {
                 "name": "App with 50% discount",
@@ -1172,6 +1217,7 @@ class TestAppService:
         )
 
         app_with_underscore = app_service.create_app(
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             {
                 "name": "test_data_app",
@@ -1187,6 +1233,7 @@ class TestAppService:
         )
 
         app_with_backslash = app_service.create_app(
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             {
                 "name": "path\\to\\app",
@@ -1203,6 +1250,7 @@ class TestAppService:
 
         # Create app that should NOT match
         app_no_match = app_service.create_app(
+            # pyrefly: ignore [missing-attribute]
             tenant.id,
             {
                 "name": "100% different",
@@ -1219,6 +1267,7 @@ class TestAppService:
 
         # Test 1: Search with % character
         args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
+        # pyrefly: ignore [missing-attribute]
         paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1227,6 +1276,7 @@ class TestAppService:
 
         # Test 2: Search with _ character
         args = {"name": "test_data", "mode": "chat", "page": 1, "limit": 10}
+        # pyrefly: ignore [missing-attribute]
         paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1235,6 +1285,7 @@ class TestAppService:
 
         # Test 3: Search with \ character
         args = {"name": "path\\to\\app", "mode": "chat", "page": 1, "limit": 10}
+        # pyrefly: ignore [missing-attribute]
         paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1243,6 +1294,7 @@ class TestAppService:
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
         args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
+        # pyrefly: ignore [missing-attribute]
         paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1279,6 +1331,7 @@ class TestAppService:
         app_service = AppService()
         workflow_app = SimpleNamespace(mode="workflow", workflow=None)
 
+        # pyrefly: ignore [bad-argument-type]
         meta = app_service.get_app_meta(workflow_app)
         assert meta == {"tool_icons": {}}
 
@@ -1293,5 +1346,6 @@ class TestAppService:
         app_service = AppService()
         chat_app = SimpleNamespace(mode="chat", app_model_config=None)
 
+        # pyrefly: ignore [bad-argument-type]
         meta = app_service.get_app_meta(chat_app)
         assert meta == {"tool_icons": {}}

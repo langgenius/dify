@@ -100,6 +100,7 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
     # Our implementation should catch it and still return (documents, batch).
     documents, batch = DocumentService.save_document_with_dataset_id(
         dataset=dataset,
+        # pyrefly: ignore [bad-argument-type]
         knowledge_config=knowledge_config,
         account=account,
     )

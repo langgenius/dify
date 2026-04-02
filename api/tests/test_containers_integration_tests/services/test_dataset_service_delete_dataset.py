@@ -20,6 +20,7 @@ class DatasetDeleteIntegrationDataFactory:
             email=f"owner-{uuid4()}@example.com",
             name="Owner",
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
@@ -27,6 +28,7 @@ class DatasetDeleteIntegrationDataFactory:
 
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)

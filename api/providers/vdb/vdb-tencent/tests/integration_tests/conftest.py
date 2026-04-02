@@ -87,11 +87,15 @@ class MockTcvectordbClass:
             shard,
             replicas,
             description,
+            # pyrefly: ignore [bad-argument-type]
             index,
+            # pyrefly: ignore [bad-argument-type]
             embedding=embedding,
             read_consistency=self._read_consistency,
             timeout=timeout,
+            # pyrefly: ignore [bad-argument-type]
             ttl_config=ttl_config,
+            # pyrefly: ignore [bad-argument-type]
             filter_index_config=filter_index_config,
             indexes=indexes,
         )

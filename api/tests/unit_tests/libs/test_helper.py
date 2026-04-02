@@ -42,6 +42,7 @@ class TestExtractTenantId:
         """Test extracting tenant_id from EndUser without tenant_id."""
         # Create a mock EndUser object
         end_user = EndUser()
+        # pyrefly: ignore [bad-argument-type]
         end_user.tenant_id = None
 
         tenant_id = extract_tenant_id(end_user)
@@ -52,11 +53,13 @@ class TestExtractTenantId:
         invalid_user = "not_a_user_object"
 
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
+            # pyrefly: ignore [bad-argument-type]
             extract_tenant_id(invalid_user)
 
     def test_extract_tenant_id_with_none_user(self):
         """Test extracting tenant_id with None user raises ValueError."""
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
+            # pyrefly: ignore [bad-argument-type]
             extract_tenant_id(None)
 
     def test_extract_tenant_id_with_dict_user(self):
@@ -64,6 +67,7 @@ class TestExtractTenantId:
         dict_user = {"id": "123", "tenant_id": "456"}
 
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
+            # pyrefly: ignore [bad-argument-type]
             extract_tenant_id(dict_user)
 
 
@@ -111,6 +115,7 @@ class TestEscapeLikePattern:
     def test_escape_none_handling(self):
         """Test escaping None returns None (falsy check handles it)."""
         # The function checks `if not pattern`, so None is falsy and returns as-is
+        # pyrefly: ignore [bad-argument-type]
         result = escape_like_pattern(None)
         assert result is None
 

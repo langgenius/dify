@@ -502,6 +502,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             indexing_cache_key = f"segment_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
+            # pyrefly: ignore [not-callable]
             batch_create_segment_to_index_task.delay(
                 str(job_id),
                 upload_file_id,

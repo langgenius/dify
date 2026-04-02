@@ -1651,6 +1651,7 @@ class TestDatasetApiKeyApi:
                 method(api)
 
         assert exc_info.value.code == 400
+        # pyrefly: ignore [missing-attribute]
         assert exc_info.value.data == {
             "message": "Cannot create more than 10 API keys for this resource type.",
             "custom": "max_keys_exceeded",

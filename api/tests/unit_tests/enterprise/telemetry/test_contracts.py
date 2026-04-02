@@ -108,6 +108,7 @@ class TestTelemetryEnvelope:
     def test_missing_required_case(self) -> None:
         """Verify missing case field is rejected."""
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             TelemetryEnvelope(
                 tenant_id="tenant-123",
                 event_id="event-456",
@@ -117,6 +118,7 @@ class TestTelemetryEnvelope:
     def test_missing_required_tenant_id(self) -> None:
         """Verify missing tenant_id field is rejected."""
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             TelemetryEnvelope(
                 case=TelemetryCase.WORKFLOW_RUN,
                 event_id="event-456",
@@ -126,6 +128,7 @@ class TestTelemetryEnvelope:
     def test_missing_required_event_id(self) -> None:
         """Verify missing event_id field is rejected."""
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             TelemetryEnvelope(
                 case=TelemetryCase.WORKFLOW_RUN,
                 tenant_id="tenant-123",
@@ -135,6 +138,7 @@ class TestTelemetryEnvelope:
     def test_missing_required_payload(self) -> None:
         """Verify missing payload field is rejected."""
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             TelemetryEnvelope(
                 case=TelemetryCase.WORKFLOW_RUN,
                 tenant_id="tenant-123",

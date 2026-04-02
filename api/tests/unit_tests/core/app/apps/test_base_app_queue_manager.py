@@ -67,6 +67,7 @@ class TestBaseAppQueueManager:
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
 
         runtime_state = SimpleNamespace(name="runtime-state")
+        # pyrefly: ignore [bad-argument-type]
         manager.graph_runtime_state = runtime_state
 
         manager.stop_listen()

@@ -44,10 +44,15 @@ def _build_fake_pyobvector_module():
             self.ann_search = MagicMock(return_value=[])
             self.drop_table_if_exist = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     pyobvector.VECTOR = VECTOR
+    # pyrefly: ignore [missing-attribute]
     pyobvector.ObVecClient = ObVecClient
+    # pyrefly: ignore [missing-attribute]
     pyobvector.l2_distance = l2_distance
+    # pyrefly: ignore [missing-attribute]
     pyobvector.cosine_distance = cosine_distance
+    # pyrefly: ignore [missing-attribute]
     pyobvector.inner_product = inner_product
     return pyobvector
 

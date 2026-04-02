@@ -18,6 +18,7 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch) -> None:
     def handler(app_model):
         return app_model.id
 
+    # pyrefly: ignore [missing-argument, unexpected-keyword]
     assert handler(app_id="app-1") == "app-1"
 
 
@@ -31,6 +32,7 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch) -> No
         return app_model.id
 
     with pytest.raises(AppNotFoundError):
+        # pyrefly: ignore [missing-argument, unexpected-keyword]
         handler(app_id="app-1")
 
 
@@ -40,4 +42,5 @@ def test_get_app_model_requires_app_id() -> None:
         return app_model.id
 
     with pytest.raises(ValueError):
+        # pyrefly: ignore [missing-argument]
         handler()

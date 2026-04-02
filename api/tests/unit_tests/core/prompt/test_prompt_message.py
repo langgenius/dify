@@ -75,6 +75,7 @@ def test_prompt_messages_to_prompt_for_saving_chat_mode():
 
     assert prompts[1]["role"] == "assistant"
     assert prompts[1]["text"] == "assistant-text"
+    # pyrefly: ignore [bad-index]
     assert prompts[1]["tool_calls"][0]["function"]["name"] == "search"
     assert prompts[2]["role"] == "tool"
 

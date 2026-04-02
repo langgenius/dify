@@ -302,6 +302,7 @@ class TestParentChildIndexProcessor:
         ) as mock_retrieve:
             mock_retrieve.return_value = [ok_result, low_result]
             reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
+            # pyrefly: ignore [bad-argument-type]
             docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, reranking_model)
 
         assert len(docs) == 1
@@ -312,6 +313,7 @@ class TestParentChildIndexProcessor:
         rules = SimpleNamespace(subchunk_segmentation=None)
 
         with pytest.raises(ValueError, match="No subchunk segmentation found"):
+            # pyrefly: ignore [bad-argument-type]
             processor._split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
@@ -330,6 +332,7 @@ class TestParentChildIndexProcessor:
             ),
         ):
             child_docs = processor._split_child_nodes(
+                # pyrefly: ignore [bad-argument-type]
                 Document(page_content="parent", metadata={}), rules, "custom", None
             )
 

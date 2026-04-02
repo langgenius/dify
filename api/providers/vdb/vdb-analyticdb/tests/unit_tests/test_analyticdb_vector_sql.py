@@ -85,6 +85,7 @@ def test_initialize_runs_when_cache_is_missing(monkeypatch):
     vector._initialize()
 
     vector._initialize_vector_database.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     sql_module.redis_client.set.assert_called_once()
 
 
@@ -99,6 +100,7 @@ def test_create_connection_pool_uses_psycopg2_pool(monkeypatch):
     pool = vector._create_connection_pool()
 
     assert pool is pool_instance
+    # pyrefly: ignore [missing-attribute]
     sql_module.psycopg2.pool.SimpleConnectionPool.assert_called_once()
 
 
@@ -138,8 +140,10 @@ def test_add_texts_inserts_only_documents_with_metadata(monkeypatch):
         Document(page_content="doc 1", metadata={"doc_id": "d1", "document_id": "doc-1"}),
         SimpleNamespace(page_content="doc 2", metadata=None),
     ]
+    # pyrefly: ignore [bad-argument-type]
     vector.add_texts(docs, [[0.1, 0.2], [0.2, 0.3]])
 
+    # pyrefly: ignore [missing-attribute]
     execute_args = sql_module.psycopg2.extras.execute_batch.call_args.args
     assert execute_args[0] is cursor
     assert len(execute_args[2]) == 1
@@ -378,6 +382,7 @@ def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeyp
 
     assert any("CREATE TABLE IF NOT EXISTS dify.collection" in call.args[0] for call in cursor.execute.call_args_list)
     assert any("CREATE INDEX collection_embedding_idx" in call.args[0] for call in cursor.execute.call_args_list)
+    # pyrefly: ignore [missing-attribute]
     sql_module.redis_client.set.assert_called_once()
 
 

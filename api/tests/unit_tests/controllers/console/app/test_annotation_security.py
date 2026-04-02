@@ -220,6 +220,7 @@ class TestAnnotationImportServiceValidation:
 
                 # Should return error about too many records
                 assert "error_msg" in result
+                # pyrefly: ignore [missing-attribute]
                 assert "too many" in result["error_msg"].lower() or "maximum" in result["error_msg"].lower()
 
     def test_min_records_limit_enforced(self, mock_app, mock_db_session):
@@ -239,6 +240,7 @@ class TestAnnotationImportServiceValidation:
 
             # Should return error about insufficient records
             assert "error_msg" in result
+            # pyrefly: ignore [missing-attribute]
             assert "at least" in result["error_msg"].lower() or "minimum" in result["error_msg"].lower()
 
     def test_invalid_csv_format_handled(self, mock_app, mock_db_session):
@@ -259,6 +261,7 @@ class TestAnnotationImportServiceValidation:
             result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
             assert "error_msg" in result
+            # pyrefly: ignore [missing-attribute]
             assert "malformed" in result["error_msg"].lower()
 
     def test_valid_import_succeeds(self, mock_app, mock_db_session):

@@ -50,6 +50,7 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     )
 
     # Provide tenant_id for conversion path
+    # pyrefly: ignore [missing-attribute]
     runtime_state.app_config = type("_AppCfg", (), {"tenant_id": "1"})()
 
     return node
@@ -96,14 +97,23 @@ def test_webhook_node_default_config():
     config = TriggerWebhookNode.get_default_config()
 
     assert config["type"] == "webhook"
+    # pyrefly: ignore [bad-index]
     assert config["config"]["method"] == "get"
+    # pyrefly: ignore [bad-index]
     assert config["config"]["content_type"] == "application/json"
+    # pyrefly: ignore [bad-index]
     assert config["config"]["headers"] == []
+    # pyrefly: ignore [bad-index]
     assert config["config"]["params"] == []
+    # pyrefly: ignore [bad-index]
     assert config["config"]["body"] == []
+    # pyrefly: ignore [bad-index]
     assert config["config"]["async_mode"] is True
+    # pyrefly: ignore [bad-index]
     assert config["config"]["status_code"] == 200
+    # pyrefly: ignore [bad-index]
     assert config["config"]["response_body"] == ""
+    # pyrefly: ignore [bad-index]
     assert config["config"]["timeout"] == 30
 
 

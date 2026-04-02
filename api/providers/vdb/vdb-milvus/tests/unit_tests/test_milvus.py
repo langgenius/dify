@@ -74,20 +74,33 @@ def _build_fake_pymilvus_modules():
     def infer_dtype_bydata(_value):
         return DataType.FLOAT_VECTOR
 
+    # pyrefly: ignore [missing-attribute]
     pymilvus.MilvusException = MilvusError
+    # pyrefly: ignore [missing-attribute]
     pymilvus.MilvusClient = MilvusClient
+    # pyrefly: ignore [missing-attribute]
     pymilvus.IndexParams = IndexParams
+    # pyrefly: ignore [missing-attribute]
     pymilvus.CollectionSchema = CollectionSchema
+    # pyrefly: ignore [missing-attribute]
     pymilvus.DataType = DataType
+    # pyrefly: ignore [missing-attribute]
     pymilvus.FieldSchema = FieldSchema
+    # pyrefly: ignore [missing-attribute]
     pymilvus.Function = Function
+    # pyrefly: ignore [missing-attribute]
     pymilvus.FunctionType = FunctionType
+    # pyrefly: ignore [missing-attribute]
     pymilvus_milvus_client.IndexParams = IndexParams
+    # pyrefly: ignore [missing-attribute]
     pymilvus_orm.types = pymilvus_orm_types
+    # pyrefly: ignore [missing-attribute]
     pymilvus_orm_types.infer_dtype_bydata = infer_dtype_bydata
 
     # Attach submodules for dotted imports
+    # pyrefly: ignore [missing-attribute]
     pymilvus.milvus_client = pymilvus_milvus_client
+    # pyrefly: ignore [missing-attribute]
     pymilvus.orm = pymilvus_orm
 
     return {

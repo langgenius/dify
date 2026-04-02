@@ -177,6 +177,7 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Dataset with name Dataset already exists"):
+                # pyrefly: ignore [bad-argument-type]
                 DatasetService.create_empty_dataset("tenant-1", "Dataset", None, "economy", account)
 
     def test_create_empty_dataset_uses_default_embedding_model_for_high_quality_dataset(self):
@@ -201,6 +202,7 @@ class TestDatasetServiceCreationAndUpdate:
                 name="Dataset",
                 description="Description",
                 indexing_technique="high_quality",
+                # pyrefly: ignore [bad-argument-type]
                 account=account,
             )
 
@@ -244,6 +246,7 @@ class TestDatasetServiceCreationAndUpdate:
                 name="External Dataset",
                 description="Description",
                 indexing_technique="high_quality",
+                # pyrefly: ignore [bad-argument-type]
                 account=account,
                 permission=DatasetPermissionEnum.ALL_TEAM,
                 provider="external",
@@ -561,6 +564,7 @@ class TestDatasetServiceCreationAndUpdate:
         dataset = SimpleNamespace(runtime_mode="workflow", pipeline_id="pipeline-1")
 
         with patch("services.dataset_service.db") as mock_db:
+            # pyrefly: ignore [bad-argument-type]
             DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
         mock_db.session.get.assert_not_called()
@@ -571,6 +575,7 @@ class TestDatasetServiceCreationAndUpdate:
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.get.return_value = None
 
+            # pyrefly: ignore [bad-argument-type]
             DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
         mock_db.session.commit.assert_not_called()
@@ -610,6 +615,7 @@ class TestDatasetServiceCreationAndUpdate:
         ):
             mock_db.session.get.return_value = pipeline
 
+            # pyrefly: ignore [bad-argument-type]
             DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
         published_graph = json.loads(workflow_new.call_args.kwargs["graph"])
@@ -633,6 +639,7 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.get.return_value = pipeline
 
             with pytest.raises(RuntimeError, match="boom"):
+                # pyrefly: ignore [bad-argument-type]
                 DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
         mock_db.session.rollback.assert_called_once()
@@ -700,6 +707,7 @@ class TestDatasetServiceCreationAndUpdate:
             pass
 
         current_user = FakeAccount()
+        # pyrefly: ignore [missing-attribute]
         current_user.current_tenant_id = "tenant-1"
         embedding_model = SimpleNamespace(provider="provider", model_name="embedding-model")
         filtered_data: dict[str, object] = {}
@@ -738,6 +746,7 @@ class TestDatasetServiceCreationAndUpdate:
             pass
 
         current_user = FakeAccount()
+        # pyrefly: ignore [missing-attribute]
         current_user.current_tenant_id = "tenant-1"
 
         with (
@@ -804,7 +813,9 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_preserve_existing_embedding_settings_removes_empty_placeholders_without_existing_values(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
+            # pyrefly: ignore [bad-argument-type]
             embedding_model_provider=None,
+            # pyrefly: ignore [bad-argument-type]
             embedding_model=None,
             collection_binding_id=None,
         )
@@ -863,6 +874,7 @@ class TestDatasetServiceCreationAndUpdate:
             pass
 
         current_user = FakeAccount()
+        # pyrefly: ignore [missing-attribute]
         current_user.current_tenant_id = "tenant-1"
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(collection_binding_id="binding-1")
         filtered_data: dict[str, object] = {}
@@ -898,6 +910,7 @@ class TestDatasetServiceCreationAndUpdate:
             pass
 
         current_user = FakeAccount()
+        # pyrefly: ignore [missing-attribute]
         current_user.current_tenant_id = "tenant-1"
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
             embedding_model_provider="provider",
@@ -1209,9 +1222,11 @@ class TestDatasetServicePermissionsAndLifecycle:
 
     def test_check_dataset_operator_permission_validates_required_arguments(self):
         with pytest.raises(ValueError, match="Dataset not found"):
+            # pyrefly: ignore [bad-argument-type]
             DatasetService.check_dataset_operator_permission(user=SimpleNamespace(id="user-1"), dataset=None)
 
         with pytest.raises(ValueError, match="User not found"):
+            # pyrefly: ignore [bad-argument-type]
             DatasetService.check_dataset_operator_permission(user=None, dataset=SimpleNamespace(id="dataset-1"))
 
 

@@ -338,6 +338,7 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
         workflow_node_execution_repository=MagicMock(),
     )
 
+    # pyrefly: ignore [missing-attribute]
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
 
 

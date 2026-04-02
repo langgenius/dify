@@ -315,6 +315,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(NoAudioUploadedServiceError):
+            # pyrefly: ignore [bad-argument-type]
             AudioService.transcript_asr(app_model=app, file=None)
 
     def test_transcript_asr_raises_error_for_unsupported_audio_type(self, factory):

@@ -71,6 +71,7 @@ def test_table_builds_columns_with_tidb_vector_type(tidb_module, monkeypatch):
         def __init__(self, dim):
             self.dim = dim
 
+    # pyrefly: ignore [missing-attribute]
     fake_tidb_sqlalchemy.VectorType = _VectorType
 
     monkeypatch.setitem(sys.modules, "tidb_vector", fake_tidb_vector)

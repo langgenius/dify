@@ -12,6 +12,7 @@ from models.account import Account, TenantAccountRole
 def app():
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
+    # pyrefly: ignore [missing-attribute]
     flask_app.login_manager = SimpleNamespace(load_user_from_request_context=lambda: None)
     return flask_app
 
@@ -64,6 +65,7 @@ class TestMemberInviteEmailApi:
                 json={"emails": ["User@Example.com"], "role": TenantAccountRole.EDITOR.value, "language": "en-US"},
             ):
                 account = Account(name="tester", email="tester@example.com")
+                # pyrefly: ignore [bad-assignment]
                 account._current_tenant = tenant
                 g._login_user = account
                 g._current_tenant = tenant

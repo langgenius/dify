@@ -230,6 +230,7 @@ def _emit_metric_log(
         metadata={"payload_ref": payload_ref} if payload_ref else None,
     )
 
+    # pyrefly: ignore [not-callable]
     process_enterprise_telemetry.delay(envelope.model_dump_json())
     logger.debug(
         "Enqueued metric/log event: case=%s, tenant_id=%s, event_id=%s",

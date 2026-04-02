@@ -26,6 +26,7 @@ class TestCompletionAppConfigManager:
         result = CompletionAppConfigManager.get_app_config(
             app_model=app_model,
             app_model_config=app_model_config,
+            # pyrefly: ignore [bad-argument-type]
             override_config_dict=override_config,
         )
 

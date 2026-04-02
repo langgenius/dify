@@ -90,8 +90,10 @@ def _mock_db_session(monkeypatch):
 
     def refresh_side_effect(obj):
         if isinstance(obj, Conversation) and obj.id is None:
+            # pyrefly: ignore [bad-assignment]
             obj.id = "generated-conversation-id"
         if isinstance(obj, Message) and obj.id is None:
+            # pyrefly: ignore [bad-assignment]
             obj.id = "generated-message-id"
 
     session.refresh.side_effect = refresh_side_effect
@@ -108,6 +110,7 @@ def test_init_generate_records_skips_conversation_fields_for_non_conversation_en
 
     generator = MessageBasedAppGenerator()
 
+    # pyrefly: ignore [bad-argument-type]
     conversation, message = generator._init_generate_records(entity, conversation=None)
 
     assert conversation.id == "generated-conversation-id"
@@ -148,9 +151,13 @@ class TestMessageBasedAppGeneratorExtras:
         with pytest.raises(GenerateTaskStoppedError):
             generator._handle_response(
                 application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 conversation=SimpleNamespace(id="conv"),
+                # pyrefly: ignore [bad-argument-type]
                 message=SimpleNamespace(id="msg"),
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
                 stream=False,
             )
@@ -160,6 +167,7 @@ class TestMessageBasedAppGeneratorExtras:
         app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
 
         with pytest.raises(AppModelConfigBrokenError):
+            # pyrefly: ignore [bad-argument-type]
             generator._get_app_model_config(app_model, conversation=None)
 
         conversation = SimpleNamespace(app_model_config_id="missing-id")
@@ -168,10 +176,12 @@ class TestMessageBasedAppGeneratorExtras:
         )
 
         with pytest.raises(AppModelConfigBrokenError):
+            # pyrefly: ignore [bad-argument-type]
             generator._get_app_model_config(app_model=SimpleNamespace(id="app"), conversation=conversation)
 
     def test_get_conversation_introduction_handles_missing_inputs(self):
         app_config = _make_app_config(AppMode.CHAT)
+        # pyrefly: ignore [missing-attribute]
         app_config.additional_features.opening_statement = "Hello {{name}}"
         entity = _make_chat_generate_entity(app_config)
         entity.inputs = {}

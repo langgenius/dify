@@ -3,6 +3,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 import sqlalchemy as sa
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -170,6 +171,7 @@ class TestAppGenerateService:
         from services.app_service import AppService
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
@@ -429,6 +431,7 @@ class TestAppGenerateService:
 
         # Create end user
         end_user = EndUser(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             app_id=app.id,
             type="normal",
@@ -495,6 +498,7 @@ class TestAppGenerateService:
         # Manually set invalid mode after creation
         # With EnumText, invalid values are rejected at the DB level during flush,
         # raising StatementError wrapping ValueError
+        # pyrefly: ignore [bad-argument-type]
         app.mode = "invalid_mode"
 
         # Setup test arguments
@@ -713,6 +717,7 @@ class TestAppGenerateService:
 
         # Execute the method under test
         result = AppGenerateService.generate_single_loop(
+            # pyrefly: ignore [bad-argument-type]
             app_model=app, user=account, node_id=node_id, args=args, streaming=True
         )
 
@@ -740,6 +745,7 @@ class TestAppGenerateService:
 
         # Execute the method under test
         result = AppGenerateService.generate_single_loop(
+            # pyrefly: ignore [bad-argument-type]
             app_model=app, user=account, node_id=node_id, args=args, streaming=True
         )
 
@@ -766,6 +772,7 @@ class TestAppGenerateService:
         # Execute the method under test and expect ValueError
         with pytest.raises(ValueError) as exc_info:
             AppGenerateService.generate_single_loop(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=app, user=account, node_id=node_id, args=args, streaming=True
             )
 
@@ -811,6 +818,7 @@ class TestAppGenerateService:
 
         # Create end user
         end_user = EndUser(
+            # pyrefly: ignore [missing-attribute]
             tenant_id=account.current_tenant.id,
             app_id=app.id,
             type="normal",
@@ -937,6 +945,7 @@ class TestAppGenerateService:
         )
 
         # Mock app to have agent mode enabled by setting the mode directly
+        # pyrefly: ignore [bad-argument-type]
         app.mode = "agent-chat"
 
         # Setup test arguments

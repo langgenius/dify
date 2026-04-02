@@ -15,5 +15,6 @@ class TestSuspendLayer:
         layer = SuspendLayer()
         layer.on_graph_start()
         initial_state = layer.is_paused()
+        # pyrefly: ignore [bad-argument-type]
         layer.on_event(object())
         assert layer.is_paused() is initial_state

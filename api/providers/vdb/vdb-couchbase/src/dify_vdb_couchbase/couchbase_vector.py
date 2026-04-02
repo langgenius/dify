@@ -190,6 +190,7 @@ class CouchbaseVector(BaseVector):
         scope_collection_map: dict[str, Any] = {}
 
         # Get a list of all scopes in the bucket
+        # pyrefly: ignore [not-iterable]
         for scope in self._bucket.collections().get_all_scopes():
             scope_collection_map[scope.name] = []
 
@@ -306,6 +307,7 @@ class CouchbaseVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         try:
+            # pyrefly: ignore [bad-argument-count]
             CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))
             search_iter = self._scope.search(
                 self._collection_name + "_search", CBrequest, SearchOptions(limit=top_k, fields=["*"])
@@ -329,6 +331,7 @@ class CouchbaseVector(BaseVector):
         manager = self._bucket.collections()
         scopes = manager.get_all_scopes()
 
+        # pyrefly: ignore [not-iterable]
         for scope in scopes:
             for collection in scope.collections:
                 if collection.name == self._collection_name:

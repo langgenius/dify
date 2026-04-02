@@ -30,9 +30,13 @@ try:
     from graphon.model_runtime.entities.message_entities import PromptMessageRole
     from graphon.variables.input_entities import VariableEntity, VariableEntityType
 except ModuleNotFoundError:
+    # pyrefly: ignore [missing-import]
     from dify_graph.enums import BuiltinNodeTypes
+    # pyrefly: ignore [missing-import]
     from dify_graph.model_runtime.entities.llm_entities import LLMMode
+    # pyrefly: ignore [missing-import]
     from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
+    # pyrefly: ignore [missing-import]
     from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 
 
@@ -682,6 +686,7 @@ def test_convert_to_llm_node_should_raise_when_simple_chat_template_missing(
         converter._convert_to_llm_node(
             original_app_mode=AppMode.CHAT,
             new_app_mode=AppMode.ADVANCED_CHAT,
+            # pyrefly: ignore [bad-argument-type]
             graph=graph,
             model_config=model_config,
             prompt_template=prompt_template,
@@ -708,6 +713,7 @@ def test_convert_to_llm_node_should_raise_when_prompt_template_parser_type_is_in
         converter._convert_to_llm_node(
             original_app_mode=AppMode.CHAT,
             new_app_mode=AppMode.ADVANCED_CHAT,
+            # pyrefly: ignore [bad-argument-type]
             graph=graph,
             model_config=model_config,
             prompt_template=prompt_template,
@@ -725,6 +731,7 @@ def test_convert_to_llm_node_should_raise_when_simple_completion_template_missin
         converter._convert_to_llm_node(
             original_app_mode=AppMode.COMPLETION,
             new_app_mode=AppMode.WORKFLOW,
+            # pyrefly: ignore [bad-argument-type]
             graph=graph,
             model_config=model_config,
             prompt_template=prompt_template,
@@ -751,6 +758,7 @@ def test_convert_to_llm_node_should_raise_when_completion_prompt_rules_type_is_i
         converter._convert_to_llm_node(
             original_app_mode=AppMode.COMPLETION,
             new_app_mode=AppMode.ADVANCED_CHAT,
+            # pyrefly: ignore [bad-argument-type]
             graph=graph,
             model_config=model_config,
             prompt_template=prompt_template,
@@ -770,6 +778,7 @@ def test_convert_to_llm_node_should_use_empty_text_for_advanced_completion_witho
     llm_node = converter._convert_to_llm_node(
         original_app_mode=AppMode.COMPLETION,
         new_app_mode=AppMode.WORKFLOW,
+        # pyrefly: ignore [bad-argument-type]
         graph=graph,
         model_config=model_config,
         prompt_template=prompt_template,
@@ -794,6 +803,7 @@ def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converte
     node = {"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}
 
     edge = converter._create_edge("start", "llm")
+    # pyrefly: ignore [bad-argument-type]
     updated_graph = converter._append_node(graph, node)
     workflow_mode = converter._get_new_app_mode(_app_model(mode=AppMode.COMPLETION))
     advanced_chat_mode = converter._get_new_app_mode(_app_model(mode=AppMode.CHAT))

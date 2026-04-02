@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 
 import pytest
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 from core.helper.download import download_with_size_limit

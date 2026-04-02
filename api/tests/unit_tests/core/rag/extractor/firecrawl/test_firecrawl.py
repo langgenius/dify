@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 import core.rag.extractor.firecrawl.firecrawl_app as firecrawl_module

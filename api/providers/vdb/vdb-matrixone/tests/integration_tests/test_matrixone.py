@@ -16,6 +16,7 @@ class MatrixoneVectorTest(AbstractVectorTest):
         )
 
     def get_ids_by_metadata_field(self):
+        # pyrefly: ignore [missing-attribute]
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1
 

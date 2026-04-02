@@ -63,6 +63,7 @@ def get_url(url: str, user_agent: str | None = None) -> str:
         response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
+        # pyrefly: ignore [bad-assignment]
         scraper.perform_request = ssrf_proxy.make_request
         response = scraper.get(url, headers=headers, timeout=(120, 300))
 

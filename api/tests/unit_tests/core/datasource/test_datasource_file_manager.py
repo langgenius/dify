@@ -387,6 +387,7 @@ class TestDatasourceFileManager:
 
         # Verify
         assert mimetype == "text/plain"
+        # pyrefly: ignore [bad-argument-type]
         assert list(stream) == [b"chunk1", b"chunk2"]
 
         # Case: Not found

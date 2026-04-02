@@ -2,6 +2,7 @@ import json
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -131,10 +132,12 @@ class TestAgentService:
         }
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Update the app model config to set agent_mode for agent-chat mode
         if app.mode == "agent-chat" and app.app_model_config:
+            # pyrefly: ignore [bad-assignment]
             app.app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
 
             db_session_with_containers.commit()
@@ -246,6 +249,7 @@ class TestAgentService:
             tool_input=json.dumps({"test_tool": {"input": "test_input"}}),
             observation=json.dumps({"test_tool": {"output": "test_output"}}),
             tokens=50,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=message.from_account_id,
         )
@@ -272,6 +276,7 @@ class TestAgentService:
             tool_input=json.dumps({"dataset_tool": {"query": "test_query"}}),
             observation=json.dumps({"dataset_tool": {"results": "test_results"}}),
             tokens=30,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=message.from_account_id,
         )
@@ -561,7 +566,9 @@ class TestAgentService:
             tool_input=json.dumps({"error_tool": {"input": "test_input"}}),
             observation=json.dumps({"error_tool": {"output": "error_output"}}),
             tokens=50,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
+            # pyrefly: ignore [bad-argument-type]
             created_by=message.from_account_id,
         )
         db_session_with_containers.add(thought_with_error)
@@ -796,7 +803,9 @@ class TestAgentService:
                 {"tool1": {"output1": "result1"}, "tool2": {"output2": "result2"}, "tool3": {"output3": "result3"}}
             ),
             tokens=100,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
+            # pyrefly: ignore [bad-argument-type]
             created_by=message.from_account_id,
         )
         db_session_with_containers.add(complex_thought)
@@ -891,6 +900,7 @@ class TestAgentService:
             observation=json.dumps({"file_tool": {"output": "test_output"}}),
             message_files=json.dumps(["file1", "file2"]),
             tokens=50,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=message.from_account_id,
         )
@@ -960,7 +970,9 @@ class TestAgentService:
             tool_input="",  # Empty input
             observation="",  # Empty observation
             tokens=50,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
+            # pyrefly: ignore [bad-argument-type]
             created_by=message.from_account_id,
         )
         db_session_with_containers.add(empty_thought)
@@ -1001,7 +1013,9 @@ class TestAgentService:
             tool_input="invalid json",  # Malformed JSON
             observation="invalid json",  # Malformed JSON
             tokens=50,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
+            # pyrefly: ignore [bad-argument-type]
             created_by=message.from_account_id,
         )
         db_session_with_containers.add(malformed_thought)

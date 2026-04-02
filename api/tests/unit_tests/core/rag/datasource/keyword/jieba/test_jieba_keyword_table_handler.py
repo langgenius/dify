@@ -27,6 +27,7 @@ def _install_fake_jieba_modules(
         for key, value in jieba_attrs.items():
             setattr(jieba_module, key, value)
 
+    # pyrefly: ignore [missing-attribute]
     jieba_module.analyse = analyse_module
     analyse_module.__package__ = "jieba"
 
@@ -41,6 +42,7 @@ def _install_fake_jieba_modules(
 def test_init_uses_existing_default_tfidf(monkeypatch):
     analyse_module = types.ModuleType("jieba.analyse")
     default_tfidf = _DummyTFIDF()
+    # pyrefly: ignore [missing-attribute]
     analyse_module.default_tfidf = default_tfidf
 
     _install_fake_jieba_modules(monkeypatch, analyse_module)
@@ -53,11 +55,13 @@ def test_init_uses_existing_default_tfidf(monkeypatch):
 
 def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch):
     analyse_module = types.ModuleType("jieba.analyse")
+    # pyrefly: ignore [missing-attribute]
     analyse_module.default_tfidf = None
 
     class _TFIDFFactory(_DummyTFIDF):
         pass
 
+    # pyrefly: ignore [missing-attribute]
     analyse_module.TFIDF = _TFIDFFactory
     _install_fake_jieba_modules(monkeypatch, analyse_module)
 
@@ -69,6 +73,7 @@ def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch):
 
 def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch):
     analyse_module = types.ModuleType("jieba.analyse")
+    # pyrefly: ignore [missing-attribute]
     analyse_module.default_tfidf = None
 
     tfidf_module = types.ModuleType("jieba.analyse.tfidf")
@@ -76,6 +81,7 @@ def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch):
     class _ImportedTFIDF(_DummyTFIDF):
         pass
 
+    # pyrefly: ignore [missing-attribute]
     tfidf_module.TFIDF = _ImportedTFIDF
     _install_fake_jieba_modules(monkeypatch, analyse_module, tfidf_module=tfidf_module)
 
@@ -87,6 +93,7 @@ def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch):
 
 def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch):
     analyse_module = types.ModuleType("jieba.analyse")
+    # pyrefly: ignore [missing-attribute]
     analyse_module.default_tfidf = None
     _install_fake_jieba_modules(monkeypatch, analyse_module)
 

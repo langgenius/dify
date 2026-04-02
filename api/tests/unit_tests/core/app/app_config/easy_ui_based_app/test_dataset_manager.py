@@ -49,6 +49,7 @@ def mock_dataset_service(mocker, valid_uuid):
 class TestDatasetConfigManagerConvert:
     def test_convert_returns_none_when_no_datasets(self):
         config = {"dataset_configs": {"datasets": {"datasets": []}}}
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
         assert result is None
 
@@ -64,6 +65,7 @@ class TestDatasetConfigManagerConvert:
             },
         }
 
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
         assert result is not None
         assert result.dataset_ids == [valid_uuid]
@@ -105,8 +107,11 @@ class TestDatasetConfigManagerConvert:
                 },
             },
         }
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
+        # pyrefly: ignore [missing-attribute]
         assert result.dataset_ids == [valid_uuid]
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config is mock_retrieve_config
 
     def test_convert_multiple_defaults(self, valid_uuid):
@@ -119,9 +124,13 @@ class TestDatasetConfigManagerConvert:
                 },
             }
         }
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config.top_k == 4
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config.score_threshold is None
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config.reranking_enabled is True
 
     def test_convert_agent_mode_disabled_tool(self, valid_uuid):
@@ -131,12 +140,14 @@ class TestDatasetConfigManagerConvert:
                 "tools": [{"dataset": {"id": valid_uuid, "enabled": False}}],
             }
         }
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
         assert result is None
 
     def test_convert_dataset_configs_none(self):
         config = {"dataset_configs": None}
         with pytest.raises(TypeError):
+            # pyrefly: ignore [bad-argument-type]
             DatasetConfigManager.convert(config)
 
     def test_convert_agent_mode_old_style_old_format(self, valid_uuid):
@@ -146,8 +157,11 @@ class TestDatasetConfigManagerConvert:
                 "tools": [{"dataset": {"id": valid_uuid, "enabled": True}}],
             }
         }
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
+        # pyrefly: ignore [missing-attribute]
         assert result.dataset_ids == [valid_uuid]
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config.query_variable is None
 
     def test_convert_multiple_with_score_threshold(self, valid_uuid):
@@ -165,8 +179,11 @@ class TestDatasetConfigManagerConvert:
             },
         }
 
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config.top_k == 5
+        # pyrefly: ignore [missing-attribute]
         assert result.retrieve_config.score_threshold == 0.8
 
     @pytest.mark.parametrize(
@@ -185,6 +202,7 @@ class TestDatasetConfigManagerConvert:
                 "datasets": {"strategy": "router", "datasets": [dataset_entry]},
             }
         }
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
         assert result is None
 
@@ -195,7 +213,9 @@ class TestDatasetConfigManagerConvert:
                 "tools": [{"dataset": {"id": valid_uuid, "enabled": True}}],
             }
         }
+        # pyrefly: ignore [bad-argument-type]
         result = DatasetConfigManager.convert(config)
+        # pyrefly: ignore [missing-attribute]
         assert result.dataset_ids == [valid_uuid]
 
 

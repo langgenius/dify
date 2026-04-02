@@ -7,6 +7,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -119,6 +120,7 @@ class TestMessagesCleanServiceIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
         db_session_with_containers.add(account)
@@ -127,6 +129,7 @@ class TestMessagesCleanServiceIntegration:
         tenant = Tenant(
             name=fake.company(),
             plan=str(plan),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -257,9 +260,11 @@ class TestMessagesCleanServiceIntegration:
         file = MessageFile(
             message_id=message.id,
             type=FileType.IMAGE,
+            # pyrefly: ignore [bad-argument-type]
             transfer_method="local_file",
             url="http://example.com/test.jpg",
             belongs_to=MessageFileBelongsTo.USER,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="end_user",
             created_by=str(uuid.uuid4()),
         )
@@ -269,6 +274,7 @@ class TestMessagesCleanServiceIntegration:
         saved = SavedMessage(
             app_id=message.app_id,
             message_id=message.id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="end_user",
             created_by=str(uuid.uuid4()),
         )
@@ -625,10 +631,12 @@ class TestMessagesCleanServiceIntegration:
 
         # Only tenant[0] is confirmed as sandbox, tenant[1] is professional, tenant[2] is missing
         partial_plan_map = {
+            # pyrefly: ignore [missing-attribute]
             tenants_data[0]["tenant"].id: {
                 "plan": CloudPlan.SANDBOX,
                 "expiration_date": -1,  # No previous subscription
             },
+            # pyrefly: ignore [missing-attribute]
             tenants_data[1]["tenant"].id: {
                 "plan": CloudPlan.PROFESSIONAL,
                 "expiration_date": now_timestamp + (365 * 24 * 60 * 60),  # Active for 1 year
@@ -943,14 +951,17 @@ class TestMessagesCleanServiceIntegration:
 
         # Mock billing service - all tenants are sandbox with no subscription
         plan_map = {
+            # pyrefly: ignore [missing-attribute]
             tenants_data[0]["tenant"].id: {
                 "plan": CloudPlan.SANDBOX,
                 "expiration_date": -1,
             },
+            # pyrefly: ignore [missing-attribute]
             tenants_data[1]["tenant"].id: {
                 "plan": CloudPlan.SANDBOX,
                 "expiration_date": -1,
             },
+            # pyrefly: ignore [missing-attribute]
             tenants_data[2]["tenant"].id: {
                 "plan": CloudPlan.SANDBOX,
                 "expiration_date": -1,
@@ -958,6 +969,7 @@ class TestMessagesCleanServiceIntegration:
         }
 
         # Setup whitelist - tenant0 and tenant1 are whitelisted, tenant2 is not
+        # pyrefly: ignore [missing-attribute]
         whitelist = [tenants_data[0]["tenant"].id, tenants_data[1]["tenant"].id]
         mock_whitelist.return_value = whitelist
 

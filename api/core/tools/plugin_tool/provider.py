@@ -9,6 +9,7 @@ from core.tools.plugin_tool.tool import PluginTool
 
 
 class PluginToolProviderController(BuiltinToolProviderController):
+    # pyrefly: ignore [bad-override]
     entity: ToolProviderEntityWithPlugin
     tenant_id: str
     plugin_id: str

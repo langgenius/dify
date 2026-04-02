@@ -579,6 +579,7 @@ def test_increment_counter_calls_add_on_counter(mock_metric_exporter: MagicMock,
     exporter._counters[EnterpriseTelemetryCounter.TOKENS] = mock_counter
 
     labels = {"tenant_id": "t1", "app_id": "app-1"}
+    # pyrefly: ignore [bad-argument-type]
     exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, 50, labels)
 
     mock_counter.add.assert_called_once_with(50, labels)
@@ -612,6 +613,7 @@ def test_record_histogram_calls_record_on_histogram(
     exporter._histograms[EnterpriseTelemetryHistogram.WORKFLOW_DURATION] = mock_histogram
 
     labels = {"tenant_id": "t1"}
+    # pyrefly: ignore [bad-argument-type]
     exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, 3.14, labels)
 
     mock_histogram.record.assert_called_once_with(3.14, labels)

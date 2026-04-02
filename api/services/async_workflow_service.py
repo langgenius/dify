@@ -153,12 +153,16 @@ class AsyncWorkflowService:
         # 9. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
+        # pyrefly: ignore [bad-specialization]
         task: AsyncResult[Any] | None = None
         if queue_name == QueuePriority.PROFESSIONAL:
+            # pyrefly: ignore [not-callable]
             task = execute_workflow_professional.delay(task_data_dict)
         elif queue_name == QueuePriority.TEAM:
+            # pyrefly: ignore [not-callable]
             task = execute_workflow_team.delay(task_data_dict)
         else:  # SANDBOX
+            # pyrefly: ignore [not-callable]
             task = execute_workflow_sandbox.delay(task_data_dict)
 
         # 10. Update trigger log with task info

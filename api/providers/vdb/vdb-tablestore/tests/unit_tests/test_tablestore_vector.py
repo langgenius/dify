@@ -46,32 +46,58 @@ def _build_fake_tablestore_module():
             self.batch_get_row = MagicMock()
             self.search = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     tablestore.OTSClient = _Client
+    # pyrefly: ignore [missing-attribute]
     tablestore.BatchGetRowRequest = _BatchGetRowRequest
+    # pyrefly: ignore [missing-attribute]
     tablestore.TableInBatchGetRowItem = _TableInBatchGetRowItem
+    # pyrefly: ignore [missing-attribute]
     tablestore.Row = _Row
+    # pyrefly: ignore [missing-attribute]
     tablestore.TableMeta = lambda name, schema: ("table_meta", name, schema)
+    # pyrefly: ignore [missing-attribute]
     tablestore.TableOptions = lambda: ("table_options",)
+    # pyrefly: ignore [missing-attribute]
     tablestore.CapacityUnit = lambda read, write: ("capacity", read, write)
+    # pyrefly: ignore [missing-attribute]
     tablestore.ReservedThroughput = lambda cap: ("reserved", cap)
+    # pyrefly: ignore [missing-attribute]
     tablestore.FieldSchema = lambda *args, **kwargs: ("field", args, kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.VectorOptions = lambda **kwargs: ("vector_options", kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.SearchIndexMeta = lambda field_schemas: ("search_index_meta", field_schemas)
+    # pyrefly: ignore [missing-attribute]
     tablestore.SearchQuery = lambda query, **kwargs: SimpleNamespace(query=query, **kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.TermQuery = lambda key, value: ("term_query", key, value)
+    # pyrefly: ignore [missing-attribute]
     tablestore.ColumnsToGet = lambda **kwargs: ("columns_to_get", kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.KnnVectorQuery = lambda **kwargs: SimpleNamespace(**kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.TermsQuery = lambda key, values: ("terms_query", key, values)
+    # pyrefly: ignore [missing-attribute]
     tablestore.Sort = lambda **kwargs: ("sort", kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.ScoreSort = lambda **kwargs: ("score_sort", kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.BoolQuery = lambda **kwargs: SimpleNamespace(**kwargs)
+    # pyrefly: ignore [missing-attribute]
     tablestore.MatchQuery = lambda **kwargs: ("match_query", kwargs)
 
+    # pyrefly: ignore [missing-attribute]
     tablestore.FieldType = SimpleNamespace(TEXT="TEXT", VECTOR="VECTOR", KEYWORD="KEYWORD")
+    # pyrefly: ignore [missing-attribute]
     tablestore.AnalyzerType = SimpleNamespace(MAXWORD="MAXWORD")
+    # pyrefly: ignore [missing-attribute]
     tablestore.VectorDataType = SimpleNamespace(VD_FLOAT_32="VD_FLOAT_32")
+    # pyrefly: ignore [missing-attribute]
     tablestore.VectorMetricType = SimpleNamespace(VM_COSINE="VM_COSINE")
+    # pyrefly: ignore [missing-attribute]
     tablestore.ColumnReturnType = SimpleNamespace(SPECIFIED="SPECIFIED", ALL_FROM_INDEX="ALL_FROM_INDEX")
+    # pyrefly: ignore [missing-attribute]
     tablestore.SortOrder = SimpleNamespace(DESC="DESC")
     return tablestore
 

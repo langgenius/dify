@@ -38,14 +38,21 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(schema_with_ref)
 
         # Should be resolved to the actual qa_structure schema
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["title"] == "Q&A Structure"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert "qa_chunks" in resolved["properties"]
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["qa_chunks"]["type"] == "array"
 
         # Metadata fields should be removed
+        # pyrefly: ignore [not-iterable]
         assert "$id" not in resolved
+        # pyrefly: ignore [not-iterable]
         assert "$schema" not in resolved
+        # pyrefly: ignore [not-iterable]
         assert "version" not in resolved
 
     def test_nested_object_with_refs(self):
@@ -61,11 +68,15 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(nested_schema)
 
         # Original structure should be preserved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert "metadata" in resolved["properties"]
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["metadata"]["type"] == "string"
 
         # $ref should be resolved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         file_schema = resolved["properties"]["file_data"]
         assert file_schema["type"] == "object"
         assert file_schema["title"] == "File"
@@ -87,10 +98,13 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(array_schema)
 
         # Array structure should be preserved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["type"] == "array"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["description"] == "Array of general structures"
 
         # Items $ref should be resolved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         items_schema = resolved["items"]
         assert items_schema["type"] == "array"
         assert items_schema["title"] == "General Structure"
@@ -108,10 +122,13 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(external_ref_schema)
 
         # External $ref should remain unchanged
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["external_data"]["$ref"] == "https://example.com/external-schema.json"
 
         # Dify $ref should be resolved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["dify_data"]["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["dify_data"]["title"] == "File"
 
     def test_no_refs_schema_unchanged(self):
@@ -129,9 +146,13 @@ class TestSchemaResolver:
 
         # Should be identical to input
         assert resolved == simple_schema
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["name"]["type"] == "string"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["items"]["items"]["type"] == "number"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["required"] == ["name"]
 
     def test_recursion_depth_protection(self):
@@ -146,6 +167,7 @@ class TestSchemaResolver:
         # Should handle normal cases fine with reasonable depth
         resolved = resolve_dify_schema_refs(deep_schema, max_depth=25)
         assert resolved is not None
+        # pyrefly: ignore [bad-index]
         assert resolved["type"] == "object"
 
         # Should raise error with very low max_depth
@@ -166,6 +188,7 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(schema, registry=mock_registry)
 
         # Should mark circular reference
+        # pyrefly: ignore [not-iterable]
         assert "$circular_ref" in resolved
 
     def test_schema_not_found_handling(self):
@@ -178,6 +201,7 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(schema, registry=mock_registry)
 
         # Should keep the original $ref when schema not found
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["$ref"] == "https://dify.ai/schemas/v1/unknown.json"
 
     def test_primitive_types_unchanged(self):
@@ -229,6 +253,7 @@ class TestSchemaResolver:
                 results.append(result)
                 return True
             except Exception as e:
+                # pyrefly: ignore [bad-argument-type]
                 results.append(e)
                 return False
 
@@ -269,14 +294,21 @@ class TestSchemaResolver:
         resolved = resolve_dify_schema_refs(complex_schema, max_depth=20)
 
         # Check structure is preserved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert "files" in resolved["properties"]
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert "nested" in resolved["properties"]
 
         # Check refs are resolved
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["files"]["items"]["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["files"]["items"]["title"] == "File"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["nested"]["properties"]["qa"]["type"] == "object"
+        # pyrefly: ignore [bad-index, unsupported-operation]
         assert resolved["properties"]["nested"]["properties"]["qa"]["title"] == "Q&A Structure"
 
 
@@ -609,7 +641,9 @@ class TestSchemaResolverClass:
         # Add many nested properties
         current = large_schema
         for i in range(100):
+            # pyrefly: ignore [unsupported-operation]
             current["properties"][f"level_{i}"] = {"type": "object", "properties": {}}
+            # pyrefly: ignore [bad-index]
             current = current["properties"][f"level_{i}"]
 
         # _has_dify_refs should be fast even for large schemas
@@ -683,7 +717,9 @@ class TestSchemaResolverClass:
         # Add deep nesting to large schema
         current = test_cases[2]["schema"]
         for i in range(50):
+            # pyrefly: ignore [bad-index, unsupported-operation]
             current["properties"][f"level_{i}"] = {"type": "object", "properties": {}}
+            # pyrefly: ignore [bad-index]
             current = current["properties"][f"level_{i}"]
 
         # Performance comparison

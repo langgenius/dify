@@ -100,6 +100,7 @@ def test_get_prompt_tokens_falls_back_to_tenant_scope_when_runtime_user_id_missi
 
 def test_runtime_none_raises():
     tool = _build_tool()
+    # pyrefly: ignore [bad-assignment]
     tool.runtime = None
     with pytest.raises(ValueError, match="runtime is required"):
         tool.get_max_tokens()

@@ -73,11 +73,13 @@ class TestAuthType:
     def test_auth_type_invalid_attribute_access(self):
         """Test accessing non-existent auth type raises AttributeError"""
         with pytest.raises(AttributeError):
+            # pyrefly: ignore [missing-attribute]
             _ = AuthType.INVALID_TYPE
 
     def test_auth_type_immutability(self):
         """Test that enum values cannot be modified"""
         with pytest.raises(AttributeError):
+            # pyrefly: ignore [bad-assignment]
             AuthType.FIRECRAWL = "modified"
 
     def test_auth_type_from_value(self):

@@ -66,6 +66,7 @@ def check_upgradable_plugin_task():
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
         for strategy in batch_strategies:
+            # pyrefly: ignore [not-callable]
             check_task.process_tenant_plugin_autoupgrade_check_task.delay(
                 strategy.tenant_id,
                 strategy.strategy_setting,

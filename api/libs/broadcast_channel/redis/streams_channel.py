@@ -102,6 +102,7 @@ class _StreamsSubscription(Subscription):
                 if not streams:
                     continue
 
+                # pyrefly: ignore [not-iterable]
                 for _, entries in streams:
                     for entry_id, fields in entries:
                         data = None

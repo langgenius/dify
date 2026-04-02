@@ -84,28 +84,36 @@ def _add_stub_modules(monkeypatch: pytest.MonkeyPatch) -> None:
     """Drop fake metric modules into sys.modules so the client imports resolve."""
 
     metrics_module = types.ModuleType("opentelemetry.sdk.metrics")
+    # pyrefly: ignore [missing-attribute]
     metrics_module.Histogram = DummyHistogram
+    # pyrefly: ignore [missing-attribute]
     metrics_module.MeterProvider = DummyMeterProvider
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics", metrics_module)
 
     metrics_export_module = types.ModuleType("opentelemetry.sdk.metrics.export")
+    # pyrefly: ignore [missing-attribute]
     metrics_export_module.AggregationTemporality = AggregationTemporality
+    # pyrefly: ignore [missing-attribute]
     metrics_export_module.PeriodicExportingMetricReader = DummyMetricReader
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics.export", metrics_export_module)
 
     grpc_module = types.ModuleType("opentelemetry.exporter.otlp.proto.grpc.metric_exporter")
+    # pyrefly: ignore [missing-attribute]
     grpc_module.OTLPMetricExporter = DummyGrpcMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.proto.grpc.metric_exporter", grpc_module)
 
     http_module = types.ModuleType("opentelemetry.exporter.otlp.proto.http.metric_exporter")
+    # pyrefly: ignore [missing-attribute]
     http_module.OTLPMetricExporter = DummyHttpMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.proto.http.metric_exporter", http_module)
 
     http_json_module = types.ModuleType("opentelemetry.exporter.otlp.http.json.metric_exporter")
+    # pyrefly: ignore [missing-attribute]
     http_json_module.OTLPMetricExporter = DummyJsonMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.http.json.metric_exporter", http_json_module)
 
     legacy_json_module = types.ModuleType("opentelemetry.exporter.otlp.json.metric_exporter")
+    # pyrefly: ignore [missing-attribute]
     legacy_json_module.OTLPMetricExporter = DummyJsonMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.json.metric_exporter", legacy_json_module)
 
@@ -208,6 +216,7 @@ def test_resolve_grpc_target_parsable_variants(endpoint: str, expected: tuple[st
 
 
 def test_resolve_grpc_target_handles_errors() -> None:
+    # pyrefly: ignore [bad-argument-type]
     assert TencentTraceClient._resolve_grpc_target(123) == ("localhost:4317", True, "localhost", 4317)
 
 
@@ -255,12 +264,14 @@ def test_record_llm_duration_handles_exceptions(patch_core_components: dict[str,
 
     client.record_llm_duration(0.2)
     logger = patch_core_components["logger"]
+    # pyrefly: ignore [missing-attribute]
     logger.debug.assert_called()
 
 
 def test_create_and_export_span_sets_attributes(patch_core_components: dict[str, object]) -> None:
     client = _build_client()
     span = patch_core_components["span"]
+    # pyrefly: ignore [missing-attribute]
     span.get_span_context.return_value = "ctx"
 
     data = SpanData(
@@ -276,17 +287,23 @@ def test_create_and_export_span_sets_attributes(patch_core_components: dict[str,
     )
 
     client._create_and_export_span(data)
+    # pyrefly: ignore [missing-attribute]
     span.set_attributes.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     span.add_event.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     span.set_status.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     span.end.assert_called_once_with(end_time=20)
     assert client.span_contexts[2] == "ctx"
 
 
 def test_create_and_export_span_uses_parent_context(patch_core_components: dict[str, object]) -> None:
     client = _build_client()
+    # pyrefly: ignore [unsupported-operation]
     client.span_contexts[10] = "existing"
     span = patch_core_components["span"]
+    # pyrefly: ignore [missing-attribute]
     span.get_span_context.return_value = "child"
 
     data = SpanData(
@@ -302,13 +319,16 @@ def test_create_and_export_span_uses_parent_context(patch_core_components: dict[
 
     client._create_and_export_span(data)
     trace_api = patch_core_components["trace_api"]
+    # pyrefly: ignore [missing-attribute]
     trace_api.NonRecordingSpan.assert_called_once_with("existing")
+    # pyrefly: ignore [missing-attribute]
     trace_api.set_span_in_context.assert_called_once()
 
 
 def test_create_and_export_span_exception_logs_error(patch_core_components: dict[str, object]) -> None:
     client = _build_client()
     span = patch_core_components["span"]
+    # pyrefly: ignore [missing-attribute]
     span.get_span_context.return_value = "ctx"
     client.tracer.start_span.side_effect = RuntimeError("boom")
 
@@ -325,6 +345,7 @@ def test_create_and_export_span_exception_logs_error(patch_core_components: dict
         )
     )
     logger = patch_core_components["logger"]
+    # pyrefly: ignore [missing-attribute]
     logger.exception.assert_called_once()
 
 
@@ -391,8 +412,11 @@ def test_shutdown_flushes_all_components(patch_core_components: dict[str, object
     tracer_provider = patch_core_components["tracer_provider"]
 
     client.shutdown()
+    # pyrefly: ignore [missing-attribute]
     span_processor.force_flush.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     span_processor.shutdown.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     tracer_provider.shutdown.assert_called_once()
 
     meter_provider = meter_provider_instances[-1]
@@ -405,14 +429,17 @@ def test_shutdown_logs_when_meter_provider_fails(patch_core_components: dict[str
     client = _build_client()
     meter_provider = meter_provider_instances[-1]
     meter_provider.shutdown.side_effect = RuntimeError("boom")
+    # pyrefly: ignore [missing-attribute]
     client.metric_reader.shutdown.side_effect = RuntimeError("boom")
 
     client.shutdown()
     logger = patch_core_components["logger"]
+    # pyrefly: ignore [missing-attribute]
     logger.debug.assert_any_call(
         "[Tencent APM] Error shutting down meter provider",
         exc_info=True,
     )
+    # pyrefly: ignore [missing-attribute]
     logger.debug.assert_any_call(
         "[Tencent APM] Error shutting down metric reader",
         exc_info=True,
@@ -451,12 +478,14 @@ def test_add_span_logs_exception(monkeypatch: pytest.MonkeyPatch, patch_core_com
     )
 
     logger = patch_core_components["logger"]
+    # pyrefly: ignore [missing-attribute]
     logger.exception.assert_called_once()
 
 
 def test_create_and_export_span_converts_attribute_types(patch_core_components: dict[str, object]) -> None:
     client = _build_client()
     span = patch_core_components["span"]
+    # pyrefly: ignore [missing-attribute]
     span.get_span_context.return_value = "ctx"
 
     data = SpanData.model_construct(
@@ -473,6 +502,7 @@ def test_create_and_export_span_converts_attribute_types(patch_core_components: 
     )
 
     client._create_and_export_span(data)
+    # pyrefly: ignore [missing-attribute]
     (attrs,) = span.set_attributes.call_args.args
     assert attrs["num"] == 5
     assert attrs["flag"] is True
@@ -485,6 +515,7 @@ def test_record_llm_duration_converts_attributes() -> None:
     hist_mock = MagicMock(name="hist_llm_duration")
     client.hist_llm_duration = hist_mock
 
+    # pyrefly: ignore [bad-argument-type]
     client.record_llm_duration(0.3, {"foo": object(), "bar": 2})
     _, attrs = hist_mock.record.call_args.args
     assert isinstance(attrs["foo"], str)
@@ -496,6 +527,7 @@ def test_record_trace_duration_converts_attributes() -> None:
     hist_mock = MagicMock(name="hist_trace_duration")
     client.hist_trace_duration = hist_mock
 
+    # pyrefly: ignore [bad-argument-type]
     client.record_trace_duration(1.0, {"meta": object(), "ok": True})
     _, attrs = hist_mock.record.call_args.args
     assert isinstance(attrs["meta"], str)
@@ -521,6 +553,7 @@ def test_record_methods_handle_exceptions(
 
     getattr(client, method)(*args)
     logger = patch_core_components["logger"]
+    # pyrefly: ignore [missing-attribute]
     logger.debug.assert_called()
 
 
@@ -532,6 +565,7 @@ def test_metrics_initializes_grpc_metric_exporter() -> None:
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
     assert metric_reader.exporter.kwargs["endpoint"] == "trace.example.com:4317"
     assert metric_reader.exporter.kwargs["insecure"] is False
+    # pyrefly: ignore [bad-index]
     assert metric_reader.exporter.kwargs["headers"]["authorization"] == "Bearer token"
 
 
@@ -543,6 +577,7 @@ def test_metrics_initializes_http_protobuf_metric_exporter(monkeypatch: pytest.M
     assert isinstance(metric_reader.exporter, DummyHttpMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
     assert metric_reader.exporter.kwargs["endpoint"] == client.endpoint
+    # pyrefly: ignore [bad-index]
     assert metric_reader.exporter.kwargs["headers"]["authorization"] == "Bearer token"
 
 
@@ -554,6 +589,7 @@ def test_metrics_initializes_http_json_metric_exporter(monkeypatch: pytest.Monke
     assert isinstance(metric_reader.exporter, DummyJsonMetricExporter)
     assert metric_reader.export_interval_millis == client.metrics_export_interval_sec * 1000
     assert metric_reader.exporter.kwargs["endpoint"] == client.endpoint
+    # pyrefly: ignore [bad-index]
     assert metric_reader.exporter.kwargs["headers"]["authorization"] == "Bearer token"
     assert "preferred_temporality" in metric_reader.exporter.kwargs
 

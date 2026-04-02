@@ -106,6 +106,7 @@ class TestWorkflowRunPayload:
             {"type": "audio", "url": "http://example.com/audio.mp3"},
         ]
         payload = WorkflowRunPayload(inputs={}, files=files)
+        # pyrefly: ignore [bad-argument-type]
         assert len(payload.files) == 3
 
 
@@ -168,21 +169,25 @@ class TestWorkflowLogQuery:
     def test_query_rejects_page_below_minimum(self):
         """Test query rejects page < 1."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             WorkflowLogQuery(page=0)
 
     def test_query_rejects_page_above_maximum(self):
         """Test query rejects page > 99999."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             WorkflowLogQuery(page=100000)
 
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             WorkflowLogQuery(limit=0)
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             WorkflowLogQuery(limit=101)
 
     def test_query_with_keyword_search(self):
@@ -234,7 +239,9 @@ class TestWorkflowAppService:
             created_by_account=None,
         )
 
+        # pyrefly: ignore [missing-attribute]
         assert result.page == 1
+        # pyrefly: ignore [missing-attribute]
         assert result.limit == 20
 
 
@@ -362,6 +369,7 @@ class TestWorkflowRunRepository:
 
         result = repo.get_workflow_run_by_id(tenant_id="tenant_123", app_id="app_456", run_id="run_789")
 
+        # pyrefly: ignore [missing-attribute]
         assert result.status == "succeeded"
 
 

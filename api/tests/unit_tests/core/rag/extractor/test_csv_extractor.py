@@ -13,6 +13,7 @@ class _ManagedStringIO(io.StringIO):
     def __enter__(self):
         return self
 
+    # pyrefly: ignore [bad-param-name-override]
     def __exit__(self, exc_type, exc, tb):
         self.close()
         return False

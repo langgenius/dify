@@ -120,8 +120,10 @@ class TestMCPToolInvoke:
         # Expect two variable messages corresponding to keys a and b
         assert len(messages) == 2
         var_msgs = [m for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)]
+        # pyrefly: ignore [missing-attribute]
         assert {m.message.variable_name for m in var_msgs} == {"a", "b"}
         # Validate values
+        # pyrefly: ignore [missing-attribute]
         values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
         assert values == {"a": 1, "b": "x"}
 

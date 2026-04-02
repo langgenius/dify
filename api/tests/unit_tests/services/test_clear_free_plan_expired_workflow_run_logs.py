@@ -111,6 +111,7 @@ def create_cleanup(
         "_get_cleanup_whitelist",
         lambda self: whitelist or set(),
     )
+    # pyrefly: ignore [bad-argument-type]
     return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
 
 

@@ -285,6 +285,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         model_dict = override_model_config_dict["model"]
         completion_params = model_dict.get("completion_params", {})
         completion_params["temperature"] = 0.9
+        # pyrefly: ignore [bad-typed-dict-key]
         model_dict["completion_params"] = completion_params
         override_model_config_dict["model"] = model_dict
 

@@ -275,6 +275,7 @@ class WeaviateVector(BaseVector):
             except Exception as e:
                 logger.warning("Could not add property %s: %s", prop.name, e)
 
+    # pyrefly: ignore [bad-param-name-override]
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
         Generates deterministic UUIDs for documents based on their content.

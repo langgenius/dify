@@ -220,6 +220,7 @@ class TestWorkflowAssociatedDataFactory:
         # Add an LLM node as a sample processing node
         # This represents an AI model interaction in the workflow
         nodes.append(
+            # pyrefly: ignore [bad-argument-type]
             {
                 "id": "llm-1",
                 "data": {
@@ -2750,6 +2751,7 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
         ):
             service._build_human_input_variable_pool(
+                # pyrefly: ignore [bad-typed-dict-key]
                 app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}, user_id="user-1"
             )
             mock_pool_cls.assert_called_once()
@@ -2836,6 +2838,7 @@ class TestWorkflowServiceFreeNodeExecution:
         ):
             mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node(
+                # pyrefly: ignore [bad-argument-type]
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
             assert node == mock_node_cls.return_value

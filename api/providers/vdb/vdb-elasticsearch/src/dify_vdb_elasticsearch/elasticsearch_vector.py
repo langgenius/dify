@@ -352,6 +352,7 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
 
         return ElasticSearchVector(
             index_name=collection_name,
+            # pyrefly: ignore [bad-argument-type]
             config=ElasticSearchConfig(**config_dict),
             attributes=[],
         )

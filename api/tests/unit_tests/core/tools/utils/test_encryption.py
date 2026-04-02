@@ -200,6 +200,7 @@ def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
         "core.tools.utils.encryption.SingletonProviderCredentialsCache", return_value=cache_instance
     ) as cache_cls:
         with patch("core.tools.utils.encryption.ProviderConfigEncrypter", return_value=encrypter_instance) as enc_cls:
+            # pyrefly: ignore [bad-argument-type]
             encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
 
     assert encrypter is encrypter_instance

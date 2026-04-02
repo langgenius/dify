@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -219,6 +220,7 @@ class TestAPIBasedExtensionService:
 
         # Try to get non-existent extension
         with pytest.raises(ValueError, match="API based extension is not found"):
+            # pyrefly: ignore [missing-attribute]
             APIBasedExtensionService.get_with_tenant_id(tenant.id, non_existent_extension_id)
 
     def test_delete_extension_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -414,6 +416,7 @@ class TestAPIBasedExtensionService:
 
         # Test with None api_endpoint
         extension_data.name = fake.company()
+        # pyrefly: ignore [bad-argument-type]
         extension_data.api_endpoint = None
 
         with pytest.raises(ValueError, match="api_endpoint must not be empty"):
@@ -421,6 +424,7 @@ class TestAPIBasedExtensionService:
 
         # Test with None api_key
         extension_data.api_endpoint = f"https://{fake.domain_name()}/api"
+        # pyrefly: ignore [bad-argument-type]
         extension_data.api_key = None
 
         with pytest.raises(ValueError, match="api_key must not be empty"):
@@ -438,6 +442,7 @@ class TestAPIBasedExtensionService:
         )
 
         # Get all extensions for tenant (none exist)
+        # pyrefly: ignore [missing-attribute]
         extension_list = APIBasedExtensionService.get_all_by_tenant_id(tenant.id)
 
         # Verify empty list is returned
@@ -524,6 +529,7 @@ class TestAPIBasedExtensionService:
 
         # Try to get extension with wrong tenant ID
         with pytest.raises(ValueError, match="API based extension is not found"):
+            # pyrefly: ignore [missing-attribute]
             APIBasedExtensionService.get_with_tenant_id(tenant2.id, created_extension.id)
 
     def test_save_extension_api_key_exactly_four_chars_rejected(

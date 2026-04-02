@@ -59,6 +59,7 @@ class HuaweiCloudVectorConfig(BaseModel):
             max_retries=10,
         )
         if self.username and self.password:
+            # pyrefly: ignore [bad-typed-dict-key]
             params["basic_auth"] = (self.username, self.password)
         return params
 

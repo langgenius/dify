@@ -33,6 +33,7 @@ def test_load_form_tokens_by_form_id_prefers_backstage_token() -> None:
         ]
     )
 
+    # pyrefly: ignore [bad-argument-type]
     assert load_form_tokens_by_form_id(["form-1"], session=session) == {"form-1": "backstage-token"}
 
 
@@ -52,4 +53,5 @@ def test_load_form_tokens_by_form_id_ignores_unsupported_recipients() -> None:
         ]
     )
 
+    # pyrefly: ignore [bad-argument-type]
     assert load_form_tokens_by_form_id(["form-1"], session=session) == {}

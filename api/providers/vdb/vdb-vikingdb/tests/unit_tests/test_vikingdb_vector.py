@@ -66,13 +66,21 @@ def _build_fake_vikingdb_modules():
             self.get_collection = MagicMock(return_value=self._collection)
             self.get_index = MagicMock(return_value=self._index)
 
+    # pyrefly: ignore [missing-attribute]
     viking_db.Data = Data
+    # pyrefly: ignore [missing-attribute]
     viking_db.DistanceType = DistanceType
+    # pyrefly: ignore [missing-attribute]
     viking_db.Field = Field
+    # pyrefly: ignore [missing-attribute]
     viking_db.FieldType = FieldType
+    # pyrefly: ignore [missing-attribute]
     viking_db.IndexType = IndexType
+    # pyrefly: ignore [missing-attribute]
     viking_db.QuantType = QuantType
+    # pyrefly: ignore [missing-attribute]
     viking_db.VectorIndexParams = VectorIndexParams
+    # pyrefly: ignore [missing-attribute]
     viking_db.VikingDBService = VikingDBService
 
     return {"volcengine": volcengine, "volcengine.viking_db": viking_db}

@@ -27,6 +27,7 @@ class VersionResponse(BaseModel):
     features: VersionFeatures = Field(description="Feature flags and capabilities")
 
 
+# pyrefly: ignore [missing-attribute]
 @console_router.get(
     "/version",
     response_model=VersionResponse,

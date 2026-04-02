@@ -163,6 +163,7 @@ class TestWeaviateVector(unittest.TestCase):
         dataset = SimpleNamespace(index_struct_dict={"vector_store": {"class_prefix": "ExistingCollection"}}, id="ds-1")
         wv = WeaviateVector.__new__(WeaviateVector)
 
+        # pyrefly: ignore [bad-argument-type]
         assert wv.get_collection_name(dataset) == "ExistingCollection_Node"
 
     def test_get_collection_name_generates_name_from_dataset_id(self):
@@ -170,6 +171,7 @@ class TestWeaviateVector(unittest.TestCase):
         wv = WeaviateVector.__new__(WeaviateVector)
 
         with patch.object(weaviate_vector_module.Dataset, "gen_collection_name_by_id", return_value="Generated_Node"):
+            # pyrefly: ignore [bad-argument-type]
             assert wv.get_collection_name(dataset) == "Generated_Node"
 
     def test_create_calls_collection_setup_then_add_texts(self):
@@ -880,6 +882,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
+            # pyrefly: ignore [bad-argument-type]
             result = factory.init_vector(dataset, attributes, MagicMock())
 
         assert result == "vector"
@@ -909,6 +912,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
+            # pyrefly: ignore [bad-argument-type]
             result = factory.init_vector(dataset, attributes, MagicMock())
 
         assert result == "vector"

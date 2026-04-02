@@ -29,6 +29,7 @@ def _create_app_with_draft_workflow(session, *, delivery_method_id: uuid.UUID) -
             tenant_id=tenant.id,
             account_id=account.id,
             current=True,
+            # pyrefly: ignore [bad-argument-type]
             role=TenantAccountRole.OWNER.value,
         )
     )

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -84,6 +85,7 @@ class TestSavedMessageService:
         }
 
         app_service = AppService()
+        # pyrefly: ignore [missing-attribute]
         app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
@@ -199,12 +201,14 @@ class TestSavedMessageService:
         saved_message1 = SavedMessage(
             app_id=app.id,
             message_id=message1.id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=account.id,
         )
         saved_message2 = SavedMessage(
             app_id=app.id,
             message_id=message2.id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=account.id,
         )
@@ -272,12 +276,14 @@ class TestSavedMessageService:
         saved_message1 = SavedMessage(
             app_id=app.id,
             message_id=message1.id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="end_user",
             created_by=end_user.id,
         )
         saved_message2 = SavedMessage(
             app_id=app.id,
             message_id=message2.id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="end_user",
             created_by=end_user.id,
         )
@@ -449,6 +455,7 @@ class TestSavedMessageService:
         saved_message = SavedMessage(
             app_id=app.id,
             message_id=message.id,
+            # pyrefly: ignore [bad-argument-type]
             created_by_role="account",
             created_by=account.id,
         )
@@ -540,6 +547,7 @@ class TestSavedMessageService:
         message = self._create_test_message(db_session_with_containers, app, account)
 
         # Pre-create a saved message
+        # pyrefly: ignore [bad-argument-type]
         saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role="account", created_by=account.id)
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
@@ -571,6 +579,7 @@ class TestSavedMessageService:
         end_user = self._create_test_end_user(db_session_with_containers, app)
         message = self._create_test_message(db_session_with_containers, app, end_user)
 
+        # pyrefly: ignore [bad-argument-type]
         saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id)
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
@@ -596,9 +605,11 @@ class TestSavedMessageService:
 
         # Both users save the same message
         saved_account = SavedMessage(
+            # pyrefly: ignore [bad-argument-type]
             app_id=app.id, message_id=message.id, created_by_role="account", created_by=account1.id
         )
         saved_end_user = SavedMessage(
+            # pyrefly: ignore [bad-argument-type]
             app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id
         )
         db_session_with_containers.add_all([saved_account, saved_end_user])

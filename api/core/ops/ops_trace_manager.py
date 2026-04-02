@@ -203,6 +203,7 @@ class TracingProviderConfigEntry(TypedDict):
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
+    # pyrefly: ignore [bad-param-name-override]
     def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
         try:
             match provider:

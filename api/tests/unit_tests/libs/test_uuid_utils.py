@@ -4,7 +4,9 @@ import uuid
 from unittest import mock
 
 import pytest
+# pyrefly: ignore [missing-import]
 from hypothesis import given
+# pyrefly: ignore [missing-import]
 from hypothesis import strategies as st
 
 from libs.uuid_utils import _create_uuidv7_bytes, uuidv7, uuidv7_boundary, uuidv7_timestamp

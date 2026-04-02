@@ -75,6 +75,7 @@ class WebAppAuthService:
         token = TokenManager.generate_token(
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
         )
+        # pyrefly: ignore [not-callable]
         send_email_code_login_mail_task.delay(
             language=language,
             to=account.email if account else email,

@@ -12,6 +12,7 @@ def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> 
     with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=iter(())) as transform:
         result = list(
             transformer.transform(
+                # pyrefly: ignore [bad-argument-type]
                 messages=messages,
                 tool_info={},
                 parameters_for_log={},

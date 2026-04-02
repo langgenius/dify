@@ -112,6 +112,7 @@ def test_parse_openapi_to_tool_bundle_properties_all_of(app):
     with app.test_request_context():
         tool_bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
 
+    # pyrefly: ignore [unsupported-operation]
     assert tool_bundles[0].parameters[0].type == "string"
     assert tool_bundles[0].parameters[0].llm_description == "desc prop1"
     # TODO: support enum in OpenAPI
@@ -172,9 +173,11 @@ def test_parse_openapi_to_tool_bundle_default_value_type_casting(app):
 
     assert len(tool_bundles) == 1
     bundle = tool_bundles[0]
+    # pyrefly: ignore [bad-argument-type]
     assert len(bundle.parameters) == 4
 
     # Find parameters by name
+    # pyrefly: ignore [not-iterable]
     params_by_name = {param.name: param for param in bundle.parameters}
 
     # Check categories parameter (array type with [] default)

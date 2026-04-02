@@ -63,6 +63,7 @@ class TestHumanInputForm:
 
         # Should expire 2 hours after creation
         expected_expiry = form.created_at + timedelta(hours=2)
+        # pyrefly: ignore [unsupported-operation]
         assert abs((form.expires_at - expected_expiry).total_seconds()) < 1  # Within 1 second
 
     def test_form_expiry_calculation_days(self, sample_form_data):
@@ -74,6 +75,7 @@ class TestHumanInputForm:
 
         # Should expire 3 days after creation
         expected_expiry = form.created_at + timedelta(days=3)
+        # pyrefly: ignore [unsupported-operation]
         assert abs((form.expires_at - expected_expiry).total_seconds()) < 1  # Within 1 second
 
     def test_form_expiry_property_not_expired(self, sample_form_data):
@@ -119,6 +121,7 @@ class TestHumanInputForm:
         assert form.is_submitted
         assert form.submitted_data == {"input": "test value"}
         assert form.submitted_action == "submit"
+        # pyrefly: ignore [unsupported-operation]
         assert submission_time_before <= form.submitted_at <= submission_time_after
 
     def test_form_to_response_dict_without_site_info(self, sample_form_data):

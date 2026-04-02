@@ -27,6 +27,7 @@ this is more specific text.
         assert header_value.strip() == "this is some text without header"
 
         title_1, value = updated_output[1]
+        # pyrefly: ignore [missing-attribute]
         assert title_1.strip() == "title 1"
         assert value.strip() == "this is balabala text"
 

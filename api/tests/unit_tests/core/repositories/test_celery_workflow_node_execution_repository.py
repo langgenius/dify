@@ -77,6 +77,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         app_id = "test-app-id"
         triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
 
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -92,6 +93,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
     def test_init_with_cache_initialized(self, mock_session_factory, mock_account):
         """Test repository initialization with cache properly initialized."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -104,6 +106,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
     def test_init_with_end_user(self, mock_session_factory, mock_end_user):
         """Test repository initialization with EndUser."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_end_user,
@@ -121,6 +124,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         user.id = str(uuid4())
 
         with pytest.raises(ValueError, match="User must have a tenant_id"):
+            # pyrefly: ignore [bad-instantiation]
             CeleryWorkflowNodeExecutionRepository(
                 session_factory=mock_session_factory,
                 user=user,
@@ -133,6 +137,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
     ):
         """Test that save operation caches execution and queues a Celery task."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -170,6 +175,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test that save operation handles Celery task failures."""
         mock_task.delay.side_effect = Exception("Celery is down")
 
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -185,6 +191,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
     ):
         """Test that get_by_workflow_execution retrieves executions from cache."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -207,6 +214,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
     def test_get_by_workflow_execution_without_order_config(self, mock_session_factory, mock_account):
         """Test get_by_workflow_execution without order configuration."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -222,6 +230,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_cache_operations(self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution):
         """Test cache operations work correctly."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -243,6 +252,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_multiple_executions_same_workflow(self, mock_task, mock_session_factory, mock_account):
         """Test multiple executions for the same workflow."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,
@@ -294,6 +304,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_ordering_functionality(self, mock_task, mock_session_factory, mock_account):
         """Test ordering functionality works correctly."""
+        # pyrefly: ignore [bad-instantiation]
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
             user=mock_account,

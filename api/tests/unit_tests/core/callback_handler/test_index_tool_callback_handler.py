@@ -62,12 +62,17 @@ class TestOnQuery:
 
         handler = DatasetIndexToolCallbackHandler(
             queue_manager=mock_queue_manager,
+            # pyrefly: ignore [bad-argument-type]
             app_id=None,
+            # pyrefly: ignore [bad-argument-type]
             message_id=None,
+            # pyrefly: ignore [bad-argument-type]
             user_id=None,
+            # pyrefly: ignore [bad-argument-type]
             invoke_from=None,
         )
 
+        # pyrefly: ignore [bad-argument-type]
         handler.on_query(None, None)
 
         mock_db.session.add.assert_called_once()

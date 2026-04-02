@@ -72,6 +72,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     """
 
     _task_state: EasyUITaskState
+    # pyrefly: ignore [bad-override]
     _application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
     _precomputed_event_type: StreamEvent | None = None
 
@@ -318,6 +319,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             "The content type %s in LLM chunk delta message content.: %r", type(content), content
                         )
                         if isinstance(content, TextPromptMessageContent):
+                            # pyrefly: ignore [unsupported-operation]
                             delta_text += content.data
                         elif isinstance(content, str):
                             delta_text += content  # failback to str
@@ -385,6 +387,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if not conversation:
             raise ValueError(f"Conversation {self._conversation_id} not found")
 
+        # pyrefly: ignore [bad-argument-type]
         message.message = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
             self._model_config.mode, self._task_state.llm_result.prompt_messages
         )

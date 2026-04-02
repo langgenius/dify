@@ -461,6 +461,7 @@ class TestGetToolProviderIconUrl:
             url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
 
         assert "/builtin/google/icon" in url
+        # pyrefly: ignore [missing-attribute]
         assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
 
     def test_builtin_provider_with_no_console_url(self):

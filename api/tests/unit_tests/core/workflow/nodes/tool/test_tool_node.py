@@ -60,7 +60,9 @@ def tool_node(monkeypatch) -> ToolNode:
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:
         ops_stub = types.ModuleType(module_name)
+        # pyrefly: ignore [missing-attribute]
         ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
+        # pyrefly: ignore [missing-attribute]
         ops_stub.TraceTask = object  # pragma: no cover - stub attribute
         monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
@@ -114,6 +116,7 @@ def tool_node(monkeypatch) -> ToolNode:
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,
+        # pyrefly: ignore [bad-argument-type]
         runtime=runtime,
     )
     return node
@@ -130,6 +133,7 @@ def _collect_events(generator: Generator) -> list[Any]:
 
 def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[list[Any], LLMUsage]:
     generator = tool_node._transform_message(
+        # pyrefly: ignore [bad-argument-type]
         messages=iter([message]),
         tool_info={"provider_type": "builtin", "provider_id": "provider"},
         parameters_for_log={},
@@ -221,6 +225,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
 
     events, _ = _run_transform(tool_node, message)
 
+    # pyrefly: ignore [missing-attribute]
     tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1

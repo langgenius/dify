@@ -61,6 +61,7 @@ class TestAppRunner:
             lambda provider_model_bundle, model: SimpleNamespace(get_llm_num_tokens=lambda messages: 80),
         )
 
+        # pyrefly: ignore [bad-argument-type]
         runner.recalc_llm_max_tokens(model_config, prompt_messages=[AssistantPromptMessage(content="hi")])
 
         assert model_config.parameters["max_tokens"] == 20
@@ -84,6 +85,7 @@ class TestAppRunner:
             lambda provider_model_bundle, model: SimpleNamespace(get_llm_num_tokens=lambda messages: 10),
         )
 
+        # pyrefly: ignore [bad-argument-type]
         assert runner.recalc_llm_max_tokens(model_config, prompt_messages=[]) == -1
 
     def test_direct_output_streaming_publishes_chunks_and_end(self, monkeypatch):
@@ -94,7 +96,9 @@ class TestAppRunner:
         monkeypatch.setattr("core.app.apps.base_app_runner.time.sleep", lambda _: None)
 
         runner.direct_output(
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue,
+            # pyrefly: ignore [bad-argument-type]
             app_generate_entity=app_generate_entity,
             prompt_messages=[],
             text="hi",
@@ -116,6 +120,7 @@ class TestAppRunner:
 
         runner._handle_invoke_result(
             invoke_result=llm_result,
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue,
             stream=False,
         )
@@ -128,7 +133,9 @@ class TestAppRunner:
 
         with pytest.raises(NotImplementedError):
             runner._handle_invoke_result(
+                # pyrefly: ignore [bad-argument-type]
                 invoke_result=["unexpected"],
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=queue,
                 stream=True,
             )
@@ -147,7 +154,9 @@ class TestAppRunner:
         )
 
         prompt_messages, stop = runner.organize_prompt_messages(
+            # pyrefly: ignore [bad-argument-type]
             app_record=SimpleNamespace(mode=AppMode.CHAT.value),
+            # pyrefly: ignore [bad-argument-type]
             model_config=model_config,
             prompt_template_entity=prompt_template_entity,
             inputs={},
@@ -177,7 +186,9 @@ class TestAppRunner:
         monkeypatch.setattr("core.app.apps.base_app_runner.AdvancedPromptTransform.get_prompt", _fake_advanced_prompt)
 
         prompt_messages, stop = runner.organize_prompt_messages(
+            # pyrefly: ignore [bad-argument-type]
             app_record=SimpleNamespace(mode=AppMode.CHAT.value),
+            # pyrefly: ignore [bad-argument-type]
             model_config=model_config,
             prompt_template_entity=prompt_template_entity,
             inputs={},
@@ -188,7 +199,9 @@ class TestAppRunner:
         assert prompt_messages == ["advanced-completion-message"]
         assert stop == ["<END>"]
         memory_config = captured["memory_config"]
+        # pyrefly: ignore [missing-attribute]
         assert memory_config.role_prefix.user == "U"
+        # pyrefly: ignore [missing-attribute]
         assert memory_config.role_prefix.assistant == "A"
 
     def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch):
@@ -212,7 +225,9 @@ class TestAppRunner:
         monkeypatch.setattr("core.app.apps.base_app_runner.AdvancedPromptTransform.get_prompt", _fake_advanced_prompt)
 
         prompt_messages, stop = runner.organize_prompt_messages(
+            # pyrefly: ignore [bad-argument-type]
             app_record=SimpleNamespace(mode=AppMode.CHAT.value),
+            # pyrefly: ignore [bad-argument-type]
             model_config=model_config,
             prompt_template_entity=prompt_template_entity,
             inputs={},
@@ -222,6 +237,7 @@ class TestAppRunner:
 
         assert prompt_messages == ["advanced-chat-message"]
         assert stop == ["<END>"]
+        # pyrefly: ignore [bad-argument-type]
         assert len(captured["prompt_template"]) == 2
 
     def test_organize_prompt_messages_advanced_missing_templates_raise(self):
@@ -229,7 +245,9 @@ class TestAppRunner:
 
         with pytest.raises(InvokeBadRequestError, match="Advanced completion prompt template is required"):
             runner.organize_prompt_messages(
+                # pyrefly: ignore [bad-argument-type]
                 app_record=SimpleNamespace(mode=AppMode.CHAT.value),
+                # pyrefly: ignore [bad-argument-type]
                 model_config=SimpleNamespace(mode="completion", stop=[]),
                 prompt_template_entity=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.ADVANCED),
                 inputs={},
@@ -238,7 +256,9 @@ class TestAppRunner:
 
         with pytest.raises(InvokeBadRequestError, match="Advanced chat prompt template is required"):
             runner.organize_prompt_messages(
+                # pyrefly: ignore [bad-argument-type]
                 app_record=SimpleNamespace(mode=AppMode.CHAT.value),
+                # pyrefly: ignore [bad-argument-type]
                 model_config=SimpleNamespace(mode="chat", stop=[]),
                 prompt_template_entity=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.ADVANCED),
                 inputs={},
@@ -274,6 +294,7 @@ class TestAppRunner:
 
         runner._handle_invoke_result(
             invoke_result=_stream(),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue,
             stream=True,
             agent=False,
@@ -281,6 +302,7 @@ class TestAppRunner:
 
         assert isinstance(queue.events[0], QueueLLMChunkEvent)
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
+        # pyrefly: ignore [missing-attribute]
         assert queue.events[-1].llm_result.message.content == "abc"
         warning_logger.assert_called_once()
 
@@ -319,6 +341,7 @@ class TestAppRunner:
 
         runner._handle_invoke_result_stream(
             invoke_result=_stream(),
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue,
             agent=True,
             message_id="message-id",
@@ -328,6 +351,7 @@ class TestAppRunner:
 
         assert isinstance(queue.events[0], QueueAgentMessageEvent)
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
+        # pyrefly: ignore [missing-attribute]
         assert queue.events[-1].llm_result.usage == usage
         exception_logger.assert_called_once()
 
@@ -357,10 +381,12 @@ class TestAppRunner:
         queue_manager = SimpleNamespace(invoke_from=InvokeFrom.SERVICE_API, publish=MagicMock())
 
         runner._handle_multimodal_image_content(
+            # pyrefly: ignore [bad-argument-type]
             content=content,
             message_id="message-id",
             user_id="user-id",
             tenant_id="tenant-id",
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue_manager,
         )
 
@@ -380,7 +406,9 @@ class TestAppRunner:
         monkeypatch.setattr(runner, "direct_output", direct_output)
 
         result = runner.check_hosting_moderation(
+            # pyrefly: ignore [bad-argument-type]
             application_generate_entity=app_generate_entity,
+            # pyrefly: ignore [bad-argument-type]
             queue_manager=queue,
             prompt_messages=[],
         )
@@ -416,6 +444,7 @@ class TestAppRunner:
         result = runner.moderation_for_inputs(
             app_id="app",
             tenant_id="tenant",
+            # pyrefly: ignore [bad-argument-type]
             app_generate_entity=app_generate_entity,
             inputs={},
             query="q",
@@ -432,7 +461,9 @@ class TestAppRunner:
         )
 
         response = runner.query_app_annotations_to_reply(
+            # pyrefly: ignore [bad-argument-type]
             app_record=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             message=SimpleNamespace(),
             query="hello",
             user_id="user",

@@ -10,4 +10,5 @@ def handle(sender, **kwargs):
     file_id = kwargs.get("file_id")
     if not dataset_id or not doc_form:
         return
+    # pyrefly: ignore [not-callable]
     clean_document_task.delay(document_id, dataset_id, doc_form, file_id)

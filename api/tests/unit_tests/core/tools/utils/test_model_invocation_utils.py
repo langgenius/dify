@@ -108,6 +108,7 @@ def test_invoke_success_and_error_mappings():
                 response = ModelInvocationUtils.invoke(
                     user_id="u1",
                     tenant_id="tenant",
+                    # pyrefly: ignore [bad-argument-type]
                     tool_type="builtin",
                     tool_name="tool-a",
                     prompt_messages=[],
@@ -158,6 +159,7 @@ def test_invoke_error_mappings(exc, expected):
                     ModelInvocationUtils.invoke(
                         user_id="u1",
                         tenant_id="tenant",
+                        # pyrefly: ignore [bad-argument-type]
                         tool_type="builtin",
                         tool_name="tool-a",
                         prompt_messages=[],

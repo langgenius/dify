@@ -63,6 +63,7 @@ class PGVectoRS(BaseVector):
             __tablename__ = collection_name
             __table_args__ = {"extend_existing": True}
             id: Mapped[UUID] = mapped_column(
+                # pyrefly: ignore [no-matching-overload]
                 postgresql.UUID(as_uuid=True),
                 primary_key=True,
             )
@@ -112,6 +113,7 @@ class PGVectoRS(BaseVector):
                 session.execute(index_statement)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         pks = []
         with sessionmaker(bind=self._client).begin() as session:

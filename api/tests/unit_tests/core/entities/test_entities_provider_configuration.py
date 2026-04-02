@@ -632,6 +632,7 @@ def test_get_current_credentials_system_handles_disable_and_restricted_base_mode
         RestrictModel(model="gpt-4o", base_model_name="base-model", model_type=ModelType.LLM)
     ]
     credentials = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+    # pyrefly: ignore [unsupported-operation]
     assert credentials["base_model_name"] == "base-model"
 
 
@@ -859,6 +860,7 @@ def test_update_load_balancing_configs_updates_all_matching_configs() -> None:
     with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
         configuration._update_load_balancing_configs_with_credential(
             credential_id="cred-1",
+            # pyrefly: ignore [bad-argument-type]
             credential_record=credential_record,
             credential_source=CredentialSourceType.PROVIDER,
             session=session,
@@ -877,6 +879,7 @@ def test_update_load_balancing_configs_returns_when_no_matching_configs() -> Non
 
     configuration._update_load_balancing_configs_with_credential(
         credential_id="cred-1",
+        # pyrefly: ignore [bad-argument-type]
         credential_record=SimpleNamespace(encrypted_config="{}", credential_name="Main"),
         credential_source=CredentialSourceType.PROVIDER,
         session=session,
@@ -992,7 +995,9 @@ def test_get_specific_custom_model_credential_success_and_not_found() -> None:
             with patch.object(ProviderConfiguration, "obfuscated_credentials", return_value={"openai_api_key": "***"}):
                 response = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
+    # pyrefly: ignore [unsupported-operation]
     assert response["current_credential_id"] == "cred-1"
+    # pyrefly: ignore [unsupported-operation]
     assert response["credentials"] == {"openai_api_key": "***"}
 
     session = Mock()
@@ -1009,6 +1014,7 @@ def test_get_specific_custom_model_credential_success_and_not_found() -> None:
     )
     with _patched_session(session):
         invalid_json = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    # pyrefly: ignore [unsupported-operation]
     assert invalid_json["credentials"] == {}
 
 
@@ -1494,6 +1500,7 @@ def test_get_current_credentials_skips_non_current_quota_restrictions() -> None:
     ]
 
     credentials = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+    # pyrefly: ignore [unsupported-operation]
     assert credentials["base_model_name"] == "trial-base"
 
 
@@ -1685,6 +1692,7 @@ def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
                 ):
                     result = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
+    # pyrefly: ignore [unsupported-operation]
     assert result["credentials"] == {"openai_api_key": "enc-secret"}
     mock_logger.assert_called_once()
 

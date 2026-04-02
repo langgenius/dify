@@ -34,10 +34,14 @@ def _build_fake_opensearch_modules():
             self.get = MagicMock(return_value={"_id": "id"})
             self.exists = MagicMock(return_value=True)
 
+    # pyrefly: ignore [missing-attribute]
     opensearch_helpers.BulkIndexError = BulkIndexError
+    # pyrefly: ignore [missing-attribute]
     opensearch_helpers.bulk = MagicMock()
 
+    # pyrefly: ignore [missing-attribute]
     opensearchpy.OpenSearch = OpenSearch
+    # pyrefly: ignore [missing-attribute]
     opensearchpy.helpers = opensearch_helpers
 
     return {

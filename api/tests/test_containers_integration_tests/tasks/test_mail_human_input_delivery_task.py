@@ -103,6 +103,7 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
         node_id="node-1",
         form_config=node_data,
         rendered_content="Rendered",
+        # pyrefly: ignore [missing-attribute]
         delivery_methods=node_data.delivery_methods,
         display_in_ui=False,
         resolved_default_values={},

@@ -251,6 +251,7 @@ class TestTools:
         assert tool.title == "Test Tool"
         assert tool.description == "A tool for testing"
         assert tool.inputSchema["properties"]["input"]["type"] == "string"
+        # pyrefly: ignore [missing-attribute]
         assert tool.annotations.idempotentHint is True
 
     def test_call_tool_request(self):
@@ -332,6 +333,7 @@ class TestOAuth:
 
         assert metadata.client_name == "Test Client"
         assert len(metadata.redirect_uris) == 1
+        # pyrefly: ignore [not-iterable]
         assert "authorization_code" in metadata.grant_types
 
     def test_oauth_client_information(self):
@@ -377,6 +379,7 @@ class TestOAuth:
 
         assert metadata.authorization_endpoint == "https://auth.example.com/authorize"
         assert "code" in metadata.response_types_supported
+        # pyrefly: ignore [not-iterable]
         assert "S256" in metadata.code_challenge_methods_supported
 
 
@@ -455,6 +458,7 @@ class TestValidation:
         """Test invalid JSON-RPC version validation."""
         with pytest.raises(ValidationError):
             JSONRPCRequest(
+                # pyrefly: ignore [bad-argument-type]
                 jsonrpc="1.0",  # Invalid version
                 id=1,
                 method="test",

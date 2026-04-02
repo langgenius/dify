@@ -88,6 +88,7 @@ class TestListBuiltinProviderCredentialsSchema:
     def test_returns_schema(self, mock_manager):
         mock_manager.get_builtin_provider.return_value.get_credentials_schema_by_type.return_value = [{"f": "k"}]
 
+        # pyrefly: ignore [bad-argument-type]
         result = BuiltinToolManageService.list_builtin_provider_credentials_schema("g", "api_key", "t")
 
         assert result == [{"f": "k"}]

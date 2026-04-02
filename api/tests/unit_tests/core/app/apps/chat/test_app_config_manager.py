@@ -31,9 +31,12 @@ class TestChatAppConfigManager:
             patch("core.app.apps.chat.app_config_manager.BasicVariablesConfigManager.convert", return_value=([], [])),
         ):
             app_config = ChatAppConfigManager.get_app_config(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=app_model,
+                # pyrefly: ignore [bad-argument-type]
                 app_model_config=app_model_config,
                 conversation=None,
+                # pyrefly: ignore [bad-argument-type]
                 override_config_dict=override,
             )
 

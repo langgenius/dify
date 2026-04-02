@@ -8,6 +8,7 @@ def handle(sender: Dataset, **kwargs):
     dataset = sender
     if not dataset.doc_form or not dataset.indexing_technique:
         return
+    # pyrefly: ignore [not-callable]
     clean_dataset_task.delay(
         dataset.id,
         dataset.tenant_id,

@@ -6,6 +6,7 @@ from flask.views import MethodView as FlaskMethodView
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):
+    # pyrefly: ignore [missing-attribute]
     builtins.MethodView = FlaskMethodView
     _NEEDS_METHOD_VIEW_CLEANUP = True
 from controllers.common.fields import Parameters, Site

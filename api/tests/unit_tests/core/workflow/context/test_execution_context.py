@@ -308,6 +308,7 @@ class TestCaptureCurrentContext:
         result = capture_current_context()
 
         # Context variables should be captured
+        # pyrefly: ignore [missing-attribute]
         assert result.context_vars is not None
 
 
@@ -329,7 +330,9 @@ class TestTenantScopedContextRegistry:
         register_context("workflow.sandbox", "t1", lambda: SandboxContext(base_url="http://t1"))
         register_context("workflow.sandbox", "t2", lambda: SandboxContext(base_url="http://t2"))
 
+        # pyrefly: ignore [missing-attribute]
         assert read_context("workflow.sandbox", tenant_id="t1").base_url == "http://t1"
+        # pyrefly: ignore [missing-attribute]
         assert read_context("workflow.sandbox", tenant_id="t2").base_url == "http://t2"
 
     def test_missing_provider_raises_keyerror(self):

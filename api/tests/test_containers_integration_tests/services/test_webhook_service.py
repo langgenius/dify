@@ -3,6 +3,7 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from flask import Flask
 from werkzeug.datastructures import FileStorage
@@ -285,6 +286,7 @@ class TestWebhookService:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             assert result["headers"]["Authorization"] == "Bearer token"
@@ -304,6 +306,7 @@ class TestWebhookService:
             node_config = {"data": {"method": "post", "content_type": "application/json"}}
 
             with pytest.raises(ValueError, match="HTTP method mismatch"):
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_missing_required_header(self):
@@ -325,6 +328,7 @@ class TestWebhookService:
             }
 
             with pytest.raises(ValueError, match="Required header missing: Authorization"):
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_case_insensitive_headers(self):
@@ -347,6 +351,7 @@ class TestWebhookService:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             assert result["headers"].get("Authorization") == "Bearer token"
@@ -372,6 +377,7 @@ class TestWebhookService:
             }
 
             with pytest.raises(ValueError, match="Required parameter missing: version"):
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_missing_required_body_param(self):
@@ -394,6 +400,7 @@ class TestWebhookService:
             }
 
             with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_missing_required_file(self):
@@ -417,6 +424,7 @@ class TestWebhookService:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             assert result["files"] == {}
@@ -473,6 +481,7 @@ class TestWebhookService:
         """Test webhook response generation with default values."""
         node_config = {"data": {}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 200
@@ -483,6 +492,7 @@ class TestWebhookService:
         """Test webhook response generation with custom JSON response."""
         node_config = {"data": {"status_code": 201, "response_body": '{"result": "created", "id": 123}'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 201
@@ -493,6 +503,7 @@ class TestWebhookService:
         """Test webhook response generation with custom text response."""
         node_config = {"data": {"status_code": 202, "response_body": "Request accepted for processing"}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 202
@@ -502,6 +513,7 @@ class TestWebhookService:
         """Test webhook response generation with invalid JSON response."""
         node_config = {"data": {"status_code": 400, "response_body": '{"invalid": json}'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 400

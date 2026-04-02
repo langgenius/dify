@@ -243,6 +243,7 @@ class TestParagraphIndexProcessor:
         ) as mock_retrieve:
             mock_retrieve.return_value = [accepted, rejected]
             reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
+            # pyrefly: ignore [bad-argument-type]
             docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, reranking_model)
 
         assert len(docs) == 1

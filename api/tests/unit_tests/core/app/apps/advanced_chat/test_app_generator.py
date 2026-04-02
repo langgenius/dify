@@ -28,6 +28,7 @@ class TestAdvancedChatAppGeneratorValidation:
         generator = AdvancedChatAppGenerator()
 
         with pytest.raises(ValueError, match="query is required"):
+            # pyrefly: ignore [no-matching-overload]
             generator.generate(
                 app_model=SimpleNamespace(),
                 workflow=SimpleNamespace(),
@@ -42,6 +43,7 @@ class TestAdvancedChatAppGeneratorValidation:
         generator = AdvancedChatAppGenerator()
 
         with pytest.raises(ValueError, match="query must be a string"):
+            # pyrefly: ignore [no-matching-overload]
             generator.generate(
                 app_model=SimpleNamespace(),
                 workflow=SimpleNamespace(),
@@ -57,9 +59,12 @@ class TestAdvancedChatAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
                 args={"inputs": {}},
                 streaming=False,
@@ -67,9 +72,12 @@ class TestAdvancedChatAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_iteration_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="node",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
                 args={},
                 streaming=False,
@@ -80,20 +88,28 @@ class TestAdvancedChatAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 args=SimpleNamespace(inputs={}),
                 streaming=False,
             )
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_loop_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="node",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 args=SimpleNamespace(inputs=None),
                 streaming=False,
             )
@@ -175,6 +191,7 @@ class TestAdvancedChatAppGeneratorInternals:
         user = Account(name="Tester", email="tester@example.com")
         user.id = "user-id"
 
+        # pyrefly: ignore [no-matching-overload]
         result = generator.generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
             workflow=SimpleNamespace(features_dict={}),
@@ -192,6 +209,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert result == {"ok": True}
         assert captured["conversation"] is conversation
+        # pyrefly: ignore [missing-attribute]
         assert captured["application_generate_entity"].files == built_files
         assert build_files_called["called"] is True
 
@@ -220,14 +238,22 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         result = generator.resume(
+            # pyrefly: ignore [bad-argument-type]
             app_model=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             user=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=SimpleNamespace(id="conversation-id"),
+            # pyrefly: ignore [bad-argument-type]
             message=SimpleNamespace(id="message-id"),
             application_generate_entity=application_generate_entity,
+            # pyrefly: ignore [bad-argument-type]
             workflow_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_node_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             graph_runtime_state=SimpleNamespace(),
             pause_state_config=None,
         )
@@ -280,9 +306,12 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         result = generator.single_iteration_generate(
+            # pyrefly: ignore [bad-argument-type]
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
             node_id="node-1",
+            # pyrefly: ignore [bad-argument-type]
             user=SimpleNamespace(id="user-id"),
             args={"inputs": {"foo": "bar"}},
             streaming=False,
@@ -291,6 +320,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert result == {"ok": True}
         assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
+        # pyrefly: ignore [missing-attribute]
         assert captured["application_generate_entity"].single_iteration_run.node_id == "node-1"
 
     def test_single_loop_generate_builds_debug_task(self, monkeypatch):
@@ -338,10 +368,14 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         result = generator.single_loop_generate(
+            # pyrefly: ignore [bad-argument-type]
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
             node_id="node-2",
+            # pyrefly: ignore [bad-argument-type]
             user=SimpleNamespace(id="user-id"),
+            # pyrefly: ignore [bad-argument-type]
             args=SimpleNamespace(inputs={"foo": "bar"}),
             streaming=False,
         )
@@ -349,6 +383,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert result == {"ok": True}
         assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
+        # pyrefly: ignore [missing-attribute]
         assert captured["application_generate_entity"].single_loop_run.node_id == "node-2"
 
     def test_generate_internal_flow_initial_conversation_with_pause_layer(self, monkeypatch):
@@ -425,20 +460,27 @@ class TestAdvancedChatAppGeneratorInternals:
         pause_state_config = SimpleNamespace(session_factory="session-factory", state_owner_user_id="owner")
 
         response = generator._generate(
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
+            # pyrefly: ignore [bad-argument-type]
             user=SimpleNamespace(id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
+            # pyrefly: ignore [bad-argument-type]
             workflow_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_node_execution_repository=SimpleNamespace(),
             conversation=None,
             message=None,
             stream=False,
+            # pyrefly: ignore [bad-argument-type]
             pause_state_config=pause_state_config,
         )
 
+        # pyrefly: ignore [bad-index]
         assert response["response"] == {"raw": True}
         assert thread_data["started"] is True
+        # pyrefly: ignore [bad-index]
         assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
         assert generator._dialogue_count == 3
         db_session.commit.assert_called_once()
@@ -517,13 +559,19 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         response = generator._generate(
+            # pyrefly: ignore [bad-argument-type]
             workflow=workflow,
+            # pyrefly: ignore [bad-argument-type]
             user=SimpleNamespace(id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
+            # pyrefly: ignore [bad-argument-type]
             workflow_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_node_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             conversation=conversation,
+            # pyrefly: ignore [bad-argument-type]
             message=message,
             stream=False,
         )
@@ -581,14 +629,19 @@ class TestAdvancedChatAppGeneratorInternals:
 
         with pytest.raises(ValueError, match="Workflow not found"):
             generator._generate_worker(
+                # pyrefly: ignore [bad-argument-type]
                 flask_app=SimpleNamespace(),
                 application_generate_entity=application_generate_entity,
                 queue_manager=MagicMock(),
                 conversation_id="conv",
                 message_id="msg",
+                # pyrefly: ignore [bad-argument-type]
                 context=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 variable_loader=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow_execution_repository=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow_node_execution_repository=SimpleNamespace(),
                 graph_engine_layers=(),
                 graph_runtime_state=None,
@@ -645,14 +698,19 @@ class TestAdvancedChatAppGeneratorInternals:
 
         with pytest.raises(ValueError, match="App not found"):
             generator._generate_worker(
+                # pyrefly: ignore [bad-argument-type]
                 flask_app=SimpleNamespace(),
                 application_generate_entity=application_generate_entity,
                 queue_manager=MagicMock(),
                 conversation_id="conv",
                 message_id="msg",
+                # pyrefly: ignore [bad-argument-type]
                 context=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 variable_loader=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow_execution_repository=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow_node_execution_repository=SimpleNamespace(),
                 graph_engine_layers=(),
                 graph_runtime_state=None,
@@ -717,14 +775,19 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         generator._generate_worker(
+            # pyrefly: ignore [bad-argument-type]
             flask_app=SimpleNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
+            # pyrefly: ignore [bad-argument-type]
             context=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             variable_loader=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
             graph_runtime_state=None,
@@ -801,14 +864,19 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         generator._generate_worker(
+            # pyrefly: ignore [bad-argument-type]
             flask_app=SimpleNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
+            # pyrefly: ignore [bad-argument-type]
             context=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             variable_loader=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
             graph_runtime_state=None,
@@ -882,14 +950,19 @@ class TestAdvancedChatAppGeneratorInternals:
             )
 
             generator._generate_worker(
+                # pyrefly: ignore [bad-argument-type]
                 flask_app=SimpleNamespace(),
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
                 conversation_id="conv",
                 message_id="msg",
+                # pyrefly: ignore [bad-argument-type]
                 context=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 variable_loader=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow_execution_repository=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow_node_execution_repository=SimpleNamespace(),
                 graph_engine_layers=(),
                 graph_runtime_state=None,
@@ -939,6 +1012,7 @@ class TestAdvancedChatAppGeneratorInternals:
             generator._handle_advanced_chat_response(
                 application_generate_entity=application_generate_entity,
                 workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=SimpleNamespace(),
                 conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
                 message=MessageSnapshot(
@@ -948,7 +1022,9 @@ class TestAdvancedChatAppGeneratorInternals:
                     status=MessageStatus.NORMAL,
                     answer="",
                 ),
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 draft_var_saver_factory=lambda **kwargs: None,
                 stream=False,
             )
@@ -986,6 +1062,7 @@ class TestAdvancedChatAppGeneratorInternals:
             generator._handle_advanced_chat_response(
                 application_generate_entity=application_generate_entity,
                 workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=SimpleNamespace(),
                 conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
                 message=MessageSnapshot(
@@ -995,7 +1072,9 @@ class TestAdvancedChatAppGeneratorInternals:
                     status=MessageStatus.NORMAL,
                     answer="",
                 ),
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 draft_var_saver_factory=lambda **kwargs: None,
                 stream=False,
             )
@@ -1073,14 +1152,19 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         generator._generate_worker(
+            # pyrefly: ignore [bad-argument-type]
             flask_app=SimpleNamespace(),
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
+            # pyrefly: ignore [bad-argument-type]
             context=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             variable_loader=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_execution_repository=SimpleNamespace(),
+            # pyrefly: ignore [bad-argument-type]
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
             graph_runtime_state=None,
@@ -1153,6 +1237,7 @@ class TestAdvancedChatAppGeneratorInternals:
         user = Account(name="Tester", email="tester@example.com")
         user.id = "user"
 
+        # pyrefly: ignore [no-matching-overload]
         result = generator.generate(
             app_model=app_model,
             workflow=workflow,
@@ -1164,6 +1249,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         assert result == {"ok": True}
+        # pyrefly: ignore [missing-attribute]
         assert app_config.additional_features.show_retrieve_source is True
         assert captured["application_generate_entity"].query == "hello"
 
@@ -1232,6 +1318,7 @@ class TestAdvancedChatAppGeneratorInternals:
         user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
         user.id = "end-user"
 
+        # pyrefly: ignore [no-matching-overload]
         generator.generate(
             app_model=app_model,
             workflow=workflow,

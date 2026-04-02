@@ -93,6 +93,7 @@ class MilvusVector(BaseVector):
         if fields is None:
             # Load collection fields from remote server
             collection_info = self._client.describe_collection(self._collection_name)
+            # pyrefly: ignore [bad-index]
             fields = [field["name"] for field in collection_info["fields"]]
         # Since primary field is auto-id, no need to track it
         self._fields = [f for f in fields if f != Field.PRIMARY_KEY]
@@ -111,6 +112,7 @@ class MilvusVector(BaseVector):
             if "Zilliz Cloud" in milvus_version:
                 return True
             # For standard Milvus installations, check version number
+            # pyrefly: ignore [bad-argument-type]
             return version.parse(milvus_version) >= version.parse("2.5.0")
         except Exception as e:
             logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))

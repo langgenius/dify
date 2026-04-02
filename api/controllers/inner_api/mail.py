@@ -28,6 +28,7 @@ class BaseMail(Resource):
     @inner_api_ns.expect(inner_api_ns.models[InnerMailPayload.__name__])
     def post(self):
         args = InnerMailPayload.model_validate(inner_api_ns.payload or {})
+        # pyrefly: ignore [not-callable]
         send_inner_email_task.delay(
             to=args.to,
             subject=args.subject,

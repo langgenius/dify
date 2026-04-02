@@ -659,6 +659,7 @@ class TestMCPServerEndpoints:
 class TestErrorHandling:
     def test_annotation_list_query_validation(self):
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             annotation_module.AnnotationListQuery(page=0)
 
 

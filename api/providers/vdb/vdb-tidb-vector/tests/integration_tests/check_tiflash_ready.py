@@ -31,6 +31,7 @@ def check_tiflash_ready() -> bool:
         logger.exception("TiFlash is not ready.")
         return False
     finally:
+        # pyrefly: ignore [unbound-name]
         if connection:
             connection.close()
 

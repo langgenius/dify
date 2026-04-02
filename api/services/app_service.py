@@ -384,6 +384,7 @@ class AppService:
             BillingService.clean_billing_info_cache(app.tenant_id)
 
         # Trigger asynchronous deletion of app and related data
+        # pyrefly: ignore [not-callable]
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
     def get_app_meta(self, app_model: App):
@@ -436,6 +437,7 @@ class AppService:
                 provider_id = tool.get("provider_id", "")
                 tool_name = tool.get("tool_name", "")
                 if provider_type == "builtin":
+                    # pyrefly: ignore [unsupported-operation]
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:

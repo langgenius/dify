@@ -73,7 +73,9 @@ def service(mocker: MockerFixture) -> ModelLoadBalancingService:
     model_assembly = SimpleNamespace(provider_manager=provider_manager, model_provider_factory=MagicMock())
     mocker.patch("services.model_load_balancing_service.create_plugin_model_assembly", return_value=model_assembly)
     svc = ModelLoadBalancingService()
+    # pyrefly: ignore [missing-attribute]
     svc.provider_manager = provider_manager
+    # pyrefly: ignore [missing-attribute]
     svc.model_assembly = model_assembly
     svc._get_provider_manager = lambda _tenant_id: provider_manager  # type: ignore[method-assign]
     return svc
@@ -101,6 +103,7 @@ def test_enable_disable_model_load_balancing_should_call_provider_configuration_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
 
     # Act
@@ -121,6 +124,7 @@ def test_enable_disable_model_load_balancing_should_raise_value_error_when_provi
     service: ModelLoadBalancingService,
 ) -> None:
     # Arrange
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {}
 
     # Act + Assert
@@ -132,6 +136,7 @@ def test_get_load_balancing_configs_should_raise_value_error_when_provider_missi
     service: ModelLoadBalancingService,
 ) -> None:
     # Arrange
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {}
 
     # Act + Assert
@@ -150,6 +155,7 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
         load_balancing_enabled=True,
         provider_schema=_build_provider_credential_schema(),
     )
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     config = SimpleNamespace(
         id="cfg-1",
@@ -201,6 +207,7 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         load_balancing_enabled=None,
         provider_schema=_build_provider_credential_schema(),
     )
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     normal_config = SimpleNamespace(
         id="cfg-1",
@@ -255,6 +262,7 @@ def test_get_load_balancing_config_should_raise_value_error_when_provider_missin
     service: ModelLoadBalancingService,
 ) -> None:
     # Arrange
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {}
 
     # Act + Assert
@@ -268,6 +276,7 @@ def test_get_load_balancing_config_should_return_none_when_config_not_found(
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalar.return_value = None
 
@@ -287,6 +296,7 @@ def test_get_load_balancing_config_should_return_obfuscated_payload_when_config_
     provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: {
         "masked": credentials.get("api_key", "")
     }
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     config = SimpleNamespace(id="cfg-1", name="primary", encrypted_config="not-json", enabled=True)
     mock_db.session.scalar.return_value = config
@@ -327,6 +337,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_provider_mi
     service: ModelLoadBalancingService,
 ) -> None:
     # Arrange
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {}
 
     # Act + Assert
@@ -346,6 +357,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_configs_is_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
 
     # Act + Assert
@@ -366,6 +378,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_config_item
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
 
@@ -387,6 +400,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credential_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
     mock_db.session.scalar.return_value = None
@@ -409,6 +423,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_name_or_ena
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
 
@@ -440,6 +455,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_existing_co
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     current_config = SimpleNamespace(id="cfg-1")
     mock_db.session.scalars.return_value.all.return_value = [current_config]
@@ -462,6 +478,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     existing_config = SimpleNamespace(id="cfg-1", name="old", enabled=True, encrypted_config=None, updated_at=None)
     mock_db.session.scalars.return_value.all.return_value = [existing_config]
@@ -495,6 +512,7 @@ def test_update_load_balancing_configs_should_update_existing_create_new_and_del
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     existing_config_1 = SimpleNamespace(
         id="cfg-1",
@@ -544,6 +562,7 @@ def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
 
@@ -575,6 +594,7 @@ def test_update_load_balancing_configs_should_create_from_existing_provider_cred
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
     credential_record = SimpleNamespace(credential_name="Main Credential", encrypted_config='{"api_key":"enc"}')
@@ -603,6 +623,7 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_provi
     service: ModelLoadBalancingService,
 ) -> None:
     # Arrange
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {}
 
     # Act + Assert
@@ -622,6 +643,7 @@ def test_validate_load_balancing_credentials_should_raise_value_error_when_confi
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalar.return_value = None
 
@@ -644,6 +666,7 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
 ) -> None:
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    # pyrefly: ignore [missing-attribute]
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     existing_config = SimpleNamespace(id="cfg-1")
     mock_db.session.scalar.return_value = existing_config
@@ -670,6 +693,7 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
     assert mock_validate.call_count == 2
     assert mock_validate.call_args_list[0].kwargs["load_balancing_model_config"] is existing_config
     assert mock_validate.call_args_list[1].kwargs["load_balancing_model_config"] is None
+    # pyrefly: ignore [missing-attribute]
     shared_model_provider_factory = service.model_assembly.model_provider_factory
     assert mock_validate.call_args_list[0].kwargs["model_provider_factory"] is shared_model_provider_factory
     assert mock_validate.call_args_list[1].kwargs["model_provider_factory"] is shared_model_provider_factory

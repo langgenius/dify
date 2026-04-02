@@ -131,6 +131,7 @@ def repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflow
 
 
 @pytest.fixture
+# pyrefly: ignore [bad-return]
 def test_scope(db_session_with_containers: Session) -> _TestScope:
     """Provide an isolated scope and clean related data after each test."""
 

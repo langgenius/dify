@@ -90,6 +90,7 @@ def trigger_provider_refresh() -> None:
                 continue
 
             jobs = [
+                # pyrefly: ignore [not-callable]
                 trigger_subscription_refresh.s(tenant_id=tenant_id, subscription_id=subscription_id)
                 for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired)
                 if is_locked

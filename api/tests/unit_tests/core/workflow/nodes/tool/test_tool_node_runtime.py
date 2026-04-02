@@ -30,7 +30,9 @@ def runtime(monkeypatch) -> DifyToolNodeRuntime:
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:
         ops_stub = types.ModuleType(module_name)
+        # pyrefly: ignore [missing-attribute]
         ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
+        # pyrefly: ignore [missing-attribute]
         ops_stub.TraceTask = object  # pragma: no cover - stub attribute
         monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
@@ -210,6 +212,7 @@ def test_convert_message_payload_supports_runtime_message_types(
     payload: object,
     expected_type: type[object],
 ) -> None:
+    # pyrefly: ignore [bad-argument-type]
     message = runtime._convert_message_payload(payload)
 
     assert isinstance(message, expected_type)
@@ -217,6 +220,7 @@ def test_convert_message_payload_supports_runtime_message_types(
 
 def test_convert_message_payload_rejects_unknown_types(runtime: DifyToolNodeRuntime) -> None:
     with pytest.raises(TypeError, match="unsupported tool message payload"):
+        # pyrefly: ignore [bad-argument-type]
         runtime._convert_message_payload(object())
 
 

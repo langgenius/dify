@@ -232,7 +232,9 @@ class TestDocumentService:
         mock_get.return_value = mock_doc
 
         result = DocumentService.get_document(dataset_id="dataset_id", document_id="doc_id")
+        # pyrefly: ignore [missing-attribute]
         assert result.name == "Test Document"
+        # pyrefly: ignore [missing-attribute]
         assert result.indexing_status == "completed"
 
     @patch.object(DocumentService, "delete_document")

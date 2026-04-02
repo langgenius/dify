@@ -22,6 +22,7 @@ class TestApiKeyAuthBase:
         credentials = {"auth_type": "bearer", "config": {"api_key": "test_key"}}
 
         with pytest.raises(TypeError) as exc_info:
+            # pyrefly: ignore [bad-instantiation]
             ApiKeyAuthBase(credentials)
 
         assert "Can't instantiate abstract class" in str(exc_info.value)
@@ -39,11 +40,13 @@ class TestApiKeyAuthBase:
     def test_should_handle_empty_credentials(self):
         """Test initialization with empty credentials"""
         credentials = {}
+        # pyrefly: ignore [bad-argument-type]
         auth = ConcreteApiKeyAuth(credentials)
         assert auth.credentials == {}
 
     def test_should_handle_none_credentials(self):
         """Test initialization with None credentials"""
         credentials = None
+        # pyrefly: ignore [bad-argument-type]
         auth = ConcreteApiKeyAuth(credentials)
         assert auth.credentials is None

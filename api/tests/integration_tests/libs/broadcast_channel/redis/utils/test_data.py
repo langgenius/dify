@@ -8,6 +8,7 @@ message sets, and test scenarios.
 import dataclasses
 from typing import Any
 
+# pyrefly: ignore [missing-module-attribute]
 from libs.broadcast_channel.channel import Overflow
 
 

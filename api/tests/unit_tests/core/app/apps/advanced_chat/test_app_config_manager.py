@@ -20,6 +20,7 @@ class TestAdvancedChatAppConfigManager:
                 return_value=[],
             ),
         ):
+            # pyrefly: ignore [bad-argument-type]
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model, workflow)
 
         assert app_config.workflow_id == "wf-1"
@@ -29,6 +30,7 @@ class TestAdvancedChatAppConfigManager:
         def _add_key(key, value):
             def _inner(*args, **kwargs):
                 config = kwargs.get("config") if kwargs else args[-1]
+                # pyrefly: ignore [invalid-argument]
                 config = {**config, key: value}
                 return config, [key]
 

@@ -1071,6 +1071,7 @@ class DraftVariableSaver:
             content_type = "application/json"
             filename = f"{self._generate_filename(name)}.json"
 
+        # pyrefly: ignore [missing-attribute]
         original_size = len(original_content_serialized.encode("utf-8"))
 
         bind = self._session.get_bind()
@@ -1079,6 +1080,7 @@ class DraftVariableSaver:
 
         upload_file = file_srv.upload_file(
             filename=filename,
+            # pyrefly: ignore [missing-attribute]
             content=original_content_serialized.encode(),
             mimetype=content_type,
             user=self._user,

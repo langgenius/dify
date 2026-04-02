@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask, Response, g
 from flask_login import UserMixin
+# pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 
 import libs.login as login_module
@@ -31,6 +32,7 @@ class MockUser(UserMixin):
         self._is_authenticated = is_authenticated
 
     @property
+    # pyrefly: ignore [bad-override]
     def is_authenticated(self) -> bool:
         return self._is_authenticated
 
@@ -95,6 +97,7 @@ class TestLoginRequired:
 
         assert result == "Protected content"
         resolve_user.assert_called_once_with()
+        # pyrefly: ignore [missing-attribute]
         login_app.login_manager.unauthorized.assert_not_called()
 
     @pytest.mark.parametrize(
@@ -120,10 +123,12 @@ class TestLoginRequired:
         with login_app.test_request_context():
             result = protected_view()
 
+        # pyrefly: ignore [missing-attribute]
         assert result is login_app.login_manager.unauthorized.return_value, description
         assert isinstance(result, Response)
         assert result.status_code == 401
         resolve_user.assert_called_once_with()
+        # pyrefly: ignore [missing-attribute]
         login_app.login_manager.unauthorized.assert_called_once_with()
         csrf_check.assert_not_called()
 
@@ -177,6 +182,7 @@ class TestLoginRequired:
         assert result == "Protected content"
         resolve_user.assert_not_called()
         csrf_check.assert_not_called()
+        # pyrefly: ignore [missing-attribute]
         login_app.login_manager.unauthorized.assert_not_called()
 
 
@@ -191,6 +197,7 @@ class TestGetUser:
             g._login_user = mock_user
             user = login_module._get_user()
             assert user == mock_user
+            # pyrefly: ignore [missing-attribute]
             assert user.id == "test_user"
 
     def test_get_user_loads_user_if_not_in_g(self, login_app: Flask, mocker: MockerFixture):
@@ -201,6 +208,7 @@ class TestGetUser:
             g._login_user = mock_user
 
         load_user = mocker.patch.object(
+            # pyrefly: ignore [missing-attribute]
             login_app.login_manager,
             "load_user_from_request_context",
             side_effect=load_user_from_request_context,
@@ -244,6 +252,7 @@ class TestCurrentAccountWithTenant:
 
     def test_returns_account_and_tenant_id(self, mocker: MockerFixture):
         account = Account(name="Test User", email="test@example.com")
+        # pyrefly: ignore [bad-assignment]
         account._current_tenant = SimpleNamespace(id="tenant-123")
         current_user_proxy = mocker.Mock()
         current_user_proxy._get_current_object.return_value = account

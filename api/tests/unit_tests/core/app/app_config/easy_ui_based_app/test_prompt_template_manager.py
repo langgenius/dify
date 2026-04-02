@@ -36,6 +36,7 @@ class DummyPromptType:
 class TestPromptTemplateConfigManagerConvert:
     def test_convert_missing_prompt_type_raises(self):
         with pytest.raises(ValueError, match="prompt_type is required"):
+            # pyrefly: ignore [bad-typed-dict-key]
             PromptTemplateConfigManager.convert({})
 
     def test_convert_simple_prompt(self, mocker):
@@ -51,6 +52,7 @@ class TestPromptTemplateConfigManagerConvert:
 
         config = {"prompt_type": "simple", "pre_prompt": "hello"}
 
+        # pyrefly: ignore [bad-argument-type]
         result = PromptTemplateConfigManager.convert(config)
 
         assert result == "simple_entity"
@@ -86,6 +88,7 @@ class TestPromptTemplateConfigManagerConvert:
             "chat_prompt_config": {"prompt": [{"text": "hi", "role": "user"}]},
         }
 
+        # pyrefly: ignore [bad-argument-type]
         result = PromptTemplateConfigManager.convert(config)
 
         assert result == "advanced_entity"
@@ -112,6 +115,7 @@ class TestPromptTemplateConfigManagerConvert:
         }
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.convert(config)
 
     def test_convert_advanced_completion_with_roles(self, mocker):
@@ -140,6 +144,7 @@ class TestPromptTemplateConfigManagerConvert:
             },
         }
 
+        # pyrefly: ignore [bad-argument-type]
         result = PromptTemplateConfigManager.convert(config)
 
         assert result == "advanced_entity"
@@ -168,6 +173,7 @@ class TestValidateAndSetDefaults:
 
         config = {"model": self.valid_model}
 
+        # pyrefly: ignore [bad-argument-type]
         result, keys = PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
         assert result["prompt_type"] == "simple"
@@ -189,6 +195,7 @@ class TestValidateAndSetDefaults:
         config = {"prompt_type": "invalid", "model": self.valid_model}
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
     def test_invalid_chat_prompt_config_type(self, mocker):
@@ -201,6 +208,7 @@ class TestValidateAndSetDefaults:
         }
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
     def test_simple_mode_invalid_pre_prompt_type(self, mocker):
@@ -213,6 +221,7 @@ class TestValidateAndSetDefaults:
         }
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
     def test_advanced_requires_one_config(self, mocker):
@@ -226,6 +235,7 @@ class TestValidateAndSetDefaults:
         }
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
     def test_advanced_invalid_model_mode(self, mocker):
@@ -238,6 +248,7 @@ class TestValidateAndSetDefaults:
         }
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
     def test_advanced_chat_prompt_length_exceeds(self, mocker):
@@ -250,6 +261,7 @@ class TestValidateAndSetDefaults:
         }
 
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             PromptTemplateConfigManager.validate_and_set_defaults("chat_app", config)
 
     def test_completion_prefix_defaults_set_when_empty(self, mocker):
@@ -267,6 +279,7 @@ class TestValidateAndSetDefaults:
             "model": {"mode": "completion"},
         }
 
+        # pyrefly: ignore [bad-argument-type]
         updated, _ = PromptTemplateConfigManager.validate_and_set_defaults("chat", config)
 
         roles = updated["completion_prompt_config"]["conversation_histories_role"]

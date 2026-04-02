@@ -261,12 +261,14 @@ class TestHumanInputResumeNodeExecutionIntegration:
             user_id=self.account.id,
         )
         execution_repo = SQLAlchemyWorkflowExecutionRepository(
+            # pyrefly: ignore [bad-argument-type]
             session_factory=self.session.get_bind(),
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
+            # pyrefly: ignore [bad-argument-type]
             session_factory=self.session.get_bind(),
             user=self.account,
             app_id=self.app.id,

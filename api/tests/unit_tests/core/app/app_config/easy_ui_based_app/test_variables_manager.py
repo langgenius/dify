@@ -10,6 +10,7 @@ class TestBasicVariablesConfigManagerConvert:
     def test_convert_empty_config(self):
         config = {}
 
+        # pyrefly: ignore [bad-argument-type]
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert variables == []
@@ -28,6 +29,7 @@ class TestBasicVariablesConfigManagerConvert:
             ]
         }
 
+        # pyrefly: ignore [bad-argument-type]
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert variables == []
@@ -64,6 +66,7 @@ class TestBasicVariablesConfigManagerConvert:
             ]
         }
 
+        # pyrefly: ignore [bad-argument-type]
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert len(variables) == 2
@@ -81,6 +84,7 @@ class TestBasicVariablesConfigManagerConvert:
             ]
         }
 
+        # pyrefly: ignore [bad-argument-type]
         variables, external = BasicVariablesConfigManager.convert(config)
 
         assert variables == []

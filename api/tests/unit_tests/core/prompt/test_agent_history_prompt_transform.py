@@ -55,7 +55,9 @@ def test_get_prompt():
 
     transform = AgentHistoryPromptTransform(
         model_config=model_config_mock,
+        # pyrefly: ignore [bad-argument-type]
         prompt_messages=prompt_messages,
+        # pyrefly: ignore [bad-argument-type]
         history_messages=history_messages,
         memory=memory,
     )

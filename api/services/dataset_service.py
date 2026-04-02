@@ -620,9 +620,11 @@ class DatasetService:
 
         # Trigger vector index task if indexing technique changed
         if action:
+            # pyrefly: ignore [not-callable]
             deal_dataset_vector_index_task.delay(dataset.id, action)
             # If embedding_model changed, also regenerate summary vectors
             if action == "update":
+                # pyrefly: ignore [not-callable]
                 regenerate_summary_index_task.delay(
                     dataset.id,
                     regenerate_reason="embedding_model_changed",
@@ -1117,6 +1119,7 @@ class DatasetService:
             session.add(dataset)
             session.commit()
             if action:
+                # pyrefly: ignore [not-callable]
                 deal_dataset_index_update_task.delay(dataset.id, action)
 
     @staticmethod
@@ -1756,6 +1759,7 @@ class DocumentService:
         # Dispatch cleanup task after commit to avoid lock contention
         # Task cleans up segments, files, and vector indexes
         if dataset.doc_form is not None:
+            # pyrefly: ignore [not-callable]
             batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
     @staticmethod
@@ -1830,6 +1834,7 @@ class DocumentService:
         indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.delete(indexing_cache_key)
         # trigger async task
+        # pyrefly: ignore [not-callable]
         recover_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
@@ -1850,6 +1855,7 @@ class DocumentService:
         document_ids = [document.id for document in documents]
         if not current_user or not current_user.id:
             raise ValueError("Current user or current user id not found")
+        # pyrefly: ignore [not-callable]
         retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod
@@ -1870,6 +1876,7 @@ class DocumentService:
 
         redis_client.setex(sync_indexing_cache_key, 600, 1)
 
+        # pyrefly: ignore [not-callable]
         sync_website_document_indexing_task.delay(dataset_id, document.id)
 
     @staticmethod
@@ -2118,6 +2125,7 @@ class DocumentService:
                             workspace_id = notion_info.workspace_id
                             for page in notion_info.pages:
                                 if page.page_id not in exist_page_ids:
+                                    # pyrefly: ignore [bad-assignment]
                                     data_source_info = {
                                         "credential_id": notion_info.credential_id,
                                         "notion_workspace_id": workspace_id,
@@ -2149,6 +2157,7 @@ class DocumentService:
                                     exist_document.pop(page.page_id)
                         # delete not selected documents
                         if len(exist_document) > 0:
+                            # pyrefly: ignore [not-callable]
                             clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
                     elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
                         website_info = knowledge_config.data_source.info_list.website_info_list
@@ -2631,6 +2640,7 @@ class DocumentService:
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
                     for page in notion_info.pages:
+                        # pyrefly: ignore [bad-assignment]
                         data_source_info = {
                             "credential_id": notion_info.credential_id,
                             "notion_workspace_id": workspace_id,
@@ -2678,6 +2688,7 @@ class DocumentService:
         )
         db.session.commit()
         # trigger async task
+        # pyrefly: ignore [not-callable]
         document_indexing_update_task.delay(document.dataset_id, document.id)
         return document
 
@@ -2806,6 +2817,7 @@ class DocumentService:
             raise ValueError("Process rule mode is invalid")
 
         if knowledge_config.process_rule.mode == ProcessRuleMode.AUTOMATIC:
+            # pyrefly: ignore [bad-assignment]
             knowledge_config.process_rule.rules = None
         else:
             if not knowledge_config.process_rule.rules:
@@ -3337,6 +3349,7 @@ class SegmentService:
                     db.session.commit()
                     # Set cache to prevent indexing the same segment multiple times
                     redis_client.setex(indexing_cache_key, 600, 1)
+                    # pyrefly: ignore [not-callable]
                     disable_segment_from_index_task.delay(segment.id)
                     return segment
         if not segment.enabled:
@@ -3605,6 +3618,7 @@ class SegmentService:
                     ).all()
                 )
 
+            # pyrefly: ignore [not-callable]
             delete_segment_from_index_task.delay(
                 [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
             )
@@ -3654,6 +3668,7 @@ class SegmentService:
 
         # Start async cleanup with both parent and child node IDs
         if index_node_ids or child_node_ids:
+            # pyrefly: ignore [not-callable]
             delete_segment_from_index_task.delay(
                 index_node_ids, dataset.id, document.id, segment_db_ids, child_node_ids
             )
@@ -3703,6 +3718,7 @@ class SegmentService:
                     real_deal_segment_ids.append(segment.id)
                 db.session.commit()
 
+                # pyrefly: ignore [not-callable]
                 enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
             case "disable":
                 segments = db.session.scalars(
@@ -3728,6 +3744,7 @@ class SegmentService:
                     real_deal_segment_ids.append(segment.id)
                 db.session.commit()
 
+                # pyrefly: ignore [not-callable]
                 disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
 
     @classmethod

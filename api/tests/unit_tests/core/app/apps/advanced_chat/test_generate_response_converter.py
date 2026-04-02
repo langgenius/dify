@@ -91,6 +91,9 @@ class TestAdvancedChatGenerateResponseConverter:
 
         converted = list(AdvancedChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert converted[1]["event"] == "node_started"
+        # pyrefly: ignore [bad-index]
         assert converted[2]["event"] == "node_finished"
+        # pyrefly: ignore [bad-index]
         assert converted[3]["event"] == "error"

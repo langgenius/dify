@@ -121,6 +121,7 @@ class TestBaseAppConfigManager:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         result = BaseAppConfigManager.convert_features(empty_config, "CHAT")
 
         # Assert
@@ -141,6 +142,7 @@ class TestBaseAppConfigManager:
     def test_convert_features_invalid_config_raises(self, invalid_config):
         # Act & Assert
         with pytest.raises((TypeError, AttributeError)):
+            # pyrefly: ignore [bad-argument-type]
             BaseAppConfigManager.convert_features(invalid_config, "CHAT")
 
     def test_convert_features_manager_exception_propagates(self, mocker, mock_config_dict):
@@ -152,6 +154,7 @@ class TestBaseAppConfigManager:
 
         # Act & Assert
         with pytest.raises(RuntimeError):
+            # pyrefly: ignore [bad-argument-type]
             BaseAppConfigManager.convert_features(mock_config_dict, "CHAT")
 
     def test_convert_features_mapping_subclass(self, mocker, mock_app_additional_features, mock_managers):
@@ -172,6 +175,7 @@ class TestBaseAppConfigManager:
         )
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         result = BaseAppConfigManager.convert_features(custom_config, "CHAT")
 
         # Assert

@@ -177,6 +177,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     assert len(variable_messages) == 3
 
     # Verify content of each variable message
+    # pyrefly: ignore [missing-attribute]
     variable_dict = {msg.message.variable_name: msg.message.variable_value for msg in variable_messages}
     assert variable_dict["result"] == "success"
     assert variable_dict["count"] == 42
@@ -185,11 +186,13 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     # Verify text message
     text_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
     assert len(text_messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert json.loads(text_messages[0].message.text) == mock_outputs
 
     # Verify JSON message
     json_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
     assert len(json_messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert json_messages[0].message.json_object == mock_outputs
 
 
@@ -226,11 +229,13 @@ def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPat
     # Verify text message
     text_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
     assert len(text_messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert text_messages[0].message.text == "{}"
 
     # Verify JSON message
     json_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
     assert len(json_messages) == 1
+    # pyrefly: ignore [missing-attribute]
     assert json_messages[0].message.json_object == {}
 
 
@@ -252,8 +257,11 @@ def test_create_variable_message(var_name, var_value):
     message = tool.create_variable_message(var_name, var_value)
 
     assert message.type == ToolInvokeMessage.MessageType.VARIABLE
+    # pyrefly: ignore [missing-attribute]
     assert message.message.variable_name == var_name
+    # pyrefly: ignore [missing-attribute]
     assert message.message.variable_value == var_value
+    # pyrefly: ignore [missing-attribute]
     assert message.message.stream is False
 
 
@@ -265,6 +273,7 @@ def test_create_file_message_should_include_file_marker():
     message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
 
     assert message.type == ToolInvokeMessage.MessageType.FILE
+    # pyrefly: ignore [missing-attribute]
     assert message.message.file_marker == "file_marker"
     assert message.meta == {"file": file_obj}
 

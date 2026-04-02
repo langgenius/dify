@@ -24,9 +24,12 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_iteration_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
                 args={"inputs": {}},
                 streaming=False,
@@ -34,9 +37,12 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_iteration_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="node",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
                 args={},
                 streaming=False,
@@ -47,20 +53,28 @@ class TestWorkflowAppGeneratorValidation:
 
         with pytest.raises(ValueError, match="node_id is required"):
             generator.single_loop_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 args=SimpleNamespace(inputs={}),
                 streaming=False,
             )
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_loop_generate(
+                # pyrefly: ignore [bad-argument-type]
                 app_model=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
                 node_id="node",
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 args=SimpleNamespace(inputs=None),
                 streaming=False,
             )
@@ -107,9 +121,13 @@ class TestWorkflowAppGeneratorHandleResponse:
         with pytest.raises(GenerateTaskStoppedError):
             generator._handle_response(
                 application_generate_entity=application_generate_entity,
+                # pyrefly: ignore [bad-argument-type]
                 workflow=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 queue_manager=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 user=SimpleNamespace(),
+                # pyrefly: ignore [bad-argument-type]
                 draft_var_saver_factory=lambda **kwargs: None,
                 stream=False,
             )
@@ -175,6 +193,7 @@ class TestWorkflowAppGeneratorGenerate:
 
         monkeypatch.setattr(generator, "_generate", lambda **kwargs: {"ok": True})
 
+        # pyrefly: ignore [no-matching-overload]
         result = generator.generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
             workflow=SimpleNamespace(features_dict={}),

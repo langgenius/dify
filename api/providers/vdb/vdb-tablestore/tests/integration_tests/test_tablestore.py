@@ -33,19 +33,24 @@ class TableStoreVectorTest(AbstractVectorTest):
         )
 
     def get_ids_by_metadata_field(self):
+        # pyrefly: ignore [missing-attribute]
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert ids is not None
         assert len(ids) == 1
         assert ids[0] == self.example_doc_id
 
     def create_vector(self):
+        # pyrefly: ignore [missing-attribute]
         self.vector.create(
             texts=[get_example_document(doc_id=self.example_doc_id)],
             embeddings=[self.example_embedding],
         )
         while True:
+            # pyrefly: ignore [missing-attribute]
             search_response = self.vector._tablestore_client.search(
+                # pyrefly: ignore [missing-attribute]
                 table_name=self.vector._table_name,
+                # pyrefly: ignore [missing-attribute]
                 index_name=self.vector._index_name,
                 search_query=tablestore.SearchQuery(query=tablestore.MatchAllQuery(), get_total_count=True, limit=0),
                 columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
@@ -55,28 +60,34 @@ class TableStoreVectorTest(AbstractVectorTest):
 
     def search_by_vector(self):
         super().search_by_vector()
+        # pyrefly: ignore [missing-attribute]
         docs = self.vector.search_by_vector(self.example_embedding, document_ids_filter=[self.example_doc_id])
         assert len(docs) == 1
         assert docs[0].metadata["doc_id"] == self.example_doc_id
         assert docs[0].metadata["score"] > 0
 
+        # pyrefly: ignore [missing-attribute]
         docs = self.vector.search_by_vector(self.example_embedding, document_ids_filter=[str(uuid.uuid4())])
         assert len(docs) == 0
 
     def search_by_full_text(self):
         super().search_by_full_text()
+        # pyrefly: ignore [missing-attribute]
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[self.example_doc_id])
         assert len(docs) == 1
         assert docs[0].metadata["doc_id"] == self.example_doc_id
+        # pyrefly: ignore [missing-attribute]
         if self.vector._config.normalize_full_text_bm25_score:
             assert docs[0].metadata["score"] == approx(0.1214, abs=1e-3)
         else:
             assert docs[0].metadata.get("score") is None
 
         # return none if normalize_full_text_score=true and score_threshold > 0
+        # pyrefly: ignore [missing-attribute]
         docs = self.vector.search_by_full_text(
             get_example_text(), document_ids_filter=[self.example_doc_id], score_threshold=0.5
         )
+        # pyrefly: ignore [missing-attribute]
         if self.vector._config.normalize_full_text_bm25_score:
             assert len(docs) == 0
         else:
@@ -84,11 +95,13 @@ class TableStoreVectorTest(AbstractVectorTest):
             assert docs[0].metadata["doc_id"] == self.example_doc_id
             assert docs[0].metadata.get("score") is None
 
+        # pyrefly: ignore [missing-attribute]
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[str(uuid.uuid4())])
         assert len(docs) == 0
 
     def run_all_tests(self):
         try:
+            # pyrefly: ignore [missing-attribute]
             self.vector.delete()
         except Exception:
             logger.debug("Failed to delete vector store during test setup, it may not exist yet")

@@ -72,8 +72,11 @@ class TestWorkflowGenerateResponseConverter:
 
         converted = list(WorkflowAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert converted[1]["event"] == "node_started"
+        # pyrefly: ignore [bad-index]
         assert converted[2]["event"] == "node_finished"
+        # pyrefly: ignore [bad-index]
         assert converted[3]["event"] == "error"
 
     def test_convert_stream_simple_response_handles_ping_and_nodes(self):
@@ -118,7 +121,9 @@ class TestWorkflowGenerateResponseConverter:
         chunks = list(WorkflowAppGenerateResponseConverter.convert_stream_simple_response(_gen()))
 
         assert chunks[0] == "ping"
+        # pyrefly: ignore [bad-index]
         assert chunks[1]["event"] == "node_started"
+        # pyrefly: ignore [bad-index]
         assert chunks[2]["event"] == "node_finished"
 
     def test_convert_stream_full_response_handles_error(self):
@@ -130,4 +135,5 @@ class TestWorkflowGenerateResponseConverter:
 
         chunks = list(WorkflowAppGenerateResponseConverter.convert_stream_full_response(_gen()))
 
+        # pyrefly: ignore [bad-index]
         assert chunks[0]["event"] == "error"

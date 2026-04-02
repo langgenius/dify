@@ -40,6 +40,7 @@ class ConversationServiceIntegrationTestDataFactory:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
+            # pyrefly: ignore [bad-argument-type]
             role="owner",
             current=True,
         )

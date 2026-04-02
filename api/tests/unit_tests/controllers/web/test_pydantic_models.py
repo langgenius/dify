@@ -88,6 +88,7 @@ class TestCompletionMessagePayload:
 
     def test_invalid_response_mode(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             CompletionMessagePayload(inputs={}, response_mode="invalid")
 
 
@@ -114,6 +115,7 @@ class TestChatMessagePayload:
 
     def test_query_required(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             ChatMessagePayload(inputs={})
 
 
@@ -133,10 +135,12 @@ class TestConversationListQuery:
 
     def test_limit_lower_bound(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             ConversationListQuery(limit=0)
 
     def test_limit_upper_bound(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             ConversationListQuery(limit=101)
 
     def test_limit_boundaries_valid(self) -> None:
@@ -149,6 +153,7 @@ class TestConversationListQuery:
 
     def test_invalid_sort_by(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             ConversationListQuery(sort_by="invalid")
 
     def test_valid_last_id(self) -> None:
@@ -204,8 +209,10 @@ class TestMessageListQuery:
     def test_limit_bounds(self) -> None:
         cid = str(uuid4())
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             MessageListQuery(conversation_id=cid, limit=0)
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             MessageListQuery(conversation_id=cid, limit=101)
 
     def test_valid_first_id(self) -> None:
@@ -232,6 +239,7 @@ class TestMessageFeedbackPayload:
 
     def test_invalid_rating(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             MessageFeedbackPayload(rating="neutral")
 
 
@@ -242,10 +250,12 @@ class TestMessageMoreLikeThisQuery:
 
     def test_invalid_mode(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             MessageMoreLikeThisQuery(response_mode="invalid")
 
     def test_required(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             MessageMoreLikeThisQuery()
 
 
@@ -266,6 +276,7 @@ class TestRemoteFileUploadPayload:
 
     def test_url_required(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             RemoteFileUploadPayload()
 
 
@@ -283,8 +294,10 @@ class TestSavedMessageListQuery:
 
     def test_limit_bounds(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             SavedMessageListQuery(limit=0)
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [bad-argument-type]
             SavedMessageListQuery(limit=101)
 
     def test_valid_last_id(self) -> None:
@@ -305,6 +318,7 @@ class TestSavedMessageCreatePayload:
 
     def test_required(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             SavedMessageCreatePayload()
 
 
@@ -326,6 +340,7 @@ class TestWorkflowRunPayload:
 
     def test_inputs_required(self) -> None:
         with pytest.raises(ValidationError):
+            # pyrefly: ignore [missing-argument]
             WorkflowRunPayload()
 
 

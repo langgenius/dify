@@ -131,6 +131,7 @@ class TestWorkflowDraftVariableFields:
         assert marshal(sys_var, _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS) == expected_without_value
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = "a"
+        # pyrefly: ignore [unsupported-operation]
         expected_with_value["full_content"] = None
         assert marshal(sys_var, _WORKFLOW_DRAFT_VARIABLE_FIELDS) == expected_with_value
 

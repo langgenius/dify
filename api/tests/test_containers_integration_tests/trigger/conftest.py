@@ -34,6 +34,7 @@ def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[T
     db_session_with_containers.add_all([tenant, account])
     db_session_with_containers.commit()
 
+    # pyrefly: ignore [bad-argument-type]
     join = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER.value)
     db_session_with_containers.add(join)
     db_session_with_containers.commit()

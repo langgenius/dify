@@ -65,4 +65,5 @@ class TestTimeDuration:
     def test_none(self):
         """Test None value."""
         with pytest.raises(ValueError, match="Time duration cannot be empty"):
+            # pyrefly: ignore [bad-argument-type]
             time_duration(None)

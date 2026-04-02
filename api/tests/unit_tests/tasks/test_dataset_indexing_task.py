@@ -61,8 +61,11 @@ def mock_redis():
     # Redis is already mocked globally in conftest.py
     # Reset it for each test
     redis_client.reset_mock()
+    # pyrefly: ignore [missing-attribute]
     redis_client.get.reset_mock()
+    # pyrefly: ignore [missing-attribute]
     redis_client.setex.reset_mock()
+    # pyrefly: ignore [missing-attribute]
     redis_client.delete.reset_mock()
     redis_client.lpush.reset_mock()
     redis_client.rpop.reset_mock()

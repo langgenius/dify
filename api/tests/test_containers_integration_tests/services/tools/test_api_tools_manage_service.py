@@ -3,6 +3,7 @@ import json
 from unittest.mock import patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
@@ -57,6 +58,7 @@ class TestApiToolManageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -66,6 +68,7 @@ class TestApiToolManageService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -859,6 +862,7 @@ class TestApiToolManageService:
                 tool_name="tool-a",
                 credentials={"auth_type": "none"},
                 parameters={},
+                # pyrefly: ignore [bad-argument-type]
                 schema_type="bad-schema-type",
                 schema="schema",
             )

@@ -38,4 +38,5 @@ def setup_model_mock(monkeypatch: pytest.MonkeyPatch):
     yield
 
     if MOCK:
+        # pyrefly: ignore [unbound-name]
         unpatch()

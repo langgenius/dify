@@ -84,6 +84,7 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     )
 
     with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        # pyrefly: ignore [not-iterable]
         response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
 
     assert status == 200
@@ -111,4 +112,5 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
 
     with pytest.raises(NotFoundError):
         with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+            # pyrefly: ignore [not-iterable]
             response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")

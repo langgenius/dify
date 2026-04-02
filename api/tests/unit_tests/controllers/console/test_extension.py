@@ -11,6 +11,7 @@ from flask.views import MethodView as FlaskMethodView
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):
+    # pyrefly: ignore [missing-attribute]
     builtins.MethodView = FlaskMethodView
     _NEEDS_METHOD_VIEW_CLEANUP = True
 
@@ -22,6 +23,7 @@ from controllers.console.extension import (
 )
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
+    # pyrefly: ignore [missing-attribute]
     del builtins.MethodView
 from models.account import AccountStatus
 from models.api_based_extension import APIBasedExtension

@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 import redis
+# pyrefly: ignore [missing-import]
 from testcontainers.redis import RedisContainer
 
 from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
@@ -311,6 +312,7 @@ class TestRedisBroadcastChannelIntegration:
         pubsub_info = redis_client.pubsub_numsub(topic_name)
         # pubsub_numsub returns list of tuples, find our topic
         topic_subscribers = 0
+        # pyrefly: ignore [not-iterable]
         for channel, count in pubsub_info:
             # the channel name returned by redis is bytes.
             if channel == topic_name.encode():
@@ -328,6 +330,7 @@ class TestRedisBroadcastChannelIntegration:
         # Verify subscriptions are cleaned up
         pubsub_info_after = redis_client.pubsub_numsub(topic_name)
         topic_subscribers_after = 0
+        # pyrefly: ignore [not-iterable]
         for channel, count in pubsub_info_after:
             if channel == topic_name.encode():
                 topic_subscribers_after = count

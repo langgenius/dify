@@ -12,12 +12,16 @@ from libs.email_i18n import EmailType, get_email_i18n_service
 
 redis_config = parse_url(dify_config.CELERY_BROKER_URL)
 celery_redis = Redis(
+    # pyrefly: ignore [bad-argument-type]
     host=redis_config.get("hostname") or "localhost",
+    # pyrefly: ignore [bad-argument-type]
     port=redis_config.get("port") or 6379,
+    # pyrefly: ignore [bad-argument-type]
     password=redis_config.get("password") or None,
     db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
     ssl=bool(dify_config.BROKER_USE_SSL),
     ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS if dify_config.BROKER_USE_SSL else None,
+    # pyrefly: ignore [bad-argument-type]
     ssl_cert_reqs=getattr(dify_config, "REDIS_SSL_CERT_REQS", None) if dify_config.BROKER_USE_SSL else None,
     ssl_certfile=getattr(dify_config, "REDIS_SSL_CERTFILE", None) if dify_config.BROKER_USE_SSL else None,
     ssl_keyfile=getattr(dify_config, "REDIS_SSL_KEYFILE", None) if dify_config.BROKER_USE_SSL else None,
@@ -51,6 +55,7 @@ def queue_monitor_task():
 
         logger.info(click.style(f"Queue length: {queue_length}", fg="green"))
 
+        # pyrefly: ignore [unsupported-operation]
         if queue_length >= threshold:
             warning_msg = f"Queue {queue_name} task count exceeded the limit.: {queue_length}/{threshold}"
             logging.warning(click.style(warning_msg, fg="red"))

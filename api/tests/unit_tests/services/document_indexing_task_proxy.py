@@ -828,6 +828,7 @@ class TestDocumentIndexingTaskProxy:
         (treats it as a non-SANDBOX plan).
         """
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="")
 
         mock_feature_service.get_features.return_value = mock_features
@@ -852,6 +853,7 @@ class TestDocumentIndexingTaskProxy:
         a non-SANDBOX plan).
         """
         # Arrange
+        # pyrefly: ignore [bad-argument-type]
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan=None)
 
         mock_feature_service.get_features.return_value = mock_features

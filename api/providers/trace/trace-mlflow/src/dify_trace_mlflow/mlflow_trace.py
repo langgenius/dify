@@ -268,6 +268,7 @@ class MLflowDataTrace(BaseTraceInstance):
             name=TraceTaskName.MESSAGE_TRACE.value,
             span_type=SpanType.LLM,
             inputs=self._parse_prompts(trace_info.inputs),  # type: ignore[arg-type]
+            # pyrefly: ignore [bad-argument-type]
             attributes={
                 "message_id": trace_info.message_id,  # type: ignore[dict-item]
                 "model_provider": trace_info.message_data.model_provider,
@@ -332,6 +333,7 @@ class MLflowDataTrace(BaseTraceInstance):
             name=trace_info.tool_name,
             span_type=SpanType.TOOL,
             inputs=trace_info.tool_inputs,  # type: ignore[arg-type]
+            # pyrefly: ignore [bad-argument-type]
             attributes={
                 "message_id": trace_info.message_id,  # type: ignore[dict-item]
                 "metadata": trace_info.metadata,  # type: ignore[dict-item]
@@ -369,6 +371,7 @@ class MLflowDataTrace(BaseTraceInstance):
             name=TraceTaskName.MODERATION_TRACE.value,
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs or {},
+            # pyrefly: ignore [bad-argument-type]
             attributes={
                 "message_id": trace_info.message_id,  # type: ignore[dict-item]
                 "metadata": trace_info.metadata,  # type: ignore[dict-item]
@@ -393,6 +396,7 @@ class MLflowDataTrace(BaseTraceInstance):
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             span_type=SpanType.RETRIEVER,
             inputs=trace_info.inputs,
+            # pyrefly: ignore [bad-argument-type]
             attributes={
                 "message_id": trace_info.message_id,  # type: ignore[dict-item]
                 "metadata": trace_info.metadata,  # type: ignore[dict-item]
@@ -412,6 +416,7 @@ class MLflowDataTrace(BaseTraceInstance):
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs,
+            # pyrefly: ignore [bad-argument-type]
             attributes={
                 "message_id": trace_info.message_id,  # type: ignore[dict-item]
                 "model_provider": trace_info.model_provider,  # type: ignore[dict-item]

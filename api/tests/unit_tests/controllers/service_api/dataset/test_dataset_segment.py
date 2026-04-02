@@ -48,6 +48,7 @@ class TestSegmentCreatePayload:
         ]
         payload = SegmentCreatePayload(segments=segments)
         assert payload.segments == segments
+        # pyrefly: ignore [bad-argument-type]
         assert len(payload.segments) == 2
 
     def test_payload_with_none_segments(self):
@@ -71,7 +72,9 @@ class TestSegmentCreatePayload:
             }
         ]
         payload = SegmentCreatePayload(segments=segments)
+        # pyrefly: ignore [unsupported-operation]
         assert payload.segments[0]["content"] == "Complex segment"
+        # pyrefly: ignore [unsupported-operation]
         assert payload.segments[0]["keywords"] == ["keyword1", "keyword2"]
 
 
@@ -116,6 +119,7 @@ class TestChildChunkCreatePayload:
     def test_payload_requires_content(self):
         """Test that content is required."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [missing-argument]
             ChildChunkCreatePayload()
 
     def test_payload_with_long_content(self):
@@ -156,11 +160,13 @@ class TestChildChunkListQuery:
     def test_query_limit_minimum(self):
         """Test query limit minimum validation."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             ChildChunkListQuery(limit=0)
 
     def test_query_page_minimum(self):
         """Test query page minimum validation."""
         with pytest.raises(ValueError):
+            # pyrefly: ignore [bad-argument-type]
             ChildChunkListQuery(page=0)
 
     def test_query_with_keyword(self):
@@ -291,6 +297,7 @@ class TestSegmentServiceMockedBehavior:
             segments=[{"content": "Test"}, {"content": "Test 2"}], document=mock_document, dataset=mock_dataset
         )
 
+        # pyrefly: ignore [bad-argument-type]
         assert len(result) == 2
         mock_create.assert_called_once()
 
@@ -300,6 +307,7 @@ class TestSegmentServiceMockedBehavior:
         mock_segments = [Mock(), Mock()]
         mock_get.return_value = (mock_segments, 2)
 
+        # pyrefly: ignore [missing-argument]
         segments, count = SegmentService.get_segments(document_id=mock_document.id, page=1, limit=20)
 
         assert len(segments) == 2
@@ -593,6 +601,7 @@ class TestSegmentCreateArgs:
         from services.entities.knowledge_entities.knowledge_entities import SegmentCreateArgs
 
         args = SegmentCreateArgs(content="Test content", keywords=["machine learning", "AI", "neural networks"])
+        # pyrefly: ignore [bad-argument-type]
         assert len(args.keywords) == 3
 
 

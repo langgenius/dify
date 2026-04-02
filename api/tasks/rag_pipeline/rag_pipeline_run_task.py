@@ -100,6 +100,7 @@ def rag_pipeline_run_task(
                     )
 
                     jobs.append(
+                        # pyrefly: ignore [not-callable]
                         rag_pipeline_run_task.s(
                             rag_pipeline_invoke_entities_file_id=file_id,
                             tenant_id=tenant_id,

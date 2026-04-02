@@ -32,6 +32,7 @@ class TestJinaAuth:
         """Test that missing config section raises ValueError"""
         credentials = {"auth_type": "bearer"}
         with pytest.raises(ValueError) as exc_info:
+            # pyrefly: ignore [bad-argument-type]
             JinaAuth(credentials)
         assert str(exc_info.value) == "No API key provided"
 

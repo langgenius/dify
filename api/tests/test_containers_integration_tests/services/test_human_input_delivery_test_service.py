@@ -236,6 +236,7 @@ class TestEmailDeliveryTestHandler:
         )
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
+                # pyrefly: ignore [unexpected-keyword]
                 recipients=EmailRecipients(whole_workspace=False, items=[]),
                 subject="<b>Notice</b>\r\nBCC:{{ recipient_email }}",
                 body="Body",

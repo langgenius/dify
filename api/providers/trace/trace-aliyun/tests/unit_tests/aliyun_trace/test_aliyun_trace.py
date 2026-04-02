@@ -63,6 +63,7 @@ def _make_link(trace_id: int = 1, span_id: int = 2) -> Link:
         trace_id=trace_id,
         span_id=span_id,
         is_remote=False,
+        # pyrefly: ignore [bad-argument-type]
         trace_flags=TraceFlags.SAMPLED,
     )
     return Link(context)
@@ -270,12 +271,14 @@ def test_workflow_trace_adds_workflow_and_node_spans(trace_instance: AliyunDataT
     assert passed_trace_metadata.user_id == "u"
     assert passed_trace_metadata.links == []
 
+    # pyrefly: ignore [missing-attribute]
     assert trace_instance.trace_client.added_spans == ["span-1", "span-2"]
 
 
 def test_message_trace_returns_early_if_no_message_data(trace_instance: AliyunDataTrace):
     trace_info = _make_message_trace_info(message_data=None)
     trace_instance.message_trace(trace_info)
+    # pyrefly: ignore [missing-attribute]
     assert trace_instance.trace_client.added_spans == []
 
 
@@ -302,7 +305,9 @@ def test_message_trace_creates_message_and_llm_spans(trace_instance: AliyunDataT
     )
     trace_instance.message_trace(trace_info)
 
+    # pyrefly: ignore [missing-attribute]
     assert len(trace_instance.trace_client.added_spans) == 2
+    # pyrefly: ignore [not-iterable]
     message_span, llm_span = trace_instance.trace_client.added_spans
 
     assert message_span.name == "message"
@@ -324,6 +329,7 @@ def test_message_trace_creates_message_and_llm_spans(trace_instance: AliyunDataT
 def test_dataset_retrieval_trace_returns_early_if_no_message_data(trace_instance: AliyunDataTrace):
     trace_info = _make_dataset_retrieval_trace_info(message_data=None)
     trace_instance.dataset_retrieval_trace(trace_info)
+    # pyrefly: ignore [missing-attribute]
     assert trace_instance.trace_client.added_spans == []
 
 
@@ -338,7 +344,9 @@ def test_dataset_retrieval_trace_creates_span(trace_instance: AliyunDataTrace, m
     monkeypatch.setattr(aliyun_trace_module, "extract_retrieval_documents", lambda _: [{"doc": "d"}])
 
     trace_instance.dataset_retrieval_trace(_make_dataset_retrieval_trace_info(inputs="query"))
+    # pyrefly: ignore [missing-attribute]
     assert len(trace_instance.trace_client.added_spans) == 1
+    # pyrefly: ignore [bad-index]
     span = trace_instance.trace_client.added_spans[0]
     assert span.name == "dataset_retrieval"
     assert span.attributes[RETRIEVAL_QUERY] == "query"
@@ -348,6 +356,7 @@ def test_dataset_retrieval_trace_creates_span(trace_instance: AliyunDataTrace, m
 def test_tool_trace_returns_early_if_no_message_data(trace_instance: AliyunDataTrace):
     trace_info = _make_tool_trace_info(message_data=None)
     trace_instance.tool_trace(trace_info)
+    # pyrefly: ignore [missing-attribute]
     assert trace_instance.trace_client.added_spans == []
 
 
@@ -371,7 +380,9 @@ def test_tool_trace_creates_span(trace_instance: AliyunDataTrace, monkeypatch: p
         )
     )
 
+    # pyrefly: ignore [missing-attribute]
     assert len(trace_instance.trace_client.added_spans) == 1
+    # pyrefly: ignore [bad-index]
     span = trace_instance.trace_client.added_spans[0]
     assert span.name == "my-tool"
     assert span.status == status
@@ -481,6 +492,7 @@ def test_build_workflow_task_span(trace_instance: AliyunDataTrace, monkeypatch: 
     node_execution.created_at = _dt()
     node_execution.finished_at = _dt()
 
+    # pyrefly: ignore [bad-argument-type]
     span = trace_instance.build_workflow_task_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span.trace_id == 1
     assert span.span_id == 9
@@ -504,6 +516,7 @@ def test_build_workflow_tool_span(trace_instance: AliyunDataTrace, monkeypatch: 
     node_execution.finished_at = _dt()
     node_execution.metadata = {WorkflowNodeExecutionMetadataKey.TOOL_INFO: {"k": "v"}}
 
+    # pyrefly: ignore [bad-argument-type]
     span = trace_instance.build_workflow_tool_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span.attributes[TOOL_NAME] == "my-tool"
     assert span.attributes[TOOL_DESCRIPTION] == '{"k": "v"}'
@@ -513,6 +526,7 @@ def test_build_workflow_tool_span(trace_instance: AliyunDataTrace, monkeypatch: 
     # Cover metadata is None and inputs is None
     node_execution.metadata = None
     node_execution.inputs = None
+    # pyrefly: ignore [bad-argument-type]
     span2 = trace_instance.build_workflow_tool_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span2.attributes[TOOL_DESCRIPTION] == "{}"
     assert span2.attributes[TOOL_PARAMETERS] == "{}"
@@ -536,6 +550,7 @@ def test_build_workflow_retrieval_span(trace_instance: AliyunDataTrace, monkeypa
     node_execution.created_at = _dt()
     node_execution.finished_at = _dt()
 
+    # pyrefly: ignore [bad-argument-type]
     span = trace_instance.build_workflow_retrieval_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span.attributes[RETRIEVAL_QUERY] == "q"
     assert span.attributes[RETRIEVAL_DOCUMENT] == '[{"formatted": true}]'
@@ -543,6 +558,7 @@ def test_build_workflow_retrieval_span(trace_instance: AliyunDataTrace, monkeypa
     # Cover empty inputs/outputs
     node_execution.inputs = None
     node_execution.outputs = None
+    # pyrefly: ignore [bad-argument-type]
     span2 = trace_instance.build_workflow_retrieval_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span2.attributes[RETRIEVAL_QUERY] == ""
     assert span2.attributes[RETRIEVAL_DOCUMENT] == "[]"
@@ -570,6 +586,7 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     node_execution.created_at = _dt()
     node_execution.finished_at = _dt()
 
+    # pyrefly: ignore [bad-argument-type]
     span = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "3"
     assert span.attributes[GEN_AI_REQUEST_MODEL] == "m"
@@ -582,6 +599,7 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     # Cover usage from outputs if not in process_data
     node_execution.process_data = {"prompts": []}
     node_execution.outputs = {"usage": {"total_tokens": 10}, "text": ""}
+    # pyrefly: ignore [bad-argument-type]
     span2 = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span2.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "10"
 
@@ -600,10 +618,14 @@ def test_add_workflow_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.
     trace_info = _make_workflow_trace_info(
         message_id="msg-1", workflow_run_inputs={"sys.query": "hi"}, workflow_run_outputs={"ans": "ok"}
     )
+    # pyrefly: ignore [bad-argument-type]
     trace_instance.add_workflow_span(trace_info, trace_metadata)
 
+    # pyrefly: ignore [missing-attribute]
     assert len(trace_instance.trace_client.added_spans) == 2
+    # pyrefly: ignore [bad-index]
     message_span = trace_instance.trace_client.added_spans[0]
+    # pyrefly: ignore [bad-index]
     workflow_span = trace_instance.trace_client.added_spans[1]
 
     assert message_span.name == "message"
@@ -614,12 +636,16 @@ def test_add_workflow_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.
     assert workflow_span.span_kind == SpanKind.INTERNAL
     assert workflow_span.parent_span_id == 20
 
+    # pyrefly: ignore [missing-attribute]
     trace_instance.trace_client.added_spans.clear()
 
     # CASE 2: Without message_id
     trace_info_no_msg = _make_workflow_trace_info(message_id=None)
+    # pyrefly: ignore [bad-argument-type]
     trace_instance.add_workflow_span(trace_info_no_msg, trace_metadata)
+    # pyrefly: ignore [bad-argument-type]
     assert len(trace_instance.trace_client.added_spans) == 1
+    # pyrefly: ignore [bad-index]
     span = trace_instance.trace_client.added_spans[0]
     assert span.name == "workflow"
     assert span.span_kind == SpanKind.SERVER
@@ -641,7 +667,9 @@ def test_suggested_question_trace(trace_instance: AliyunDataTrace, monkeypatch: 
     trace_info = _make_suggested_question_trace_info(suggested_question=["how?"])
     trace_instance.suggested_question_trace(trace_info)
 
+    # pyrefly: ignore [missing-attribute]
     assert len(trace_instance.trace_client.added_spans) == 1
+    # pyrefly: ignore [bad-index]
     span = trace_instance.trace_client.added_spans[0]
     assert span.name == "suggested_question"
     assert span.attributes[GEN_AI_COMPLETION] == '["how?"]'

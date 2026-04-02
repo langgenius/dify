@@ -7,6 +7,7 @@ class PingResponse(BaseModel):
     result: str = Field(description="Health check result", examples=["pong"])
 
 
+# pyrefly: ignore [missing-attribute]
 @console_router.get(
     "/ping",
     response_model=PingResponse,

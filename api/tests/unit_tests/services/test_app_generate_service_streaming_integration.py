@@ -93,6 +93,7 @@ def _patch_get_channel_streams(monkeypatch):
     from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
     fake = _FakeStreams()
+    # pyrefly: ignore [bad-argument-type]
     chan = StreamsBroadcastChannel(fake, retention_seconds=60)
 
     def _get_channel():
@@ -113,6 +114,7 @@ def _patch_get_channel_pubsub(monkeypatch):
 
     store: dict[str, deque[bytes]] = defaultdict(deque)
     client = _FakeRedisClient(store)
+    # pyrefly: ignore [bad-argument-type]
     chan = RedisBroadcastChannel(client)
 
     def _get_channel():

@@ -163,11 +163,17 @@ class TestOrganizePromptMessages:
 
         content = result[0].content
 
+        # pyrefly: ignore [not-iterable]
         assert "History" in content
+        # pyrefly: ignore [not-iterable]
         assert "Thought: Thinking" in content
+        # pyrefly: ignore [not-iterable]
         assert "Action: Act" in content
+        # pyrefly: ignore [not-iterable]
         assert "Observation: Obs" in content
+        # pyrefly: ignore [not-iterable]
         assert "Final Answer: Done" in content
+        # pyrefly: ignore [not-iterable]
         assert "Question: What is Python?" in content
 
     def test_no_scratchpad(

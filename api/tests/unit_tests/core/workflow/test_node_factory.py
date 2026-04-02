@@ -107,6 +107,7 @@ class TestFetchMemory:
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
+            # pyrefly: ignore [bad-argument-type]
             node_data_memory=object(),
             model_instance=sentinel.model_instance,
         )
@@ -143,6 +144,7 @@ class TestFetchMemory:
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
+            # pyrefly: ignore [bad-argument-type]
             node_data_memory=object(),
             model_instance=sentinel.model_instance,
         )
@@ -335,6 +337,7 @@ class TestDifyNodeFactoryInit:
             ) as build_dify_model_access,
         ):
             factory = node_factory.DifyNodeFactory(
+                # pyrefly: ignore [bad-argument-type]
                 graph_init_params=graph_init_params,
                 graph_runtime_state=graph_runtime_state,
             )
@@ -398,7 +401,9 @@ class TestDifyNodeFactoryCreateNode:
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
+        # pyrefly: ignore [bad-assignment]
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        # pyrefly: ignore [bad-assignment]
         factory._dify_context = SimpleNamespace(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -539,6 +544,7 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["file_manager"] is sentinel.file_manager
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
         elif constructor_name == "HumanInputNode":
+            # pyrefly: ignore [unbound-name]
             assert kwargs["form_repository"] is form_repository
             assert kwargs["runtime"] is factory._human_input_runtime
             factory._human_input_runtime.build_form_repository.assert_called_once_with()
@@ -683,7 +689,9 @@ class TestDifyNodeFactoryMemory:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
+        # pyrefly: ignore [bad-assignment]
         factory._dify_context = SimpleNamespace(app_id="app-id")
+        # pyrefly: ignore [bad-assignment]
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
         return factory
 

@@ -51,6 +51,7 @@ def test_invoke_summary_uses_same_user_scope_for_token_helpers():
             return_value=10,
         ) as mock_prompt_tokens,
     ):
+        # pyrefly: ignore [bad-argument-type]
         assert PluginModelBackwardsInvocation.invoke_summary("user-1", tenant, payload) == "short"
 
     mock_max_tokens.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")

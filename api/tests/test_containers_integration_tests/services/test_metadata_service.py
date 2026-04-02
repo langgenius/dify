@@ -1,6 +1,7 @@
 from unittest.mock import create_autospec, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -53,6 +54,7 @@ class TestMetadataService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -62,6 +64,7 @@ class TestMetadataService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
         db_session_with_containers.add(tenant)
@@ -165,6 +168,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
         mock_external_service_dependencies["current_user"].id = account.id
 
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
 
         # Act: Execute the method under test
@@ -203,6 +207,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         long_name = "a" * 256  # 256 characters, exceeding 255 limit
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name=long_name)
 
         # Act & Assert: Verify proper error handling
@@ -228,10 +233,12 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create first metadata
+        # pyrefly: ignore [bad-argument-type]
         first_metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="duplicate_name")
         MetadataService.create_metadata(dataset.id, first_metadata_args)
 
         # Try to create second metadata with same name
+        # pyrefly: ignore [bad-argument-type]
         second_metadata_args = MetadataArgs(type=DatasetMetadataType.NUMBER, name="duplicate_name")
 
         # Act & Assert: Verify proper error handling
@@ -258,6 +265,7 @@ class TestMetadataService:
 
         # Try to create metadata with built-in field name
         built_in_field_name = BuiltInField.document_name
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name=built_in_field_name)
 
         # Act & Assert: Verify proper error handling
@@ -283,6 +291,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -320,6 +329,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -349,9 +359,11 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create two metadata entries
+        # pyrefly: ignore [bad-argument-type]
         first_metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="first_metadata")
         first_metadata = MetadataService.create_metadata(dataset.id, first_metadata_args)
 
+        # pyrefly: ignore [bad-argument-type]
         second_metadata_args = MetadataArgs(type=DatasetMetadataType.NUMBER, name="second_metadata")
         second_metadata = MetadataService.create_metadata(dataset.id, second_metadata_args)
 
@@ -378,6 +390,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="old_name")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -434,6 +447,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="to_be_deleted")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -498,6 +512,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -800,6 +815,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -868,6 +884,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -919,6 +936,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -1040,6 +1058,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
@@ -1103,6 +1122,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
+        # pyrefly: ignore [bad-argument-type]
         metadata_args = MetadataArgs(type=DatasetMetadataType.STRING, name="test_metadata")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 

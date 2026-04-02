@@ -273,7 +273,9 @@ def regenerate_summary_index_task(
                                 total_segments_failed += 1
                                 # Update summary record with error status
                                 if summary_record:
+                                    # pyrefly: ignore [bad-assignment]
                                     summary_record.status = "error"
+                                    # pyrefly: ignore [bad-assignment]
                                     summary_record.error = f"Regeneration failed: {str(e)}"
                                     session.add(summary_record)
                                     session.commit()

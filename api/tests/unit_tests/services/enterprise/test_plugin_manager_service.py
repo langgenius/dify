@@ -57,7 +57,9 @@ class TestTryPreUninstallPlugin:
         ):
             mock_send_request.side_effect = HTTPStatusError(
                 "502 Bad Gateway",
+                # pyrefly: ignore [bad-argument-type]
                 request=None,
+                # pyrefly: ignore [bad-argument-type]
                 response=None,
             )
 

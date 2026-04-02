@@ -30,6 +30,7 @@ class MCPToolProviderController(ToolProviderController):
         sse_read_timeout: float | None = None,
     ):
         super().__init__(entity)
+        # pyrefly: ignore [bad-override]
         self.entity: ToolProviderEntityWithPlugin = entity
         self.tenant_id = tenant_id
         self.provider_id = provider_id

@@ -99,6 +99,7 @@ class HumanInputForm:
             "user_actions": self.user_actions,
         }
         if include_site_info:
+            # pyrefly: ignore [bad-typed-dict-key]
             response["site"] = {"app_id": self.app_id, "title": "Workflow Form"}
         return response
 
@@ -214,6 +215,7 @@ class FormService:
             "user_actions": form.user_actions,
         }
         if is_token:
+            # pyrefly: ignore [bad-typed-dict-key]
             definition["site"] = {"title": "Workflow Form"}
         return definition
 

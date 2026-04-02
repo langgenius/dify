@@ -90,6 +90,7 @@ class LindormVectorStore(BaseVector):
     def refresh(self):
         self._client.indices.refresh(index=self._collection_name)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(
         self,
         documents: list[Document],
@@ -139,6 +140,7 @@ class LindormVectorStore(BaseVector):
                     Field.METADATA_KEY: documents[i].metadata,
                 }
                 if self._using_ugc:
+                    # pyrefly: ignore [bad-typed-dict-key]
                     action_header["index"]["routing"] = self._routing
                     action_values[ROUTING_FIELD] = self._routing
 
@@ -392,15 +394,21 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
         if dataset.index_struct:
             # if an existed record's index_struct_dict doesn't contain using_ugc field,
             # it actually stores in the normal index format
+            # pyrefly: ignore [missing-attribute]
             stored_in_ugc: bool = dataset.index_struct_dict.get("using_ugc", False)
             using_ugc = stored_in_ugc
             if stored_in_ugc:
+                # pyrefly: ignore [unsupported-operation]
                 dimension = dataset.index_struct_dict["dimension"]
+                # pyrefly: ignore [unsupported-operation]
                 index_type = dataset.index_struct_dict["index_type"]
+                # pyrefly: ignore [unsupported-operation]
                 distance_type = dataset.index_struct_dict["distance_type"]
+                # pyrefly: ignore [unsupported-operation]
                 routing_value = dataset.index_struct_dict["vector_store"]["class_prefix"]
                 index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}".lower()
             else:
+                # pyrefly: ignore [unsupported-operation]
                 index_name = dataset.index_struct_dict["vector_store"]["class_prefix"].lower()
         else:
             embedding_vector = embeddings.embed_query("hello word")

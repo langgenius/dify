@@ -13,6 +13,7 @@ and realistic testing scenarios with actual PostgreSQL and Redis instances.
 from unittest.mock import MagicMock, patch
 
 import pytest
+# pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy import delete
 
@@ -90,6 +91,7 @@ class TestSendEmailCodeLoginMailTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
+            # pyrefly: ignore [bad-argument-type]
             status="active",
         )
 
@@ -119,6 +121,7 @@ class TestSendEmailCodeLoginMailTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
+            # pyrefly: ignore [bad-argument-type]
             status="normal",
         )
 

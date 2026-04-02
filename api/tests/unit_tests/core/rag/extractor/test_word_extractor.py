@@ -89,6 +89,7 @@ def test_init_downloads_via_ssrf_proxy(monkeypatch):
     try:
         assert calls
         assert calls[0][0] == "get"
+        # pyrefly: ignore [not-iterable]
         url, kwargs = calls[0][1]
         assert url == "https://example.com/test.docx"
         assert kwargs.get("timeout") is None
@@ -208,7 +209,9 @@ def test_extract_images_from_docx_uses_internal_files_url():
 
     finally:
         # Restore original values
+        # pyrefly: ignore [bad-assignment]
         dify_config.FILES_URL = original_files_url
+        # pyrefly: ignore [bad-assignment]
         dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 

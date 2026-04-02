@@ -138,6 +138,7 @@ class TestBuiltinToolProviderValidation:
             provider="google",
             name="Google OAuth",
             encrypted_credentials=json.dumps(credentials),
+            # pyrefly: ignore [bad-argument-type]
             credential_type="oauth2",
             expires_at=1735689600,
         )
@@ -600,6 +601,7 @@ class TestToolOAuthModels:
             provider="test",
         )
         # encrypted_oauth_params has init=False, set it to None
+        # pyrefly: ignore [bad-argument-type]
         oauth_client.encrypted_oauth_params = None
 
         # Act

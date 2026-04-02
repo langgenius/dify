@@ -124,6 +124,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document
+# pyrefly: ignore [missing-module-attribute]
 from models.dataset import ChildChunk, Dataset, DatasetDocument, DatasetProcessRule, DocumentSegment
 from services.vector_service import VectorService
 
@@ -784,6 +785,7 @@ class TestVectorService:
             page_content="Child content", doc_id="child-node-123"
         )
 
+        # pyrefly: ignore [bad-assignment]
         child_document.children = [child_document]
 
         mock_index_processor = VectorServiceTestDataFactory.create_index_processor_mock()
@@ -1739,6 +1741,7 @@ class TestVector:
 
         vector = Vector(dataset=dataset)
 
+        # pyrefly: ignore [bad-argument-type]
         doc1 = Document(page_content="Content 1", metadata=None)
 
         doc2 = Document(page_content="Content 2", metadata={})

@@ -50,8 +50,10 @@ def _mock_db_session(monkeypatch):
 
     def refresh_side_effect(obj):
         if isinstance(obj, Conversation) and obj.id is None:
+            # pyrefly: ignore [bad-assignment]
             obj.id = "generated-conversation-id"
         if isinstance(obj, Message) and obj.id is None:
+            # pyrefly: ignore [bad-assignment]
             obj.id = "generated-message-id"
 
     session.refresh.side_effect = refresh_side_effect

@@ -20,6 +20,7 @@ class TestBasedGenerateTaskPipeline:
         )
         app_generate_entity = SimpleNamespace(task_id="task-1", app_config=app_config)
         return BasedGenerateTaskPipeline(
+            # pyrefly: ignore [bad-argument-type]
             application_generate_entity=app_generate_entity,
             queue_manager=Mock(),
             stream=True,

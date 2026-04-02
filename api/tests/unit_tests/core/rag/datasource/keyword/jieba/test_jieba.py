@@ -22,6 +22,7 @@ class _Field:
     def __init__(self, name: str):
         self._name = name
 
+    # pyrefly: ignore [bad-override]
     def __eq__(self, other):
         return ("eq", self._name, other)
 
@@ -92,6 +93,7 @@ def patched_runtime(monkeypatch):
 
 def test_create_indexes_documents_and_returns_self(monkeypatch, patched_runtime):
     dataset = _dataset(_dataset_keyword_table(), keyword_number=2)
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(dataset)
     handler = MagicMock()
     handler.extract_keywords.return_value = {"kw1", "kw2"}
@@ -102,6 +104,7 @@ def test_create_indexes_documents_and_returns_self(monkeypatch, patched_runtime)
     monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
 
     result = keyword.create(
+        # pyrefly: ignore [bad-argument-type]
         [
             Document(page_content="alpha", metadata={"doc_id": "node-1"}),
             SimpleNamespace(page_content="ignored", metadata=None),
@@ -109,11 +112,14 @@ def test_create_indexes_documents_and_returns_self(monkeypatch, patched_runtime)
     )
 
     assert result is keyword
+    # pyrefly: ignore [missing-attribute]
     keyword._update_segment_keywords.assert_called_once()
+    # pyrefly: ignore [missing-attribute]
     call_args = keyword._update_segment_keywords.call_args.args
     assert call_args[0] == "dataset-1"
     assert call_args[1] == "node-1"
     assert set(call_args[2]) == {"kw1", "kw2"}
+    # pyrefly: ignore [missing-attribute]
     saved_table = keyword._save_dataset_keyword_table.call_args.args[0]
     assert saved_table["kw1"] == {"node-1"}
     assert saved_table["kw2"] == {"node-1"}
@@ -121,6 +127,7 @@ def test_create_indexes_documents_and_returns_self(monkeypatch, patched_runtime)
 
 
 def test_add_texts_supports_keywords_list_and_extract_fallback(monkeypatch, patched_runtime):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=3))
     handler = MagicMock()
     handler.extract_keywords.return_value = {"auto"}
@@ -136,15 +143,20 @@ def test_add_texts_supports_keywords_list_and_extract_fallback(monkeypatch, patc
     ]
     keyword.add_texts(texts, keywords_list=[[], ["manual"]])
 
+    # pyrefly: ignore [missing-attribute]
     assert keyword._update_segment_keywords.call_count == 2
+    # pyrefly: ignore [missing-attribute]
     first_call = keyword._update_segment_keywords.call_args_list[0].args
+    # pyrefly: ignore [missing-attribute]
     second_call = keyword._update_segment_keywords.call_args_list[1].args
     assert set(first_call[2]) == {"auto"}
     assert second_call[2] == ["manual"]
+    # pyrefly: ignore [missing-attribute]
     keyword._save_dataset_keyword_table.assert_called_once()
 
 
 def test_add_texts_without_keywords_list_always_uses_extractor(monkeypatch, patched_runtime):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=1))
     handler = MagicMock()
     handler.extract_keywords.return_value = {"from-extractor"}
@@ -157,10 +169,12 @@ def test_add_texts_without_keywords_list_always_uses_extractor(monkeypatch, patc
     keyword.add_texts([Document(page_content="content", metadata={"doc_id": "node-1"})])
 
     handler.extract_keywords.assert_called_once_with("content", 1)
+    # pyrefly: ignore [missing-attribute]
     assert set(keyword._update_segment_keywords.call_args.args[2]) == {"from-extractor"}
 
 
 def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
 
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value=None))
@@ -172,6 +186,7 @@ def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch):
 
 
 def test_delete_by_ids_updates_table_when_present(monkeypatch, patched_runtime):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={"k": {"node-1", "node-2"}}))
     monkeypatch.setattr(keyword, "_delete_ids_from_keyword_table", MagicMock(return_value={"k": {"node-2"}}))
@@ -179,11 +194,14 @@ def test_delete_by_ids_updates_table_when_present(monkeypatch, patched_runtime):
 
     keyword.delete_by_ids(["node-1"])
 
+    # pyrefly: ignore [missing-attribute]
     keyword._delete_ids_from_keyword_table.assert_called_once_with({"k": {"node-1", "node-2"}}, ["node-1"])
+    # pyrefly: ignore [missing-attribute]
     keyword._save_dataset_keyword_table.assert_called_once_with({"k": {"node-2"}})
 
 
 def test_delete_by_ids_saves_none_when_keyword_table_is_missing(monkeypatch, patched_runtime):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value=None))
     monkeypatch.setattr(keyword, "_delete_ids_from_keyword_table", MagicMock())
@@ -191,7 +209,9 @@ def test_delete_by_ids_saves_none_when_keyword_table_is_missing(monkeypatch, pat
 
     keyword.delete_by_ids(["node-1"])
 
+    # pyrefly: ignore [missing-attribute]
     keyword._delete_ids_from_keyword_table.assert_not_called()
+    # pyrefly: ignore [missing-attribute]
     keyword._save_dataset_keyword_table.assert_called_once_with(None)
 
 
@@ -201,6 +221,7 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch, 
         index_node_id = _Field("index_node_id")
         document_id = _Field("document_id")
 
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     patched_runtime.session.scalars.return_value.all.return_value = [
         SimpleNamespace(
@@ -229,10 +250,12 @@ def test_delete_removes_keyword_table_and_optional_file(monkeypatch, patched_run
     db_keyword = _dataset_keyword_table(data_source_type="database")
     file_keyword = _dataset_keyword_table(data_source_type="object_storage")
 
+    # pyrefly: ignore [bad-argument-type]
     keyword_db = Jieba(_dataset(db_keyword))
     keyword_db.delete()
     patched_runtime.storage.delete.assert_not_called()
 
+    # pyrefly: ignore [bad-argument-type]
     keyword_file = Jieba(_dataset(file_keyword))
     keyword_file.delete()
 
@@ -243,6 +266,7 @@ def test_delete_removes_keyword_table_and_optional_file(monkeypatch, patched_run
 
 def test_save_dataset_keyword_table_to_database(monkeypatch, patched_runtime):
     dataset_keyword_table = _dataset_keyword_table(data_source_type="database")
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(dataset_keyword_table))
 
     keyword._save_dataset_keyword_table({"kw": {"node-1"}})
@@ -254,6 +278,7 @@ def test_save_dataset_keyword_table_to_database(monkeypatch, patched_runtime):
 
 def test_save_dataset_keyword_table_to_file_storage(monkeypatch, patched_runtime):
     dataset_keyword_table = _dataset_keyword_table(data_source_type="file")
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(dataset_keyword_table))
     patched_runtime.storage.exists.return_value = True
 
@@ -270,10 +295,12 @@ def test_get_dataset_keyword_table_returns_existing_table_data(monkeypatch, patc
     existing = _dataset_keyword_table(
         keyword_table_dict={"__type__": "keyword_table", "__data__": {"table": {"kw": ["node-1"]}}}
     )
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(existing))
     assert keyword._get_dataset_keyword_table() == {"kw": ["node-1"]}
 
     missing_payload = _dataset_keyword_table(keyword_table_dict=None)
+    # pyrefly: ignore [bad-argument-type]
     keyword_with_missing_payload = Jieba(_dataset(missing_payload))
     assert keyword_with_missing_payload._get_dataset_keyword_table() == {}
 
@@ -288,6 +315,7 @@ def test_get_dataset_keyword_table_creates_table_when_missing(monkeypatch, patch
         created_tables.append(table)
         return table
 
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(dataset_keyword_table=None))
     monkeypatch.setattr(jieba_module, "DatasetKeywordTable", _fake_dataset_keyword_table)
     monkeypatch.setattr(jieba_module.dify_config, "KEYWORD_DATA_SOURCE_TYPE", "database")
@@ -304,6 +332,7 @@ def test_get_dataset_keyword_table_creates_table_when_missing(monkeypatch, patch
 
 
 def test_add_and_delete_ids_from_keyword_table_helpers():
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     keyword_table = {"kw1": {"node-1"}, "kw2": {"node-1", "node-2"}}
 
@@ -318,6 +347,7 @@ def test_add_and_delete_ids_from_keyword_table_helpers():
 
 
 def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     handler = MagicMock()
     handler.extract_keywords.return_value = ["kw-a", "kw-b"]
@@ -340,6 +370,7 @@ def test_update_segment_keywords_updates_when_segment_exists(monkeypatch, patche
     monkeypatch.setattr(jieba_module, "DocumentSegment", _FakeDocumentSegment)
     monkeypatch.setattr(jieba_module, "select", lambda *_: _FakeSelect())
 
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     segment = SimpleNamespace(keywords=[])
     patched_runtime.session.scalar.return_value = segment
@@ -360,21 +391,27 @@ def test_update_segment_keywords_updates_when_segment_exists(monkeypatch, patche
 
 
 def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
     monkeypatch.setattr(keyword, "_update_segment_keywords", MagicMock())
     monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
 
     keyword.create_segment_keywords("node-1", ["kw"])
+    # pyrefly: ignore [missing-attribute]
     keyword._update_segment_keywords.assert_called_once_with("dataset-1", "node-1", ["kw"])
+    # pyrefly: ignore [missing-attribute]
     keyword._save_dataset_keyword_table.assert_called_once()
 
+    # pyrefly: ignore [missing-attribute]
     keyword._save_dataset_keyword_table.reset_mock()
     keyword.update_segment_keywords_index("node-2", ["kw2"])
+    # pyrefly: ignore [missing-attribute]
     keyword._save_dataset_keyword_table.assert_called_once()
 
 
 def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(monkeypatch):
+    # pyrefly: ignore [bad-argument-type]
     keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=2))
     handler = MagicMock()
     handler.extract_keywords.return_value = {"auto"}
@@ -387,13 +424,16 @@ def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(monk
 
     keyword.multi_create_segment_keywords(
         [
+            # pyrefly: ignore [bad-typed-dict-key]
             {"segment": first_segment, "keywords": ["manual"]},
+            # pyrefly: ignore [bad-typed-dict-key]
             {"segment": second_segment, "keywords": []},
         ]
     )
 
     assert first_segment.keywords == ["manual"]
     assert second_segment.keywords == ["auto"]
+    # pyrefly: ignore [missing-attribute]
     saved_table = keyword._save_dataset_keyword_table.call_args.args[0]
     assert saved_table["manual"] == {"node-1"}
     assert saved_table["auto"] == {"node-2"}

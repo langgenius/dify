@@ -39,6 +39,7 @@ if "core.ops.ops_trace_manager" not in sys.modules:
         def __init__(self, *_, **__):
             pass
 
+    # pyrefly: ignore [missing-attribute]
     ops_stub.TraceQueueManager = _StubTraceQueueManager
     sys.modules["core.ops.ops_trace_manager"] = ops_stub
 
@@ -89,6 +90,7 @@ class _StubToolNode(Node[_StubToolNodeData]):
     def get_base_node_data(self) -> BaseNodeData:
         return self._node_data
 
+    # pyrefly: ignore [bad-override]
     def _run(self):
         if self.node_data.pause_on:
             yield PauseRequestedEvent(reason=SchedulingPause(message="test pause"))
@@ -223,15 +225,22 @@ def test_workflow_app_pause_resume_matches_baseline(mocker):
     mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
 
     resumed_nodes = generator.resume(
+        # pyrefly: ignore [bad-argument-type]
         app_model=SimpleNamespace(mode="workflow"),
+        # pyrefly: ignore [bad-argument-type]
         workflow=SimpleNamespace(),
+        # pyrefly: ignore [bad-argument-type]
         user=SimpleNamespace(),
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=SimpleNamespace(stream=False, invoke_from=InvokeFrom.SERVICE_API),
         graph_runtime_state=resumed_state,
+        # pyrefly: ignore [bad-argument-type]
         workflow_execution_repository=SimpleNamespace(),
+        # pyrefly: ignore [bad-argument-type]
         workflow_node_execution_repository=SimpleNamespace(),
     )
 
+    # pyrefly: ignore [unsupported-operation]
     assert paused_nodes + resumed_nodes == baseline_nodes
     assert resumed_state.outputs == baseline_outputs
 
@@ -263,17 +272,26 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker):
     mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
 
     resumed_nodes = generator.resume(
+        # pyrefly: ignore [bad-argument-type]
         app_model=SimpleNamespace(mode="workflow"),
+        # pyrefly: ignore [bad-argument-type]
         workflow=SimpleNamespace(),
+        # pyrefly: ignore [bad-argument-type]
         user=SimpleNamespace(),
+        # pyrefly: ignore [bad-argument-type]
         conversation=SimpleNamespace(id="conv"),
+        # pyrefly: ignore [bad-argument-type]
         message=SimpleNamespace(id="msg"),
+        # pyrefly: ignore [bad-argument-type]
         application_generate_entity=SimpleNamespace(stream=False, invoke_from=InvokeFrom.SERVICE_API),
+        # pyrefly: ignore [bad-argument-type]
         workflow_execution_repository=SimpleNamespace(),
+        # pyrefly: ignore [bad-argument-type]
         workflow_node_execution_repository=SimpleNamespace(),
         graph_runtime_state=resumed_state,
     )
 
+    # pyrefly: ignore [unsupported-operation]
     assert paused_nodes + resumed_nodes == baseline_nodes
     assert resumed_state.outputs == baseline_outputs
 

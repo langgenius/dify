@@ -139,6 +139,7 @@ class TriggerService:
                 request_id=request_id,
             )
             dispatch_data = plugin_trigger_dispatch_data.model_dump(mode="json")
+            # pyrefly: ignore [not-callable]
             dispatch_triggered_workflows_async.delay(dispatch_data)
 
             logger.info(

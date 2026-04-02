@@ -94,6 +94,7 @@ def test_initialize_success(streams):
 def test_initialize_custom_capabilities(streams):
     read_stream, write_stream = streams
     session = ClientSession(
+        # pyrefly: ignore [bad-argument-type]
         read_stream, write_stream, sampling_callback=lambda c, p: None, list_roots_callback=lambda c: None
     )
 
@@ -547,14 +548,18 @@ def test_default_sampling_callback():
     ctx = MagicMock()
     params = MagicMock()
     res = _default_sampling_callback(ctx, params)
+    # pyrefly: ignore [missing-attribute]
     assert res.code == types.INVALID_REQUEST
+    # pyrefly: ignore [missing-attribute]
     assert "not supported" in res.message
 
 
 def test_default_list_roots_callback():
     ctx = MagicMock()
     res = _default_list_roots_callback(ctx)
+    # pyrefly: ignore [missing-attribute]
     assert res.code == types.INVALID_REQUEST
+    # pyrefly: ignore [missing-attribute]
     assert "not supported" in res.message
 
 

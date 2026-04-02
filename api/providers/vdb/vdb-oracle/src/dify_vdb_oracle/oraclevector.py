@@ -136,6 +136,7 @@ class OracleVector(BaseVector):
             "increment": 1,
         }
         if config.is_autonomous:
+            # pyrefly: ignore [no-matching-overload]
             pool_params.update(
                 {
                     "config_dir": config.config_dir,
@@ -188,6 +189,7 @@ class OracleVector(BaseVector):
             conn.close()
         return pks
 
+    # pyrefly: ignore [bad-return]
     def text_exists(self, id: str) -> bool:
         with self._get_connection() as conn:
             with conn.cursor() as cur:

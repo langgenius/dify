@@ -1575,7 +1575,9 @@ class TestRerankEdgeCases:
 
         # Assert: Empty query is processed
         assert len(result) == 1
+        # pyrefly: ignore [missing-attribute]
         mock_model_instance.invoke_rerank.assert_called_once()
+        # pyrefly: ignore [missing-attribute]
         assert mock_model_instance.invoke_rerank.call_args.kwargs["query"] == ""
 
 
@@ -1627,6 +1629,7 @@ class TestRerankPerformance:
         result = runner.run(query="test", documents=documents)
 
         # Assert: Model invoked exactly once (batch processing)
+        # pyrefly: ignore [missing-attribute]
         assert mock_model_instance.invoke_rerank.call_count == 1
         assert len(result) == 5
 

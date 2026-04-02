@@ -85,7 +85,9 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     assert o.message.text.endswith(".bin")
     # meta is preserved (still contains mime_type: None)
     assert "mime_type" in (o.meta or {})
+    # pyrefly: ignore [unsupported-operation]
     assert o.meta["mime_type"] is None
+    # pyrefly: ignore [unsupported-operation]
     assert o.meta["tool_file_id"] == "fake-tool-file-id"
 
 
@@ -106,4 +108,5 @@ def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
     )
 
     assert len(out) == 1
+    # pyrefly: ignore [unsupported-operation]
     assert out[0].meta["tool_file_id"] == "existing-tool-file"

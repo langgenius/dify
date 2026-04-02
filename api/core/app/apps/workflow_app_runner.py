@@ -679,6 +679,7 @@ class WorkflowBasedAppRunner:
             if not reason.form_id:
                 continue
             try:
+                # pyrefly: ignore [not-callable]
                 dispatch_human_input_email_task.apply_async(
                     kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
                     queue="mail",

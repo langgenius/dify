@@ -44,6 +44,7 @@ class UpstashVector(BaseVector):
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.add_texts(texts, embeddings)
 
+    # pyrefly: ignore [bad-override]
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         vectors = [
             Vector(

@@ -76,6 +76,7 @@ def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch):
 
     assert next(generator) == StreamEvent.PING.value
     event = next(generator)
+    # pyrefly: ignore [bad-index]
     assert event["event"] == StreamEvent.WORKFLOW_FINISHED.value
     with pytest.raises(StopIteration):
         next(generator)
@@ -98,6 +99,7 @@ def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch):
     monkeypatch.setattr("core.app.apps.streaming_utils.time.time", fake_time)
 
     generator = stream_topic_events(
+        # pyrefly: ignore [bad-argument-type]
         topic=topic,
         idle_timeout=10.0,
         ping_interval=1.0,

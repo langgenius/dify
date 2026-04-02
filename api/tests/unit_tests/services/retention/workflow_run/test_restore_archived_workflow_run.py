@@ -338,6 +338,7 @@ class TestGetSchemaVersion:
 
         # This should raise ValueError because "1" is not in SCHEMA_MAPPERS (only "1.0" is)
         with pytest.raises(ValueError, match="Unsupported schema_version 1"):
+            # pyrefly: ignore [bad-argument-type]
             restore._get_schema_version(manifest)
 
 
@@ -610,9 +611,11 @@ class TestRestoreFromRun:
         run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
 
         with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+            # pyrefly: ignore [bad-argument-type]
             result = restore._restore_from_run(run, session_maker=lambda: Mock())
 
         assert result.success is False
+        # pyrefly: ignore [not-iterable]
         assert "Storage not configured" in result.error
         assert result.elapsed_time > 0
 
@@ -627,9 +630,11 @@ class TestRestoreFromRun:
         run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
 
         with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+            # pyrefly: ignore [bad-argument-type]
             result = restore._restore_from_run(run, session_maker=lambda: Mock())
 
         assert result.success is False
+        # pyrefly: ignore [not-iterable]
         assert "Archive bundle not found" in result.error
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
@@ -650,6 +655,7 @@ class TestRestoreFromRun:
         mock_session.__enter__ = Mock(return_value=mock_session)
         mock_session.__exit__ = Mock(return_value=None)
 
+        # pyrefly: ignore [bad-argument-type]
         result = restore._restore_from_run(run, session_maker=lambda: mock_session)
 
         assert result.success is True
@@ -706,6 +712,7 @@ class TestRestoreFromRun:
             mock_get_repo.return_value = mock_repo
 
             with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+                # pyrefly: ignore [bad-argument-type]
                 result = restore._restore_from_run(run, session_maker=session_maker)
 
         assert result.success is True
@@ -732,10 +739,12 @@ class TestRestoreFromRun:
         mock_session.__exit__ = Mock(return_value=None)
 
         with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
+            # pyrefly: ignore [bad-argument-type]
             result = restore._restore_from_run(run, session_maker=lambda: mock_session)
 
         assert result.success is False
         # The error message comes from zipfile.BadZipFile which says "File is not a zip file"
+        # pyrefly: ignore [not-iterable]
         assert "File is not a zip file" in result.error
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
@@ -756,6 +765,7 @@ class TestRestoreFromRun:
         mock_session.__enter__ = Mock(return_value=mock_session)
         mock_session.__exit__ = Mock(return_value=None)
 
+        # pyrefly: ignore [bad-argument-type]
         result = restore._restore_from_run(archive_log, session_maker=lambda: mock_session)
 
         assert result.success is True
@@ -903,6 +913,7 @@ class TestRestoreByRunId:
                 result = restore.restore_by_run_id("nonexistent-run")
 
         assert result.success is False
+        # pyrefly: ignore [not-iterable]
         assert "not found" in result.error
         assert result.run_id == "nonexistent-run"
 

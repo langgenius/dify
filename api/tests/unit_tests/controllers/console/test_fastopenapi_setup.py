@@ -19,6 +19,7 @@ def app() -> Flask:
 
 
 def test_console_setup_fastopenapi_get_not_started(app: Flask):
+    # pyrefly: ignore [bad-argument-type]
     ext_fastopenapi.init_app(app)
 
     with (
@@ -33,6 +34,7 @@ def test_console_setup_fastopenapi_get_not_started(app: Flask):
 
 
 def test_console_setup_fastopenapi_post_success(app: Flask):
+    # pyrefly: ignore [bad-argument-type]
     ext_fastopenapi.init_app(app)
 
     payload = {

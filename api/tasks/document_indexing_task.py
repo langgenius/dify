@@ -157,6 +157,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 and document.need_summary is True
                             ):
                                 try:
+                                    # pyrefly: ignore [not-callable]
                                     generate_summary_index_task.delay(dataset.id, document.id, None)
                                     logger.info(
                                         "Queued summary index generation task for document %s in dataset %s "
@@ -242,6 +243,7 @@ def normal_document_indexing_task(tenant_id: str, dataset_id: str, document_ids:
     Usage: normal_document_indexing_task.delay(tenant_id, dataset_id, document_ids)
     """
     logger.info("normal document indexing task received: %s - %s - %s", tenant_id, dataset_id, document_ids)
+    # pyrefly: ignore [bad-argument-type]
     _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, normal_document_indexing_task)
 
 
@@ -256,4 +258,5 @@ def priority_document_indexing_task(tenant_id: str, dataset_id: str, document_id
     Usage: priority_document_indexing_task.delay(tenant_id, dataset_id, document_ids)
     """
     logger.info("priority document indexing task received: %s - %s - %s", tenant_id, dataset_id, document_ids)
+    # pyrefly: ignore [bad-argument-type]
     _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, priority_document_indexing_task)

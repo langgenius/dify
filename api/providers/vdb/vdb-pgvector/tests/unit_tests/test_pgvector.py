@@ -356,6 +356,7 @@ def test_add_texts_uses_execute_values_and_returns_ids(monkeypatch):
         Document(page_content="b", metadata={"document_id": "doc-b"}),
         SimpleNamespace(page_content="c", metadata=None),
     ]
+    # pyrefly: ignore [bad-argument-type]
     ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
 
     assert ids == ["doc-a", "generated-uuid"]
@@ -484,7 +485,9 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch):
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_PG_BIGM", False)
 
     with patch.object(pgvector_module, "PGVector", return_value="vector") as vector_cls:
+        # pyrefly: ignore [bad-argument-type]
         result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
+        # pyrefly: ignore [bad-argument-type]
         result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
 
     assert result_1 == "vector"

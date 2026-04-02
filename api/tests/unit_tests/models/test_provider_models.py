@@ -293,6 +293,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
         )
 
@@ -313,6 +314,7 @@ class TestProviderModelEntity:
             tenant_id=str(uuid4()),
             provider_name="anthropic",
             model_name="claude-3",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             credential_id=credential_id,
             is_valid=True,
@@ -329,6 +331,7 @@ class TestProviderModelEntity:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-3.5-turbo",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
         )
 
@@ -346,6 +349,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
         )
 
@@ -354,6 +358,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="text-embedding-ada-002",
+            # pyrefly: ignore [bad-argument-type]
             model_type="text-embedding",
         )
 
@@ -362,6 +367,7 @@ class TestProviderModelEntity:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="whisper-1",
+            # pyrefly: ignore [bad-argument-type]
             model_type="speech2text",
         )
 
@@ -384,6 +390,7 @@ class TestTenantDefaultModel:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
         )
 
@@ -403,6 +410,7 @@ class TestTenantDefaultModel:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
         )
 
@@ -410,6 +418,7 @@ class TestTenantDefaultModel:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="text-embedding-3-small",
+            # pyrefly: ignore [bad-argument-type]
             model_type="text-embedding",
         )
 
@@ -570,6 +579,7 @@ class TestProviderModelSetting:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
         )
 
@@ -588,6 +598,7 @@ class TestProviderModelSetting:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             enabled=True,
             load_balancing_enabled=True,
@@ -604,6 +615,7 @@ class TestProviderModelSetting:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             enabled=False,
         )
@@ -625,6 +637,7 @@ class TestLoadBalancingModelConfig:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             name="Primary API Key",
         )
@@ -647,6 +660,7 @@ class TestLoadBalancingModelConfig:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             name="Secondary API Key",
             encrypted_config='{"api_key": "encrypted_value"}',
@@ -666,6 +680,7 @@ class TestLoadBalancingModelConfig:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             name="Disabled Config",
             enabled=False,
@@ -686,8 +701,11 @@ class TestLoadBalancingModelConfig:
         }
 
         # Act
+        # pyrefly: ignore [bad-argument-type]
         primary = LoadBalancingModelConfig(**base_params, name="Primary Key")
+        # pyrefly: ignore [bad-argument-type]
         secondary = LoadBalancingModelConfig(**base_params, name="Secondary Key")
+        # pyrefly: ignore [bad-argument-type]
         backup = LoadBalancingModelConfig(**base_params, name="Backup Key", enabled=False)
 
         # Assert
@@ -760,6 +778,7 @@ class TestProviderModelCredential:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             credential_name="GPT-4 API Key",
             encrypted_config='{"api_key": "sk-model-specific..."}',
@@ -782,6 +801,7 @@ class TestProviderModelCredential:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-4",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             credential_name="GPT-4 Key",
             encrypted_config='{"api_key": "gpt4_key"}',
@@ -791,6 +811,7 @@ class TestProviderModelCredential:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="text-embedding-3-large",
+            # pyrefly: ignore [bad-argument-type]
             model_type="text-embedding",
             credential_name="Embedding Key",
             encrypted_config='{"api_key": "embedding_key"}',
@@ -815,6 +836,7 @@ class TestProviderModelCredential:
             tenant_id=str(uuid4()),
             provider_name="openai",
             model_name="gpt-4-turbo",
+            # pyrefly: ignore [bad-argument-type]
             model_type="llm",
             credential_name="Custom Config",
             encrypted_config=complex_config,

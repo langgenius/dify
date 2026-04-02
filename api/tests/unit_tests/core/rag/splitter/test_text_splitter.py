@@ -1874,6 +1874,7 @@ class TestErrorHandlingAndRobustness:
 
         # Should handle None without crashing
         try:
+            # pyrefly: ignore [bad-argument-type]
             result = splitter.split_text(None)
             # If it doesn't raise an error, result should be empty or handle gracefully
             assert result is not None

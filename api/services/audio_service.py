@@ -140,14 +140,18 @@ class AudioService:
 
             else:
                 response = invoke_tts(text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft)
+                # pyrefly: ignore [unsafe-overlap]
                 if isinstance(response, Generator):
+                    # pyrefly: ignore [no-matching-overload]
                     return Response(stream_with_context(response), content_type="audio/mpeg")
                 return response
         else:
             if text is None:
                 raise ValueError("Text is required")
             response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
+            # pyrefly: ignore [unsafe-overlap]
             if isinstance(response, Generator):
+                # pyrefly: ignore [no-matching-overload]
                 return Response(stream_with_context(response), content_type="audio/mpeg")
             return response
 

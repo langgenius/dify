@@ -290,6 +290,7 @@ class TestCacheEmbeddingMultimodalDocuments:
             mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = sample_multimodal_result
 
+            # pyrefly: ignore [bad-argument-type]
             mock_session.commit.side_effect = IntegrityError("Duplicate key", None, None)
 
             result = cache_embedding.embed_multimodal_documents(documents)
