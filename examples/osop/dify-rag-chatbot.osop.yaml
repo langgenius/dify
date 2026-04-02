@@ -1,0 +1,87 @@
+# Dify RAG Chatbot — OSOP Portable Workflow
+#
+# Retrieval-augmented generation pipeline: receive a user question,
+# retrieve relevant chunks from a vector store, rerank for relevance,
+# generate a cited answer, and collect user feedback for fine-tuning.
+#
+# Build in Dify or validate: osop validate dify-rag-chatbot.osop.yaml
+
+osop_version: "1.0"
+id: "dify-rag-chatbot"
+name: "RAG Chatbot Pipeline"
+description: "Question → retrieve → rerank → generate answer with citations → feedback."
+version: "1.0.0"
+tags: [dify, rag, chatbot, vector-search, llm]
+
+nodes:
+  - id: "receive_question"
+    type: "api"
+    subtype: "webhook"
+    name: "Receive Question"
+    description: "User submits a question via chat interface or API."
+
+  - id: "retrieve_docs"
+    type: "db"
+    name: "Vector Retrieval"
+    description: "Embed the query and retrieve top-k chunks from the vector store."
+    config:
+      store: "pinecone"
+      top_k: 20
+      embedding_model: "text-embedding-3-small"
+
+  - id: "rerank"
+    type: "agent"
+    subtype: "llm"
+    name: "Rerank Results"
+    description: "Cross-encoder reranking to select the most relevant 5 chunks."
+    config:
+      model: "cohere-rerank-v3"
+      top_n: 5
+
+  - id: "generate_answer"
+    type: "agent"
+    subtype: "llm"
+    name: "Generate Answer"
+    description: "Produce a grounded answer using retrieved context with inline citations."
+    config:
+      model: "gpt-4o"
+      temperature: 0.3
+      system_prompt: "Answer using ONLY the provided context. Cite sources as [1], [2], etc."
+
+  - id: "format_citations"
+    type: "cli"
+    subtype: "script"
+    name: "Format Citations"
+    description: "Map inline citation markers to source document metadata."
+
+  - id: "collect_feedback"
+    type: "human"
+    name: "User Feedback"
+    description: "Thumbs up/down and optional comment for answer quality tracking."
+
+  - id: "log_for_finetuning"
+    type: "db"
+    name: "Log to Training Set"
+    description: "Store high-rated Q&A pairs for future model fine-tuning."
+
+edges:
+  - from: "receive_question"
+    to: "retrieve_docs"
+    mode: "sequential"
+  - from: "retrieve_docs"
+    to: "rerank"
+    mode: "sequential"
+  - from: "rerank"
+    to: "generate_answer"
+    mode: "sequential"
+  - from: "generate_answer"
+    to: "format_citations"
+    mode: "sequential"
+  - from: "format_citations"
+    to: "collect_feedback"
+    mode: "sequential"
+  - from: "collect_feedback"
+    to: "log_for_finetuning"
+    mode: "conditional"
+    when: "feedback == 'positive'"
+    label: "Good answer — save for training"
