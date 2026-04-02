@@ -433,12 +433,19 @@ class TestConversationApiController:
                 handler(api, app_model=app_model, end_user=end_user)
 
     def test_list_last_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
-        class _SessionStub:
+        class _BeginStub:
             def __enter__(self):
                 return SimpleNamespace()
 
             def __exit__(self, exc_type, exc, tb):
                 return False
+
+        class _SessionMakerStub:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def begin(self):
+                return _BeginStub()
 
         monkeypatch.setattr(
             ConversationService,
@@ -447,7 +454,7 @@ class TestConversationApiController:
         )
         conversation_module = sys.modules["controllers.service_api.app.conversation"]
         monkeypatch.setattr(conversation_module, "db", SimpleNamespace(engine=object()))
-        monkeypatch.setattr(conversation_module, "Session", lambda *_args, **_kwargs: _SessionStub())
+        monkeypatch.setattr(conversation_module, "sessionmaker", _SessionMakerStub)
 
         api = ConversationApi()
         handler = _unwrap(api.get)

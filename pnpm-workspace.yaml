@@ -183,7 +183,6 @@ catalog:
   hono: 4.12.9
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  husky: 9.1.7
   i18next: 25.10.10
   i18next-resources-to-backend: 1.2.1
   iconify-import-svg: 0.1.2
@@ -198,7 +197,6 @@ catalog:
   ky: 1.14.3
   lamejs: 1.2.1
   lexical: 0.42.0
-  lint-staged: 16.4.0
   mermaid: 11.13.0
   mime: 4.1.0
   mitt: 3.0.1
