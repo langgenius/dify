@@ -119,5 +119,3 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     reset: currentMutation.reset,
   }
 }
-
-type IndexingEstimate = ReturnType<typeof useIndexingEstimate>

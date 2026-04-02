@@ -197,4 +197,3 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     validatePreviewParams,
   }
 }
-type DocumentCreation = ReturnType<typeof useDocumentCreation>

@@ -44,15 +44,6 @@ export const useSetPluginDefaultCredential = (
   })
 }
 
-const useGetPluginCredentialList = (
-  url: string,
-) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'credential-list', url],
-    queryFn: () => get(url),
-  })
-}
-
 export const useAddPluginCredential = (
   url: string,
 ) => {

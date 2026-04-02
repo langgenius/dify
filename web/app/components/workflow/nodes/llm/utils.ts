@@ -1,13 +1,9 @@
 import type { ValidationError } from 'jsonschema'
-import type { ArrayItems, Field, LLMNodeType } from './types'
+import type { ArrayItems, Field } from './types'
 import * as z from 'zod'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import { extractPluginId } from '../../utils/plugin'
 import { ArrayType, Type } from './types'
-
-const checkNodeValid = (_payload: LLMNodeType) => {
-  return true
-}
 
 export enum LLMModelIssueCode {
   providerRequired = 'provider-required',
@@ -170,27 +166,6 @@ export const getValidationErrorMessage = (errors: Array<ValidationError | string
       return `Error: ${error.stack}\n`
   }).join('')
   return message
-}
-
-// Previous Not support boolean type, so transform boolean to string when paste it into schema editor
-const convertBooleanToString = (schema: any) => {
-  if (schema.type === Type.boolean)
-    schema.type = Type.string
-  if (schema.type === Type.array && schema.items && schema.items.type === Type.boolean)
-    schema.items.type = Type.string
-  if (schema.type === Type.object) {
-    schema.properties = Object.entries(schema.properties).reduce((acc, [key, value]) => {
-      acc[key] = convertBooleanToString(value)
-      return acc
-    }, {} as any)
-  }
-  if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
-    schema.items.properties = Object.entries(schema.items.properties).reduce((acc, [key, value]) => {
-      acc[key] = convertBooleanToString(value)
-      return acc
-    }, {} as any)
-  }
-  return schema
 }
 
 const schemaRootObject = z.object({

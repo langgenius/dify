@@ -1,4 +1,4 @@
-import type { CommonEdgeType, CommonNodeType, Edge, Node, ToolWithProvider, WorkflowRunningData } from '../types'
+import type { CommonEdgeType, CommonNodeType, Edge, Node, WorkflowRunningData } from '../types'
 import type { NodeTracing } from '@/types/workflow'
 import { Position } from 'reactflow'
 import { CUSTOM_NODE } from '../constants'
@@ -88,34 +88,6 @@ export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Par
   } as Edge
 }
 
-function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Edge[] } {
-  const nodes: Node[] = []
-  const edges: Edge[] = []
-
-  for (let i = 0; i < nodeCount; i++) {
-    const type = i === 0 ? BlockEnum.Start : BlockEnum.Code
-    nodes.push(createNode({
-      id: `n${i}`,
-      position: { x: i * 300, y: 0 },
-      data: { type, title: `Node ${i}`, desc: '' },
-    }))
-    if (i > 0) {
-      edges.push(createEdge({
-        id: `e-n${i - 1}-n${i}`,
-        source: `n${i - 1}`,
-        target: `n${i}`,
-        sourceHandle: 'source',
-        targetHandle: 'target',
-        data: {
-          sourceType: i === 1 ? BlockEnum.Start : BlockEnum.Code,
-          targetType: BlockEnum.Code,
-        },
-      }))
-    }
-  }
-  return { nodes, edges }
-}
-
 // ---------------------------------------------------------------------------
 // Workflow-level factories
 // ---------------------------------------------------------------------------
@@ -159,29 +131,6 @@ export function createNodeTracing(
     created_at: 0,
     created_by: { id: 'user-1', name: 'Test', email: 'test@test.com' },
     finished_at: 0,
-    ...overrides,
-  }
-}
-
-function createToolWithProvider(
-  overrides?: Partial<ToolWithProvider>,
-): ToolWithProvider {
-  return {
-    id: 'tool-provider-1',
-    name: 'test-tool',
-    author: 'test',
-    description: { en_US: 'Test tool', zh_Hans: '测试工具' },
-    icon: '/icon.svg',
-    icon_dark: '/icon-dark.svg',
-    label: { en_US: 'Test Tool', zh_Hans: '测试工具' },
-    type: 'builtin',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: true,
-    labels: [],
-    tools: [],
-    meta: { version: '0.0.1' },
-    plugin_id: 'plugin-1',
     ...overrides,
   }
 }

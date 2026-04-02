@@ -247,5 +247,3 @@ export const useToolSelectorState = ({
     getSettingsValue,
   }
 }
-
-type ToolSelectorState = ReturnType<typeof useToolSelectorState>

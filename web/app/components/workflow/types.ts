@@ -132,7 +132,6 @@ export type CommonEdgeType = {
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
-type SelectedNode = Pick<Node, 'id' | 'data'>
 export type NodeProps<T = unknown> = { id: string, data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
@@ -185,11 +184,6 @@ export type GlobalVariable = {
   name: string
   value_type: 'string' | 'number' | 'integer'
   description: string
-}
-
-type VariableWithValue = {
-  key: string
-  value: string
 }
 
 export enum InputVarType {
@@ -391,11 +385,6 @@ export type OnNodeAdd = (
     nextNodeTargetHandle?: string
   },
 ) => void
-
-type CheckValidRes = {
-  isValid: boolean
-  errorMessage?: string
-}
 
 export type RunFile = {
   type: string

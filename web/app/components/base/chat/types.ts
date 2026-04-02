@@ -3,7 +3,6 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type {
   ModelConfig,
-  VisionSettings,
 } from '@/types/app'
 import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
 
@@ -13,31 +12,6 @@ export type {
 } from '@/models/debug'
 
 export { TransferMethod } from '@/types/app'
-
-type UserInputForm = {
-  default: string
-  label: string
-  required: boolean
-  variable: string
-}
-
-type UserInputFormTextInput = {
-  'text-input': UserInputForm & {
-    max_length: number
-  }
-}
-
-type UserInputFormSelect = {
-  select: UserInputForm & {
-    options: string[]
-  }
-}
-
-type UserInputFormParagraph = {
-  paragraph: UserInputForm
-}
-
-type VisionConfig = VisionSettings
 
 export type EnableType = {
   enabled: boolean

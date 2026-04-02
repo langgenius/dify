@@ -33,11 +33,3 @@ export type KeyFrom = {
   text: string
   link: string
 }
-
-type KeyValidatorProps = {
-  type: string
-  title: React.ReactNode
-  status: Status
-  forms: Form[]
-  keyFrom: KeyFrom
-}

@@ -139,5 +139,3 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
     showMultiModalTip,
   }
 }
-
-type IndexingConfig = ReturnType<typeof useIndexingConfig>

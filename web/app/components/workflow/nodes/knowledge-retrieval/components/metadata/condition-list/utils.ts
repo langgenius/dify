@@ -3,10 +3,6 @@ import {
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
-const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
-  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
-}
-
 const notTranslateKey = [
   ComparisonOperator.equal,
   ComparisonOperator.notEqual,

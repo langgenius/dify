@@ -58,12 +58,6 @@ const formatUserTimezoneDate = (date: Date, timezone: string, includeWeekday: bo
   return `${dateStr}, ${timeStr}`
 }
 
-// Helper function to get default datetime - consistent with base DatePicker
-const getDefaultDateTime = (): Date => {
-  const defaultDate = new Date(2024, 0, 2, 11, 30, 0, 0)
-  return defaultDate
-}
-
 export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: number = 5): Date[] => {
   const timezone = resolveTimezone(data.timezone)
 

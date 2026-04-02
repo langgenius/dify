@@ -1,4 +1,3 @@
-import type { Branch } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from './types'
 
@@ -169,26 +168,4 @@ export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator)
     return false
 
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
-}
-
-const branchNameCorrect = (branches: Branch[]) => {
-  const branchLength = branches.length
-  if (branchLength < 2)
-    throw new Error('if-else node branch number must than 2')
-
-  if (branchLength === 2) {
-    return branches.map((branch) => {
-      return {
-        ...branch,
-        name: branch.id === 'false' ? 'ELSE' : 'IF',
-      }
-    })
-  }
-
-  return branches.map((branch, index) => {
-    return {
-      ...branch,
-      name: branch.id === 'false' ? 'ELSE' : `CASE ${index + 1}`,
-    }
-  })
 }

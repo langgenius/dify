@@ -87,21 +87,6 @@ export enum ModelStatusEnum {
   credentialRemoved = 'credential-removed',
 }
 
-const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
-  'no-configure': {
-    en_US: 'No Configure',
-    zh_Hans: '未配置凭据',
-  },
-  'quota-exceeded': {
-    en_US: 'Quota Exceeded',
-    zh_Hans: '额度不足',
-  },
-  'no-permission': {
-    en_US: 'No Permission',
-    zh_Hans: '无使用权限',
-  },
-}
-
 export enum CustomConfigurationStatusEnum {
   active = 'active',
   noConfigure = 'no-configure',
@@ -196,11 +181,6 @@ export type CustomModelCredential = CustomModel & {
   available_model_credentials?: Credential[]
   current_credential_id?: string
   current_credential_name?: string
-}
-
-type CredentialWithModel = Credential & {
-  model: string
-  model_type: ModelTypeEnum
 }
 
 export type ModelProvider = {

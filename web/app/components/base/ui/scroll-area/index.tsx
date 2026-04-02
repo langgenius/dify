@@ -9,7 +9,6 @@ export const ScrollAreaRoot = BaseScrollArea.Root
 type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
 
 export const ScrollAreaContent = BaseScrollArea.Content
-type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Content>
 
 type ScrollAreaSlotClassNames = {
   viewport?: string

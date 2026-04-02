@@ -230,5 +230,3 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
     getProcessRule,
   }
 }
-
-type SegmentationState = ReturnType<typeof useSegmentationState>

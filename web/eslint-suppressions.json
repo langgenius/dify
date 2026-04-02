@@ -265,9 +265,6 @@
   "app/account/(commonLayout)/avatar.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/account/(commonLayout)/delete-account/components/check-email.tsx": {
@@ -714,11 +711,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/app/configuration/config-var/config-modal/config.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/app/configuration/config-var/config-modal/field.tsx": {
@@ -1478,9 +1470,6 @@
     },
     "ts/no-explicit-any": {
       "count": 4
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/app/text-generate/item/result-tab.tsx": {
@@ -2077,9 +2066,6 @@
   "app/components/base/chat/chat/type.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/base/chat/chat/utils.ts": {
@@ -2140,9 +2126,6 @@
   "app/components/base/chat/types.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 4
     }
   },
   "app/components/base/chat/utils.ts": {
@@ -2703,11 +2686,6 @@
       "count": 2
     }
   },
-  "app/components/base/form/form-scenarios/demo/types.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/base/form/form-scenarios/input-field/field.tsx": {
     "react/component-hook-factories": {
       "count": 1
@@ -2760,10 +2738,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 16
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
+      "count": 15
     }
   },
   "app/components/base/form/utils/secret-input/index.ts": {
@@ -3599,9 +3574,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/component-ui.tsx": {
@@ -3628,9 +3600,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
@@ -3690,9 +3659,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/request-url-block/component.tsx": {
@@ -3735,9 +3701,6 @@
     },
     "react-refresh/only-export-components": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
@@ -4035,9 +3998,6 @@
   "app/components/base/text-generation/types.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 5
     }
   },
   "app/components/base/textarea/index.stories.tsx": {
@@ -4081,9 +4041,6 @@
   "app/components/base/ui/context-menu/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 3
     }
   },
   "app/components/base/ui/dialog/index.tsx": {
@@ -4093,9 +4050,6 @@
   },
   "app/components/base/ui/dropdown-menu/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -4122,17 +4076,11 @@
   "app/components/base/ui/scroll-area/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/base/ui/select/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 3
     }
   },
   "app/components/base/ui/slider/index.stories.tsx": {
@@ -4310,9 +4258,6 @@
   "app/components/billing/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 4
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "app/components/billing/upgrade-btn/index.tsx": {
@@ -4683,35 +4628,12 @@
       "count": 6
     }
   },
-  "app/components/datasets/create/step-two/hooks/use-document-creation.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create/step-two/hooks/use-indexing-config.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
     },
     "react/set-state-in-effect": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/hooks/use-indexing-estimate.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/hooks/use-preview-state.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/hooks/use-segmentation-state.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/datasets/create/step-two/index.tsx": {
@@ -4968,11 +4890,6 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/local-file/components/upload-dropzone.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/local-file/constants.ts": {
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -5272,9 +5189,6 @@
   "app/components/datasets/documents/detail/completed/hooks/use-search-filter.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/datasets/documents/detail/completed/index.tsx": {
@@ -5353,11 +5267,6 @@
   },
   "app/components/datasets/documents/detail/embedding/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/embedding/hooks/use-embedding-status.ts": {
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -6317,9 +6226,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/key-validator/index.tsx": {
@@ -6414,9 +6320,6 @@
     },
     "ts/no-explicit-any": {
       "count": 4
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/model-provider-page/hooks.ts": {
@@ -6570,11 +6473,6 @@
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/configuration-button.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/model-parameter-modal/derive-trigger-status.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
@@ -7044,11 +6942,6 @@
       "count": 3
     }
   },
-  "app/components/plugins/marketplace/types.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -7482,11 +7375,6 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/tool-selector/hooks/use-tool-selector-state.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/tool-selector/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7713,10 +7601,7 @@
       "count": 7
     },
     "ts/no-explicit-any": {
-      "count": 30
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 4
+      "count": 25
     }
   },
   "app/components/plugins/update-plugin/downgrade-warning.tsx": {
@@ -7982,9 +7867,6 @@
   "app/components/rag-pipeline/store/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/rag-pipeline/utils/index.ts": {
@@ -8317,13 +8199,10 @@
   },
   "app/components/tools/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 5
+      "count": 4
     },
     "ts/no-explicit-any": {
       "count": 4
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/tools/workflow-tool/configure-button.tsx": {
@@ -8424,14 +8303,6 @@
   "app/components/workflow-app/store/workflow/workflow-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/__tests__/fixtures.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "app/components/workflow/block-selector/all-start-blocks.tsx": {
@@ -8496,9 +8367,6 @@
   },
   "app/components/workflow/block-selector/hooks.ts": {
     "react/set-state-in-effect": {
-      "count": 1
-    },
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -8621,9 +8489,6 @@
   },
   "app/components/workflow/block-selector/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 4
-    },
-    "unused-imports/no-unused-vars": {
       "count": 4
     }
   },
@@ -8788,9 +8653,6 @@
   "app/components/workflow/hooks-store/store.ts": {
     "ts/no-explicit-any": {
       "count": 6
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
@@ -8800,7 +8662,7 @@
   },
   "app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 26
+      "count": 25
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
@@ -8834,14 +8696,6 @@
   "app/components/workflow/hooks/use-nodes-interactions.ts": {
     "ts/no-explicit-any": {
       "count": 8
-    }
-  },
-  "app/components/workflow/hooks/use-nodes-layout.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/hooks/use-serial-async-callback.ts": {
@@ -9257,11 +9111,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/retry/hooks.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/retry/retry-on-node.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -9519,10 +9368,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/agent/components/model-bar.tsx": {
@@ -9634,9 +9480,6 @@
   "app/components/workflow/nodes/assigner/utils.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/code/default.ts": {
@@ -9681,11 +9524,6 @@
   "app/components/workflow/nodes/components.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/workflow/nodes/constants.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/data-source-empty/hooks.ts": {
@@ -10098,11 +9936,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/if-else/utils.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/iteration-start/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -10304,11 +10137,6 @@
       "count": 4
     }
   },
-  "app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -10375,11 +10203,6 @@
   "app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/workflow/nodes/knowledge-retrieval/utils.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/list-operator/components/extract-input.tsx": {
@@ -10623,10 +10446,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 10
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
+      "count": 7
     }
   },
   "app/components/workflow/nodes/loop-start/index.tsx": {
@@ -10746,9 +10566,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/loop/use-config.ts": {
@@ -10759,11 +10576,6 @@
   "app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/workflow/nodes/loop/utils.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
@@ -11073,11 +10885,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -11107,11 +10914,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
-    }
-  },
-  "app/components/workflow/nodes/trigger-webhook/types.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/trigger-webhook/utils/render-output-vars.tsx": {
@@ -11158,11 +10960,6 @@
   "app/components/workflow/nodes/variable-assigner/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "app/components/workflow/nodes/variable-assigner/utils.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "app/components/workflow/note-node/index.tsx": {
@@ -11764,9 +11561,6 @@
     },
     "ts/no-explicit-any": {
       "count": 8
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 3
     }
   },
   "app/components/workflow/update-dsl-modal.tsx": {
@@ -12178,11 +11972,6 @@
       "count": 3
     }
   },
-  "context/mitt-context.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "context/modal-context-provider.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -12205,11 +11994,6 @@
   },
   "context/web-app-context.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "contract/router.ts": {
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -12254,11 +12038,6 @@
   },
   "i18n-config/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
-  "i18n-config/language.ts": {
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -12325,20 +12104,14 @@
   "models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "models/common.ts": {
     "erasable-syntax-only/enums": {
-      "count": 3
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 9
     }
   },
   "models/datasets.ts": {
@@ -12347,9 +12120,6 @@
     },
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 4
     }
   },
   "models/debug.ts": {
@@ -12358,9 +12128,6 @@
     },
     "ts/no-explicit-any": {
       "count": 4
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 10
     }
   },
   "models/log.ts": {
@@ -12369,9 +12136,6 @@
     },
     "ts/no-explicit-any": {
       "count": 7
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 3
     }
   },
   "models/pipeline.ts": {
@@ -12380,24 +12144,10 @@
     },
     "ts/no-explicit-any": {
       "count": 6
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "models/share.ts": {
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "scripts/analyze-component.js": {
-    "unused-imports/no-unused-vars": {
       "count": 1
     }
   },
@@ -12418,17 +12168,11 @@
   },
   "service/apps.ts": {
     "ts/no-explicit-any": {
-      "count": 17
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 15
+      "count": 7
     }
   },
   "service/base.ts": {
     "ts/no-explicit-any": {
-      "count": 3
-    },
-    "unused-imports/no-unused-vars": {
       "count": 3
     }
   },
@@ -12439,18 +12183,12 @@
   },
   "service/datasets.ts": {
     "ts/no-explicit-any": {
-      "count": 8
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 16
+      "count": 6
     }
   },
   "service/debug.ts": {
     "ts/no-explicit-any": {
       "count": 6
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "service/fetch.ts": {
@@ -12464,19 +12202,6 @@
   "service/knowledge/use-dataset.ts": {
     "@tanstack/query/exhaustive-deps": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "service/knowledge/use-hit-testing.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "service/plugins.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 6
     }
   },
   "service/share.ts": {
@@ -12485,14 +12210,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "service/tools.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "service/try-app.ts": {
@@ -12503,9 +12220,6 @@
   "service/use-apps.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "service/use-common.ts": {
@@ -12514,9 +12228,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 4
     }
   },
   "service/use-endpoints.ts": {
@@ -12531,21 +12242,12 @@
   },
   "service/use-pipeline.ts": {
     "@tanstack/query/exhaustive-deps": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "service/use-plugins-auth.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "service/use-plugins.ts": {
@@ -12557,27 +12259,11 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 4
-    }
-  },
-  "service/use-strategy.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "service/use-tools.ts": {
     "ts/no-explicit-any": {
-      "count": 2
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 5
-    }
-  },
-  "service/use-triggers.ts": {
-    "unused-imports/no-unused-vars": {
-      "count": 3
+      "count": 1
     }
   },
   "service/use-workflow.ts": {
@@ -12586,9 +12272,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "service/utils.spec.ts": {
@@ -12603,13 +12286,10 @@
   },
   "types/app.ts": {
     "erasable-syntax-only/enums": {
-      "count": 11
+      "count": 9
     },
     "ts/no-explicit-any": {
       "count": 1
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 3
     }
   },
   "types/assets.d.ts": {
@@ -12635,9 +12315,6 @@
   "types/pipeline.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "types/react-18-input-autosize.d.ts": {
@@ -12648,9 +12325,6 @@
   "types/workflow.ts": {
     "ts/no-explicit-any": {
       "count": 17
-    },
-    "unused-imports/no-unused-vars": {
-      "count": 2
     }
   },
   "utils/clipboard.ts": {

@@ -10,9 +10,6 @@ import { cn } from '@/utils/classnames'
 
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
-const SelectGroup = BaseSelect.Group
-const SelectGroupLabel = BaseSelect.GroupLabel
-const SelectSeparator = BaseSelect.Separator
 
 const selectTriggerVariants = cva(
   '',

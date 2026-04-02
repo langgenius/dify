@@ -1,15 +1,8 @@
 import type {
-  MarketplaceCollectionPluginsResponse,
-  MarketplaceCollectionsResponse,
-} from '@/app/components/plugins/marketplace/types'
-import type {
   Dependency,
   InstallPackageResponse,
-  Permissions,
-  PluginDeclaration,
   PluginInfoFromMarketPlace,
   PluginManifestInMarket,
-  PluginTasksResponse,
   TaskStatusResponse,
   UninstallPluginResponse,
   updatePackageResponse,
@@ -54,14 +47,6 @@ export const uploadGitHub = async (repoUrl: string, selectedVersion: string, sel
   })
 }
 
-const fetchIcon = (tenantId: string, fileName: string) => {
-  return get(`workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`)
-}
-
-const fetchManifest = async (uniqueIdentifier: string) => {
-  return get<PluginDeclaration>(`/workspaces/current/plugin/fetch-manifest?plugin_unique_identifier=${uniqueIdentifier}`)
-}
-
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
   return getMarketplace<{ data: { plugin: PluginManifestInMarket, version: { version: string } } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
@@ -81,24 +66,8 @@ export const fetchPluginInfoFromMarketPlace = async ({
   return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
-const fetchMarketplaceCollections = ({ url }: { url: string }): Promise<MarketplaceCollectionsResponse> => {
-  return get<MarketplaceCollectionsResponse>(url)
-}
-
-const fetchMarketplaceCollectionPlugins = ({ url }: { url: string }): Promise<MarketplaceCollectionPluginsResponse> => {
-  return get<MarketplaceCollectionPluginsResponse>(url)
-}
-
-const fetchPluginTasks = async () => {
-  return get<PluginTasksResponse>('/workspaces/current/plugin/tasks?page=1&page_size=255')
-}
-
 export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
-}
-
-const updatePermission = async (permissions: Permissions) => {
-  return post('/workspaces/current/plugin/permission/change', { body: permissions })
 }
 
 export const uninstallPlugin = async (pluginId: string) => {

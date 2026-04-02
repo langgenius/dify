@@ -6,11 +6,6 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-enum LOC {
-  tools = 'tools',
-  app = 'app',
-}
-
 export enum AuthType {
   none = 'none',
   apiKey = 'api_key', // backward compatibility

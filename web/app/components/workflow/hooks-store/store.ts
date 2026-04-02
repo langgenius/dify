@@ -163,7 +163,3 @@ export function useHooksStore<T>(selector: (state: Shape) => T): T {
 
   return useZustandStore(store, selector)
 }
-
-const useHooksStoreApi = () => {
-  return useContext(HooksStoreContext)!
-}

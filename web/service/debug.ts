@@ -1,5 +1,4 @@
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
@@ -16,12 +15,6 @@ export type GenRes = {
   message?: string // tip for human
   variables?: string[] // only for basic app first time rule
   opening_statement?: string // only for basic app first time rule
-  error?: string
-}
-
-type CodeGenRes = {
-  code: string
-  language: string[]
   error?: string
 }
 
@@ -73,14 +66,6 @@ export const generateRule = (body: Record<string, any>) => {
   return post<GenRes>('/instruction-generate', {
     body,
   })
-}
-
-const fetchModelParams = (providerName: string, modelId: string) => {
-  return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
-    params: {
-      model: modelId,
-    },
-  }) as Promise<{ data: ModelParameterRule[] }>
 }
 
 export const fetchPromptTemplate = ({

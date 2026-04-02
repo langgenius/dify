@@ -123,5 +123,3 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
     handlePreviewChange,
   }
 }
-
-type PreviewState = ReturnType<typeof usePreviewState>
