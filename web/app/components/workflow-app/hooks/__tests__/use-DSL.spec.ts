@@ -2,7 +2,24 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useDSL } from '../use-DSL'
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 const mockEmit = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
 const mockExportAppConfig = vi.fn()
@@ -15,10 +32,6 @@ let appStoreState: {
     name: string
   }
 }
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
-}))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -151,7 +164,7 @@ describe('useDSL', () => {
     })
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.exportFailed',
       })
@@ -168,7 +181,7 @@ describe('useDSL', () => {
     })
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.exportFailed',
       })

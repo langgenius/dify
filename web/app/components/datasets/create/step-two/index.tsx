@@ -5,7 +5,7 @@ import type { StepTwoProps } from './types'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -139,7 +139,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   const updatePreview = useCallback(() => {
     if (segmentation.segmentationType === ProcessMode.general && segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      Toast.notify({ type: 'error', message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
+      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
       return
     }
     estimateHook.fetchEstimate()

@@ -56,9 +56,9 @@ vi.mock('@/app/components/base/form/form-scenarios/base/utils', () => ({
 
 const mockToastNotify = vi.fn()
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (params: { type: string, message: string }) => mockToastNotify(params),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
   },
 }))
 

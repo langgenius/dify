@@ -12,13 +12,13 @@ import {
   DialogContent,
   DialogTitle,
 } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { updateFromMarketPlace } from '@/service/plugins'
 import { useInvalidateReferenceSettings, usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
 import DowngradeWarningModal from './downgrade-warning'
@@ -101,10 +101,7 @@ const UpdatePluginModal: FC<Props> = ({
         if (response.task?.status === TaskStatus.failed) {
           const failedPlugin = response.task.plugins?.find(plugin => plugin.plugin_unique_identifier === targetPackageInfo.id)
             ?? response.task.plugins?.[0]
-          Toast.notify({
-            type: 'error',
-            message: failedPlugin?.message || t('error', { ns: 'common' }),
-          })
+          toast.error(failedPlugin?.message || t('error', { ns: 'common' }))
           setUploadStep(UploadStep.notStarted)
           return
         }
@@ -124,7 +121,7 @@ const UpdatePluginModal: FC<Props> = ({
           pluginUniqueIdentifier: targetPackageInfo.id,
         })
         if (status === TaskStatus.failed) {
-          Toast.notify({ type: 'error', message: error! })
+          toast.error(error!)
           setUploadStep(UploadStep.notStarted)
           return
         }

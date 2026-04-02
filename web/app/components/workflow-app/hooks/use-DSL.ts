@@ -4,7 +4,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
@@ -16,7 +16,6 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
@@ -42,12 +41,12 @@ export const useDSL = () => {
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
     finally {
       setExporting(false)
     }
-  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
+  }, [appDetail, t, doSyncWorkflowDraft, exporting])
 
   const exportCheck = useCallback(async () => {
     if (!appDetail)
@@ -67,9 +66,9 @@ export const useDSL = () => {
       } as any)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
-  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
+  }, [appDetail, eventEmitter, handleExportDSL, t])
 
   return {
     exportCheck,

@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-
 import copy from 'copy-to-clipboard'
+
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

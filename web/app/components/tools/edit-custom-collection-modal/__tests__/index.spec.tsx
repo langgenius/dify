@@ -2,7 +2,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { parseParamsSchema } from '@/service/tools'
@@ -71,7 +71,7 @@ describe('EditCustomCollectionModal', () => {
   const mockOnAdd = vi.fn()
   const mockOnEdit = vi.fn()
   const mockOnRemove = vi.fn()
-  const toastNotifySpy = vi.spyOn(Toast, 'notify')
+  const toastNotifySpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -135,10 +135,7 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'common.errorMsg.fieldRequired:{"field":"tools.createTool.name"}',
-          type: 'error',
-        }))
+        expect(toastNotifySpy).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"tools.createTool.name"}')
       })
       expect(mockOnAdd).not.toHaveBeenCalled()
     })
@@ -152,10 +149,7 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'common.errorMsg.fieldRequired:{"field":"tools.createTool.schema"}',
-          type: 'error',
-        }))
+        expect(toastNotifySpy).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"tools.createTool.schema"}')
       })
       expect(mockOnAdd).not.toHaveBeenCalled()
     })

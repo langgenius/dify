@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import Toast from '../../../toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
@@ -179,7 +179,7 @@ describe('Question component', () => {
 
   it('should call copy-to-clipboard and show a toast when copy action is clicked', async () => {
     const user = userEvent.setup()
-    const toastSpy = vi.spyOn(Toast, 'notify')
+    const toastSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
     renderWithProvider(makeItem())
 

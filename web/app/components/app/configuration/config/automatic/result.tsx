@@ -6,7 +6,7 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
@@ -54,7 +54,7 @@ const Result: FC<Props> = ({
             className="px-2"
             onClick={() => {
               copy(current.modified)
-              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
             }}
           >
             <RiClipboardLine className="h-4 w-4 text-text-secondary" />

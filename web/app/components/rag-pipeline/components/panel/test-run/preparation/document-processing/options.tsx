@@ -3,7 +3,7 @@ import type { CustomActionsProps } from '@/app/components/base/form/components/f
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 
 type OptionsProps = {
   initialData: Record<string, any>
@@ -12,14 +12,7 @@ type OptionsProps = {
   CustomActions: (props: CustomActionsProps) => React.JSX.Element
   onSubmit: (data: Record<string, any>) => void
 }
-
-const Options = ({
-  initialData,
-  configurations,
-  schema,
-  CustomActions,
-  onSubmit,
-}: OptionsProps) => {
+const Options = ({ initialData, configurations, schema, CustomActions, onSubmit }: OptionsProps) => {
   const form = useAppForm({
     defaultValues: initialData,
     validators: {
@@ -29,10 +22,7 @@ const Options = ({
           const issues = result.error.issues
           const firstIssue = issues[0]
           const errorMessage = `Path: ${firstIssue.path.join('.')} Error: ${firstIssue.message}`
-          Toast.notify({
-            type: 'error',
-            message: errorMessage,
-          })
+          toast.error(errorMessage)
           return errorMessage
         }
         return undefined
@@ -42,7 +32,6 @@ const Options = ({
       onSubmit(value)
     },
   })
-
   return (
     <form
       className="w-full"
@@ -62,12 +51,9 @@ const Options = ({
         })}
       </div>
       <form.AppForm>
-        <form.Actions
-          CustomActions={CustomActions}
-        />
+        <form.Actions CustomActions={CustomActions} />
       </form.AppForm>
     </form>
   )
 }
-
 export default Options

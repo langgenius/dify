@@ -12,8 +12,8 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -108,10 +108,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
     const duplicateError = getDuplicateError(newPromptVariables)
     if (duplicateError) {
-      Toast.notify({
-        type: 'error',
-        message: t(duplicateError.errorMsgKey as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug', key: t(duplicateError.typeName as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug' }) }) as string,
-      })
+      toast.error(t(duplicateError.errorMsgKey as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug', key: t(duplicateError.typeName as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug' }) }) as string)
       return false
     }
 
@@ -161,7 +158,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
-            Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
             return false
           }
         }

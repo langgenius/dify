@@ -3,9 +3,25 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import TagSelector from '../selector'
 import { useStore as useTagStore } from '../store'
+
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 // Hoisted mocks
 const { fetchTagList, createTag, bindTag, unBindTag } = vi.hoisted(() => ({
@@ -14,8 +30,6 @@ const { fetchTagList, createTag, bindTag, unBindTag } = vi.hoisted(() => ({
   bindTag: vi.fn(),
   unBindTag: vi.fn(),
 }))
-
-const mockNotify = vi.fn()
 
 vi.mock('@/service/tag', () => ({
   fetchTagList,
@@ -71,17 +85,6 @@ vi.mock('@/app/components/base/popover', () => {
 
   return { __esModule: true, default: MockPopover }
 })
-
-// Mock use-context-selector for ToastContext
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: <T,>(ctx: React.Context<T>) => {
-    if (ctx === (ToastContext as unknown as React.Context<T>))
-      return { notify: mockNotify, close: vi.fn() } as T
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return React.useContext(ctx)
-  },
-}))
 
 // i18n keys rendered in "ns.key" format
 const i18n = {

@@ -2,7 +2,7 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue } from '@/context/provider-context'
 import DuplicateAppModal from './index'
@@ -129,7 +129,7 @@ describe('DuplicateAppModal', () => {
 
     it('should show error toast when name is empty', async () => {
       const user = userEvent.setup()
-      const toastSpy = vi.spyOn(Toast, 'notify')
+      const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
       // Arrange
       const { onConfirm, onHide } = renderComponent()
 
@@ -138,7 +138,7 @@ describe('DuplicateAppModal', () => {
       await user.click(screen.getByRole('button', { name: 'app.duplicate' }))
 
       // Assert
-      expect(toastSpy).toHaveBeenCalledWith({ type: 'error', message: 'explore.appCustomize.nameRequired' })
+      expect(toastSpy).toHaveBeenCalledWith('explore.appCustomize.nameRequired')
       expect(onConfirm).not.toHaveBeenCalled()
       expect(onHide).not.toHaveBeenCalled()
     })

@@ -6,9 +6,9 @@ import AudioPlayer from '../audio'
 const mockToastNotify = vi.hoisted(() => vi.fn())
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (...args: unknown[]) => mockToastNotify(...args),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
   },
 }))
 

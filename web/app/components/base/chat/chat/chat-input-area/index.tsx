@@ -1,28 +1,18 @@
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import type {
-  EnableType,
-  OnSend,
-} from '../../types'
+import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
 import Recorder from 'js-audio-recorder'
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
-import {
-  FileContextProvider,
-  useFileStore,
-} from '@/app/components/base/file-uploader/store'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
+import { toast } from '@/app/components/base/ui/toast'
 import VoiceInput from '@/app/components/base/voice-input'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -53,71 +43,34 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({
-  readonly,
-  botName,
-  showFeatureBar,
-  showFileUpload,
-  featureBarDisabled,
-  onFeatureBarClick,
-  visionConfig,
-  speechToTextConfig = { enabled: true },
-  onSend,
-  inputs = {},
-  inputsForm = [],
-  theme,
-  isResponding,
-  disabled,
-  sendOnEnter = true,
-}: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
-  const {
-    wrapperRef,
-    textareaRef,
-    textValueRef,
-    holdSpaceRef,
-    handleTextareaResize,
-    isMultipleLine,
-  } = useTextAreaHeight()
+  const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
-  const {
-    handleDragFileEnter,
-    handleDragFileLeave,
-    handleDragFileOver,
-    handleDropFile,
-    handleClipboardPasteFile,
-    isDragActive,
-  } = useFile(visionConfig!, false)
+  const { handleDragFileEnter, handleDragFileLeave, handleDragFileOver, handleDropFile, handleClipboardPasteFile, isDragActive } = useFile(visionConfig!, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
-
-  const handleQueryChange = useCallback(
-    (value: string) => {
-      setQuery(value)
-      setTimeout(handleTextareaResize, 0)
-    },
-    [handleTextareaResize],
-  )
-
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value)
+    setTimeout(handleTextareaResize, 0)
+  }, [handleTextareaResize])
   const handleSend = () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
     }
-
     if (onSend) {
       const { files, setFiles } = filesStore.getState()
       if (files.some(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
-        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+        toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
         return
       }
       if (!query || !query.trim()) {
-        notify({ type: 'info', message: t('errorMessage.queryRequired', { ns: 'appAnnotation' }) })
+        toast.info(t('errorMessage.queryRequired', { ns: 'appAnnotation' }))
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
@@ -145,7 +98,6 @@ const ChatInputArea = ({
     const isSendCombo = sendOnEnter
       ? (e.key === 'Enter' && !e.shiftKey)
       : (e.key === 'Enter' && e.shiftKey)
-
     if (isSendCombo && !e.nativeEvent.isComposing) {
       // if isComposing, exit
       if (isComposingRef.current)
@@ -176,101 +128,36 @@ const ChatInputArea = ({
       }
     }
   }
-
   const handleShowVoiceInput = useCallback(() => {
     (Recorder as any).getPermission().then(() => {
       setShowVoiceInput(true)
     }, () => {
-      notify({ type: 'error', message: t('voiceInput.notAllow', { ns: 'common' }) })
+      toast.error(t('voiceInput.notAllow', { ns: 'common' }))
     })
-  }, [t, notify])
-
-  const operation = (
-    <Operation
-      ref={holdSpaceRef}
-      readonly={readonly}
-      fileConfig={visionConfig}
-      speechToTextConfig={speechToTextConfig}
-      onShowVoiceInput={handleShowVoiceInput}
-      onSend={handleSend}
-      theme={theme}
-    />
-  )
-
+  }, [t])
+  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} theme={theme} />)
   return (
     <>
-      <div
-        className={cn(
-          'relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
-          isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
-          disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
-        )}
-      >
+      <div className={cn('relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>
         <div className="relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]">
           <FileListInChatInput fileConfig={visionConfig!} />
-          <div
-            ref={wrapperRef}
-            className="flex items-center justify-between"
-          >
+          <div ref={wrapperRef} className="flex items-center justify-between">
             <div className="relative flex w-full grow items-center">
-              <div
-                ref={textValueRef}
-                className="pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6 body-lg-regular"
-              >
+              <div ref={textValueRef} className="pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6 body-lg-regular">
                 {query}
               </div>
-              <Textarea
-                ref={ref => textareaRef.current = ref as any}
-                className={cn(
-                  'w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none body-lg-regular',
-                )}
-                placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
-                autoFocus
-                minRows={1}
-                value={query}
-                onChange={e => handleQueryChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                onPaste={handleClipboardPasteFile}
-                onDragEnter={handleDragFileEnter}
-                onDragLeave={handleDragFileLeave}
-                onDragOver={handleDragFileOver}
-                onDrop={handleDropFile}
-                readOnly={readonly}
-              />
+              <Textarea ref={ref => textareaRef.current = ref as any} className={cn('w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none body-lg-regular')} placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')} autoFocus minRows={1} value={query} onChange={e => handleQueryChange(e.target.value)} onKeyDown={handleKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} onPaste={handleClipboardPasteFile} onDragEnter={handleDragFileEnter} onDragLeave={handleDragFileLeave} onDragOver={handleDragFileOver} onDrop={handleDropFile} readOnly={readonly} />
             </div>
-            {
-              !isMultipleLine && operation
-            }
+            {!isMultipleLine && operation}
           </div>
-          {
-            showVoiceInput && (
-              <VoiceInput
-                onCancel={() => setShowVoiceInput(false)}
-                onConverted={text => handleQueryChange(text)}
-              />
-            )
-          }
+          {showVoiceInput && (<VoiceInput onCancel={() => setShowVoiceInput(false)} onConverted={text => handleQueryChange(text)} />)}
         </div>
-        {
-          isMultipleLine && (
-            <div className="px-[9px]">{operation}</div>
-          )
-        }
+        {isMultipleLine && (<div className="px-[9px]">{operation}</div>)}
       </div>
-      {showFeatureBar && (
-        <FeatureBar
-          showFileUpload={showFileUpload}
-          disabled={featureBarDisabled}
-          onFeatureBarClick={readonly ? noop : onFeatureBarClick}
-          hideEditEntrance={readonly}
-        />
-      )}
+      {showFeatureBar && (<FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={readonly ? noop : onFeatureBarClick} hideEditEntrance={readonly} />)}
     </>
   )
 }
-
 const ChatInputAreaWrapper = (props: ChatInputAreaProps) => {
   return (
     <FileContextProvider>
@@ -278,5 +165,4 @@ const ChatInputAreaWrapper = (props: ChatInputAreaProps) => {
     </FileContextProvider>
   )
 }
-
 export default ChatInputAreaWrapper

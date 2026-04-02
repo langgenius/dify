@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
-import Toast from '../../base/toast'
 import { PermissionType } from '../types'
 
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
@@ -29,10 +29,7 @@ const useReferenceSetting = () => {
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
     onSuccess: () => {
       invalidateReferenceSettings()
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
   const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner

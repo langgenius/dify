@@ -12,7 +12,7 @@ const {
   mockParentMode,
   mockDatasetId,
   mockDocumentId,
-  mockNotify,
+  mockToast,
   mockEventEmitter,
   mockSegmentListData,
   mockChildSegmentListData,
@@ -26,7 +26,15 @@ const {
   mockParentMode: { current: 'paragraph' as ParentMode },
   mockDatasetId: { current: 'test-dataset-id' },
   mockDocumentId: { current: 'test-document-id' },
-  mockNotify: vi.fn(),
+  mockToast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
   mockEventEmitter: {
     emit: vi.fn(),
     on: vi.fn(),
@@ -65,9 +73,8 @@ vi.mock('../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: { Provider: ({ children }: { children: React.ReactNode }) => children, Consumer: () => null },
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('@/context/event-emitter', () => ({

@@ -16,8 +16,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+
 }))
 
 // Mock CodeEditor to trigger onChange easily

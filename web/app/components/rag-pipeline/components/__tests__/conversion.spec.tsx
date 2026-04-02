@@ -24,10 +24,21 @@ vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidDatasetDetail,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('@/app/components/base/button', () => ({
@@ -132,7 +143,6 @@ describe('Conversion', () => {
   })
 
   it('should handle successful conversion', async () => {
-    const Toast = await import('@/app/components/base/toast')
     mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
       opts.onSuccess({ status: 'success' })
     })
@@ -142,14 +152,11 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
     fireEvent.click(screen.getByTestId('confirm-btn'))
 
-    expect(Toast.default.notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'success',
-    }))
+    expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage')
     expect(mockInvalidDatasetDetail).toHaveBeenCalled()
   })
 
   it('should handle failed conversion', async () => {
-    const Toast = await import('@/app/components/base/toast')
     mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
       opts.onSuccess({ status: 'failed' })
     })
@@ -159,13 +166,10 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
     fireEvent.click(screen.getByTestId('confirm-btn'))
 
-    expect(Toast.default.notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })
 
   it('should handle conversion error', async () => {
-    const Toast = await import('@/app/components/base/toast')
     mockConvert.mockImplementation((_id: string, opts: { onError: () => void }) => {
       opts.onError()
     })
@@ -175,8 +179,6 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
     fireEvent.click(screen.getByTestId('confirm-btn'))
 
-    expect(Toast.default.notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })
 })

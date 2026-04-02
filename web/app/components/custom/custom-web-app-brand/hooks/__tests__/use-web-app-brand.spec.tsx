@@ -5,7 +5,6 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import {
@@ -20,8 +19,22 @@ import { updateCurrentWorkspace } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
 import useWebAppBrand from '../use-web-app-brand'
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: vi.fn(),
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 vi.mock('@/service/common', () => ({
   updateCurrentWorkspace: vi.fn(),
@@ -44,8 +57,6 @@ vi.mock('@/app/components/base/image-uploader/utils', () => ({
   getImageUploadErrorMessage: vi.fn(),
 }))
 
-const mockNotify = vi.fn()
-const mockUseToastContext = vi.mocked(useToastContext)
 const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
 const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseProviderContext = vi.mocked(useProviderContext)
@@ -119,7 +130,6 @@ describe('useWebAppBrand', () => {
     appContextValue = createAppContextValue()
     systemFeatures = createSystemFeatures()
 
-    mockUseToastContext.mockReturnValue({ notify: mockNotify } as unknown as ReturnType<typeof useToastContext>)
     mockUpdateCurrentWorkspace.mockResolvedValue(appContextValue.currentWorkspace)
     mockUseAppContext.mockImplementation(() => appContextValue)
     mockUseProviderContext.mockReturnValue(createProviderContext())

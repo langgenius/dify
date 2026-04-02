@@ -15,7 +15,7 @@ import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -97,13 +97,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
 
   const isValid = () => {
     if (instruction.trim() === '') {
-      Toast.notify({
-        type: 'error',
-        message: t('errorMsg.fieldRequired', {
-          ns: 'common',
-          field: t('code.instruction', { ns: 'appDebug' }),
-        }),
-      })
+      toast.error(t('errorMsg.fieldRequired', {
+        ns: 'common',
+        field: t('code.instruction', { ns: 'appDebug' }),
+      }))
       return false
     }
     return true
@@ -149,10 +146,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         res.modified = (res as any).code
 
       if (error) {
-        Toast.notify({
-          type: 'error',
-          message: error,
-        })
+        toast.error(error)
       }
       else {
         addVersion(res)

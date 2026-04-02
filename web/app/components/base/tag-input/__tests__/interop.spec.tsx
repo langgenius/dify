@@ -1,8 +1,6 @@
 import type { ComponentType, InputHTMLAttributes } from 'react'
 import { render, screen } from '@testing-library/react'
 
-const mockNotify = vi.fn()
-
 type AutosizeInputProps = InputHTMLAttributes<HTMLInputElement> & {
   inputClassName?: string
 }
@@ -18,10 +16,17 @@ describe('TagInput autosize interop', () => {
   })
 
   it('should support a namespace-style default export from react-18-input-autosize', async () => {
-    vi.doMock('@/app/components/base/toast/context', () => ({
-      useToastContext: () => ({
-        notify: mockNotify,
-      }),
+    const toast = Object.assign(vi.fn(), {
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+      info: vi.fn(),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    })
+    vi.doMock('@/app/components/base/ui/toast', () => ({
+      toast,
     }))
     vi.doMock('react-18-input-autosize', () => ({
       default: {
@@ -38,10 +43,17 @@ describe('TagInput autosize interop', () => {
   })
 
   it('should support a direct default export from react-18-input-autosize', async () => {
-    vi.doMock('@/app/components/base/toast/context', () => ({
-      useToastContext: () => ({
-        notify: mockNotify,
-      }),
+    const toast = Object.assign(vi.fn(), {
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+      info: vi.fn(),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    })
+    vi.doMock('@/app/components/base/ui/toast', () => ({
+      toast,
     }))
     vi.doMock('react-18-input-autosize', () => ({
       default: MockAutosizeInput,

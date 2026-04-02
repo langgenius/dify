@@ -29,7 +29,7 @@ const {
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: { notify: vi.fn() },
 }))
 

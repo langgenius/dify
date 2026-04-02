@@ -4,16 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
 
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockSetPluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockDeletePluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockInvalidPluginOAuthClientSchema = vi.fn()
 const mockFormValues = { isCheckValidated: true, values: { __oauth_client__: 'custom', client_id: 'test-id' } }
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
 
 vi.mock('../../hooks/use-credential', () => ({
   useSetPluginOAuthCustomClientHook: () => ({

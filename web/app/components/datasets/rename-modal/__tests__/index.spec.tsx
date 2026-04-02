@@ -4,16 +4,26 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import RenameDatasetModal from '../index'
 
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
+
 const mockUpdateDatasetSetting = vi.fn()
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: (params: unknown) => mockUpdateDatasetSetting(params),
-}))
-
-const mockToastNotify = vi.fn()
-vi.mock('../../../base/toast', () => ({
-  default: {
-    notify: (params: unknown) => mockToastNotify(params),
-  },
 }))
 
 // Mock AppIcon - simplified mock to enable testing onClick callback
@@ -474,10 +484,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.actionMsg.modifiedSuccessfully',
-        })
+        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
       })
     })
   })
@@ -495,10 +502,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'datasetSettings.form.nameError',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('datasetSettings.form.nameError')
       })
     })
 
@@ -514,10 +518,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'datasetSettings.form.nameError',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('datasetSettings.form.nameError')
       })
     })
 
@@ -548,10 +549,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
     })
 
@@ -567,10 +565,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
 
       expect(handleSuccess).not.toHaveBeenCalled()
@@ -588,7 +583,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalled()
+        expect(mockToast.error).toHaveBeenCalled()
       })
 
       expect(handleClose).not.toHaveBeenCalled()
@@ -606,7 +601,7 @@ describe('RenameDatasetModal', () => {
 
       // Wait for error handling to complete
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalled()
+        expect(mockToast.error).toHaveBeenCalled()
       })
 
       // Save button should be enabled again
@@ -639,10 +634,7 @@ describe('RenameDatasetModal', () => {
       })
 
       // Should not throw error when onSuccess is undefined
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
+      expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
     })
 
     it('should maintain callback identity across renders', async () => {
@@ -1139,10 +1131,7 @@ describe('RenameDatasetModal', () => {
       })
 
       // After success, the modal closes, but if it didn't, button would be re-enabled
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
+      expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
     })
 
     it('should re-enable save button after failed save', async () => {
@@ -1156,10 +1145,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
 
       // Button should be re-enabled after error

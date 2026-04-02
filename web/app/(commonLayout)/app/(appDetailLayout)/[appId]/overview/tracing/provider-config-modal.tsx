@@ -14,7 +14,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -155,10 +155,7 @@ const ProviderConfigModal: FC<Props> = ({
       appId,
       provider: type,
     })
-    Toast.notify({
-      type: 'success',
-      message: t('api.remove', { ns: 'common' }),
-    })
+    toast(t('api.remove', { ns: 'common' }), { type: 'success' })
     onRemoved()
     hideRemoveConfirm()
   }, [hideRemoveConfirm, appId, type, t, onRemoved])
@@ -264,10 +261,7 @@ const ProviderConfigModal: FC<Props> = ({
       return
     const errorMessage = checkValid()
     if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      toast(errorMessage, { type: 'error' })
       return
     }
     const action = isEdit ? updateTracingConfig : addTracingConfig
@@ -279,10 +273,7 @@ const ProviderConfigModal: FC<Props> = ({
           tracing_config: config,
         },
       })
-      Toast.notify({
-        type: 'success',
-        message: t('api.success', { ns: 'common' }),
-      })
+      toast(t('api.success', { ns: 'common' }), { type: 'success' })
       onSaved(config)
       if (isAdd)
         onChosen(type)

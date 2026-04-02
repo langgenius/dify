@@ -5,15 +5,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
 
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const mockFormValues = { isCheckValidated: true, values: { __name__: 'My Key', api_key: 'sk-123' } }
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
 
 vi.mock('../../hooks/use-credential', () => ({
   useAddPluginCredentialHook: () => ({

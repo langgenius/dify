@@ -9,14 +9,24 @@ import { AuthCategory } from '../../types'
 const mockDeletePluginCredential = vi.fn().mockResolvedValue({})
 const mockSetPluginDefaultCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
-const mockNotify = vi.fn()
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
 }))
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 vi.mock('../../hooks/use-credential', () => ({
   useDeletePluginCredentialHook: () => ({
     mutateAsync: mockDeletePluginCredential,
@@ -116,7 +126,7 @@ describe('usePluginAuthAction', () => {
     })
 
     expect(mockDeletePluginCredential).toHaveBeenCalledWith({ credential_id: 'cred-1' })
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     expect(mockOnUpdate).toHaveBeenCalled()
     expect(result.current.deleteCredentialId).toBeNull()
   })
@@ -132,7 +142,7 @@ describe('usePluginAuthAction', () => {
     })
 
     expect(mockSetPluginDefaultCredential).toHaveBeenCalledWith('cred-1')
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     expect(mockOnUpdate).toHaveBeenCalled()
   })
 
@@ -153,7 +163,7 @@ describe('usePluginAuthAction', () => {
       credential_id: 'cred-1',
       name: 'New Name',
     })
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+    expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     expect(mockOnUpdate).toHaveBeenCalled()
   })
 

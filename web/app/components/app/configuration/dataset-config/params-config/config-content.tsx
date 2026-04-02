@@ -15,8 +15,8 @@ import Divider from '@/app/components/base/divider'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -136,7 +136,7 @@ const ConfigContent: FC<Props> = ({
       return
 
     if (mode === RerankingModeEnum.RerankingModel && !currentRerankModel)
-      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
+      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
 
     onChange({
       ...datasetConfigs,
@@ -179,7 +179,7 @@ const ConfigContent: FC<Props> = ({
 
   const handleManuallyToggleRerank = useCallback((enable: boolean) => {
     if (!currentRerankModel && enable)
-      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
+      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange({
       ...datasetConfigs,
       reranking_enable: enable,

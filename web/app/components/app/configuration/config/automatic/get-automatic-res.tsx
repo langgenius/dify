@@ -23,9 +23,9 @@ import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
-
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -159,13 +159,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const isValid = () => {
     if (instruction.trim() === '') {
-      Toast.notify({
-        type: 'error',
-        message: t('errorMsg.fieldRequired', {
-          ns: 'common',
-          field: t('generate.instruction', { ns: 'appDebug' }),
-        }),
-      })
+      toast.error(t('errorMsg.fieldRequired', {
+        ns: 'common',
+        field: t('generate.instruction', { ns: 'appDebug' }),
+      }))
       return false
     }
     return true
@@ -242,10 +239,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         } as GenRes
         if (error) {
           hasError = true
-          Toast.notify({
-            type: 'error',
-            message: error,
-          })
+          toast.error(error)
         }
       }
       else {
@@ -260,10 +254,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         apiRes = res
         if (error) {
           hasError = true
-          Toast.notify({
-            type: 'error',
-            message: error,
-          })
+          toast.error(error)
         }
       }
       if (!hasError)

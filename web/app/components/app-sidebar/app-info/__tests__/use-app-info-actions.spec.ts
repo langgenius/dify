@@ -2,7 +2,16 @@ import { act, renderHook } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { useAppInfoActions } from '../use-app-info-actions'
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const call = vi.fn()
+  return {
+    call,
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+})
 const mockReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
 const mockInvalidateAppList = vi.fn()
@@ -27,10 +36,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({ notify: mockNotify }),
-}))
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ onPlanInfoChanged: mockOnPlanInfoChanged }),
 }))
@@ -42,8 +47,16 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {},
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(toastMocks.api, {
+    success: vi.fn((message, options) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
 }))
 
 vi.mock('@/service/use-apps', () => ({
@@ -175,7 +188,7 @@ describe('useAppInfoActions', () => {
 
       expect(mockUpdateAppInfo).toHaveBeenCalled()
       expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
 
     it('should notify error on edit failure', async () => {
@@ -194,7 +207,7 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
     })
 
     it('should not call updateAppInfo when appDetail is undefined', async () => {
@@ -234,7 +247,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
     })
 
@@ -252,7 +265,7 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
     })
   })
 
@@ -298,7 +311,7 @@ describe('useAppInfoActions', () => {
         await result.current.onExport()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -410,7 +423,7 @@ describe('useAppInfoActions', () => {
         await result.current.handleConfirmExport()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
     })
   })
 
@@ -456,7 +469,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockInvalidateAppList).toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
@@ -483,7 +496,7 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
       })

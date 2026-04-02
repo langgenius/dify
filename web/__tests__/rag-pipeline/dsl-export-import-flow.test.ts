@@ -10,6 +10,19 @@ import { describe, expect, it, vi } from 'vitest'
 const mockDoSyncWorkflowDraft = vi.fn().mockResolvedValue(undefined)
 const mockExportPipelineConfig = vi.fn().mockResolvedValue({ data: 'yaml-content' })
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockEventEmitter = { emit: vi.fn() }
 const mockDownloadBlob = vi.fn()
 
@@ -17,10 +30,6 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}))
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({

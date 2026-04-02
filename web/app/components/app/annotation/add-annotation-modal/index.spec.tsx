@@ -9,9 +9,15 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: vi.fn(args => mockToastNotify(args)),
+  },
+  toast: {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 

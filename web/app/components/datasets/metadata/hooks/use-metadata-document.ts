@@ -3,7 +3,7 @@ import type { FullDocumentDetail } from '@/models/datasets'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import { useBatchUpdateDocMetadata, useCreateMetaData, useDatasetMetaData, useDocumentMetaData } from '@/service/knowledge/use-metadata'
@@ -15,26 +15,17 @@ type Props = {
   documentId: string
   docDetail: FullDocumentDetail
 }
-
-const useMetadataDocument = ({
-  datasetId,
-  documentId,
-  docDetail,
-}: Props) => {
+const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const { t } = useTranslation()
-
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
-
   const { mutateAsync } = useBatchUpdateDocMetadata()
   const { checkName } = useCheckMetadataName()
-
   const [isEdit, setIsEdit] = useState(false)
   const { data: documentDetail } = useDocumentMetaData({
     datasetId,
     documentId,
   })
-
   const allList = documentDetail?.doc_metadata || []
   const list = allList.filter(item => item.id !== 'built-in')
   const builtList = allList.filter(item => item.id === 'built-in')
@@ -45,26 +36,18 @@ const useMetadataDocument = ({
       const index = prev.findIndex(item => item.id === metaData.id)
       if (index === -1)
         return [...prev, metaData]
-
       return prev
     })
   }, [])
   const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
     const errorMsg = checkName(payload.name).errorMsg
     if (errorMsg) {
-      Toast.notify({
-        message: errorMsg,
-        type: 'error',
-      })
+      toast.error(errorMsg)
       return Promise.reject(new Error(errorMsg))
     }
     await doAddMetaData(payload)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
   }, [checkName, doAddMetaData, t])
-
   const hasData = list.length > 0
   const handleSave = async () => {
     await mutateAsync({
@@ -75,40 +58,30 @@ const useMetadataDocument = ({
       }],
     })
     setIsEdit(false)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
   }
-
   const handleCancel = () => {
     setTempList(list)
     setIsEdit(false)
   }
-
   const startToEdit = () => {
     setTempList(list)
     setIsEdit(true)
   }
-
   // built in enabled is set in dataset
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
   const builtInEnabled = datasetMetaData?.built_in_field_enabled
-
   // old metadata and technical params
   const metadataMap = useMetadataMap()
   const languageMap = useLanguages()
-
   const getReadOnlyMetaData = (mainField: 'originInfo' | 'technicalParameters') => {
     const fieldMap = metadataMap[mainField]?.subFieldsMap
     const sourceData = docDetail
     const getTargetMap = (field: string) => {
       if (field === 'language')
         return languageMap
-
       return {} as any
     }
-
     const getTargetValue = (field: string) => {
       const val = get(sourceData, field, '')
       if (!val && val !== 0)
@@ -128,13 +101,10 @@ const useMetadataDocument = ({
         value: getTargetValue(key),
       }
     })
-
     return fieldList
   }
-
   const originInfo = getReadOnlyMetaData('originInfo')
   const technicalParameters = getReadOnlyMetaData('technicalParameters')
-
   return {
     embeddingAvailable,
     isEdit,
@@ -154,5 +124,4 @@ const useMetadataDocument = ({
     technicalParameters,
   }
 }
-
 export default useMetadataDocument

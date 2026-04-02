@@ -2,9 +2,9 @@ import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models
 import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/components/base/ui/toast'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import Toast from '../../base/toast'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
@@ -303,7 +303,7 @@ describe('AccessControl', () => {
   it('should initialize menu from app and call update on confirm', async () => {
     const onClose = vi.fn()
     const onConfirm = vi.fn()
-    const toastSpy = vi.spyOn(Toast, 'notify').mockReturnValue({})
+    const toastSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
     useAccessControlStore.setState({
       specificGroups: [baseGroup],
       specificMembers: [baseMember],
@@ -336,7 +336,7 @@ describe('AccessControl', () => {
           { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
         ],
       })
-      expect(toastSpy).toHaveBeenCalled()
+      expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalled()
     })
   })

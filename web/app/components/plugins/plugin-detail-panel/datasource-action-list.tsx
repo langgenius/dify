@@ -1,6 +1,5 @@
 // import { useAppContext } from '@/context/app-context'
 // import Button from '@/app/components/base/button'
-// import Toast from '@/app/components/base/toast'
 // import Indicator from '@/app/components/header/indicator'
 // import ToolItem from '@/app/components/tools/provider/tool-item'
 // import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
@@ -35,10 +34,6 @@ const ActionList = ({
   // const [showSettingAuth, setShowSettingAuth] = useState(false)
 
   // const handleCredentialSettingUpdate = () => {
-  //   Toast.notify({
-  //     type: 'success',
-  //     message: t('common.api.actionSuccess'),
-  //   })
   //   setShowSettingAuth(false)
   // }
 

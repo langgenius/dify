@@ -14,13 +14,11 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
   return {
     ...actual,
-    useToastContext: () => ({
-      notify: vi.fn(),
-    }),
+
   }
 })
 

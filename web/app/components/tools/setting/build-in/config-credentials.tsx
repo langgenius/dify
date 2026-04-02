@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
@@ -53,7 +53,7 @@ const ConfigCredential: FC<Props> = ({
   const handleSave = async () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }) })
+        toast.error(t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }))
         return
       }
     }

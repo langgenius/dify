@@ -3,7 +3,7 @@ import type { AnnotationItem } from './type'
 import type { App } from '@/types/app'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContext } from '@/context/provider-context'
 import {
   addAnnotation,
@@ -16,10 +16,6 @@ import {
 import { AppModeEnum } from '@/types/app'
 import Annotation from './index'
 import { JobStatus } from './type'
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
-}))
 
 vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
@@ -95,7 +91,23 @@ vi.mock('./view-annotation-modal', () => ({
 vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({ default: (props: any) => props.isShow ? <div data-testid="config-modal" /> : null }))
 vi.mock('@/app/components/billing/annotation-full/modal', () => ({ default: (props: any) => props.show ? <div data-testid="annotation-full-modal" /> : null }))
 
-const mockNotify = Toast.notify as Mock
+const mockNotify = vi.fn()
+vi.spyOn(toast, 'success').mockImplementation((message, options) => {
+  mockNotify({ type: 'success', message, ...options })
+  return 'toast-success-id'
+})
+vi.spyOn(toast, 'error').mockImplementation((message, options) => {
+  mockNotify({ type: 'error', message, ...options })
+  return 'toast-error-id'
+})
+vi.spyOn(toast, 'warning').mockImplementation((message, options) => {
+  mockNotify({ type: 'warning', message, ...options })
+  return 'toast-warning-id'
+})
+vi.spyOn(toast, 'info').mockImplementation((message, options) => {
+  mockNotify({ type: 'info', message, ...options })
+  return 'toast-info-id'
+})
 const addAnnotationMock = addAnnotation as Mock
 const delAnnotationMock = delAnnotation as Mock
 const delAnnotationsMock = delAnnotations as Mock

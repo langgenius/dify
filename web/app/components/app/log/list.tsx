@@ -30,8 +30,8 @@ import Drawer from '@/app/components/base/drawer'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
@@ -223,7 +223,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -413,14 +412,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         return item
       }))
 
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
-  }, [allChatItems, appDetail?.id, notify, t])
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
@@ -734,7 +733,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } = useCompletionConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -744,11 +742,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -757,11 +755,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -783,7 +781,6 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
  */
 const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -792,11 +789,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -804,11 +801,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }

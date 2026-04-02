@@ -1,12 +1,28 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useClickAway } from 'ahooks'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogModal from '../index'
 
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
 vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -94,11 +110,7 @@ describe('AgentLogModal', () => {
   })
 
   it('should render correctly when log item is provided', async () => {
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
 
     expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
 
@@ -110,11 +122,7 @@ describe('AgentLogModal', () => {
   it('should call onCancel when close button is clicked', () => {
     vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
 
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
 
     const closeBtn = screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }).nextElementSibling!
     fireEvent.click(closeBtn)
@@ -130,11 +138,7 @@ describe('AgentLogModal', () => {
       clickAwayHandler = callback
     })
 
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
     clickAwayHandler(new Event('click'))
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
@@ -150,11 +154,7 @@ describe('AgentLogModal', () => {
       }
     })
 
-    render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() } as React.ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogModal {...mockProps} />
-      </ToastContext.Provider>,
-    )
+    render(<AgentLogModal {...mockProps} />)
 
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })

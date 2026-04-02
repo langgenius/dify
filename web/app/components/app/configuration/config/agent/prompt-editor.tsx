@@ -12,7 +12,7 @@ import {
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 import { cn } from '@/utils/classnames'
@@ -31,8 +31,6 @@ const Editor: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-
-  const { notify } = useToastContext()
 
   const [isCopied, setIsCopied] = React.useState(false)
   const {
@@ -59,14 +57,14 @@ const Editor: FC<Props> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
             return false
           }
         }
 
         for (let i = 0; i < externalDataToolsConfig.length; i++) {
           if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: externalDataToolsConfig[i].variable }) })
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: externalDataToolsConfig[i].variable }))
             return false
           }
         }

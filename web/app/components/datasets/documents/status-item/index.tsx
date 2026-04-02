@@ -6,10 +6,9 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Switch from '@/app/components/base/switch'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
@@ -25,7 +24,6 @@ const STATUS_TEXT_COLOR_MAP: ColorMap = {
   yellow: 'text-util-colors-warning-warning-600',
   gray: 'text-text-tertiary',
 }
-
 type StatusItemProps = {
   status: DocumentDisplayStatus
   reverse?: boolean
@@ -40,26 +38,14 @@ type StatusItemProps = {
   datasetId?: string
   onUpdate?: (operationName?: string) => void
 }
-
-const StatusItem = ({
-  status,
-  reverse = false,
-  scene = 'list',
-  textCls = '',
-  errorMessage,
-  datasetId = '',
-  detail,
-  onUpdate,
-}: StatusItemProps) => {
+const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate }: StatusItemProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const { enabled = false, archived = false, id = '' } = detail || {}
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
-
   const onOperate = async (operationName: OperationName) => {
     let opApi = deleteDocument
     switch (operationName) {
@@ -72,12 +58,13 @@ const StatusItem = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       onUpdate?.(operationName)
     }
-    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
+    else {
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    }
   }
-
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
     if (operationName === 'enable' && enabled)
       return
@@ -85,51 +72,24 @@ const StatusItem = ({
       return
     onOperate(operationName)
   }, { wait: 500 })
-
   const embedding = useMemo(() => {
     return ['queuing', 'indexing', 'paused'].includes(localStatus)
   }, [localStatus])
-
   return (
-    <div className={
-      cn('flex items-center', reverse ? 'flex-row-reverse' : '', scene === 'detail' ? s.statusItemDetail : '')
-    }
-    >
+    <div className={cn('flex items-center', reverse ? 'flex-row-reverse' : '', scene === 'detail' ? s.statusItemDetail : '')}>
       <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
       <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
         {DOC_INDEX_STATUS_MAP[localStatus]?.text}
       </span>
-      {
-        errorMessage && (
-          <Tooltip
-            popupContent={
-              <div className="max-w-[260px] break-all">{errorMessage}</div>
-            }
-            triggerClassName="ml-1 w-4 h-4"
-            triggerTestId="error-tooltip-trigger"
-          />
-        )
-      }
-      {
-        scene === 'detail' && (
-          <div className="ml-1.5 flex items-center justify-between">
-            <Tooltip
-              popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
-              popupClassName="text-text-secondary system-xs-medium"
-              disabled={!archived}
-            >
-              <Switch
-                value={archived ? false : enabled}
-                onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-                disabled={embedding || archived}
-                size="md"
-              />
-            </Tooltip>
-          </div>
-        )
-      }
+      {errorMessage && (<Tooltip popupContent={<div className="max-w-[260px] break-all">{errorMessage}</div>} triggerClassName="ml-1 w-4 h-4" triggerTestId="error-tooltip-trigger" />)}
+      {scene === 'detail' && (
+        <div className="ml-1.5 flex items-center justify-between">
+          <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="text-text-secondary system-xs-medium" disabled={!archived}>
+            <Switch value={archived ? false : enabled} onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')} disabled={embedding || archived} size="md" />
+          </Tooltip>
+        </div>
+      )}
     </div>
   )
 }
-
 export default React.memo(StatusItem)

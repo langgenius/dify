@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-
 import * as React from 'react'
+
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'

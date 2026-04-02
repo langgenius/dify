@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -67,11 +67,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
           setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === ProcessStatus.ERROR)
-          Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}` })
+          toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}` })
+        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
       },
     })
   }
@@ -88,7 +88,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}` })
+        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
       },
     })
   }

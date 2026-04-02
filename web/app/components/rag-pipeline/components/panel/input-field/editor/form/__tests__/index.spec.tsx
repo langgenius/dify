@@ -2,7 +2,7 @@ import type { FormData, InputFieldFormProps } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 import InputFieldForm from '../index'
@@ -81,9 +81,11 @@ const renderHookWithProviders = <TResult,>(hook: () => TResult) => {
 }
 
 // Silence expected console.error from form submit preventDefault
+const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
-  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+  toastErrorSpy.mockClear()
 })
 
 describe('InputFieldForm', () => {
@@ -210,12 +212,7 @@ describe('InputFieldForm', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-            message: expect.any(String),
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledWith(expect.any(String))
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })

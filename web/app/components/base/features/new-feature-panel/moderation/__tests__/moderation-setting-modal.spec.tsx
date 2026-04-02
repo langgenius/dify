@@ -4,8 +4,10 @@ import * as i18n from 'react-i18next'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 const mockSetShowAccountSettingModal = vi.fn()

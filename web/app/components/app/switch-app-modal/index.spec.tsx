@@ -3,7 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AppModeEnum } from '@/types/app'
@@ -108,27 +107,44 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   ...overrides,
 })
 
+const toastMocks = vi.hoisted(() => ({
+  notify: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  },
+}))
+
 const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
-  const notify = vi.fn()
   const onClose = vi.fn()
   const onSuccess = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <ToastContext.Provider value={{ notify, close: vi.fn() }}>
-      <SwitchAppModal
-        show
-        appDetail={appDetail}
-        onClose={onClose}
-        onSuccess={onSuccess}
-        {...overrides}
-      />
-    </ToastContext.Provider>,
+    <SwitchAppModal
+      show
+      appDetail={appDetail}
+      onClose={onClose}
+      onSuccess={onSuccess}
+      {...overrides}
+    />,
+
   )
 
   return {
     ...utils,
-    notify,
+    notify: toastMocks.notify,
     onClose,
     onSuccess,
     appDetail,

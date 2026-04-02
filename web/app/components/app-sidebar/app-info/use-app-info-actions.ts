@@ -3,9 +3,8 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -24,7 +23,6 @@ type UseAppInfoActionsParams = {
 
 export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -72,13 +70,13 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
         max_active_requests,
       })
       closeModal()
-      notify({ type: 'success', message: t('editDone', { ns: 'app' }) })
+      toast(t('editDone', { ns: 'app' }), { type: 'success' })
       setAppDetail(app)
     }
     catch {
-      notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
+      toast(t('editFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, notify, setAppDetail, t])
+  }, [appDetail, closeModal, setAppDetail, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -98,15 +96,15 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
         mode: appDetail.mode,
       })
       closeModal()
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, notify, onPlanInfoChanged, replace, t])
+  }, [appDetail, closeModal, onPlanInfoChanged, replace, t])
 
   const onExport = useCallback(async (include = false) => {
     if (!appDetail)
@@ -117,9 +115,9 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, notify, t])
+  }, [appDetail, t])
 
   const exportCheck = useCallback(async () => {
     if (!appDetail)
@@ -145,29 +143,26 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, notify, onExport, t])
+  }, [appDetail, closeModal, onExport, t])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail)
       return
     try {
       await deleteApp(appDetail.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      toast(t('appDeleted', { ns: 'app' }), { type: 'success' })
       invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     }
     catch (e: unknown) {
-      notify({
-        type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
-      })
+      toast(`${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`, { type: 'error' })
     }
     closeModal()
-  }, [appDetail, closeModal, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, closeModal, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])
 
   return {
     appDetail,

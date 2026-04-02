@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Button from '../../base/button'
 import Input from '../../base/input'
 import Textarea from '../../base/textarea'
@@ -35,10 +35,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   const handlePublish = () => {
     if (title.length > TITLE_MAX_LENGTH) {
       setTitleError(true)
-      Toast.notify({
-        type: 'error',
-        message: t('versionHistory.editField.titleLengthLimit', { ns: 'workflow', limit: TITLE_MAX_LENGTH }),
-      })
+      toast.error(t('versionHistory.editField.titleLengthLimit', { ns: 'workflow', limit: TITLE_MAX_LENGTH }))
       return
     }
     else {
@@ -48,10 +45,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
 
     if (releaseNotes.length > RELEASE_NOTES_MAX_LENGTH) {
       setReleaseNotesError(true)
-      Toast.notify({
-        type: 'error',
-        message: t('versionHistory.editField.releaseNotesLengthLimit', { ns: 'workflow', limit: RELEASE_NOTES_MAX_LENGTH }),
-      })
+      toast.error(t('versionHistory.editField.releaseNotesLengthLimit', { ns: 'workflow', limit: RELEASE_NOTES_MAX_LENGTH }))
       return
     }
     else {

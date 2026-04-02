@@ -15,7 +15,7 @@ import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { SimpleSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
@@ -98,10 +98,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
     const { isValid, errorMessageKey } = checkKeys([value], canBeEmpty)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }))
       return false
     }
     return true
@@ -219,10 +216,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
       return
     }
     handlePayloadChange('variable')(e.target.value)
@@ -264,7 +258,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       return
 
     if (!tempPayload.label) {
-      Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }) })
+      toast.error(t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }))
       return
     }
     if (isStringInput || type === InputVarType.number) {
@@ -272,7 +266,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     else if (type === InputVarType.select) {
       if (options?.length === 0) {
-        Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }) })
+        toast.error(t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }))
         return
       }
       const obj: Record<string, boolean> = {}
@@ -285,7 +279,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         obj[o] = true
       })
       if (hasRepeatedItem) {
-        Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }) })
+        toast.error(t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }))
         return
       }
       onConfirm(payloadToSave, moreInfo)
@@ -293,12 +287,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
     else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       if (tempPayload.allowed_file_types?.length === 0) {
         const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }) })
-        Toast.notify({ type: 'error', message: errorMessages })
+        toast.error(errorMessages)
         return
       }
       if (tempPayload.allowed_file_types?.includes(SupportUploadFileTypes.custom) && !tempPayload.allowed_file_extensions?.length) {
         const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.custom.name', { ns: 'appDebug' }) })
-        Toast.notify({ type: 'error', message: errorMessages })
+        toast.error(errorMessages)
         return
       }
       onConfirm(payloadToSave, moreInfo)
@@ -308,12 +302,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
         try {
           const schema = JSON.parse(normalizedJsonSchema)
           if (schema?.type !== 'object') {
-            Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }) })
+            toast.error(t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }))
             return
           }
         }
         catch {
-          Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }) })
+          toast.error(t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }))
           return
         }
       }

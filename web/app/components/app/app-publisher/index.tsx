@@ -35,8 +35,8 @@ import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
-import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
+import { toast } from '../../base/ui/toast'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
@@ -219,7 +219,7 @@ const AppPublisher = ({
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
-        Toast.notify({ type: 'error', message: `${err.message || err}` })
+        toast.error(`${err.message || err}`)
       },
     })
   }, [appDetail?.id, openAsyncWindow])
