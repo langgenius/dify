@@ -1,0 +1,23 @@
+identity:
+  name: get_usage
+  author: AI Agent Economy Community
+  label:
+    en_US: Get Usage
+  description:
+    human:
+      en_US: View recent metered calls and costs.
+    llm: Get recent usage records and spending details.
+parameters:
+  - name: limit
+    type: number
+    required: false
+    form: llm
+    label:
+      en_US: Limit
+    human_description:
+      en_US: Number of recent usage rows.
+    llm_description: Number of recent usage entries to fetch.
+    default: 20
+extra:
+  python:
+    source: tools/get_usage.py

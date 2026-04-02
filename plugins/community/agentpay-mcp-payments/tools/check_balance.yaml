@@ -1,0 +1,13 @@
+identity:
+  name: check_balance
+  author: AI Agent Economy Community
+  label:
+    en_US: Check Balance
+  description:
+    human:
+      en_US: Check wallet balance and provisioned tools.
+    llm: Check AgentPay wallet credits and provisioned tool access.
+parameters: []
+extra:
+  python:
+    source: tools/check_balance.py

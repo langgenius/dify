@@ -1,0 +1,33 @@
+identity:
+  name: call_tool
+  author: AI Agent Economy Community
+  label:
+    en_US: Paid Tool Call
+  description:
+    human:
+      en_US: Invoke a paid tool through AgentPay metering.
+    llm: Call a third-party paid tool by name with JSON arguments. AgentPay auto-provisions and meters usage.
+parameters:
+  - name: tool_name
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Tool Name
+    human_description:
+      en_US: Registered tool name in AgentPay marketplace.
+    llm_description: Name of the paid tool to call.
+  - name: arguments_json
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Arguments JSON
+    human_description:
+      en_US: JSON object string for tool input arguments.
+    llm_description: JSON string object for the tool arguments.
+    placeholder:
+      en_US: '{"url":"https://example.com"}'
+extra:
+  python:
+    source: tools/call_tool.py

@@ -1,0 +1,39 @@
+identity:
+  name: fund_wallet_stripe
+  author: AI Agent Economy Community
+  label:
+    en_US: Fund Wallet (Stripe)
+  description:
+    human:
+      en_US: Generate a Stripe checkout URL to fund wallet credits.
+    llm: Generate a Stripe checkout URL for adding credits to AgentPay wallet.
+parameters:
+  - name: package
+    type: select
+    required: false
+    form: llm
+    label:
+      en_US: Package
+    human_description:
+      en_US: Credit package to purchase.
+    llm_description: Credit package name.
+    default: micro
+    options:
+      - value: micro
+        label:
+          en_US: micro
+      - value: small
+        label:
+          en_US: small
+      - value: medium
+        label:
+          en_US: medium
+      - value: large
+        label:
+          en_US: large
+      - value: whale
+        label:
+          en_US: whale
+extra:
+  python:
+    source: tools/fund_wallet_stripe.py

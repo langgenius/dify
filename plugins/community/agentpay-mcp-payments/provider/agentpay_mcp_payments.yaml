@@ -1,0 +1,88 @@
+identity:
+  author: AI Agent Economy Community
+  name: agentpay_mcp_payments
+  label:
+    en_US: AgentPay Payment Layer
+    zh_Hans: AgentPay 支付层
+  description:
+    en_US: Discover and invoke paid MCP tools with AgentPay metering and funding flows.
+    zh_Hans: 使用 AgentPay 计费能力发现并调用付费 MCP 工具。
+  icon: _assets/icon.svg
+  tags:
+    - finance
+    - business
+    - utilities
+
+credentials_for_provider:
+  agentpay_gateway_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: AgentPay Gateway Key
+      zh_Hans: AgentPay 网关密钥
+    placeholder:
+      en_US: apg_xxx
+      zh_Hans: 输入 apg_ 开头的密钥
+    help:
+      en_US: Register once to create a wallet and key.
+      zh_Hans: 先注册获取钱包和网关密钥。
+    url: https://agentpay.metaltorque.dev/docs
+  agentpay_url:
+    type: text-input
+    required: false
+    label:
+      en_US: AgentPay Gateway URL
+      zh_Hans: AgentPay 网关地址
+    placeholder:
+      en_US: https://agentpay.metaltorque.dev
+      zh_Hans: https://agentpay.metaltorque.dev
+  agentpay_mcp_http_url:
+    type: text-input
+    required: false
+    label:
+      en_US: AgentPay MCP HTTP URL (optional)
+      zh_Hans: AgentPay MCP HTTP 地址（可选）
+    placeholder:
+      en_US: https://your-agentpay-host/mcp
+      zh_Hans: https://your-agentpay-host/mcp
+  agentpay_launch_mode:
+    type: select
+    required: false
+    label:
+      en_US: Launch Mode
+      zh_Hans: 启动模式
+    options:
+      - value: auto
+        label:
+          en_US: auto (HTTP first, stdio fallback)
+          zh_Hans: 自动（优先 HTTP，失败回退 stdio）
+      - value: http
+        label:
+          en_US: HTTP only
+          zh_Hans: 仅 HTTP
+      - value: stdio
+        label:
+          en_US: stdio only
+          zh_Hans: 仅 stdio
+    default: auto
+  agentpay_command:
+    type: text-input
+    required: false
+    label:
+      en_US: stdio command
+      zh_Hans: stdio 命令
+    placeholder:
+      en_US: npx
+      zh_Hans: npx
+
+tools:
+  - tools/discover_tools.yaml
+  - tools/list_tools.yaml
+  - tools/check_balance.yaml
+  - tools/fund_wallet_stripe.yaml
+  - tools/call_tool.yaml
+  - tools/get_usage.yaml
+
+extra:
+  python:
+    source: agentpay_mcp_payments.py
