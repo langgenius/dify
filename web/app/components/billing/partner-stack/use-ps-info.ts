@@ -27,6 +27,8 @@ const usePSInfo = () => {
   const domain = globalThis.location?.hostname.replace('cloud', '')
 
   const saveOrUpdate = useCallback(() => {
+    if (hasBind)
+      return
     if (!psPartnerKey || !psClickId)
       return
     if (!isPSChanged)
@@ -39,7 +41,7 @@ const usePSInfo = () => {
       path: '/',
       domain,
     })
-  }, [psPartnerKey, psClickId, isPSChanged, domain])
+  }, [psPartnerKey, psClickId, isPSChanged, domain, hasBind])
 
   const bind = useCallback(async () => {
     if (psPartnerKey && psClickId && !hasBind) {
