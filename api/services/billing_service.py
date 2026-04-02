@@ -2,11 +2,7 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-<<<<<<< HEAD
-from typing import Literal, NotRequired
-=======
-from typing import Literal, TypedDict
->>>>>>> chore-debug-partnerstack
+from typing import Literal, NotRequired, TypedDict
 
 import httpx
 from pydantic import TypeAdapter
