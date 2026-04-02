@@ -18,9 +18,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
   const { data: appParams, error: appParamsError } = useGetWebAppParams()
-  const { data: appInfo, error: appInfoError, isPending: isPendingAppInfo } = useGetWebAppInfo()
+  const { data: appInfo, error: appInfoError } = useGetWebAppInfo()
   const { data: appMeta, error: appMetaError } = useGetWebAppMeta()
-  const { data: userCanAccessApp, error: useCanAccessAppError, isPending: isPendingUserCanAccessApp } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
+  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
 
   useEffect(() => {
     if (appInfo)
@@ -29,8 +29,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
       updateAppParams(appParams)
     if (appMeta)
       updateWebAppMeta(appMeta)
-    if (userCanAccessApp)
-      updateUserCanAccessApp(Boolean(userCanAccessApp.result))
+    updateUserCanAccessApp(Boolean(userCanAccessApp && userCanAccessApp?.result))
   }, [appInfo, appMeta, appParams, updateAppInfo, updateAppParams, updateUserCanAccessApp, updateWebAppMeta, userCanAccessApp])
 
   const router = useRouter()
@@ -81,13 +80,10 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
         <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
-        <span className="cursor-pointer text-text-tertiary system-sm-regular" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
+        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
       </div>
     )
   }
-
-  if (isPendingAppInfo || !appInfo?.app_id || isPendingUserCanAccessApp)
-    return null
 
   return <>{children}</>
 }
