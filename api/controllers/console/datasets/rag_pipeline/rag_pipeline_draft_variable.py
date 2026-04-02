@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from typing import Any, NoReturn
 
 from flask import Response, request
@@ -55,7 +56,7 @@ class WorkflowDraftVariablePatchPayload(BaseModel):
 register_schema_models(console_ns, WorkflowDraftVariablePatchPayload)
 
 
-def _api_prerequisite(f):
+def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -70,7 +71,7 @@ def _api_prerequisite(f):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
         return f(*args, **kwargs)

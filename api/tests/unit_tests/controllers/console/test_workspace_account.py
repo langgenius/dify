@@ -20,7 +20,7 @@ def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_MASK_HEADER"] = "X-Fields"
-    app.login_manager = SimpleNamespace(_load_user=lambda: None)
+    app.login_manager = SimpleNamespace(load_user_from_request_context=lambda: None)
     return app
 
 
