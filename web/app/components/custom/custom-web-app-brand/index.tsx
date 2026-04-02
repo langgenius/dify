@@ -55,7 +55,7 @@ const CustomWebAppBrand = () => {
               >
                 {t('restore', { ns: 'custom' })}
               </Button>
-              <div className="mx-2 h-5 w-[1px] bg-divider-regular"></div>
+              <div className="mx-2 h-5 w-px bg-divider-regular"></div>
             </>
           )}
           {

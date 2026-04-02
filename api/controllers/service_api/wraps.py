@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar, cast, overload
+from typing import Any, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -22,10 +22,6 @@ from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
-
-P = ParamSpec("P")
-R = TypeVar("R")
-T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +42,16 @@ class FetchUserArg(BaseModel):
 
 
 @overload
-def validate_app_token(view: Callable[P, R]) -> Callable[P, R]: ...
+def validate_app_token[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
 
 
 @overload
-def validate_app_token(
+def validate_app_token[**P, R](
     view: None = None, *, fetch_user_arg: FetchUserArg | None = None
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
-def validate_app_token(
+def validate_app_token[**P, R](
     view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
@@ -136,7 +132,10 @@ def validate_app_token(
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
+def cloud_edition_billing_resource_check[**P, R](
+    resource: str,
+    api_token_type: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
@@ -166,7 +165,10 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
+def cloud_edition_billing_knowledge_limit_check[**P, R](
+    resource: str,
+    api_token_type: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -188,7 +190,10 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
+def cloud_edition_billing_rate_limit_check[**P, R](
+    resource: str,
+    api_token_type: str,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -225,20 +230,12 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     return interceptor
 
 
-@overload
-def validate_dataset_token(view: Callable[Concatenate[T, P], R]) -> Callable[P, R]: ...
-
-
-@overload
-def validate_dataset_token(view: None = None) -> Callable[[Callable[Concatenate[T, P], R]], Callable[P, R]]: ...
-
-
 def validate_dataset_token(
-    view: Callable[Concatenate[T, P], R] | None = None,
-) -> Callable[P, R] | Callable[[Callable[Concatenate[T, P], R]], Callable[P, R]]:
-    def decorator(view_func: Callable[Concatenate[T, P], R]) -> Callable[P, R]:
+    view: Callable[..., Any] | None = None,
+) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(view_func)
-        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        def decorated(*args: Any, **kwargs: Any) -> Any:
             api_token = validate_and_get_api_token("dataset")
 
             # get url path dataset_id from positional args or kwargs
@@ -308,7 +305,10 @@ def validate_dataset_token(
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-            return view_func(api_token.tenant_id, *args, **kwargs)  # type: ignore[arg-type]
+            if args and isinstance(args[0], Resource):
+                return view_func(args[0], api_token.tenant_id, *args[1:], **kwargs)
+
+            return view_func(api_token.tenant_id, *args, **kwargs)
 
         return decorated
 

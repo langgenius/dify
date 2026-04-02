@@ -2,16 +2,9 @@ import type { Mock } from 'vitest'
 import type { IBatchModalProps } from './index'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
 import BatchModal, { ProcessStatus } from './index'
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
 
 vi.mock('@/service/annotation', () => ({
   annotationBatchImport: vi.fn(),
@@ -49,7 +42,18 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-const mockNotify = Toast.notify as Mock
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
+  },
+}))
 const useProviderContextMock = useProviderContext as Mock
 const annotationBatchImportMock = annotationBatchImport as Mock
 const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as Mock

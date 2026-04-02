@@ -11,9 +11,15 @@ const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn<(items: ClipboardItem[]) => Promise<void>>(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: (...args: Parameters<typeof mocks.notify>) => mocks.notify(...args),
+  },
+  toast: {
+    success: (message: string) => mocks.notify({ type: 'success', message }),
+    error: (message: string) => mocks.notify({ type: 'error', message }),
+    warning: (message: string) => mocks.notify({ type: 'warning', message }),
+    info: (message: string) => mocks.notify({ type: 'info', message }),
   },
 }))
 

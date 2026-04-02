@@ -2,7 +2,6 @@ import csv
 import io
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource
@@ -19,9 +18,6 @@ from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
 from services.billing_service import BillingService
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -72,9 +68,9 @@ console_ns.schema_model(
 )
 
 
-def admin_required(view: Callable[P, R]):
+def admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 

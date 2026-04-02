@@ -177,7 +177,7 @@ function ParameterItem({
           )}
           <input
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-hidden system-sm-regular"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -205,7 +205,7 @@ function ParameterItem({
           )}
           <input
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-hidden system-sm-regular"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -252,7 +252,7 @@ function ParameterItem({
 
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none system-sm-regular')}
+          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-hidden system-sm-regular')}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -308,7 +308,7 @@ function ParameterItem({
 
     if (parameterRule.type === 'tag') {
       return (
-        <div className={cn('!h-8 w-full')}>
+        <div className={cn('h-8! w-full')}>
           <TagInput
             items={renderValue as string[]}
             onChange={handleTagChange}

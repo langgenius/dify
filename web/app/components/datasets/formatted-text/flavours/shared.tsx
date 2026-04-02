@@ -79,7 +79,7 @@ export const SliceDivider: FC<SliceDividerProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn(baseStyle, 'bg-state-base-active px-[1px] text-sm group-hover:bg-state-accent-solid', className)}
+      className={cn(baseStyle, 'bg-state-base-active px-px text-sm group-hover:bg-state-accent-solid', className)}
     >
       {/* use a zero-width space to make the hover area bigger */}
       &#8203;

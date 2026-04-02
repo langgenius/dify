@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .gradientBorder {
   background: radial-gradient(circle at 100% 100%, #fcfcfd 0, #fcfcfd 10px, transparent 10px) 0% 0%/12px 12px no-repeat,
             radial-gradient(circle at 0 100%, #fcfcfd 0, #fcfcfd 10px, transparent 10px) 100% 0%/12px 12px no-repeat,

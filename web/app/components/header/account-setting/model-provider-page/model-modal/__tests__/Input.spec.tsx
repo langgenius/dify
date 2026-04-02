@@ -51,7 +51,7 @@ describe('Input', () => {
   })
 
   // Edge cases: min/max enforcement
-  it('should clamp to the min value when the input is below min on blur', () => {
+  it('should clamp to the min value when the input is below min on blur-sm', () => {
     const onChange = vi.fn()
 
     render(
@@ -70,7 +70,7 @@ describe('Input', () => {
     expect(onChange).toHaveBeenLastCalledWith('2')
   })
 
-  it('should clamp to the max value when the input is above max on blur', () => {
+  it('should clamp to the max value when the input is above max on blur-sm', () => {
     const onChange = vi.fn()
 
     render(
@@ -89,7 +89,7 @@ describe('Input', () => {
     expect(onChange).toHaveBeenLastCalledWith('6')
   })
 
-  it('should keep the value when it is within the min/max range on blur', () => {
+  it('should keep the value when it is within the min/max range on blur-sm', () => {
     const onChange = vi.fn()
 
     render(

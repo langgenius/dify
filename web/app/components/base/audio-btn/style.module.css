@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .playIcon {
   background-image: url(~@/app/components/develop/secret-key/assets/play.svg);
   background-position: center;

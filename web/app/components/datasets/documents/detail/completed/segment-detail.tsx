@@ -218,7 +218,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         </div>
       </div>
       {isEditMode && !fullScreen && (
-        <div className="flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3">
+        <div className="flex items-center justify-end border-t border-t-divider-subtle p-4 pt-3">
           <ActionButtons
             handleCancel={handleCancel}
             handleRegeneration={handleRegeneration}

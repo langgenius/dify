@@ -77,8 +77,8 @@ const MemberSelector: FC<Props> = ({
           <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1002]">
-        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+      <PortalToFollowElemContent className="z-1002">
+        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
               data-testid="member-selector-search"
