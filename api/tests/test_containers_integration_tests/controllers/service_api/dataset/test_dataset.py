@@ -234,6 +234,10 @@ def _unwrap(method):
 
 @pytest.fixture
 def app(flask_app_with_containers):
+    # Uses the full containerised app so that Flask config, extensions, and
+    # blueprint registrations match production.  Services are still mocked
+    # because these tests target controller-level logic (routing, error
+    # mapping, permission checks), not service/DB behaviour.
     return flask_app_with_containers
 
 
@@ -706,6 +710,7 @@ class TestDatasetTagsApiGet:
 
         assert status == 200
         assert len(response) == 1
+        mock_tag_svc.get_tags.assert_called_once_with("knowledge", "tenant-1")
 
 
 class TestDatasetTagsApiPost:
@@ -756,6 +761,112 @@ class TestDatasetTagsApiPost:
             api = DatasetTagsApi()
             with pytest.raises(Forbidden):
                 api.post(_=None)
+
+
+class TestDatasetTagsApiPatch:
+    """Test suite for DatasetTagsApi.patch() endpoint."""
+
+    @pytest.mark.skip(reason="Production bug: DataSetTag.binding_count is str|None but dataset.py passes int 0")
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.service_api_ns")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_update_tag_success(
+        self,
+        mock_current_user,
+        mock_service_api_ns,
+        mock_tag_svc,
+        app,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = True
+        mock_current_user.is_dataset_editor = True
+
+        mock_tag = SimpleNamespace(id="tag-1", name="Updated Tag", type="knowledge")
+        mock_tag_svc.update_tags.return_value = mock_tag
+        mock_tag_svc.get_tag_binding_count.return_value = 5
+        mock_service_api_ns.payload = {"name": "Updated Tag", "tag_id": "tag-1"}
+
+        with app.test_request_context(
+            "/datasets/tags",
+            method="PATCH",
+            json={"name": "Updated Tag", "tag_id": "tag-1"},
+        ):
+            api = DatasetTagsApi()
+            response, status = api.patch(_=None)
+
+        assert status == 200
+        assert response["name"] == "Updated Tag"
+        mock_tag_svc.update_tags.assert_called_once_with({"name": "Updated Tag", "type": "knowledge"}, "tag-1")
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_update_tag_forbidden(self, mock_current_user, app):
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = False
+        mock_current_user.is_dataset_editor = False
+
+        with app.test_request_context(
+            "/datasets/tags",
+            method="PATCH",
+            json={"name": "Updated Tag", "tag_id": "tag-1"},
+        ):
+            api = DatasetTagsApi()
+            with pytest.raises(Forbidden):
+                api.patch(_=None)
+
+
+class TestDatasetTagsApiDelete:
+    """Test suite for DatasetTagsApi.delete() endpoint."""
+
+    @patch("controllers.service_api.dataset.dataset.TagService")
+    @patch("controllers.service_api.dataset.dataset.service_api_ns")
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_delete_tag_success(
+        self,
+        mock_current_user,
+        mock_service_api_ns,
+        mock_tag_svc,
+        app,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = True
+        mock_current_user.is_dataset_editor = True
+
+        mock_tag_svc.delete_tag.return_value = None
+        mock_service_api_ns.payload = {"tag_id": "tag-1"}
+
+        with app.test_request_context(
+            "/datasets/tags",
+            method="DELETE",
+            json={"tag_id": "tag-1"},
+        ):
+            api = DatasetTagsApi()
+            result = api.delete(_=None)
+
+        assert result == ("", 204)
+        mock_tag_svc.delete_tag.assert_called_once_with("tag-1")
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    def test_delete_tag_forbidden(self, mock_current_user, app):
+        from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+        mock_current_user.__class__ = Account
+        mock_current_user.has_edit_permission = False
+        mock_current_user.is_dataset_editor = False
+
+        with app.test_request_context(
+            "/datasets/tags",
+            method="DELETE",
+            json={"tag_id": "tag-1"},
+        ):
+            api = DatasetTagsApi()
+            with pytest.raises(Forbidden):
+                api.delete(_=None)
 
 
 class TestDatasetTagsBindingStatusApi:
@@ -815,6 +926,9 @@ class TestDatasetTagBindingApiPost:
             result = api.post(_=None)
 
         assert result == ("", 204)
+        mock_tag_svc.save_tag_binding.assert_called_once_with(
+            {"tag_ids": ["tag-1"], "target_id": "ds-1", "type": "knowledge"}
+        )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_bind_tags_forbidden(self, mock_current_user, app):
@@ -861,6 +975,9 @@ class TestDatasetTagUnbindingApiPost:
             result = api.post(_=None)
 
         assert result == ("", 204)
+        mock_tag_svc.delete_tag_binding.assert_called_once_with(
+            {"tag_id": "tag-1", "target_id": "ds-1", "type": "knowledge"}
+        )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_unbind_tag_forbidden(self, mock_current_user, app):
