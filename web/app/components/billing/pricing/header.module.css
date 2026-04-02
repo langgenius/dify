@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .instrumentSerif {
   font-family: "Instrument Serif", serif;
   font-style: italic;

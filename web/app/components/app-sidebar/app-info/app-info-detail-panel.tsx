@@ -97,7 +97,7 @@ const AppInfoDetailPanel = ({
     <ContentDialog
       show={show}
       onClose={onClose}
-      className="absolute bottom-2 left-2 top-2 flex w-[420px] flex-col rounded-2xl !p-0"
+      className="absolute bottom-2 left-2 top-2 flex w-[420px] flex-col rounded-2xl p-0!"
     >
       <div className="flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4">
         <div className="flex items-center gap-3 self-stretch">
@@ -116,7 +116,7 @@ const AppInfoDetailPanel = ({
           </div>
         </div>
         {appDetail.description && (
-          <div className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary system-xs-regular">
+          <div className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal wrap-break-word text-text-tertiary system-xs-regular">
             {appDetail.description}
           </div>
         )}

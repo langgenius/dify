@@ -42,7 +42,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
             <div className="system-xs-regular text-text-secondary">
               <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
-              <code className="system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary">
+              <code className="system-xs-medium block break-all rounded-sm bg-state-warning-active px-2 py-1 text-text-secondary">
                 {`${API_PREFIX}/mcp/oauth/callback`}
               </code>
             </div>

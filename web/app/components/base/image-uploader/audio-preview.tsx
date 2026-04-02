@@ -12,7 +12,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
   onCancel,
 }) => {
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8" onClick={e => e.stopPropagation()} data-testid="audio-preview-overlay">
+    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8" onClick={e => e.stopPropagation()} data-testid="audio-preview-overlay">
       <div>
         <audio controls title={title} autoPlay={false} preload="metadata" data-testid="audio-element">
           <source

@@ -70,7 +70,7 @@ const RangeSelector: FC<Props> = ({
   return (
     <SimpleSelect
       items={ranges.map(v => ({ ...v, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
-      className="mt-0 !w-40"
+      className="mt-0 w-40!"
       notClearable={true}
       onSelect={handleSelectRange}
       defaultValue={0}

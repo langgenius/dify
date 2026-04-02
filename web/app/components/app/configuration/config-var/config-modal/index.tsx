@@ -466,7 +466,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 value={jsonSchemaStr}
                 onChange={handleJSONSchemaChange}
                 noWrapper
-                className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+                className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
                 placeholder={
                   <div className="whitespace-pre">{jsonConfigPlaceHolder}</div>
                 }
@@ -474,12 +474,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </Field>
           )}
 
-          <div className="!mt-5 flex h-6 items-center space-x-2">
+          <div className="mt-5! flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
           </div>
 
-          <div className="!mt-5 flex h-6 items-center space-x-2">
+          <div className="mt-5! flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hide', { ns: 'appDebug' })}</span>
           </div>

@@ -28,20 +28,20 @@ export type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
 export const scrollAreaScrollbarClassName = cn(
   styles.scrollbar,
   'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
-  'pointer-events-none data-[hovering]:pointer-events-auto',
-  'data-[scrolling]:pointer-events-auto',
+  'pointer-events-none data-hovering:pointer-events-auto',
+  'data-scrolling:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
   'data-[orientation=horizontal]:absolute data-[orientation=horizontal]:inset-x-0 data-[orientation=horizontal]:h-3 data-[orientation=horizontal]:items-center',
 )
 
 export const scrollAreaThumbClassName = cn(
-  'shrink-0 rounded-[4px] bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
+  'shrink-0 radius-xs bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
 )
 
 export const scrollAreaViewportClassName = cn(
-  'size-full min-h-0 min-w-0 outline-none',
+  'size-full min-h-0 min-w-0 outline-hidden',
   'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover',
 )
 

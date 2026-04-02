@@ -1005,7 +1005,7 @@ const Configuration: FC = () => {
                       </>
                     )}
                     {isMobile && (
-                      <Button className="mr-2 !h-8 !text-[13px] font-medium" onClick={showDebugPanel}>
+                      <Button className="mr-2 h-8! text-[13px]! font-medium" onClick={showDebugPanel}>
                         <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
                         <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>

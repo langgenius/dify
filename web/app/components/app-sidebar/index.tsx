@@ -118,7 +118,7 @@ const AppDetailNav = ({
           className={cn(
             'my-0 h-px',
             expand
-              ? 'bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent'
+              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
               : 'bg-divider-subtle',
           )}
         />

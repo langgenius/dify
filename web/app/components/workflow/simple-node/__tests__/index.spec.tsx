@@ -62,7 +62,7 @@ describe('simple-node', () => {
     )
 
     expect(container.querySelector('.text-text-accent')).not.toBeNull()
-    expect(container.innerHTML).toContain('!border-state-accent-solid')
+    expect(container.innerHTML).toContain('border-state-accent-solid!')
     expect(screen.queryByText('node-control:simple-node')).not.toBeInTheDocument()
   })
 
@@ -77,7 +77,7 @@ describe('simple-node', () => {
     )
 
     expect(container.querySelector('.text-text-success')).not.toBeNull()
-    expect(container.innerHTML).toContain('!border-state-success-solid')
+    expect(container.innerHTML).toContain('border-state-success-solid!')
 
     rerender(
       <SimpleNode
@@ -89,7 +89,7 @@ describe('simple-node', () => {
     )
 
     expect(container.querySelector('.text-text-destructive')).not.toBeNull()
-    expect(container.innerHTML).toContain('!border-state-destructive-solid')
+    expect(container.innerHTML).toContain('border-state-destructive-solid!')
 
     rerender(
       <SimpleNode
@@ -101,7 +101,7 @@ describe('simple-node', () => {
     )
 
     expect(container.querySelector('.text-text-warning-secondary')).not.toBeNull()
-    expect(container.innerHTML).toContain('!border-state-warning-solid')
+    expect(container.innerHTML).toContain('border-state-warning-solid!')
   })
 
   it('should hide handles and controls for candidate or read-only nodes and show selected waiting styles', () => {

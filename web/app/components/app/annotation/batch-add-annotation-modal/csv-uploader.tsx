@@ -107,7 +107,7 @@ const CSVUploader: FC<Props> = ({
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg px-6 text-sm font-normal', 'hover:border-components-panel-bg-blur hover:bg-components-panel-bg-blur')}>
             <CSVIcon className="shrink-0" />
             <div className="ml-2 flex w-0 grow">
-              <span className="max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.name.replace(/.csv$/, '')}</span>
+              <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.name.replace(/.csv$/, '')}</span>
               <span className="shrink-0 text-text-tertiary">.csv</span>
             </div>
             <div className="hidden items-center group-hover:flex">

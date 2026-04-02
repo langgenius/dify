@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .ctrlBtn {
     left: -16px;
     right: -16px;

@@ -73,11 +73,11 @@ const ConfigCredential: FC<Props> = ({
       onHide={onCancel}
       title={t('auth.setupModalTitle', { ns: 'tools' }) as string}
       titleDescription={t('auth.setupModalTitleDescription', { ns: 'tools' }) as string}
-      panelClassName="mt-[64px] mb-2 !w-[420px] border-components-panel-border"
-      maxWidthClassName="!max-w-[420px]"
+      panelClassName="mt-[64px] mb-2 w-[420px]! border-components-panel-border"
+      maxWidthClassName="max-w-[420px]!"
       height="calc(100vh - 64px)"
-      contentClassName="!bg-components-panel-bg"
-      headerClassName="!border-b-divider-subtle"
+      contentClassName="bg-components-panel-bg!"
+      headerClassName="border-b-divider-subtle!"
       body={(
         <div className="h-full px-6 py-3">
           {!credentialSchema
@@ -93,7 +93,7 @@ const ConfigCredential: FC<Props> = ({
                     isEditMode={true}
                     showOnVariableMap={{}}
                     validating={false}
-                    inputClassName="!bg-components-input-bg-normal"
+                    inputClassName="bg-components-input-bg-normal!"
                     fieldMoreInfo={item => item.url
                       ? (
                           <a

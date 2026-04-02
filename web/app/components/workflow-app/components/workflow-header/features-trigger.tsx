@@ -192,7 +192,7 @@ const FeaturesTrigger = () => {
         <Button
           className={cn(
             'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >

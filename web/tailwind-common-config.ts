@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url'
 import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
 import { importSvgCollections } from 'iconify-import-svg'
-import { cssAsPlugin } from './tailwind-css-plugin'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
 import typography from './typography.js'
 
@@ -190,15 +189,6 @@ const config = {
         display: 'block',
       },
     }),
-    cssAsPlugin([
-      path.resolve(_dirname, './app/styles/globals.css'),
-      path.resolve(_dirname, './app/components/base/action-button/index.css'),
-      path.resolve(_dirname, './app/components/base/badge/index.css'),
-      path.resolve(_dirname, './app/components/base/button/index.css'),
-      path.resolve(_dirname, './app/components/base/modal/index.css'),
-      path.resolve(_dirname, './app/components/base/premium-badge/index.css'),
-      path.resolve(_dirname, './app/components/base/segmented-control/index.css'),
-    ]),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {

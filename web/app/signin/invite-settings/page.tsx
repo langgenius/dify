@@ -75,7 +75,7 @@ export default function InviteSettingsPage() {
           <h2 className="text-text-primary title-4xl-semi-bold">{t('invalid', { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
-          <Button variant="primary" className="w-full !text-sm">
+          <Button variant="primary" className="w-full text-sm!">
             <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
           </Button>
         </div>

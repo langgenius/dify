@@ -74,7 +74,7 @@ const DuplicateAppModal = ({
       <Modal
         isShow={show}
         onClose={noop}
-        className={cn('relative !max-w-[480px]', 'px-8')}
+        className={cn('relative max-w-[480px]!', 'px-8')}
       >
         <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />

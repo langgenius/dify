@@ -62,7 +62,7 @@ describe('useDynamicTestRunOptions', () => {
   it('should build user input, trigger options, and a run-all option from workflow nodes', () => {
     mockUseNodes.mockReturnValue([
       {
-        id: 'start-1',
+        id: 'inset-s-1',
         data: { type: BlockEnum.Start, title: 'User Input' },
       },
       {
@@ -87,10 +87,10 @@ describe('useDynamicTestRunOptions', () => {
     const { result } = renderHook(() => useDynamicTestRunOptions())
 
     expect(result.current.userInput).toEqual(expect.objectContaining({
-      id: 'start-1',
+      id: 'inset-s-1',
       type: 'user_input',
       name: 'User Input',
-      nodeId: 'start-1',
+      nodeId: 'inset-s-1',
       enabled: true,
     }))
     expect(result.current.triggers).toEqual([

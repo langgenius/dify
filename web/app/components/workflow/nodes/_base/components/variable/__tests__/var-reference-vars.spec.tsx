@@ -199,7 +199,7 @@ describe('VarReferenceVars', () => {
     }))
   })
 
-  it('should ignore file vars when file support is disabled and forward blur events', () => {
+  it('should ignore file vars when file support is disabled and forward blur-sm events', () => {
     const onChange = vi.fn()
     const onBlur = vi.fn()
 

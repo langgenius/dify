@@ -223,7 +223,7 @@ describe('TagManagementModal', () => {
       })
     })
 
-    it('should create a tag on input blur', async () => {
+    it('should create a tag on input blur-sm', async () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 

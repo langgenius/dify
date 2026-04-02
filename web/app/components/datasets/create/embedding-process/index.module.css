@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .progressContainer {
   @apply relative pb-4 w-full;
   border-bottom: 0.5px solid #EAECF0;

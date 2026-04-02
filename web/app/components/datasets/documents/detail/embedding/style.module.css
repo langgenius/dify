@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .progressBar {
   @apply absolute top-0 h-4;
 }
@@ -16,7 +18,7 @@
   );
 }
 .opBtn {
-  @apply w-fit h-6 text-xs px-2 py-1 text-gray-700 rounded-md !important;
+  @apply !h-6 !w-fit !px-2 !py-1 !text-xs !text-gray-700 rounded-md;
 }
 .opIcon {
   @apply mr-1 stroke-current text-gray-700 w-3 h-3;
