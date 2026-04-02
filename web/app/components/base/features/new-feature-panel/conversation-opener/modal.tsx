@@ -212,7 +212,13 @@ const OpeningSettingModal = ({
         <div className="mt-1.5 h-8 w-8 shrink-0 rounded-lg border-components-panel-border bg-util-colors-orange-dark-orange-dark-500 p-1.5">
           <span className="i-ri-asterisk h-5 w-5 text-text-primary-on-surface" />
         </div>
-        <div className="grow rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg p-3 shadow-xs">
+        <div
+          aria-invalid={isSaveDisabled}
+          className={cn(
+            'grow rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg p-3 shadow-xs',
+            isSaveDisabled && 'border border-components-input-border-destructive',
+          )}
+        >
           <PromptEditor
             value={tempValue}
             onChange={setTempValue}
