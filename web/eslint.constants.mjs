@@ -71,7 +71,7 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
       '**/base/dropdown',
       '**/base/dropdown/index',
     ],
-    message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/dropdown-menu instead. See issue #32767.',
   },
   {
     group: [

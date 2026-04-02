@@ -1,0 +1,78 @@
+{
+  "name": "@langgenius/dify-ui",
+  "private": true,
+  "version": "0.0.0-private",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    "./context-menu": {
+      "types": "./dist/context-menu/index.d.ts",
+      "import": "./dist/context-menu/index.js"
+    },
+    "./dropdown-menu": {
+      "types": "./dist/dropdown-menu/index.d.ts",
+      "import": "./dist/dropdown-menu/index.js"
+    },
+    "./tailwind-preset": {
+      "types": "./dist/tailwind-preset.d.ts",
+      "import": "./dist/tailwind-preset.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./markdown.css": "./dist/markdown.css",
+    "./themes/light.css": "./dist/themes/light.css",
+    "./themes/dark.css": "./dist/themes/dark.css",
+    "./themes/manual-light.css": "./dist/themes/manual-light.css",
+    "./themes/manual-dark.css": "./dist/themes/manual-dark.css",
+    "./themes/markdown-light.css": "./dist/themes/markdown-light.css",
+    "./themes/markdown-dark.css": "./dist/themes/markdown-dark.css",
+    "./tokens/tailwind-theme-var-define": {
+      "types": "./dist/tokens/tailwind-theme-var-define.d.ts",
+      "import": "./dist/tokens/tailwind-theme-var-define.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "prepack": "pnpm build",
+    "test": "vp test",
+    "test:watch": "vp test --watch",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@dify/iconify-collections": "workspace:*",
+    "@egoist/tailwindcss-icons": "catalog:",
+    "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@remixicon/react": "catalog:",
+    "@tailwindcss/typography": "catalog:",
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:"
+  },
+  "devDependencies": {
+    "@storybook/react": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "happy-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

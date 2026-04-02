@@ -1,0 +1,713 @@
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility system-kbd {
+  /* font define start */
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-2xs-regular-uppercase {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 12px;
+
+  /* border radius end */
+}
+
+@utility system-2xs-regular {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 12px;
+
+  /* border radius end */
+}
+
+@utility system-2xs-medium {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+
+  /* border radius end */
+}
+
+@utility system-2xs-medium-uppercase {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 12px;
+
+  /* border radius end */
+}
+
+@utility system-2xs-semibold-uppercase {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 12px;
+
+  /* border radius end */
+}
+
+@utility system-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-xs-regular-uppercase {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-xs-medium-uppercase {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-xs-semibold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-xs-semibold-uppercase {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-sm-medium-uppercase {
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-sm-semibold-uppercase {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility system-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility system-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility system-md-semibold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility system-md-semibold-uppercase {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility system-xl-regular {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+
+  /* border radius end */
+}
+
+@utility system-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+
+  /* border radius end */
+}
+
+@utility system-xl-semibold {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+
+  /* border radius end */
+}
+
+@utility code-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility code-xs-semibold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility code-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility code-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility code-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility code-md-semibold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility body-xs-light {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility body-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility body-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility body-sm-light {
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility body-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility body-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility body-md-light {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility body-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility body-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility body-lg-light {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility body-lg-regular {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility body-lg-medium {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility body-xl-regular {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+
+  /* border radius end */
+}
+
+@utility body-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+
+  /* border radius end */
+}
+
+@utility body-xl-light {
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 24px;
+
+  /* border radius end */
+}
+
+@utility body-2xl-light {
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility body-2xl-regular {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility body-2xl-medium {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+
+  /* border radius end */
+}
+
+@utility title-xs-semi-bold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility title-xs-bold {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility title-sm-semi-bold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility title-sm-bold {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+
+  /* border radius end */
+}
+
+@utility title-md-semi-bold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility title-md-bold {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+
+  /* border radius end */
+}
+
+@utility title-lg-semi-bold {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-lg-bold {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-xl-semi-bold {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-xl-bold {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-2xl-semi-bold {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-2xl-bold {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-3xl-semi-bold {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-3xl-bold {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-4xl-semi-bold {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-4xl-bold {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-5xl-semi-bold {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-5xl-bold {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-6xl-semi-bold {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-6xl-bold {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-7xl-semi-bold {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-7xl-bold {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-8xl-semi-bold {
+  font-size: 60px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility title-8xl-bold {
+  font-size: 60px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  /* border radius end */
+}
+
+@utility radius-2xs {
+  /* font define end */
+
+  /* border radius start */
+  border-radius: 2px;
+
+  /* border radius end */
+}
+
+@utility radius-xs {
+  border-radius: 4px;
+
+  /* border radius end */
+}
+
+@utility radius-sm {
+  border-radius: 6px;
+
+  /* border radius end */
+}
+
+@utility radius-md {
+  border-radius: 8px;
+
+  /* border radius end */
+}
+
+@utility radius-lg {
+  border-radius: 10px;
+
+  /* border radius end */
+}
+
+@utility radius-xl {
+  border-radius: 12px;
+
+  /* border radius end */
+}
+
+@utility radius-2xl {
+  border-radius: 16px;
+
+  /* border radius end */
+}
+
+@utility radius-3xl {
+  border-radius: 20px;
+
+  /* border radius end */
+}
+
+@utility radius-4xl {
+  border-radius: 24px;
+
+  /* border radius end */
+}
+
+@utility radius-5xl {
+  border-radius: 24px;
+
+  /* border radius end */
+}
+
+@utility radius-6xl {
+  border-radius: 28px;
+
+  /* border radius end */
+}
+
+@utility radius-7xl {
+  border-radius: 32px;
+
+  /* border radius end */
+}
+
+@utility radius-8xl {
+  border-radius: 40px;
+
+  /* border radius end */
+}
+
+@utility radius-9xl {
+  border-radius: 48px;
+
+  /* border radius end */
+}
+
+@utility radius-full {
+  border-radius: 64px;
+
+  /* border radius end */
+}
+
+@utility no-scrollbar {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility no-spinner {
+  /* Hide arrows from number input */
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield;
+}
+

@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss'
-import commonConfig from './tailwind-common-config'
+import difyUiTailwindPreset from '@langgenius/dify-ui/tailwind-preset'
 
 const config: Config = {
   content: [
@@ -10,7 +10,7 @@ const config: Config = {
     './node_modules/@streamdown/math/dist/*.js',
     '!./**/*.{spec,test}.{js,ts,jsx,tsx}',
   ],
-  ...commonConfig,
+  ...difyUiTailwindPreset,
 }
 
 export default config

@@ -1,7 +1,7 @@
 import type { AppContextValue } from '@/context/app-context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'

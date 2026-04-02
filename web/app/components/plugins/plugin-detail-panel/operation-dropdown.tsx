@@ -1,15 +1,9 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
-import type { Placement } from '@/app/components/base/ui/placement'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
 import { PluginSource } from '../types'

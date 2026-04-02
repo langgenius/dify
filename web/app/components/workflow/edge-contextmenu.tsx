@@ -1,14 +1,14 @@
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+} from '@langgenius/dify-ui/context-menu'
+import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-} from '@/app/components/base/ui/context-menu'
 import { useEdgesInteractions, usePanelInteractions } from './hooks'
 import ShortcutsName from './shortcuts-name'
 import { useStore } from './store'

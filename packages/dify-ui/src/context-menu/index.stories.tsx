@@ -1,4 +1,10 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Meta, StoryObj } from '@storybook/react'
+import {
+  RiDeleteBinLine,
+  RiFileCopyLine,
+  RiPencilLine,
+  RiShareLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import {
   ContextMenu,
@@ -17,7 +23,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger,
-} from '.'
+} from './index'
 
 const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: string }) => (
   <ContextMenuTrigger
@@ -185,17 +191,17 @@ export const Complex: Story = {
       <TriggerArea label="Right-click to inspect all menu capabilities" />
       <ContextMenuContent>
         <ContextMenuItem>
-          <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
+          <RiPencilLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
           Rename
         </ContextMenuItem>
         <ContextMenuItem>
-          <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
+          <RiFileCopyLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
           Duplicate
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuSub>
           <ContextMenuSubTrigger>
-            <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
+            <RiShareLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
             Share
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
@@ -206,7 +212,7 @@ export const Complex: Story = {
         </ContextMenuSub>
         <ContextMenuSeparator />
         <ContextMenuItem destructive>
-          <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          <RiDeleteBinLine aria-hidden className="size-4 shrink-0" />
           Delete
         </ContextMenuItem>
       </ContextMenuContent>

@@ -1,7 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import Link from '@/next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,20 +13,20 @@ import {
   DropdownMenuTrigger,
 } from '../index'
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    href,
-    children,
-    ...props
-  }: {
-    href: string
-    children?: ReactNode
-  } & Omit<ComponentPropsWithoutRef<'a'>, 'href'>) => (
+function MockLink({
+  href,
+  children,
+  ...props
+}: {
+  href: string
+  children?: ReactNode
+} & Omit<ComponentPropsWithoutRef<'a'>, 'href'>) {
+  return (
     <a href={href} {...props}>
       {children}
     </a>
-  ),
-}))
+  )
+}
 
 describe('dropdown-menu wrapper', () => {
   describe('DropdownMenuContent', () => {
@@ -301,7 +300,7 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLinkItem
-              render={<Link href="/account" />}
+              render={<MockLink href="/account" />}
               aria-label="account link"
             >
               Account settings

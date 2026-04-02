@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
 import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/base/ui/dropdown-menu'
 import { TONE_LIST } from '@/config'
 
 const toneI18nKeyMap = {

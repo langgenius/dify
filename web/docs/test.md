@@ -10,7 +10,7 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 - **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
 - **Test Environment**: happy-dom
 - **File Naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
-- **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
+- **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`. This rule also applies to workspace packages under `packages/`.
 
 ## Running Tests
 

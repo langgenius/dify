@@ -16,8 +16,8 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/toast` (including `context`)
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
-  - `@/app/components/base/ui/dropdown-menu`
-  - `@/app/components/base/ui/context-menu`
+  - `@langgenius/dify-ui/dropdown-menu`
+  - `@langgenius/dify-ui/context-menu`
   - `@/app/components/base/ui/popover`
   - `@/app/components/base/ui/dialog`
   - `@/app/components/base/ui/alert-dialog`

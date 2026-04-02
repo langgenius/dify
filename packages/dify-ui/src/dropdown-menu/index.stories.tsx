@@ -1,4 +1,15 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Meta, StoryObj } from '@storybook/react'
+import {
+  RiArchiveLine,
+  RiChat1Line,
+  RiDeleteBinLine,
+  RiFileCopyLine,
+  RiLink,
+  RiLockLine,
+  RiMailLine,
+  RiPencilLine,
+  RiShareLine,
+} from '@remixicon/react'
 import { useState } from 'react'
 import {
   DropdownMenu,
@@ -17,7 +28,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from '.'
+} from './index'
 
 const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
   <DropdownMenuTrigger
@@ -214,20 +225,20 @@ export const WithIcons: Story = {
       <TriggerButton />
       <DropdownMenuContent>
         <DropdownMenuItem>
-          <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
+          <RiPencilLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
           Edit
         </DropdownMenuItem>
         <DropdownMenuItem>
-          <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
+          <RiFileCopyLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
           Duplicate
         </DropdownMenuItem>
         <DropdownMenuItem>
-          <span aria-hidden className="i-ri-archive-line size-4 shrink-0 text-text-tertiary" />
+          <RiArchiveLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
           Archive
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem destructive>
-          <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          <RiDeleteBinLine aria-hidden className="size-4 shrink-0" />
           Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -262,35 +273,35 @@ const ComplexDemo = () => {
         <DropdownMenuGroup>
           <DropdownMenuGroupLabel>Edit</DropdownMenuGroupLabel>
           <DropdownMenuItem>
-            <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
+            <RiPencilLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
             Rename
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
+            <RiFileCopyLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
             Duplicate
           </DropdownMenuItem>
           <DropdownMenuItem disabled>
-            <span aria-hidden className="i-ri-lock-line size-4 shrink-0 text-text-tertiary" />
+            <RiLockLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
             Move to Workspace
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
+            <RiShareLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
             Share
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuItem>
-              <span aria-hidden className="i-ri-mail-line size-4 shrink-0 text-text-tertiary" />
+              <RiMailLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
               Email
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <span aria-hidden className="i-ri-chat-1-line size-4 shrink-0 text-text-tertiary" />
+              <RiChat1Line aria-hidden className="size-4 shrink-0 text-text-tertiary" />
               Slack
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <span aria-hidden className="i-ri-link size-4 shrink-0 text-text-tertiary" />
+              <RiLink aria-hidden className="size-4 shrink-0 text-text-tertiary" />
               Copy Link
             </DropdownMenuItem>
           </DropdownMenuSubContent>
@@ -315,13 +326,13 @@ const ComplexDemo = () => {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuCheckboxItem checked={showArchived} onCheckedChange={setShowArchived}>
-          <span aria-hidden className="i-ri-archive-line size-4 shrink-0 text-text-tertiary" />
+          <RiArchiveLine aria-hidden className="size-4 shrink-0 text-text-tertiary" />
           Show Archived
           <DropdownMenuCheckboxItemIndicator />
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem destructive>
-          <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+          <RiDeleteBinLine aria-hidden className="size-4 shrink-0" />
           Delete
         </DropdownMenuItem>
       </DropdownMenuContent>

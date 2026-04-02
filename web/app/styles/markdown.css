@@ -1,5 +1,4 @@
-@import '../../themes/markdown-light.css';
-@import '../../themes/markdown-dark.css';
+@import '@langgenius/dify-ui/markdown.css';
 @reference "./globals.css";
 
 .markdown-body {

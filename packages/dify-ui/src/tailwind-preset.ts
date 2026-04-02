@@ -1,8 +1,10 @@
 import { icons as customPublicIcons } from '@dify/iconify-collections/custom-public'
 import { icons as customVenderIcons } from '@dify/iconify-collections/custom-vender'
-import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
+import { icons as heroicons } from '@iconify-json/heroicons'
+import { icons as remixIcons } from '@iconify-json/ri'
+import { iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
-import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+import tailwindThemeVarDefine from './tokens/tailwind-theme-var-define.js'
 import typography from './typography.js'
 
 const config = {
@@ -151,7 +153,8 @@ const config = {
     tailwindTypography,
     iconsPlugin({
       collections: {
-        ...getIconCollections(['heroicons', 'ri']),
+        heroicons,
+        ri: remixIcons,
         'custom-public': customPublicIcons,
         'custom-vender': customVenderIcons,
       },

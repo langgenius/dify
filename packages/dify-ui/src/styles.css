@@ -1,0 +1,7 @@
+@import './themes/light.css' layer(base);
+@import './themes/dark.css' layer(base);
+@import './themes/manual-light.css' layer(base);
+@import './themes/manual-dark.css' layer(base);
+@import './styles/tokens.css';
+
+@source './**/*.{js,mjs}';

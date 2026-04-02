@@ -6,7 +6,7 @@
  *
  * Migration guide:
  * - Tooltip → `@/app/components/base/ui/tooltip`
- * - Menu/Dropdown → `@/app/components/base/ui/dropdown-menu`
+ * - Menu/Dropdown → `@langgenius/dify-ui/dropdown-menu`
  * - Popover → `@/app/components/base/ui/popover`
  * - Dialog/Modal → `@/app/components/base/ui/dialog`
  * - Select → `@/app/components/base/ui/select`
