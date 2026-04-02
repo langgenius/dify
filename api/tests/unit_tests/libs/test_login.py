@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask, Response, g
 from flask_login import UserMixin
+
 # pyrefly: ignore [missing-import]
 from pytest_mock import MockerFixture
 

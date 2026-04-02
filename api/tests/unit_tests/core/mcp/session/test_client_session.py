@@ -95,7 +95,10 @@ def test_initialize_custom_capabilities(streams):
     read_stream, write_stream = streams
     session = ClientSession(
         # pyrefly: ignore [bad-argument-type]
-        read_stream, write_stream, sampling_callback=lambda c, p: None, list_roots_callback=lambda c: None
+        read_stream,
+        write_stream,
+        sampling_callback=lambda c, p: None,
+        list_roots_callback=lambda c: None,
     )
 
     def mock_server():

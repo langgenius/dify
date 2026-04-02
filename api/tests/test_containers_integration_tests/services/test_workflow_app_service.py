@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session

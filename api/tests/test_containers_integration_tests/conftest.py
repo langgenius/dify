@@ -20,14 +20,19 @@ from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
+
 # pyrefly: ignore [missing-import]
 from testcontainers.core.container import DockerContainer
+
 # pyrefly: ignore [missing-import]
 from testcontainers.core.network import Network
+
 # pyrefly: ignore [missing-import]
 from testcontainers.core.waiting_utils import wait_for_logs
+
 # pyrefly: ignore [missing-import]
 from testcontainers.postgres import PostgresContainer
+
 # pyrefly: ignore [missing-import]
 from testcontainers.redis import RedisContainer
 

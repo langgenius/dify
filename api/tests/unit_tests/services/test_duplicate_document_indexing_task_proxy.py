@@ -271,7 +271,8 @@ class TestDuplicateDocumentIndexingTaskProxy:
         # Arrange
         mock_features = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_mock_features(
             # pyrefly: ignore [bad-argument-type]
-            billing_enabled=True, plan=""
+            billing_enabled=True,
+            plan="",
         )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_duplicate_document_task_proxy()
@@ -289,7 +290,8 @@ class TestDuplicateDocumentIndexingTaskProxy:
         # Arrange
         mock_features = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_mock_features(
             # pyrefly: ignore [bad-argument-type]
-            billing_enabled=True, plan=None
+            billing_enabled=True,
+            plan=None,
         )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DuplicateDocumentIndexingTaskProxyTestDataFactory.create_duplicate_document_task_proxy()

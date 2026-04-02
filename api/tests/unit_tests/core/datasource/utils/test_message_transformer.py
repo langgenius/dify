@@ -25,7 +25,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -61,7 +63,10 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1", conversation_id="conv1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
+                conversation_id="conv1",
             )
         )
 
@@ -92,7 +97,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -128,7 +135,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -167,7 +176,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -190,7 +201,9 @@ class TestDatasourceFileMessageTransformer:
             list(
                 DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                     # pyrefly: ignore [bad-argument-type]
-                    messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                    messages=iter(messages),
+                    user_id="user1",
+                    tenant_id="tenant1",
                 )
             )
 
@@ -214,7 +227,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -244,7 +259,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -270,7 +287,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -289,7 +308,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 
@@ -326,7 +347,9 @@ class TestDatasourceFileMessageTransformer:
             result = list(
                 DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                     # pyrefly: ignore [bad-argument-type]
-                    messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                    messages=iter(messages),
+                    user_id="user1",
+                    tenant_id="tenant1",
                 )
             )
 
@@ -348,7 +371,9 @@ class TestDatasourceFileMessageTransformer:
         result = list(
             DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
                 # pyrefly: ignore [bad-argument-type]
-                messages=iter(messages), user_id="user1", tenant_id="tenant1"
+                messages=iter(messages),
+                user_id="user1",
+                tenant_id="tenant1",
             )
         )
 

@@ -2752,7 +2752,11 @@ class TestWorkflowServiceHumanInputOperations:
         ):
             service._build_human_input_variable_pool(
                 # pyrefly: ignore [bad-typed-dict-key]
-                app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}, user_id="user-1"
+                app_model=MagicMock(),
+                workflow=workflow,
+                node_config={},
+                manual_inputs={},
+                user_id="user-1",
             )
             mock_pool_cls.assert_called_once()
 
@@ -2839,7 +2843,10 @@ class TestWorkflowServiceFreeNodeExecution:
             mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node(
                 # pyrefly: ignore [bad-argument-type]
-                workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
+                workflow=workflow,
+                account=account,
+                node_config=node_config,
+                variable_pool=variable_pool,
             )
             assert node == mock_node_cls.return_value
             mock_node_cls.assert_called_once()

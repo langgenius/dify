@@ -400,7 +400,8 @@ class TableTestRunner:
             if test_case.expected_event_sequence is not None:
                 event_sequence_match, event_mismatch_details = self._validate_event_sequence(
                     # pyrefly: ignore [bad-argument-type]
-                    test_case.expected_event_sequence, events
+                    test_case.expected_event_sequence,
+                    events,
                 )
 
             if not (has_start and has_success):

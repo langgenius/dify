@@ -99,7 +99,10 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         with pytest.raises(ValueError, match="Invalid session_factory type"):
             SQLAlchemyWorkflowExecutionRepository(
                 # pyrefly: ignore [bad-argument-type]
-                session_factory="invalid", user=mock_account, app_id=None, triggered_from=None
+                session_factory="invalid",
+                user=mock_account,
+                app_id=None,
+                triggered_from=None,
             )
 
     def test_init_no_tenant_id(self, mock_session_factory):

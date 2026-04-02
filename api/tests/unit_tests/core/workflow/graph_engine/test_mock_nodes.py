@@ -672,7 +672,9 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         # Initialize the iteration graph with the mock node factory
         iteration_graph = Graph.init(
             # pyrefly: ignore [bad-argument-type]
-            graph_config=self.graph_config, node_factory=node_factory, root_node_id=self._node_data.start_node_id
+            graph_config=self.graph_config,
+            node_factory=node_factory,
+            root_node_id=self._node_data.start_node_id,
         )
 
         if not iteration_graph:

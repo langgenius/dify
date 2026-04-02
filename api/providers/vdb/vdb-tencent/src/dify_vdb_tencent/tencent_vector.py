@@ -80,7 +80,8 @@ class TencentVector(BaseVector):
             if self._has_collection():
                 coll = self._client.describe_collection(
                     # pyrefly: ignore [bad-argument-type]
-                    database_name=self._client_config.database, collection_name=self.collection_name
+                    database_name=self._client_config.database,
+                    collection_name=self.collection_name,
                 )
                 has_hybrid_search = False
                 for idx in coll.indexes:
@@ -110,7 +111,8 @@ class TencentVector(BaseVector):
         return bool(
             self._client.exists_collection(
                 # pyrefly: ignore [bad-argument-type]
-                database_name=self._client_config.database, collection_name=self.collection_name
+                database_name=self._client_config.database,
+                collection_name=self.collection_name,
             )
         )
 
@@ -231,7 +233,9 @@ class TencentVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         docs = self._client.query(
             # pyrefly: ignore [bad-argument-type]
-            database_name=self._client_config.database, collection_name=self.collection_name, document_ids=[id]
+            database_name=self._client_config.database,
+            collection_name=self.collection_name,
+            document_ids=[id],
         )
         if docs and len(docs) > 0:
             return True
@@ -252,7 +256,9 @@ class TencentVector(BaseVector):
 
             self._client.delete(
                 # pyrefly: ignore [bad-argument-type]
-                database_name=self._client_config.database, collection_name=self.collection_name, document_ids=batch_ids
+                database_name=self._client_config.database,
+                collection_name=self.collection_name,
+                document_ids=batch_ids,
             )
 
     def delete_by_metadata_field(self, key: str, value: str):
@@ -339,7 +345,8 @@ class TencentVector(BaseVector):
         if self._has_collection():
             self._client.drop_collection(
                 # pyrefly: ignore [bad-argument-type]
-                database_name=self._client_config.database, collection_name=self.collection_name
+                database_name=self._client_config.database,
+                collection_name=self.collection_name,
             )
 
 

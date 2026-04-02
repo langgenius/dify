@@ -1,6 +1,7 @@
 from unittest.mock import create_autospec, patch
 
 import pytest
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session

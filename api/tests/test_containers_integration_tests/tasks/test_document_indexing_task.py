@@ -2,6 +2,7 @@ from dataclasses import asdict
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 

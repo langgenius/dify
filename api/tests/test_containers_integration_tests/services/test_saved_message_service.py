@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
@@ -606,11 +607,17 @@ class TestSavedMessageService:
         # Both users save the same message
         saved_account = SavedMessage(
             # pyrefly: ignore [bad-argument-type]
-            app_id=app.id, message_id=message.id, created_by_role="account", created_by=account1.id
+            app_id=app.id,
+            message_id=message.id,
+            created_by_role="account",
+            created_by=account1.id,
         )
         saved_end_user = SavedMessage(
             # pyrefly: ignore [bad-argument-type]
-            app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id
+            app_id=app.id,
+            message_id=message.id,
+            created_by_role="end_user",
+            created_by=end_user.id,
         )
         db_session_with_containers.add_all([saved_account, saved_end_user])
         db_session_with_containers.commit()

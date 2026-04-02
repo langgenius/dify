@@ -3,6 +3,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 import sqlalchemy as sa
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session
@@ -718,7 +719,11 @@ class TestAppGenerateService:
         # Execute the method under test
         result = AppGenerateService.generate_single_loop(
             # pyrefly: ignore [bad-argument-type]
-            app_model=app, user=account, node_id=node_id, args=args, streaming=True
+            app_model=app,
+            user=account,
+            node_id=node_id,
+            args=args,
+            streaming=True,
         )
 
         # Verify the result
@@ -746,7 +751,11 @@ class TestAppGenerateService:
         # Execute the method under test
         result = AppGenerateService.generate_single_loop(
             # pyrefly: ignore [bad-argument-type]
-            app_model=app, user=account, node_id=node_id, args=args, streaming=True
+            app_model=app,
+            user=account,
+            node_id=node_id,
+            args=args,
+            streaming=True,
         )
 
         # Verify the result
@@ -773,7 +782,11 @@ class TestAppGenerateService:
         with pytest.raises(ValueError) as exc_info:
             AppGenerateService.generate_single_loop(
                 # pyrefly: ignore [bad-argument-type]
-                app_model=app, user=account, node_id=node_id, args=args, streaming=True
+                app_model=app,
+                user=account,
+                node_id=node_id,
+                args=args,
+                streaming=True,
             )
 
         # Verify error message

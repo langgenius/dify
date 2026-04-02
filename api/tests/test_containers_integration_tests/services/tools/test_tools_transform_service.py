@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import Mock, patch
 
 import pytest
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 from sqlalchemy.orm import Session

@@ -185,7 +185,11 @@ class TestSegmentServiceChildChunks:
         ):
             result = SegmentService.update_child_chunk(
                 # pyrefly: ignore [bad-argument-type]
-                "new content", child_chunk, _make_segment(), _make_document(), dataset
+                "new content",
+                child_chunk,
+                _make_segment(),
+                _make_document(),
+                dataset,
             )
 
         assert result is child_chunk
@@ -823,7 +827,11 @@ class TestSegmentServiceChildChunkTailHelpers:
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
                 SegmentService.update_child_chunk(
                     # pyrefly: ignore [bad-argument-type]
-                    "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset
+                    "new content",
+                    child_chunk,
+                    SimpleNamespace(),
+                    SimpleNamespace(),
+                    dataset,
                 )
 
         mock_db.session.rollback.assert_called_once()

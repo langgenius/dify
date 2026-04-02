@@ -469,7 +469,10 @@ def test_trace_task_workflow_trace(workflow_repo_fixture, mock_db):
     execution = SimpleNamespace(id_="run-id", total_tokens=0)
     task = TraceTask(
         # pyrefly: ignore [bad-argument-type]
-        trace_type=TraceTaskName.WORKFLOW_TRACE, workflow_execution=execution, conversation_id="conv", user_id="user"
+        trace_type=TraceTaskName.WORKFLOW_TRACE,
+        workflow_execution=execution,
+        conversation_id="conv",
+        user_id="user",
     )
     result = task.workflow_trace(workflow_run_id="run-id", conversation_id="conv", user_id="user")
     # pyrefly: ignore [missing-attribute]

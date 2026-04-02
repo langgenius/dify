@@ -8,6 +8,7 @@ using TestContainers to ensure real database and service interactions.
 from unittest.mock import patch
 
 import pytest
+
 # pyrefly: ignore [missing-import]
 from faker import Faker
 

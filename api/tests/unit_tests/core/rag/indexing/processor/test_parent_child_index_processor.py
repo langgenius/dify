@@ -333,7 +333,10 @@ class TestParentChildIndexProcessor:
         ):
             child_docs = processor._split_child_nodes(
                 # pyrefly: ignore [bad-argument-type]
-                Document(page_content="parent", metadata={}), rules, "custom", None
+                Document(page_content="parent", metadata={}),
+                rules,
+                "custom",
+                None,
             )
 
         assert len(child_docs) == 1

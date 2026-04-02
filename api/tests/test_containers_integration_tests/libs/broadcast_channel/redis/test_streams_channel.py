@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 import redis
+
 # pyrefly: ignore [missing-import]
 from testcontainers.redis import RedisContainer
 
