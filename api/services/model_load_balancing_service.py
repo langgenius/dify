@@ -110,8 +110,8 @@ class ModelLoadBalancingService:
             credential_source_type = CredentialSourceType.CUSTOM_MODEL
 
         # Get load balancing configurations
-        load_balancing_configs = (
-            db.session.query(LoadBalancingModelConfig)
+        load_balancing_configs = list(db.session.scalars(
+            select(LoadBalancingModelConfig)
             .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
@@ -123,8 +123,7 @@ class ModelLoadBalancingService:
                 ),
             )
             .order_by(LoadBalancingModelConfig.created_at)
-            .all()
-        )
+        ).all())
 
         if provider_configuration.custom_configuration.provider:
             # check if the inherit configuration exists,
@@ -235,8 +234,8 @@ class ModelLoadBalancingService:
         model_type_enum = ModelType.value_of(model_type)
 
         # Get load balancing configurations
-        load_balancing_model_config = (
-            db.session.query(LoadBalancingModelConfig)
+        load_balancing_model_config = db.session.scalar(
+            select(LoadBalancingModelConfig)
             .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
@@ -244,7 +243,7 @@ class ModelLoadBalancingService:
                 LoadBalancingModelConfig.model_name == model,
                 LoadBalancingModelConfig.id == config_id,
             )
-            .first()
+            .limit(1)
         )
 
         if not load_balancing_model_config:
@@ -351,26 +350,26 @@ class ModelLoadBalancingService:
 
             if credential_id:
                 if config_from == "predefined-model":
-                    credential_record = (
-                        db.session.query(ProviderCredential)
-                        .filter_by(
-                            id=credential_id,
-                            tenant_id=tenant_id,
-                            provider_name=provider_configuration.provider.provider,
+                    credential_record = db.session.scalar(
+                        select(ProviderCredential)
+                        .where(
+                            ProviderCredential.id == credential_id,
+                            ProviderCredential.tenant_id == tenant_id,
+                            ProviderCredential.provider_name == provider_configuration.provider.provider,
                         )
-                        .first()
+                        .limit(1)
                     )
                 else:
-                    credential_record = (
-                        db.session.query(ProviderModelCredential)
-                        .filter_by(
-                            id=credential_id,
-                            tenant_id=tenant_id,
-                            provider_name=provider_configuration.provider.provider,
-                            model_name=model,
-                            model_type=model_type_enum,
+                    credential_record = db.session.scalar(
+                        select(ProviderModelCredential)
+                        .where(
+                            ProviderModelCredential.id == credential_id,
+                            ProviderModelCredential.tenant_id == tenant_id,
+                            ProviderModelCredential.provider_name == provider_configuration.provider.provider,
+                            ProviderModelCredential.model_name == model,
+                            ProviderModelCredential.model_type == model_type_enum,
                         )
-                        .first()
+                        .limit(1)
                     )
                 if not credential_record:
                     raise ValueError(f"Provider credential with id {credential_id} not found")
@@ -510,8 +509,8 @@ class ModelLoadBalancingService:
         load_balancing_model_config = None
         if config_id:
             # Get load balancing config
-            load_balancing_model_config = (
-                db.session.query(LoadBalancingModelConfig)
+            load_balancing_model_config = db.session.scalar(
+                select(LoadBalancingModelConfig)
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider,
@@ -519,7 +518,7 @@ class ModelLoadBalancingService:
                     LoadBalancingModelConfig.model_name == model,
                     LoadBalancingModelConfig.id == config_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not load_balancing_model_config:
