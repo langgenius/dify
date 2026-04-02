@@ -44,7 +44,8 @@ class HumanInputContent(BaseModel):
     type: ExecutionContentType = Field(default=ExecutionContentType.HUMAN_INPUT)
 
 
-ExecutionExtraContentDomainModel: TypeAlias = HumanInputContent
+# Keep a runtime alias here: callers and tests expect identity with HumanInputContent.
+ExecutionExtraContentDomainModel: TypeAlias = HumanInputContent  # noqa: UP040
 
 __all__ = [
     "ExecutionExtraContentDomainModel",
