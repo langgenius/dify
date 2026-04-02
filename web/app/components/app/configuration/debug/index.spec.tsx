@@ -420,8 +420,10 @@ const renderDebug = (options: {
   render(
     React.createElement(
       ConfigContext.Provider,
-      { value: createContextValue(options.contextValue) },
-      <Debug {...props} />,
+      {
+        value: createContextValue(options.contextValue),
+        children: <Debug {...props} />,
+      },
     ),
   )
 
