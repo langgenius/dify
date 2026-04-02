@@ -11,6 +11,7 @@ packages:
   - web
   - e2e
   - sdks/nodejs-client
+  - packages/*
 overrides:
   "@lexical/code": npm:lexical-code-no-prism@0.41.0
   "@monaco-editor/loader": 1.7.0

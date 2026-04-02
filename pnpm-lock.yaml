@@ -643,6 +643,12 @@ importers:
         specifier: 'catalog:'
         version: 0.1.14(@types/node@25.5.0)(esbuild@0.27.2)(happy-dom@20.8.9)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)(@types/node@25.5.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(yaml@2.8.3)
 
+  packages/iconify-collections:
+    devDependencies:
+      iconify-import-svg:
+        specifier: 'catalog:'
+        version: 0.1.2
+
   sdks/nodejs-client:
     devDependencies:
       '@eslint/js':
@@ -988,6 +994,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.1.1(storybook@10.3.3(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@dify/iconify-collections':
+        specifier: workspace:*
+        version: link:../packages/iconify-collections
       '@egoist/tailwindcss-icons':
         specifier: 'catalog:'
         version: 1.9.2(tailwindcss@4.2.2)
@@ -1165,9 +1174,6 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.12.9
-      iconify-import-svg:
-        specifier: 'catalog:'
-        version: 0.1.2
       knip:
         specifier: 'catalog:'
         version: 6.1.0(@emnapi/core@1.9.1)(@emnapi/runtime@1.9.1)
