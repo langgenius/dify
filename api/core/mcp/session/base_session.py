@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Self, cast
+from typing import Any, Self
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -338,12 +338,11 @@ class BaseSession[
                     validated_request = self._receive_request_type.model_validate(
                         message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
                     )
-                    validated_request = cast(ReceiveRequestT, validated_request)
 
                     responder = RequestResponder[ReceiveRequestT, SendResultT](
                         request_id=message.message.root.id,
                         request_meta=validated_request.root.params.meta if validated_request.root.params else None,
-                        request=validated_request,
+                        request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
                         session=self,
                         on_complete=lambda r: self._in_flight.pop(r.request_id, None),
                     )
@@ -359,15 +358,14 @@ class BaseSession[
                         notification = self._receive_notification_type.model_validate(
                             message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
                         )
-                        notification = cast(ReceiveNotificationT, notification)
                         # Handle cancellation notifications
                         if isinstance(notification.root, CancelledNotification):
                             cancelled_id = notification.root.params.requestId
                             if cancelled_id in self._in_flight:
                                 self._in_flight[cancelled_id].cancel()
                         else:
-                            self._received_notification(notification)
-                            self._handle_incoming(notification)
+                            self._received_notification(notification)  # type: ignore[arg-type]
+                            self._handle_incoming(notification)  # type: ignore[arg-type]
                     except Exception as e:
                         # For other validation errors, log and continue
                         logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
