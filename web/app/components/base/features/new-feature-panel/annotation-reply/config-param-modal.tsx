@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -25,22 +25,10 @@ type Props = {
   isInit?: boolean
   annotationConfig: AnnotationReplyConfig
 }
-
-const ConfigParamModal: FC<Props> = ({
-  isShow,
-  onHide: doHide,
-  onSave,
-  isInit,
-  annotationConfig: oldAnnotationConfig,
-}) => {
+const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, annotationConfig: oldAnnotationConfig }) => {
   const { t } = useTranslation()
-  const {
-    modelList: embeddingsModelList,
-    defaultModel: embeddingsDefaultModel,
-    currentModel: isEmbeddingsDefaultModelValid,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
+  const { modelList: embeddingsModelList, defaultModel: embeddingsDefaultModel, currentModel: isEmbeddingsDefaultModelValid } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
   const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
-
   const [isLoading, setLoading] = useState(false)
   const [embeddingModel, setEmbeddingModel] = useState(oldAnnotationConfig.embedding_model
     ? {
@@ -57,13 +45,9 @@ const ConfigParamModal: FC<Props> = ({
     if (!isLoading)
       doHide()
   }
-
   const handleSave = async () => {
     if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)) {
-      Toast.notify({
-        message: t('modelProvider.embeddingModel.required', { ns: 'common' }),
-        type: 'error',
-      })
+      toast.error(t('modelProvider.embeddingModel.required', { ns: 'common' }))
       return
     }
     setLoading(true)
@@ -73,22 +57,14 @@ const ConfigParamModal: FC<Props> = ({
     }, annotationConfig.score_threshold)
     setLoading(false)
   }
-
   return (
-    <Modal
-      isShow={isShow}
-      onClose={onHide}
-      className="!mt-14 !w-[640px] !max-w-none !p-6"
-    >
+    <Modal isShow={isShow} onClose={onHide} className="!mt-14 !w-[640px] !max-w-none !p-6">
       <div className="mb-2 text-text-primary title-2xl-semi-bold">
         {t(`initSetup.${isInit ? 'title' : 'configTitle'}`, { ns: 'appAnnotation' })}
       </div>
 
       <div className="mt-6 space-y-3">
-        <Item
-          title={t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}
-          tooltip={t('feature.annotation.scoreThreshold.description', { ns: 'appDebug' })}
-        >
+        <Item title={t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })} tooltip={t('feature.annotation.scoreThreshold.description', { ns: 'appDebug' })}>
           <ScoreSlider
             className="mt-1"
             value={(annotationConfig.score_threshold || ANNOTATION_DEFAULT.score_threshold) * 100}
@@ -101,10 +77,7 @@ const ConfigParamModal: FC<Props> = ({
           />
         </Item>
 
-        <Item
-          title={t('modelProvider.embeddingModel.key', { ns: 'common' })}
-          tooltip={t('embeddingModelSwitchTip', { ns: 'appAnnotation' })}
-        >
+        <Item title={t('modelProvider.embeddingModel.key', { ns: 'common' })} tooltip={t('embeddingModelSwitchTip', { ns: 'appAnnotation' })}>
           <div className="pt-1">
             <ModelSelector
               defaultModel={embeddingModel && {
@@ -125,11 +98,7 @@ const ConfigParamModal: FC<Props> = ({
 
       <div className="mt-6 flex justify-end gap-2">
         <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button
-          variant="primary"
-          onClick={handleSave}
-          loading={isLoading}
-        >
+        <Button variant="primary" onClick={handleSave} loading={isLoading}>
           <div></div>
           <div>{t(`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`, { ns: 'appAnnotation' })}</div>
         </Button>
