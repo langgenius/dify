@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
-import autoprefixer from 'autoprefixer'
 import UnoCSS from 'unocss/vite'
 import vinext from 'vinext'
 import Inspect from 'vite-plugin-inspect'
@@ -13,36 +12,6 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
-const unoCssEntryTarget = `${projectRoot}app/layout.tsx`
-const unoGlobalsCssTarget = `${projectRoot}app/styles/globals.css`
-
-const injectUnoCssPlugin = {
-  name: 'inject-uno-css-entry',
-  enforce: 'pre' as const,
-  transform(code: string, id: string) {
-    if (id !== unoCssEntryTarget || code.includes('virtual:uno.css'))
-      return
-
-    return {
-      code: `import 'virtual:uno.css'\n${code}`,
-      map: null,
-    }
-  },
-}
-
-const stripUnoPreflightDirectivePlugin = {
-  name: 'strip-uno-preflight-directive',
-  enforce: 'pre' as const,
-  transform(code: string, id: string) {
-    if (id !== unoGlobalsCssTarget || !code.includes('@unocss !preflights;'))
-      return
-
-    return {
-      code: code.replace('@unocss !preflights;', ''),
-      map: null,
-    }
-  },
-}
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -81,8 +50,6 @@ export default defineConfig(({ mode }) => {
               injectTarget: rootClientInjectTarget,
               projectRoot,
             }),
-            injectUnoCssPlugin,
-            stripUnoPreflightDirectivePlugin,
             UnoCSS(),
             react(),
             vinext({ react: false }),
@@ -94,13 +61,6 @@ export default defineConfig(({ mode }) => {
           ],
     resolve: {
       tsconfigPaths: true,
-    },
-    css: {
-      postcss: {
-        plugins: [
-          autoprefixer(),
-        ],
-      },
     },
 
     // vinext related config

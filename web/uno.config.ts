@@ -104,16 +104,19 @@ export default defineConfig({
     ['bg-[var(--shiki-dark-bg,var(--sdm-bg,inherit)]', { 'background-color': 'var(--shiki-dark-bg,var(--sdm-bg,inherit))' }],
   ],
   content: {
-    filesystem: [
-      './app/**/*.{js,ts,jsx,tsx,mdx,css}',
-      './context/**/*.{js,ts,jsx,tsx,css}',
-      './node_modules/streamdown/dist/*.js',
-      './node_modules/@streamdown/math/dist/*.js',
-      '!./app/**/__tests__/**',
-      '!./context/**/__tests__/**',
-      '!./app/**/*.{spec,test}.{js,ts,jsx,tsx}',
-      '!./context/**/*.{spec,test}.{js,ts,jsx,tsx}',
-    ],
+    pipeline: {
+      include: [
+        /\.(vue|svelte|[jt]sx|vine.ts|mdx?|astro|elm|php|phtml|marko|html)($|\?)/,
+        /\/app\/.*\.[jt]s($|\?)/,
+        /\/context\/.*\.[jt]s($|\?)/,
+        /\/node_modules\/streamdown\/dist\/.*\.js($|\?)/,
+        /\/node_modules\/@streamdown\/math\/dist\/.*\.js($|\?)/,
+      ],
+      exclude: [
+        /\/__tests__\//,
+        /\.(spec|test)\.[jt]sx?($|\?)/,
+      ],
+    },
   },
   presets: [
     presetWind3(),

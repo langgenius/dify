@@ -1,5 +1,6 @@
 import { IS_DEV } from '@/config'
 import { env } from '@/env'
+import 'uno.css'
 
 async function main() {
   // Polyfill for Array.prototype.toSpliced (ES2023, Chrome 110+)
