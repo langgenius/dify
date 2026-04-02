@@ -574,7 +574,7 @@ class RagPipelineService:
                 outputs=workflow_node_execution.outputs,
             )
             session.commit()
-        if workflow_node_execution_db_model is not None:
+        if isinstance(workflow_node_execution_db_model, WorkflowNodeExecutionModel):
             enqueue_draft_node_execution_trace(
                 execution=workflow_node_execution_db_model,
                 outputs=workflow_node_execution.outputs,
