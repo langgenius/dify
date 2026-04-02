@@ -5,8 +5,10 @@ import type { DifyWorld } from '../../support/world'
 Given('I am not signed in', async function (this: DifyWorld) {
   if (!this.browser) throw new Error('Shared browser is not available.')
 
+  const savedStartedAt = this.scenarioStartedAt
   await this.closeSession()
   await this.startUnauthenticatedSession(this.browser)
+  this.scenarioStartedAt = savedStartedAt
 })
 
 When('I open the sign-in page', async function (this: DifyWorld) {

@@ -1,4 +1,4 @@
-@auth @authenticated
+@auth
 Feature: Unauthenticated redirect
   Scenario: Unauthenticated user is redirected to the sign-in page
     Given I am not signed in
