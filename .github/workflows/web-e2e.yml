@@ -41,46 +41,7 @@ jobs:
         run: |
           cp docker/.env.example docker/.env
           cp docker/middleware.env.example docker/middleware.env
-          python3 - <<'PY'
-          import pathlib
-          import secrets
-          import string
-
-          env_path = pathlib.Path("docker/.env")
-          if not env_path.is_file():
-            raise SystemExit("docker/.env not found")
-
-          required_secret_vars = {
-            "SECRET_KEY",
-            "DB_PASSWORD",
-            "REDIS_PASSWORD",
-            "PLUGIN_DIFY_INNER_API_KEY",
-            "MINIO_SECRET_KEY",
-          }
-
-          alphabet = string.ascii_letters + string.digits
-          replacement = {k: "".join(secrets.choice(alphabet) for _ in range(48)) for k in required_secret_vars}
-
-          lines = env_path.read_text(encoding="utf-8").splitlines()
-          updated = []
-          found = set()
-          for line in lines:
-            if "=" not in line or line.lstrip().startswith("#"):
-              updated.append(line)
-              continue
-            key, value = line.split("=", 1)
-            if key in replacement and not value.strip():
-              updated.append(f"{key}={replacement[key]}")
-              found.add(key)
-            else:
-              updated.append(line)
-
-          missing = required_secret_vars - found
-          if missing:
-            raise SystemExit(f"Required secret vars missing or non-empty not found in docker/.env: {sorted(missing)}")
-
-          env_path.write_text("\n".join(updated) + "\n", encoding="utf-8")
-          PY
+          python3 .github/scripts/prepare_docker_ci_env.py
 
       - name: Install Playwright browser
         working-directory: ./e2e
