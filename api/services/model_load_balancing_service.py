@@ -110,20 +110,22 @@ class ModelLoadBalancingService:
             credential_source_type = CredentialSourceType.CUSTOM_MODEL
 
         # Get load balancing configurations
-        load_balancing_configs = list(db.session.scalars(
-            select(LoadBalancingModelConfig)
-            .where(
-                LoadBalancingModelConfig.tenant_id == tenant_id,
-                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum,
-                LoadBalancingModelConfig.model_name == model,
-                or_(
-                    LoadBalancingModelConfig.credential_source_type == credential_source_type,
-                    LoadBalancingModelConfig.credential_source_type.is_(None),
-                ),
-            )
-            .order_by(LoadBalancingModelConfig.created_at)
-        ).all())
+        load_balancing_configs = list(
+            db.session.scalars(
+                select(LoadBalancingModelConfig)
+                .where(
+                    LoadBalancingModelConfig.tenant_id == tenant_id,
+                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                    LoadBalancingModelConfig.model_type == model_type_enum,
+                    LoadBalancingModelConfig.model_name == model,
+                    or_(
+                        LoadBalancingModelConfig.credential_source_type == credential_source_type,
+                        LoadBalancingModelConfig.credential_source_type.is_(None),
+                    ),
+                )
+                .order_by(LoadBalancingModelConfig.created_at)
+            ).all()
+        )
 
         if provider_configuration.custom_configuration.provider:
             # check if the inherit configuration exists,
@@ -142,7 +144,7 @@ class ModelLoadBalancingService:
                 load_balancing_configs.insert(0, inherit_config)
             else:
                 # move the inherit configuration to the first
-                for i, load_balancing_config in enumerate(load_balancing_configs[:]):
+                for i, load_balancing_config in enumerate(load_balancing_configs.copy()):
                     if load_balancing_config.name == "__inherit__":
                         inherit_config = load_balancing_configs.pop(i)
                         load_balancing_configs.insert(0, inherit_config)
