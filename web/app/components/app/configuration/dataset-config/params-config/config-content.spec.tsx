@@ -218,6 +218,18 @@ describe('ConfigContent', () => {
       })
       const selectedDatasets: DataSet[] = [
         createDataset({
+          id: 'dataset-1',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+        createDataset({
+          id: 'dataset-2',
           indexing_technique: 'high_quality' as IndexingType,
           provider: 'dify',
           embedding_model: 'text-embedding',
@@ -268,6 +280,18 @@ describe('ConfigContent', () => {
       })
       const selectedDatasets: DataSet[] = [
         createDataset({
+          id: 'dataset-1',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+        createDataset({
+          id: 'dataset-2',
           indexing_technique: 'high_quality' as IndexingType,
           provider: 'dify',
           embedding_model: 'text-embedding',
@@ -309,6 +333,18 @@ describe('ConfigContent', () => {
       })
       const selectedDatasets: DataSet[] = [
         createDataset({
+          id: 'dataset-1',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+        createDataset({
+          id: 'dataset-2',
           indexing_technique: 'high_quality' as IndexingType,
           provider: 'dify',
           embedding_model: 'text-embedding',
@@ -348,6 +384,18 @@ describe('ConfigContent', () => {
       })
       const selectedDatasets: DataSet[] = [
         createDataset({
+          id: 'dataset-1',
+          indexing_technique: 'economy' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+        createDataset({
+          id: 'dataset-2',
           indexing_technique: 'economy' as IndexingType,
           provider: 'dify',
           embedding_model: 'text-embedding',
@@ -376,6 +424,86 @@ describe('ConfigContent', () => {
           reranking_enable: true,
         }),
       )
+    })
+
+    it('should disable reranking-only controls when a single dataset is selected', () => {
+      // Arrange
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_mode: RerankingModeEnum.WeightedScore,
+      })
+      const selectedDatasets: DataSet[] = [
+        createDataset({
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      // Act
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+
+      // Assert
+      expect(screen.getAllByText('dataset.singleDatasetRerankDisabled').length).toBeGreaterThan(0)
+      expect(screen.queryByText('dataset.weightedScore.title')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('dataset.weightedScore.semantic')).not.toBeInTheDocument()
+    })
+
+    it('should show reranking controls when multiple datasets are selected', () => {
+      // Arrange
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
+      const datasetConfigs = createDatasetConfigs({
+        reranking_mode: RerankingModeEnum.WeightedScore,
+      })
+      const selectedDatasets: DataSet[] = [
+        createDataset({
+          id: 'dataset-1',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+        createDataset({
+          id: 'dataset-2',
+          indexing_technique: 'high_quality' as IndexingType,
+          provider: 'dify',
+          embedding_model: 'text-embedding',
+          embedding_model_provider: 'openai',
+          retrieval_model_dict: {
+            ...baseRetrievalConfig,
+            search_method: RETRIEVE_METHOD.semantic,
+          },
+        }),
+      ]
+
+      // Act
+      render(
+        <ConfigContent
+          datasetConfigs={datasetConfigs}
+          onChange={onChange}
+          selectedDatasets={selectedDatasets}
+        />,
+      )
+
+      // Assert
+      expect(screen.getByText('dataset.weightedScore.title')).toBeInTheDocument()
+      expect(screen.getByLabelText('dataset.weightedScore.semantic')).toBeInTheDocument()
+      expect(screen.queryByText('dataset.singleDatasetRerankDisabled')).not.toBeInTheDocument()
     })
   })
 })
