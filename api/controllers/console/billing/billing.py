@@ -119,3 +119,7 @@ class DebugData(Resource):
                 json.loads(item.decode("utf-8") if isinstance(item, bytes) else item) for item in items
             ]
         }
+
+    def delete(self):
+        redis_client.delete(_DEBUG_KEY)
+        return {"result": "ok"}
