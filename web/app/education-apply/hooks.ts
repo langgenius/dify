@@ -133,7 +133,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const educationVerifying = typeof localStorage !== 'undefined' && localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
