@@ -128,14 +128,23 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
             # leave some rooms for future longer enum values.
             self._length = max(max_enum_value_len, 20)
 
+    def _coerce_enum_value(self, value: str) -> T:
+        try:
+            return self._enum_class(value)
+        except ValueError:
+            # Some enums expose value_of() to keep reading legacy persisted values backward-compatible.
+            value_of = getattr(self._enum_class, "value_of", None)
+            if callable(value_of):
+                return value_of(value)
+            raise
+
     def process_bind_param(self, value: T | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return value
         if isinstance(value, self._enum_class):
             return value.value
         # Since T is bound to StrEnum which inherits from str, at this point value must be str
-        self._enum_class(value)
-        return value
+        return self._coerce_enum_value(value).value
 
     def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         return dialect.type_descriptor(VARCHAR(self._length))
@@ -144,7 +153,7 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
         if value is None or value == "":
             return None
         # Type annotation guarantees value is str at this point
-        return self._enum_class(value)
+        return self._coerce_enum_value(value)
 
     def compare_values(self, x: T | None, y: T | None) -> bool:
         if x is None or y is None:

@@ -259,7 +259,7 @@ class AgentRuntimeSupport:
         model_instance = assembly.model_manager.get_model_instance(
             tenant_id=tenant_id,
             provider=provider_name,
-            model_type=ModelType(value.get("model_type", "")),
+            model_type=ModelType.value_of(value.get("model_type", "")),
             model=model_name,
         )
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
