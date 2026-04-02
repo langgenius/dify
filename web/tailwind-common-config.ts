@@ -1,4 +1,5 @@
-import { svgCollections } from '@dify/iconify-collections'
+import { icons as customPublicIcons } from '@dify/iconify-collections/custom-public'
+import { icons as customVenderIcons } from '@dify/iconify-collections/custom-vender'
 import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
@@ -151,7 +152,8 @@ const config = {
     iconsPlugin({
       collections: {
         ...getIconCollections(['heroicons', 'ri']),
-        ...svgCollections,
+        'custom-public': customPublicIcons,
+        'custom-vender': customVenderIcons,
       },
       extraProperties: {
         width: '1rem',
