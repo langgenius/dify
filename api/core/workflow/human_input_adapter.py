@@ -181,6 +181,7 @@ def _copy_mapping(value: object) -> dict[str, Any] | None:
     if isinstance(value, BaseModel):
         return value.model_dump(mode="python")
     if isinstance(value, Mapping):
+        # pyrefly: ignore [bad-return]
         return dict(value)
     return None
 
