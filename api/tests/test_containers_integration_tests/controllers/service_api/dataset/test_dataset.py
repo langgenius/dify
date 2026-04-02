@@ -823,7 +823,7 @@ class TestDatasetTagsApiDelete:
 
     @patch("controllers.service_api.dataset.dataset.TagService")
     @patch("controllers.service_api.dataset.dataset.service_api_ns")
-    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("libs.login.current_user")
     def test_delete_tag_success(
         self,
         mock_current_user,
@@ -836,6 +836,7 @@ class TestDatasetTagsApiDelete:
         mock_current_user.__class__ = Account
         mock_current_user.has_edit_permission = True
         mock_current_user.is_dataset_editor = True
+        mock_current_user._get_current_object.return_value = mock_current_user
 
         mock_tag_svc.delete_tag.return_value = None
         mock_service_api_ns.payload = {"tag_id": "tag-1"}
@@ -851,13 +852,14 @@ class TestDatasetTagsApiDelete:
         assert result == ("", 204)
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1")
 
-    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("libs.login.current_user")
     def test_delete_tag_forbidden(self, mock_current_user, app):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
         mock_current_user.has_edit_permission = False
         mock_current_user.is_dataset_editor = False
+        mock_current_user._get_current_object.return_value = mock_current_user
 
         with app.test_request_context(
             "/datasets/tags",
