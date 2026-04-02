@@ -124,13 +124,13 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is not None:
@@ -215,13 +215,13 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -259,13 +259,13 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == original_provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -328,13 +328,13 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -378,13 +378,13 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider = (
-            db.session.query(ApiToolProvider)
+        db_provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if not db_provider:
