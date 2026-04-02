@@ -1,5 +1,3 @@
-@reference "../../../../../../styles/globals.css";
-
 .wrapper {
   display: inline-flex;
   background: url(~@/app/components/base/icons/assets/image/llm/tongyi-text.png) center center no-repeat;
