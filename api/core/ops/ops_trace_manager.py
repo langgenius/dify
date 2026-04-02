@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
+    BaseTracingConfig,
     TracingProviderEnum,
 )
 from core.ops.entities.trace_entity import (
@@ -194,8 +195,15 @@ def _lookup_llm_credential_info(
         return None, ""
 
 
-class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, provider: str) -> dict[str, Any]:
+class TracingProviderConfigEntry(TypedDict):
+    config_class: type[BaseTracingConfig]
+    secret_keys: list[str]
+    other_keys: list[str]
+    trace_instance: type[Any]
+
+
+class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
+    def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
         match provider:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
@@ -584,8 +592,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).api_check()
+        config = config_type(**tracing_config)
+        return trace_instance(config).api_check()
 
     @staticmethod
     def get_trace_config_project_key(tracing_config: dict, tracing_provider: str):
@@ -599,8 +607,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).get_project_key()
+        config = config_type(**tracing_config)
+        return trace_instance(config).get_project_key()
 
     @staticmethod
     def get_trace_config_project_url(tracing_config: dict, tracing_provider: str):
@@ -614,8 +622,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).get_project_url()
+        config = config_type(**tracing_config)
+        return trace_instance(config).get_project_url()
 
 
 class TraceTask:
