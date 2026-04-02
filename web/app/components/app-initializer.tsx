@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import Cookies from 'js-cookie'
 import { parseAsBoolean, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
@@ -29,7 +29,6 @@ export const AppInitializer = ({
     'oauth_new_user',
     parseAsBoolean.withOptions({ history: 'replace' }),
   )
-  const [isReady, setIsReady] = useState(false)
   const isSetupFinished = useCallback(async () => {
     try {
       const setUpStatus = await fetchSetupStatusWithCache()
@@ -87,20 +86,13 @@ export const AppInitializer = ({
         const redirectUrl = resolvePostLoginRedirect()
         if (redirectUrl) {
           location.replace(redirectUrl)
-          return
         }
-
-        // Initialization completed without redirects; safe to render children
-        setIsReady(true)
       }
       catch {
         router.replace('/signin')
       }
     })()
   }, [isSetupFinished, router, pathname, searchParams, oauthNewUser])
-
-  if (!isReady)
-    return null
 
   return children
 }
