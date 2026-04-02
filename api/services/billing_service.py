@@ -2,13 +2,12 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Literal
+from typing import Literal, TypedDict
 
 import httpx
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client

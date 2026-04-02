@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, ParamSpec, TypeVar
+from typing import Any, Concatenate
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -20,15 +20,12 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-T = TypeVar("T", bound="MatrixoneVector")
-
-
-def ensure_client(func: Callable[Concatenate[T, P], R]):
+def ensure_client[T: MatrixoneVector, **P, R](
+    func: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]:
     @wraps(func)
-    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         if self.client is None:
             self.client = self._get_client(None, False)
         return func(self, *args, **kwargs)

@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
-from typing import Annotated, Any, TypeAlias, Union
+from typing import Annotated, Any
 
 from celery import shared_task
 from flask import current_app, json
@@ -68,7 +68,7 @@ def _get_user_type_descriminator(value: Any):
         return None
 
 
-User: TypeAlias = Annotated[
+type User = Annotated[
     (Annotated[_Account, Tag(_UserType.ACCOUNT)] | Annotated[_EndUser, Tag(_UserType.END_USER)]),
     Discriminator(_get_user_type_descriminator),
 ]
@@ -93,7 +93,7 @@ class AppExecutionParams(BaseModel):
         cls,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,

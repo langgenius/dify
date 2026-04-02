@@ -2,7 +2,7 @@ import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
+from typing import TYPE_CHECKING, Any, cast, final, override
 
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -22,7 +22,6 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from typing_extensions import override
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
@@ -192,7 +191,7 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
 NODE_TYPE_CLASSES_MAPPING: MutableMapping[NodeType, Mapping[str, type[Node]]] = _LazyNodeTypeClassesMapping()
 
 
-LLMCompatibleNodeData: TypeAlias = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
+type LLMCompatibleNodeData = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
 
 
 def fetch_memory(

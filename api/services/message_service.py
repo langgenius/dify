@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from typing import Union
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import TypeAdapter
@@ -57,7 +56,7 @@ class MessageService:
     def pagination_by_first_id(
         cls,
         app_model: App,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         conversation_id: str,
         first_id: str | None,
         limit: int,
@@ -117,7 +116,7 @@ class MessageService:
     def pagination_by_last_id(
         cls,
         app_model: App,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         last_id: str | None,
         limit: int,
         conversation_id: str | None = None,
@@ -170,7 +169,7 @@ class MessageService:
         *,
         app_model: App,
         message_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         rating: FeedbackRating | None,
         content: str | None,
     ):
@@ -221,7 +220,7 @@ class MessageService:
         return [record.to_dict() for record in feedbacks]
 
     @classmethod
-    def get_message(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
+    def get_message(cls, app_model: App, user: Account | EndUser | None, message_id: str):
         message = db.session.scalar(
             select(Message)
             .where(
@@ -241,7 +240,7 @@ class MessageService:
 
     @classmethod
     def get_suggested_questions_after_answer(
-        cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str, invoke_from: InvokeFrom
+        cls, app_model: App, user: Account | EndUser | None, message_id: str, invoke_from: InvokeFrom
     ) -> list[str]:
         if not user:
             raise ValueError("user cannot be None")

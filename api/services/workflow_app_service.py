@@ -1,12 +1,11 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, TypedDict
 
 from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
-from typing_extensions import TypedDict
 
 from models import Account, App, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole

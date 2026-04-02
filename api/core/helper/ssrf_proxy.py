@@ -4,7 +4,7 @@ Proxy requests to avoid SSRF
 
 import logging
 import time
-from typing import Any, TypeAlias
+from typing import Any
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
@@ -20,8 +20,8 @@ SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
-Headers: TypeAlias = dict[str, str]
-_HEADERS_ADAPTER = TypeAdapter(Headers)
+type Headers = dict[str, str]
+_HEADERS_ADAPTER: TypeAdapter[Headers] = TypeAdapter(Headers)
 
 _SSL_VERIFIED_POOL_KEY = "ssrf:verified"
 _SSL_UNVERIFIED_POOL_KEY = "ssrf:unverified"

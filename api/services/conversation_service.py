@@ -1,7 +1,7 @@
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, Union
+from typing import Any
 
 from graphon.variables.types import SegmentType
 from sqlalchemy import asc, desc, func, or_, select
@@ -37,7 +37,7 @@ class ConversationService:
         *,
         session: Session,
         app_model: App,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
@@ -119,7 +119,7 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         name: str | None,
         auto_generate: bool,
     ):
@@ -159,7 +159,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def get_conversation(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
+    def get_conversation(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
         conversation = db.session.scalar(
             select(Conversation)
             .where(
@@ -179,7 +179,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
+    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
         """
         Delete a conversation only if it belongs to the given user and app context.
 
@@ -209,7 +209,7 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         limit: int,
         last_id: str | None,
         variable_name: str | None = None,
@@ -278,7 +278,7 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         variable_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         new_value: Any,
     ):
         """

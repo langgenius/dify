@@ -1,13 +1,12 @@
 import concurrent.futures
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, NotRequired
+from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
 from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.db.session_factory import session_factory

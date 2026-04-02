@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, TypedDict
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -14,7 +14,6 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import TypedDict
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
@@ -464,7 +463,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Union[UUID, str] | None = None,
+        app_id: UUID | str | None = None,
     ):
         """
         Get ops trace through model config
@@ -717,7 +716,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: str | None = None,
-        workflow_execution: Optional["WorkflowExecution"] = None,
+        workflow_execution: "WorkflowExecution | None" = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,

@@ -1,11 +1,9 @@
 import contextvars
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 from flask import Flask, g
-
-T = TypeVar("T")
 
 if TYPE_CHECKING:
     from models import Account, EndUser

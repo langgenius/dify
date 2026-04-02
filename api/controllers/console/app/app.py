@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
@@ -152,7 +152,7 @@ class AppTracePayload(BaseModel):
         return value
 
 
-JSONValue: TypeAlias = Any
+type JSONValue = Any
 
 
 class ResponseModel(BaseModel):

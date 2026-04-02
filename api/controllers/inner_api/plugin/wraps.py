@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -12,9 +11,6 @@ from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
 from models.model import DefaultEndUserSessionID, EndUser
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 
 class TenantUserPayload(BaseModel):
@@ -65,9 +61,9 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view_func: Callable[P, R]):
+def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     @wraps(view_func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
 
         user_id = payload.user_id
@@ -97,10 +93,14 @@ def get_user_tenant(view_func: Callable[P, R]):
     return decorated_view
 
 
-def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):
-    def decorator(view_func: Callable[P, R]):
+def plugin_data[**P, R](
+    view: Callable[P, R] | None = None,
+    *,
+    payload_type: type[BaseModel],
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 data = request.get_json()
             except Exception:

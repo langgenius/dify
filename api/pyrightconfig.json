@@ -50,6 +50,6 @@
   "reportUntypedFunctionDecorator": "hint",
   "reportUnnecessaryTypeIgnoreComment": "hint",
   "reportAttributeAccessIssue": "hint",
-  "pythonVersion": "3.11",
+  "pythonVersion": "3.12",
   "pythonPlatform": "All"
 }
