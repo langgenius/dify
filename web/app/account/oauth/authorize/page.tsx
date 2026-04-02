@@ -69,7 +69,6 @@ export default function OAuthAuthorize() {
   const { isLoading: isIsLoginLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
   const isLoading = isOAuthLoading || isIsLoginLoading
-  const isActionDisabled = !client_id || !redirect_uri || isError || isLoading || authorizing
   const onLoginSwitchClick = () => {
     if (isLoading)
       return
@@ -116,13 +115,13 @@ export default function OAuthAuthorize() {
         </div>
       )}
 
-      <div className={`mb-4 mt-5 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
+      <div className={`mt-5 mb-4 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
           {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
           <div className="text-(--color-saas-dify-blue-inverted)">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
           {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
         </div>
-        <div className="text-text-secondary body-md-regular">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
+        <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
       </div>
 
       {isLoggedIn && userProfile && (
@@ -131,7 +130,7 @@ export default function OAuthAuthorize() {
             <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             <div>
               <div className="system-md-semi-bold text-text-secondary">{userProfile.name}</div>
-              <div className="text-text-tertiary system-xs-regular">{userProfile.email}</div>
+              <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>
           <Button variant="tertiary" size="small" onClick={onLoginSwitchClick}>{t('switchAccount', { ns: 'oauth' })}</Button>
@@ -143,7 +142,7 @@ export default function OAuthAuthorize() {
           {authAppInfo!.scope.split(/\s+/).filter(Boolean).map((scope: string) => {
             const Icon = SCOPE_INFO_MAP[scope]
             return (
-              <div key={scope} className="flex items-center gap-2 text-text-secondary body-sm-medium">
+              <div key={scope} className="flex items-center gap-2 body-sm-medium text-text-secondary">
                 {Icon ? <Icon.icon className="h-4 w-4" /> : <RiAccountCircleLine className="h-4 w-4" />}
                 {Icon.label}
               </div>
@@ -159,7 +158,7 @@ export default function OAuthAuthorize() {
             )
           : (
               <>
-                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={isActionDisabled} loading={authorizing}>{t('continue', { ns: 'oauth' })}</Button>
+                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={!client_id || !redirect_uri || isError || authorizing} loading={authorizing}>{t('continue', { ns: 'oauth' })}</Button>
                 <Button size="large" className="w-full" onClick={() => router.push('/apps')}>{t('operation.cancel', { ns: 'common' })}</Button>
               </>
             )}
@@ -176,7 +175,7 @@ export default function OAuthAuthorize() {
           </defs>
         </svg>
       </div>
-      <div className="mt-3 text-text-tertiary system-xs-regular">{t('tips.common', { ns: 'oauth' })}</div>
+      <div className="mt-3 system-xs-regular text-text-tertiary">{t('tips.common', { ns: 'oauth' })}</div>
     </div>
   )
 }
