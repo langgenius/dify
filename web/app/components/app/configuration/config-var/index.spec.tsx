@@ -5,13 +5,13 @@ import type { PromptVariable } from '@/models/debug'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { vi } from 'vitest'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
 
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from './index'
 
-const notifySpy = vi.spyOn(Toast, 'notify').mockImplementation(vi.fn())
+const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
 const setShowExternalDataToolModal = vi.fn()
 
@@ -112,7 +112,7 @@ describe('ConfigVar', () => {
       latestSortableProps = null
       subscriptionCallback = null
       variableIndex = 0
-      notifySpy.mockClear()
+      toastErrorSpy.mockClear()
     })
 
     it('should show empty state when no variables exist', () => {
@@ -152,7 +152,7 @@ describe('ConfigVar', () => {
       latestSortableProps = null
       subscriptionCallback = null
       variableIndex = 0
-      notifySpy.mockClear()
+      toastErrorSpy.mockClear()
     })
 
     it('should add a text variable when selecting the string option', async () => {
@@ -218,7 +218,7 @@ describe('ConfigVar', () => {
       latestSortableProps = null
       subscriptionCallback = null
       variableIndex = 0
-      notifySpy.mockClear()
+      toastErrorSpy.mockClear()
     })
 
     it('should save updates when editing a basic variable', async () => {
@@ -268,7 +268,7 @@ describe('ConfigVar', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(Toast.notify).toHaveBeenCalled()
+      expect(toastErrorSpy).toHaveBeenCalled()
       expect(onPromptVariablesChange).not.toHaveBeenCalled()
     })
 
@@ -294,7 +294,7 @@ describe('ConfigVar', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(Toast.notify).toHaveBeenCalled()
+      expect(toastErrorSpy).toHaveBeenCalled()
       expect(onPromptVariablesChange).not.toHaveBeenCalled()
     })
   })
@@ -306,7 +306,7 @@ describe('ConfigVar', () => {
       latestSortableProps = null
       subscriptionCallback = null
       variableIndex = 0
-      notifySpy.mockClear()
+      toastErrorSpy.mockClear()
     })
 
     it('should remove variable directly when context confirmation is not required', () => {
@@ -359,7 +359,7 @@ describe('ConfigVar', () => {
       latestSortableProps = null
       subscriptionCallback = null
       variableIndex = 0
-      notifySpy.mockClear()
+      toastErrorSpy.mockClear()
     })
 
     it('should append external data tool variables from event emitter', () => {

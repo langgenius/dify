@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -25,19 +24,25 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {
-    Provider: ({ children }: { children: ReactNode }) => children,
-    Consumer: ({ children }: { children: (ctx: { notify: typeof mockNotify }) => ReactNode }) => children({ notify: mockNotify }),
-  },
+const mockToast = Object.assign(mockNotify, {
+  success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+  error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+  warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+  info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
-// Create a mock ToastContext for useContext
 vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    useContext: () => ({ notify: mockNotify }),
+    useContext: () => ({ toast: mockToast }),
   }
 })
 

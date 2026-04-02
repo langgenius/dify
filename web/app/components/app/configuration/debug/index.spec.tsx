@@ -1,7 +1,6 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
@@ -377,6 +376,19 @@ const renderDebug = (options: {
 } = {}) => {
   const onSetting = vi.fn()
   const notify = vi.fn()
+  const mockToast = {
+    success: (message: string, options?: Record<string, unknown>) => notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) => notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) => notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) => notify({ type: 'info', message, ...options }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }
+
+  vi.mock('@/app/components/base/ui/toast', () => ({
+    toast: mockToast,
+  }))
   const props: ComponentProps<typeof Debug> = {
     isAPIKeySet: true,
     onSetting,
@@ -392,11 +404,10 @@ const renderDebug = (options: {
   }
 
   render(
-    <ToastContext.Provider value={{ notify, close: vi.fn() }}>
-      <ConfigContext.Provider value={createContextValue(options.contextValue)}>
-        <Debug {...props} />
-      </ConfigContext.Provider>
-    </ToastContext.Provider>,
+    <ConfigContext.Provider value={createContextValue(options.contextValue)}>
+      <Debug {...props} />
+    </ConfigContext.Provider>,
+
   )
 
   return { onSetting, notify, props }

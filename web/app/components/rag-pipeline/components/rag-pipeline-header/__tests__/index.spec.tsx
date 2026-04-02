@@ -155,12 +155,19 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 vi.mock('@/app/components/workflow/utils', () => ({
   getKeyboardKeyCodeBySystem: (key: string) => key,
   getKeyboardKeyNameBySystem: (key: string) => key,

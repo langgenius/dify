@@ -13,7 +13,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { cn } from '@/utils/classnames'
@@ -160,10 +160,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.schema', { ns: 'tools' }) })
 
     if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      toast.error(errorMessage)
       return
     }
 

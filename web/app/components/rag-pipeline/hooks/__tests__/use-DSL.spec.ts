@@ -3,10 +3,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDSL } from '../use-DSL'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
-}))
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockEventEmitter = { emit: vi.fn() }
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),

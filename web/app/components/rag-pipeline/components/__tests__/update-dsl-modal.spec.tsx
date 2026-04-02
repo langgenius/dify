@@ -16,14 +16,19 @@ class MockFileReader {
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 
 const mockNotify = vi.fn()
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({ notify: mockNotify }),
-}))
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: { Provider: ({ children }: PropsWithChildren) => children },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
-
 const mockEmit = vi.fn()
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({

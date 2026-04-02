@@ -30,6 +30,19 @@ vi.mock('react-i18next', async () => {
 })
 
 const mockNotify = vi.fn()
+const mockToast = {
+  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowPricingModal = vi.fn()
@@ -54,13 +67,6 @@ const buildModalContext = (): ModalContextState => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => buildModalContext(),
-}))
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-    close: vi.fn(),
-  }),
 }))
 
 vi.mock('@/context/i18n', async () => {
