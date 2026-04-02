@@ -18,9 +18,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
-
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.service_api.dataset.dataset import (
