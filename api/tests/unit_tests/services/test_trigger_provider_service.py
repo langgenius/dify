@@ -56,13 +56,28 @@ def mock_db_engine(mocker: MockerFixture) -> SimpleNamespace:
 
 @pytest.fixture
 def mock_session(mocker: MockerFixture) -> MagicMock:
-    """Mocks the database session context manager used by TriggerProviderService."""
+    """Mocks the database session context manager used by TriggerProviderService.
+
+    The production code uses ``sessionmaker(db.engine, ...).begin()`` as a
+    context manager.  We patch ``sessionmaker`` so that calling it returns a
+    factory whose ``.begin()`` yields our mock session.
+    """
     # Arrange
     mock_session_instance = MagicMock()
-    mock_session_cm = MagicMock()
-    mock_session_cm.__enter__.return_value = mock_session_instance
-    mock_session_cm.__exit__.return_value = False
-    mocker.patch("services.trigger.trigger_provider_service.Session", return_value=mock_session_cm)
+
+    # .begin() returns a context-manager that yields the session
+    mock_begin_cm = MagicMock()
+    mock_begin_cm.__enter__ = MagicMock(return_value=mock_session_instance)
+    mock_begin_cm.__exit__ = MagicMock(return_value=False)
+
+    # sessionmaker(...) returns a factory; factory.begin() returns the cm
+    mock_factory = MagicMock()
+    mock_factory.begin.return_value = mock_begin_cm
+
+    mocker.patch(
+        "services.trigger.trigger_provider_service.sessionmaker",
+        return_value=mock_factory,
+    )
     return mock_session_instance
 
 
@@ -212,7 +227,7 @@ def test_add_trigger_subscription_should_create_subscription_successfully_for_ap
     # Assert
     assert result["result"] == "success"
     mock_session.add.assert_called_once()
-    mock_session.commit.assert_called_once()
+
 
 
 def test_add_trigger_subscription_should_store_empty_credentials_for_unauthorized_type(
@@ -406,7 +421,7 @@ def test_update_trigger_subscription_should_update_fields_and_clear_cache(
     assert subscription.credentials == {"api_key": "new-key"}
     assert subscription.credential_expires_at == 100
     assert subscription.expires_at == 200
-    mock_session.commit.assert_called_once()
+
     mock_delete_cache.assert_called_once()
 
 
@@ -593,7 +608,7 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
     assert result == {"result": "success", "expires_at": 12345}
     assert subscription.credentials == {"access_token": "new"}
     assert subscription.credential_expires_at == 12345
-    mock_session.commit.assert_called_once()
+
     cache.delete.assert_called_once()
 
 
@@ -664,7 +679,7 @@ def test_refresh_subscription_should_refresh_and_persist_properties(
     assert result == {"result": "success", "expires_at": 999}
     assert subscription.properties == {"p": "new-enc"}
     assert subscription.expires_at == 999
-    mock_session.commit.assert_called_once()
+
     prop_cache.delete.assert_called_once()
 
 
@@ -838,7 +853,7 @@ def test_save_custom_oauth_client_params_should_create_record_and_clear_params_w
     assert fake_model.encrypted_oauth_params == "{}"
     assert fake_model.enabled is True
     mock_session.add.assert_called_once_with(fake_model)
-    mock_session.commit.assert_called_once()
+
 
 
 def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_cache(
@@ -870,7 +885,7 @@ def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_c
     assert result == {"result": "success"}
     assert json.loads(custom_client.encrypted_oauth_params) == {"client_id": "new-id"}
     cache.delete.assert_called_once()
-    mock_session.commit.assert_called_once()
+
 
 
 def test_get_custom_oauth_client_params_should_return_empty_when_record_missing(
@@ -921,7 +936,7 @@ def test_delete_custom_oauth_client_params_should_delete_record_and_commit(
 
     # Assert
     assert result == {"result": "success"}
-    mock_session.commit.assert_called_once()
+
 
 
 @pytest.mark.parametrize("exists", [True, False])
