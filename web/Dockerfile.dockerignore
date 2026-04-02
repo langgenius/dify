@@ -7,6 +7,9 @@
 !web/**
 !e2e/
 !e2e/package.json
+!packages/
+!packages/iconify-collections/
+!packages/iconify-collections/**
 !sdks/
 !sdks/nodejs-client/
 !sdks/nodejs-client/package.json
