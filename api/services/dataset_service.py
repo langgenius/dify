@@ -274,7 +274,9 @@ class DatasetService:
         db.session.flush()
 
         if provider == "external" and external_knowledge_api_id:
-            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
+                external_knowledge_api_id, tenant_id
+            )
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
             if external_knowledge_id is None:

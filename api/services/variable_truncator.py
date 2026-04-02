@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, Generic, TypeAlias, TypeVar, overload
+from typing import Any, overload
 
 from graphon.file import File
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
@@ -43,12 +43,9 @@ class _PCKeys:
     CHILD_CONTENTS = "child_contents"
 
 
-_T = TypeVar("_T")
-
-
 @dataclasses.dataclass(frozen=True)
-class _PartResult(Generic[_T]):
-    value: _T
+class _PartResult[T]:
+    value: T
     value_size: int
     truncated: bool
 
@@ -61,7 +58,7 @@ class UnknownTypeError(Exception):
     pass
 
 
-JSONTypes: TypeAlias = int | float | str | list[object] | dict[str, object] | None | bool
+type JSONTypes = int | float | str | list[object] | dict[str, object] | None | bool
 
 
 @dataclasses.dataclass(frozen=True)

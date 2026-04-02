@@ -1,6 +1,5 @@
-import sys
 import urllib.parse
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 import httpx
 from flask_login import current_user
@@ -11,11 +10,6 @@ from core.helper.http_client_pooling import get_pooled_http_client
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
-
-if sys.version_info >= (3, 12):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
 
 
 class NotionPageSummary(TypedDict):
