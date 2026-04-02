@@ -204,9 +204,6 @@ catalogs:
     '@types/node':
       specifier: 25.5.0
       version: 25.5.0
-    '@types/postcss-js':
-      specifier: 4.1.0
-      version: 4.1.0
     '@types/qs':
       specifier: 6.15.0
       version: 6.15.0
@@ -252,9 +249,6 @@ catalogs:
     ahooks:
       specifier: 3.9.7
       version: 3.9.7
-    autoprefixer:
-      specifier: 10.4.27
-      version: 10.4.27
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
@@ -420,9 +414,6 @@ catalogs:
     postcss:
       specifier: 8.5.8
       version: 8.5.8
-    postcss-js:
-      specifier: 5.1.0
-      version: 5.1.0
     qrcode.react:
       specifier: 4.2.0
       version: 4.2.0
@@ -1093,9 +1084,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.5.0
-      '@types/postcss-js':
-        specifier: 'catalog:'
-        version: 4.1.0
       '@types/qs':
         specifier: 'catalog:'
         version: 6.15.0
@@ -1132,9 +1120,6 @@ importers:
       agentation:
         specifier: 'catalog:'
         version: 3.0.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      autoprefixer:
-        specifier: 'catalog:'
-        version: 10.4.27(postcss@8.5.8)
       code-inspector-plugin:
         specifier: 'catalog:'
         version: 1.4.5
@@ -1183,9 +1168,6 @@ importers:
       postcss:
         specifier: 'catalog:'
         version: 8.5.8
-      postcss-js:
-        specifier: 'catalog:'
-        version: 5.1.0(postcss@8.5.8)
       react-server-dom-webpack:
         specifier: 'catalog:'
         version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
@@ -4315,9 +4297,6 @@ packages:
   '@types/papaparse@5.5.2':
     resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
-  '@types/postcss-js@4.1.0':
-    resolution: {integrity: sha512-E19kBYOk2uEhzxfbam6jALzE6J1GNdny2jdftwDHo72+oWWt7bkWSGzZYVfaRK1r/UToMhAcfbKCAauBXrxi7g==}
-
   '@types/qs@6.15.0':
     resolution: {integrity: sha512-JawvT8iBVWpzTrz3EGw9BTQFg3BQNmwERdKE22vlTxawwtbyUSlMppvZYKLZzB5zgACXdXxbD3m1bXaMqP/9ow==}
 
@@ -4916,13 +4895,6 @@ packages:
 
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
-
-  autoprefixer@10.4.27:
-    resolution: {integrity: sha512-NP9APE+tO+LuJGn7/9+cohklunJsXWiaWEfV3si4Gi/XHDwVNgkwr1J3RQYFIvPy76GmJ9/bW8vyoU1LcxwKHA==}
-    engines: {node: ^10 || ^12 || >=14}
-    hasBin: true
-    peerDependencies:
-      postcss: ^8.1.0
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -6136,9 +6108,6 @@ packages:
         optional: true
       react-dom:
         optional: true
-
-  fraction.js@5.3.4:
-    resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
 
   fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
@@ -7467,12 +7436,6 @@ packages:
   portfinder@1.0.38:
     resolution: {integrity: sha512-rEwq/ZHlJIKw++XtLAO8PPuOQA/zaPJOZJ37BVuN97nLpMJeuDVLVGRwbFoBgLudgdTMP2hdRJP++H+8QOA3vg==}
     engines: {node: '>= 10.12'}
-
-  postcss-js@5.1.0:
-    resolution: {integrity: sha512-glrtXSrLt3eH/mgceNgP6u/6jHodqRQ/ToFht+yqwquw0KBf6Zue5qJQFgcIEfQQyYl+BCPN/TYdWyeOQh3c5Q==}
-    engines: {node: ^20 || ^22 || >= 24}
-    peerDependencies:
-      postcss: ^8.4.21
 
   postcss-load-config@6.0.1:
     resolution: {integrity: sha512-oPtTM4oerL+UXmx+93ytZVN82RrlY/wPUV8IeDxFrzIjXOLF1pN+EmKPLbubvKHT2HC20xXsCAH2Z+CKV6Oz/g==}
@@ -11969,10 +11932,6 @@ snapshots:
     dependencies:
       '@types/node': 25.5.0
 
-  '@types/postcss-js@4.1.0':
-    dependencies:
-      postcss: 8.5.8
-
   '@types/qs@6.15.0': {}
 
   '@types/react-dom@19.2.3(@types/react@19.2.14)':
@@ -12666,15 +12625,6 @@ snapshots:
   astring@1.9.0: {}
 
   async@3.2.6: {}
-
-  autoprefixer@10.4.27(postcss@8.5.8):
-    dependencies:
-      browserslist: 4.28.1
-      caniuse-lite: 1.0.30001781
-      fraction.js: 5.3.4
-      picocolors: 1.1.1
-      postcss: 8.5.8
-      postcss-value-parser: 4.2.0
 
   bail@2.0.2: {}
 
@@ -14095,8 +14045,6 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-
-  fraction.js@5.3.4: {}
 
   fs-constants@1.0.0:
     optional: true
@@ -15807,10 +15755,6 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
-
-  postcss-js@5.1.0(postcss@8.5.8):
-    dependencies:
-      postcss: 8.5.8
 
   postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.8)(tsx@4.21.0)(yaml@2.8.3):
     dependencies:
