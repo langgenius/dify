@@ -144,7 +144,7 @@ describe('Modal', () => {
         )
       })
 
-      const dialog = document.querySelector('.z-\\[1100\\]')
+      const dialog = document.querySelector('.z-1100')
       expect(dialog).toBeInTheDocument()
     })
 

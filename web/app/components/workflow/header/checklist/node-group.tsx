@@ -33,7 +33,7 @@ export const ChecklistNodeGroup = memo(({
   }, [item.errorMessages, item.unConnected, t])
 
   return (
-    <div className="overflow-clip rounded-[10px] bg-components-panel-on-panel-item-bg">
+    <div className="overflow-clip radius-lg bg-components-panel-on-panel-item-bg">
       <div className="flex items-center gap-2 px-2 pt-2">
         <BlockIcon
           type={item.type as BlockEnum}

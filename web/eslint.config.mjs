@@ -150,6 +150,11 @@ export default antfu(
       'tailwindcss/no-unnecessary-whitespace': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
+    settings: {
+      'better-tailwindcss': {
+        entryPoint: 'app/styles/globals.css',
+      },
+    },
   },
   {
     name: 'dify/custom/setup',

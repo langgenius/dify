@@ -103,7 +103,7 @@ describe('TagInput', () => {
       })
     })
 
-    it('should add tag on blur when input has valid value', async () => {
+    it('should add tag on blur-sm when input has valid value', async () => {
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 

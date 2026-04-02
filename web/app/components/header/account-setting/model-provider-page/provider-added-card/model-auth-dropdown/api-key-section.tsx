@@ -31,7 +31,7 @@ function ApiKeySection({
   if (!credentials.length) {
     return (
       <div className="flex flex-col gap-2 p-2">
-        <div className="rounded-[10px] bg-gradient-to-r from-state-base-hover to-transparent p-4">
+        <div className="radius-lg bg-linear-to-r from-state-base-hover to-transparent p-4">
           <div className="flex flex-col gap-1">
             <div className="text-text-secondary system-sm-medium">
               {t('modelProvider.card.noApiKeysTitle', { ns: 'common' })}

@@ -57,7 +57,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
             !!value.length && 'pr-6 shadow-xs',
           )}
         >
-          <div className="p-[1px]">
+          <div className="p-px">
             <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
           </div>
           <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-tertiary">
@@ -68,7 +68,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
             <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
           )}
           {!value.length && (
-            <div className="shrink-0 p-[1px]">
+            <div className="shrink-0 p-px">
               <RiArrowDownSLine className="h-3.5 w-3.5 text-text-tertiary" />
             </div>
           )}
@@ -77,7 +77,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-[1px]"
+            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-px"
             data-testid="label-filter-clear-button"
             onClick={() => onChange([])}
           >

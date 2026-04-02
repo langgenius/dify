@@ -101,7 +101,7 @@ const FormContent = () => {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="h-[56px] w-[56px] shrink-0 rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiCheckboxCircleFill className="h-8 w-8 text-text-success" />
             </div>
@@ -129,7 +129,7 @@ const FormContent = () => {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
             </div>
@@ -157,7 +157,7 @@ const FormContent = () => {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
             </div>
@@ -185,7 +185,7 @@ const FormContent = () => {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
             </div>
@@ -211,7 +211,7 @@ const FormContent = () => {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
             </div>
@@ -248,7 +248,7 @@ const FormContent = () => {
         <div className="system-xl-semibold grow text-text-primary">{site.title}</div>
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
-        <div className="border-components-divider-subtle rounded-[20px] border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-sm">
+        <div className="border-components-divider-subtle radius-3xl border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">
           {contentList.map((content, index) => (
             <ContentItem
               key={index}

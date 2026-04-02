@@ -79,7 +79,7 @@ const FormItem: FC<Props> = ({
         <div className="flex h-full items-center">
           {!isChatVar && (
             <div className="flex items-center">
-              <div className="p-[1px]">
+              <div className="p-px">
                 <VarBlockIcon type={nodeType || BlockEnum.Start} />
               </div>
               <div className="mx-0.5 max-w-[150px] truncate text-xs font-medium text-text-secondary" title={nodeName}>
@@ -215,7 +215,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+            className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
             placeholder={
               <div className="whitespace-pre">{jsonSchemaPlaceholder}</div>
             }

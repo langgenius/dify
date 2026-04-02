@@ -167,7 +167,7 @@ const AdvancedPromptInput: FC<Props> = ({
     </div>
   )
   return (
-    <div className={`rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
+    <div className={`rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
       <div className="rounded-xl bg-background-default">
         {isContextMissing
           ? contextMissing

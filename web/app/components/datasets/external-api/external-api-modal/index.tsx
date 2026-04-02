@@ -101,8 +101,8 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
   }
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className="z-[60] h-full w-full">
-        <div className="fixed inset-0 flex items-center justify-center bg-black/[.25]">
+      <PortalToFollowElemContent className="z-60 h-full w-full">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/25">
           <div className="shadows-shadow-xl relative flex w-[480px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
             <div className="flex flex-col items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
               <div className="grow self-stretch text-text-primary title-2xl-semi-bold">

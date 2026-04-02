@@ -15,7 +15,7 @@ const EmptySearchResult = ({
   const { t } = useTranslation()
 
   return (
-    <div className="flex size-full flex-col items-center justify-center gap-y-2 rounded-[10px] bg-background-section p-6">
+    <div className="flex size-full flex-col items-center justify-center gap-y-2 radius-lg bg-background-section p-6">
       <SearchMenu className="size-8 text-text-tertiary" />
       <div className="system-sm-regular text-text-secondary">
         {t('onlineDrive.emptySearchResult', { ns: 'datasetPipeline' })}

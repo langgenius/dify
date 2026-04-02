@@ -52,7 +52,7 @@ export default function UsagePrioritySection({ value, disabled, onSelect }: Usag
               key={option.key}
               type="button"
               className={cn(
-                'shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-button-primary-border disabled:opacity-50',
+                'shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-center transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-components-button-primary-border disabled:opacity-50',
                 selectedKey === option.key
                   ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-panel-bg text-text-primary shadow-xs system-xs-medium'
                   : 'border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-xs-regular hover:bg-components-option-card-option-bg-hover',

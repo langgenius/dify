@@ -357,7 +357,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border-[1px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
       >
         <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]">
           <div className="relative shrink-0">
@@ -370,7 +370,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             />
             <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="h-3 w-3" />
           </div>
-          <div className="w-0 grow py-[1px]">
+          <div className="w-0 grow py-px">
             <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
               <div className="truncate" title={app.name}>{app.name}</div>
             </div>
@@ -421,7 +421,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   e.preventDefault()
                 }}
               >
-                <div className="mr-[41px] w-full grow group-hover:!mr-0">
+                <div className="mr-[41px] w-full grow group-hover:mr-0!">
                   <TagSelector
                     position="bl"
                     type="app"
@@ -433,8 +433,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className="mx-1 !hidden h-[14px] w-[1px] shrink-0 bg-divider-regular group-hover:!flex" />
-              <div className="!hidden shrink-0 group-hover:!flex">
+              <div className="mx-1 hidden! h-[14px] w-px shrink-0 bg-divider-regular group-hover:flex!" />
+              <div className="hidden! shrink-0 group-hover:flex!">
                 <CustomPopover
                   htmlContent={<Operations />}
                   position="br"
@@ -449,15 +449,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   )}
                   btnClassName={open =>
                     cn(
-                      open ? '!bg-state-base-hover !shadow-none' : '!bg-transparent',
-                      'h-8 w-8 rounded-md border-none !p-2 hover:!bg-state-base-hover',
+                      open ? 'bg-state-base-hover! shadow-none!' : 'bg-transparent!',
+                      'h-8 w-8 rounded-md border-none p-2! hover:bg-state-base-hover!',
                     )}
                   popupClassName={
                     (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
-                      ? '!w-[256px] translate-x-[-224px]'
-                      : '!w-[216px] translate-x-[-128px]'
+                      ? 'w-[256px]! translate-x-[-224px]'
+                      : 'w-[216px]! translate-x-[-128px]'
                   }
-                  className="!z-20 h-fit"
+                  className="z-20! h-fit"
                 />
               </div>
             </>
@@ -507,7 +507,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
               {t('deleteAppConfirmTitle', { ns: 'app' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
               {t('deleteAppConfirmContent', { ns: 'app' })}
             </AlertDialogDescription>
             <div className="mt-2">
@@ -516,7 +516,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               </label>
               <input
                 type="text"
-                className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-none focus:ring-1"
+                className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-hidden focus:ring-1"
                 placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
                 value={confirmDeleteInput}
                 onChange={e => setConfirmDeleteInput(e.target.value)}

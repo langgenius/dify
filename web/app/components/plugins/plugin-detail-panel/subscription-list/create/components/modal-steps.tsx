@@ -225,7 +225,7 @@ export const ManualPropertiesSection = ({
           <div className="system-xs-medium-uppercase text-text-tertiary">
             {t('modal.manual.logs.title', { ns: 'pluginTrigger' })}
           </div>
-          <div className="h-px flex-1 bg-gradient-to-r from-divider-regular to-transparent" />
+          <div className="h-px flex-1 bg-linear-to-r from-divider-regular to-transparent" />
         </div>
 
         <div className="mb-1 flex items-center justify-center gap-1 rounded-lg bg-background-section p-3">
