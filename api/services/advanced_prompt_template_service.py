@@ -51,6 +51,8 @@ class AdvancedPromptTemplateService:
                     )
             case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                 pass
+            case _:
+                pass
         # default return empty dict
         return {}
 
@@ -98,6 +100,8 @@ class AdvancedPromptTemplateService:
                         copy.deepcopy(BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, baichuan_context_prompt
                     )
             case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                pass
+            case _:
                 pass
         # default return empty dict
         return {}

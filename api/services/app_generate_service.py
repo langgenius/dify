@@ -257,6 +257,8 @@ class AppGenerateService:
                     )
                 case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                     raise ValueError(f"Unsupported app mode: {app_model.mode}")
+                case _:
+                    raise ValueError(f"Invalid app mode: {effective_mode}")
         except Exception:
             quota_charge.refund()
             rate_limit.exit(request_id)

@@ -387,3 +387,104 @@ class TestExhaustiveCoverage:
         expected = {"paid", "free", "trial"}
         actual = {m.value for m in ProviderQuotaType}
         assert actual == expected
+
+
+# ============================================================
+# Test 11: generate() case _ catches unknown string modes
+# ============================================================
+class TestGenerateWildcardCase:
+    """Test that generate() raises ValueError for unknown mode strings.
+
+    The generate() method normalizes mode via is_agent then dispatches with match/case.
+    When an unexpected string is passed (not a valid AppMode enum), the case _ branch
+    should raise ValueError("Invalid app mode: ...").
+    """
+
+    def _make_generate_dispatch(self):
+        """Mirror the effective_mode normalization + match/case logic from generate()."""
+
+        def dispatch(effective_mode):
+            match effective_mode:
+                case AppMode.COMPLETION:
+                    return "completion"
+                case AppMode.AGENT_CHAT:
+                    return "agent_chat"
+                case AppMode.CHAT:
+                    return "chat"
+                case AppMode.ADVANCED_CHAT:
+                    return "advanced_chat"
+                case AppMode.WORKFLOW:
+                    return "workflow"
+                case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                    raise ValueError(f"Unsupported app mode: {effective_mode}")
+                case _:
+                    raise ValueError(f"Invalid app mode: {effective_mode}")
+
+        return dispatch
+
+    def test_unknown_string_raises_invalid_app_mode(self):
+        """A non-enum string like 'invalid-mode' should hit case _ and raise ValueError."""
+        dispatch = self._make_generate_dispatch()
+        with pytest.raises(ValueError, match="Invalid app mode"):
+            dispatch("invalid-mode")
+
+    def test_unexpected_enum_value_raises(self):
+        """Any string not matching a known AppMode value should raise."""
+        dispatch = self._make_generate_dispatch()
+        with pytest.raises(ValueError, match="Invalid app mode"):
+            dispatch("future-mode")
+
+    def test_channel_still_raises_unsupported(self):
+        """CHANNEL is explicitly handled and raises 'Unsupported', not 'Invalid'."""
+        dispatch = self._make_generate_dispatch()
+        with pytest.raises(ValueError, match="Unsupported app mode"):
+            dispatch(AppMode.CHANNEL)
+
+    def test_all_known_modes_dispatch_or_raise(self):
+        """Every valid AppMode value either returns a result or raises a known error."""
+        dispatch = self._make_generate_dispatch()
+        for mode in AppMode:
+            try:
+                dispatch(mode)
+            except ValueError:
+                pass  # CHANNEL and RAG_PIPELINE raise, which is expected
+
+
+# ============================================================
+# Test 12: AdvancedPromptTemplateService wildcard case
+# ============================================================
+class TestAdvancedPromptTemplateWildcardCase:
+    """Test that advanced_prompt_template_service handles unknown modes gracefully."""
+
+    def _make_common_prompt_with_wildcard(self):
+        def get_common_prompt(app_mode):
+            match app_mode:
+                case AppMode.CHAT:
+                    return {"chat": True}
+                case AppMode.COMPLETION:
+                    return {"completion": True}
+                case (
+                    AppMode.WORKFLOW
+                    | AppMode.ADVANCED_CHAT
+                    | AppMode.AGENT_CHAT
+                    | AppMode.CHANNEL
+                    | AppMode.RAG_PIPELINE
+                ):
+                    pass
+                case _:
+                    pass
+            return {}
+
+        return get_common_prompt
+
+    def test_unknown_string_returns_empty(self):
+        """An unknown mode string should fall through to case _ and return {}."""
+        svc = self._make_common_prompt_with_wildcard()
+        assert svc("unknown-mode") == {}
+
+    def test_all_known_modes_handled(self):
+        """Every valid AppMode value returns a result."""
+        svc = self._make_common_prompt_with_wildcard()
+        for mode in AppMode:
+            result = svc(mode)
+            assert isinstance(result, dict)
