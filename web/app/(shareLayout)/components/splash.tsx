@@ -26,14 +26,14 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   }, [searchParams])
 
   const backToHome = useCallback(async () => {
-    if (shareCode)
-      await webAppLogout(shareCode)
+    await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router, shareCode])
   useEffect(() => {
-    if (message || !shareCode)
+    if (message) {
       return
+    }
 
     if (tokenFromUrl)
       setWebAppAccessToken(tokenFromUrl)
@@ -45,7 +45,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
 
     (async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode, embeddedUserId || undefined)
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!, embeddedUserId || undefined)
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       }
@@ -55,14 +55,14 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       else if (userLoggedIn && !appLoggedIn) {
         try {
           const { access_token } = await fetchAccessToken({
-            appCode: shareCode,
+            appCode: shareCode!,
             userId: embeddedUserId || undefined,
           })
-          setWebAppPassport(shareCode, access_token)
+          setWebAppPassport(shareCode!, access_token)
           redirectOrFinish()
         }
         catch {
-          await webAppLogout(shareCode)
+          await webAppLogout(shareCode!)
         }
       }
     })()
@@ -79,7 +79,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-4">
         <AppUnavailable className="h-auto w-auto" code={code || t('common.appUnavailable', { ns: 'share' })} unknownReason={message} />
-        <span className="cursor-pointer text-text-tertiary system-sm-regular" onClick={backToHome}>{code === '403' ? t('userProfile.logout', { ns: 'common' }) : t('login.backToHome', { ns: 'share' })}</span>
+        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{code === '403' ? t('userProfile.logout', { ns: 'common' }) : t('login.backToHome', { ns: 'share' })}</span>
       </div>
     )
   }
