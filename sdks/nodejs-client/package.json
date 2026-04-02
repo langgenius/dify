@@ -45,7 +45,7 @@
   "homepage": "https://dify.ai",
   "license": "MIT",
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
@@ -61,7 +61,7 @@
     "@typescript-eslint/parser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
-    "tsup": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
