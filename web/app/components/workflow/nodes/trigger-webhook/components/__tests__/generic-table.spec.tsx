@@ -100,7 +100,7 @@ describe('GenericTable', () => {
     expect(inputs).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
 
-    const blurSpy = vi.spyOn(inputs[0], 'blur-sm')
+    const blurSpy = vi.spyOn(inputs[0], 'blur')
     fireEvent.keyDown(inputs[0], { key: 'Enter' })
     expect(blurSpy).toHaveBeenCalledTimes(1)
   })
