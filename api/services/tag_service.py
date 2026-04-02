@@ -169,9 +169,7 @@ class TagService:
                 raise NotFound("Dataset not found")
         elif type == "app":
             app = db.session.scalar(
-                select(App)
-                .where(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
-                .limit(1)
+                select(App).where(App.tenant_id == current_user.current_tenant_id, App.id == target_id).limit(1)
             )
             if not app:
                 raise NotFound("App not found")
