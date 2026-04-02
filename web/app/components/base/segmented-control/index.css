@@ -1,5 +1,3 @@
-@tailwind components;
-
 @layer components {
   .segmented-control {
     @apply flex items-center bg-components-segmented-control-bg-normal gap-x-px

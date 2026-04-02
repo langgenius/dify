@@ -1,5 +1,3 @@
-@tailwind components;
-
 @layer components {
   .btn {
     @apply inline-flex justify-center items-center cursor-pointer whitespace-nowrap

@@ -96,7 +96,7 @@
   @apply w-3 h-3 bg-gray-500 hover:bg-none mr-1 !important;
 }
 .textArea {
-  @apply placeholder:text-gray-400 bg-gray-50 px-2 py-1 caret-primary-600 rounded-md hover:bg-gray-100 focus-visible:outline-none focus-visible:bg-white focus-visible:border focus-visible:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05);];
+  @apply placeholder:text-gray-400 bg-gray-50 px-2 py-1 caret-primary-600 rounded-md hover:bg-gray-100 focus-visible:outline-none focus-visible:bg-white focus-visible:border focus-visible:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)];
 }
 .input {
   @apply bg-gray-50 hover:bg-gray-100 focus-visible:bg-white !important

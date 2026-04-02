@@ -13,9 +13,6 @@
 @import "../components/base/premium-badge/index.css";
 @import "../components/base/segmented-control/index.css";
 
-@tailwind base;
-@tailwind components;
-
 html {
   color-scheme: light;
 }
@@ -691,7 +688,7 @@ a {
   display: none;
 }
 
-@tailwind utilities;
+@unocss !preflights;
 
 @layer utilities {
 

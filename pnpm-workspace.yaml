@@ -116,6 +116,7 @@ catalog:
   "@streamdown/math": 1.0.2
   "@svgdotjs/svg.js": 3.2.5
   "@t3-oss/env-nextjs": 0.13.11
+  "@unocss/postcss": 66.6.7
   "@tailwindcss/typography": 0.5.19
   "@tanstack/eslint-plugin-query": 5.95.2
   "@tanstack/react-devtools": 0.10.0
@@ -242,6 +243,7 @@ catalog:
   tsx: 4.21.0
   typescript: 5.9.3
   uglify-js: 3.19.3
+  unocss: 66.6.7
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
   uuid: 13.0.0

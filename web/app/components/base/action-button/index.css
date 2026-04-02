@@ -1,5 +1,3 @@
-@tailwind components;
-
 @layer components {
     .action-btn {
         @apply inline-flex justify-center items-center cursor-pointer text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover

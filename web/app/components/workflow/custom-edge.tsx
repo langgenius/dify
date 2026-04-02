@@ -19,7 +19,6 @@ import {
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { cn } from '@/utils/classnames'
 import BlockSelector from './block-selector'
-import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import {
   useAvailableBlocks,
@@ -145,8 +144,8 @@ const CustomEdge = ({
             'nopan nodrag hover:scale-125',
             data?._hovering ? 'block' : 'hidden',
             open && '!block',
-            data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
-            data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
+            data.isInIteration && 'z-[1002]',
+            data.isInLoop && 'z-[1002]',
           )}
           style={{
             position: 'absolute',
