@@ -17,8 +17,8 @@ import AnnotationCtrlButton from '@/app/components/base/features/new-feature-pan
 import Modal from '@/app/components/base/modal/modal'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import { useChatContext } from '../context'
 
@@ -302,7 +302,7 @@ const Operation: FC<OperationProps> = ({
               <ActionButton
                 onClick={() => {
                   copy(content)
-                  Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                  toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                 }}
                 data-testid="copy-btn"
               >

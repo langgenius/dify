@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { Tag } from './constant'
 import { useEffect, useRef } from 'react'
-import { ToastProvider } from '@/app/components/base/toast'
+import { ToastHost } from '@/app/components/base/ui/toast'
 import TagManagementModal from '.'
 import { useStore as useTagStore } from './store'
 
@@ -86,7 +86,8 @@ const TagManagementPlayground = ({
   }, [setTagList])
 
   return (
-    <ToastProvider>
+    <>
+      <ToastHost />
       <div className="flex w-full max-w-xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
         <button
           type="button"
@@ -98,7 +99,7 @@ const TagManagementPlayground = ({
         <p className="text-xs text-text-tertiary">Mocked tag management flows with create and bind actions.</p>
       </div>
       <TagManagementModal show={showModal} type={type} />
-    </ToastProvider>
+    </>
   )
 }
 
