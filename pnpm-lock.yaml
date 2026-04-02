@@ -57,6 +57,12 @@ catalogs:
     '@iconify-json/ri':
       specifier: 1.2.10
       version: 1.2.10
+    '@iconify/tools':
+      specifier: 4.2.0
+      version: 4.2.0
+    '@iconify/utils':
+      specifier: 3.1.0
+      version: 3.1.0
     '@lexical/link':
       specifier: 0.42.0
       version: 0.42.0
@@ -1006,6 +1012,12 @@ importers:
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
+      '@iconify/tools':
+        specifier: 'catalog:'
+        version: 4.2.0
+      '@iconify/utils':
+        specifier: 'catalog:'
+        version: 3.1.0
       '@mdx-js/loader':
         specifier: 'catalog:'
         version: 3.1.1(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))

@@ -1,11 +1,12 @@
 /* eslint-disable ts/ban-ts-comment */
 // @ts-nocheck
 
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { icons as heroicons } from '@iconify-json/heroicons'
-import { icons as ri } from '@iconify-json/ri'
-import { importSvgCollections } from 'iconify-import-svg'
+import { cleanupSVG, deOptimisePaths, isEmptyColor, parseColors, runSVGO, SVG } from '@iconify/tools'
+import { compareColors, stringToColor } from '@iconify/utils/lib/colors'
+import { FileSystemIconLoader } from '@iconify/utils/lib/loader/node-loaders'
 import { defineConfig, presetIcons, presetTypography, presetWind3, transformerDirectives } from 'unocss'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
 
@@ -13,9 +14,82 @@ const dirname = typeof __dirname !== 'undefined'
   ? __dirname
   : path.dirname(fileURLToPath(import.meta.url))
 
-const parseColorOptions = {
-  fallback: () => 'currentColor',
+const blackColor = stringToColor('black')
+const whiteColor = stringToColor('white')
+
+const transformSvgToCurrentColor = (source: string) => {
+  const svg = new SVG(source)
+
+  cleanupSVG(svg)
+  parseColors(svg, {
+    defaultColor: 'currentColor',
+    callback: (attr, colorString, color) => {
+      if (!color)
+        throw new Error(`Invalid color: "${colorString}" in attribute ${attr}`)
+      if (isEmptyColor(color))
+        return color
+      if (compareColors(color, blackColor))
+        return 'currentColor'
+      if (compareColors(color, whiteColor))
+        return 'remove'
+      return 'currentColor'
+    },
+  })
+  runSVGO(svg)
+  deOptimisePaths(svg)
+
+  return svg.toString()
 }
+
+const findSvgDirectories = (rootDir: string) => {
+  const result: string[] = []
+
+  const walk = (dir: string) => {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    const subdirs: string[] = []
+    let hasSvgFiles = false
+
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.svg'))
+        hasSvgFiles = true
+      else if (entry.isDirectory())
+        subdirs.push(path.join(dir, entry.name))
+    }
+
+    if (hasSvgFiles)
+      result.push(dir)
+
+    for (const subdir of subdirs)
+      walk(subdir)
+  }
+
+  walk(rootDir)
+  return result
+}
+
+const createCollectionLoaders = (source: string, prefix: string) => {
+  const directories = findSvgDirectories(source)
+
+  return Object.fromEntries(
+    directories.map((dir) => {
+      const pathPrefix = path.relative(source, dir).split(path.sep).join('-')
+      return [
+        `${prefix}-${pathPrefix}`,
+        FileSystemIconLoader(dir, transformSvgToCurrentColor),
+      ]
+    }),
+  )
+}
+
+const publicCollections = createCollectionLoaders(
+  path.resolve(dirname, 'app/components/base/icons/assets/public'),
+  'custom-public',
+)
+
+const venderCollections = createCollectionLoaders(
+  path.resolve(dirname, 'app/components/base/icons/assets/vender'),
+  'custom-vender',
+)
 
 export default defineConfig({
   blocklist: [
@@ -46,26 +120,8 @@ export default defineConfig({
     presetTypography(),
     presetIcons({
       collections: {
-        heroicons,
-        ri,
-        ...importSvgCollections({
-          source: path.resolve(dirname, 'app/components/base/icons/assets/public'),
-          prefix: 'custom-public',
-          ignoreImportErrors: true,
-          cleanupSVG: true,
-          deOptimisePaths: true,
-          runSVGO: true,
-          parseColors: parseColorOptions,
-        }),
-        ...importSvgCollections({
-          source: path.resolve(dirname, 'app/components/base/icons/assets/vender'),
-          prefix: 'custom-vender',
-          ignoreImportErrors: true,
-          cleanupSVG: true,
-          deOptimisePaths: true,
-          runSVGO: true,
-          parseColors: parseColorOptions,
-        }),
+        ...publicCollections,
+        ...venderCollections,
       },
       extraProperties: {
         width: '1rem',

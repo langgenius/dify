@@ -163,6 +163,8 @@
     "@hono/node-server": "catalog:",
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ri": "catalog:",
+    "@iconify/tools": "catalog:",
+    "@iconify/utils": "catalog:",
     "@mdx-js/loader": "catalog:",
     "@mdx-js/react": "catalog:",
     "@mdx-js/rollup": "catalog:",

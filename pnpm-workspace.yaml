@@ -86,6 +86,8 @@ catalog:
   "@hono/node-server": 1.19.11
   "@iconify-json/heroicons": 1.2.3
   "@iconify-json/ri": 1.2.10
+  "@iconify/tools": 4.2.0
+  "@iconify/utils": 3.1.0
   "@lexical/code": 0.42.0
   "@lexical/link": 0.42.0
   "@lexical/list": 0.42.0
