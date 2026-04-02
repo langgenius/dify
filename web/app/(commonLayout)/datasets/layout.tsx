@@ -7,8 +7,9 @@ import { redirect } from '@/next/navigation'
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, currentWorkspace, isLoadingCurrentWorkspace } = useAppContext()
-  const isWorkspaceReady = !isLoadingCurrentWorkspace && !!currentWorkspace.id
-  const shouldRedirect = isWorkspaceReady && !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
+  const shouldRedirect = !isLoadingCurrentWorkspace
+    && currentWorkspace.id
+    && !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
 
   if (shouldRedirect) {
     return redirect('/apps')
