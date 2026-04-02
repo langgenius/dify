@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, Union
+from typing import Any
 
 from sqlalchemy import select
 
@@ -8,11 +8,6 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode
-
-P = ParamSpec("P")
-R = TypeVar("R")
-P1 = ParamSpec("P1")
-R1 = TypeVar("R1")
 
 
 def _load_app_model(app_id: str) -> App | None:
@@ -28,10 +23,14 @@ def _load_app_model_with_trial(app_id: str) -> App | None:
     return app_model
 
 
-def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
-    def decorator(view_func: Callable[P1, R1]):
+def get_app_model(
+    view: Callable[..., Any] | None = None,
+    *,
+    mode: AppMode | list[AppMode] | None = None,
+) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(view_func)
-        def decorated_view(*args: P1.args, **kwargs: P1.kwargs):
+        def decorated_view(*args: Any, **kwargs: Any):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 
@@ -69,10 +68,14 @@ def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, li
         return decorator(view)
 
 
-def get_app_model_with_trial(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
-    def decorator(view_func: Callable[P, R]):
+def get_app_model_with_trial(
+    view: Callable[..., Any] | None = None,
+    *,
+    mode: AppMode | list[AppMode] | None = None,
+) -> Callable[..., Any] | Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(view_func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: Any, **kwargs: Any):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 

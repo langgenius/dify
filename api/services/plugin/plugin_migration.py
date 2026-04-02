@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 from uuid import uuid4
 
 import click
@@ -14,7 +14,6 @@ import tqdm
 from flask import Flask, current_app
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
-from typing_extensions import TypedDict
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
