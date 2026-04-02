@@ -672,6 +672,36 @@ class TestIndexingRunnerLoad:
         # Verify executor was used for parallel processing
         assert mock_executor_instance.submit.called
 
+    def test_load_with_high_quality_respects_indexing_max_workers(
+        self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
+    ):
+        """Ensure the high-quality indexing fan-out is capped by INDEXING_MAX_WORKERS."""
+        runner = IndexingRunner()
+        mock_embedding_instance = MagicMock()
+        mock_embedding_instance.get_text_embedding_num_tokens.return_value = 100
+        model_manager = mock_dependencies["model_manager"].return_value
+        model_manager.get_model_instance.return_value = mock_embedding_instance
+
+        mock_processor = MagicMock()
+
+        # Mock ThreadPoolExecutor
+        mock_future = MagicMock()
+        mock_future.result.return_value = 300
+        mock_executor_instance = MagicMock()
+        mock_executor_instance.__enter__.return_value = mock_executor_instance
+        mock_executor_instance.__exit__.return_value = None
+        mock_executor_instance.submit.return_value = mock_future
+        mock_dependencies["executor"].return_value = mock_executor_instance
+
+        with (
+            patch.object(runner, "_update_document_index_status"),
+            patch("core.indexing_runner.dify_config") as mock_config,
+        ):
+            mock_config.INDEXING_MAX_WORKERS = 2
+            runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
+
+        mock_dependencies["executor"].assert_called_once_with(max_workers=2)
+
     def test_load_with_economy_indexing(
         self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
     ):

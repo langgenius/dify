@@ -1108,6 +1108,11 @@ class IndexingConfig(BaseSettings):
         default=50,
     )
 
+    INDEXING_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum number of worker threads used for high-quality dataset indexing",
+        default=2,
+    )
+
 
 class MultiModalTransferConfig(BaseSettings):
     MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(

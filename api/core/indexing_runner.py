@@ -1,4 +1,5 @@
 import concurrent.futures
+import gc
 import json
 import logging
 import re
@@ -601,7 +602,10 @@ class IndexingRunner:
             )
             create_keyword_thread.start()
 
-        max_workers = 10
+        # High-quality indexing is memory intensive (embedding generation + vector writes).
+        # Running too many chunks in parallel can trigger OOM and freeze the service until reboot.
+        max_workers = max(1, min(10, int(dify_config.INDEXING_MAX_WORKERS)))
+        max_workers = min(max_workers, len(documents)) if documents else 1
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
@@ -724,6 +728,9 @@ class IndexingRunner:
 
             db.session.commit()
 
+            # Help reclaim memory between chunk tasks.
+            # This is especially important for self-hosted setups that may run repeated re-indexing.
+            gc.collect()
             return tokens
 
     @staticmethod
