@@ -134,9 +134,7 @@ class RerankModelRunner(BaseRerankRunner):
             ):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
                     # Query file info within db.session context to ensure thread-safe access
-                    upload_file = (
-                        db.session.query(UploadFile).where(UploadFile.id == document.metadata["doc_id"]).first()
-                    )
+                    upload_file = db.session.get(UploadFile, document.metadata["doc_id"])
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
@@ -169,7 +167,7 @@ class RerankModelRunner(BaseRerankRunner):
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
             # Query file info within db.session context to ensure thread-safe access
-            upload_file = db.session.query(UploadFile).where(UploadFile.id == query).first()
+            upload_file = db.session.get(UploadFile, query)
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()

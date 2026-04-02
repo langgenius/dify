@@ -1118,7 +1118,7 @@ class WorkflowService:
                 continue
             try:
                 payload = json.loads(recipient.recipient_payload)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
                 logger.exception("Failed to parse human input recipient payload for delivery test.")
                 continue
             email = payload.get("email")

@@ -24,8 +24,8 @@ prepare-docker:
 # Step 2: Prepare web environment
 prepare-web:
 	@echo "🌐 Setting up web environment..."
-	@cp -n web/.env.example web/.env 2>/dev/null || echo "Web .env already exists"
-	@cd web && pnpm install
+	@cp -n web/.env.example web/.env.local 2>/dev/null || echo "Web .env.local already exists"
+	@pnpm install
 	@echo "✅ Web environment prepared (not started)"
 
 # Step 3: Prepare API environment
@@ -93,7 +93,7 @@ test:
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
-	docker build -t $(WEB_IMAGE):$(VERSION) ./web
+	docker build -f web/Dockerfile -t $(WEB_IMAGE):$(VERSION) .
 	@echo "Web Docker image built successfully: $(WEB_IMAGE):$(VERSION)"
 
 build-api:

@@ -83,40 +83,9 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5.5.3
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           directory: web/coverage
           flags: web
         env:
           CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
-
-  web-build:
-    name: Web Build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./web
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
-        with:
-          files: |
-            web/**
-            .github/workflows/web-tests.yml
-            .github/actions/setup-web/**
-
-      - name: Setup web environment
-        if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-web
-
-      - name: Web build check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: vp run build
