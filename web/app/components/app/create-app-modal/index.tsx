@@ -6,7 +6,6 @@ import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
@@ -15,7 +14,7 @@ import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -40,7 +39,6 @@ type CreateAppProps = {
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { notify } = useContext(ToastContext)
 
   const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
@@ -62,11 +60,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
-      notify({ type: 'error', message: t('newApp.appTypeRequired', { ns: 'app' }) })
+      toast.error(t('newApp.appTypeRequired', { ns: 'app' }))
       return
     }
     if (!name.trim()) {
-      notify({ type: 'error', message: t('newApp.nameNotEmpty', { ns: 'app' }) })
+      toast.error(t('newApp.nameNotEmpty', { ns: 'app' }))
       return
     }
     if (isCreatingRef.current)
@@ -88,20 +86,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         description,
       })
 
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()
       onClose()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
     catch (e: any) {
-      notify({
-        type: 'error',
-        message: e.message || t('newApp.appCreateFailed', { ns: 'app' }),
-      })
+      toast.error(e.message || t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
+  }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {

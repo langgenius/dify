@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { toast } from '@/app/components/base/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -17,7 +18,6 @@ import Soc2 from '../../base/icons/src/public/common/Soc2'
 import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
 import Spinner from '../../base/spinner'
-import Toast from '../../base/toast'
 import { MenuItemContent } from './menu-item-content'
 
 enum DocName {
@@ -106,17 +106,11 @@ function ComplianceDocRowItem({
       try {
         const ret = await getDocDownloadUrl(docName)
         downloadUrl({ url: ret.url })
-        Toast.notify({
-          type: 'success',
-          message: t('operation.downloadSuccess', { ns: 'common' }),
-        })
+        toast.success(t('operation.downloadSuccess', { ns: 'common' }))
       }
       catch (error) {
         console.error(error)
-        Toast.notify({
-          type: 'error',
-          message: t('operation.downloadFailed', { ns: 'common' }),
-        })
+        toast.error(t('operation.downloadFailed', { ns: 'common' }))
       }
     },
   })

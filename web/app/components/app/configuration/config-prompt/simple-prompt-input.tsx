@@ -17,8 +17,12 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-import { useToastContext } from '@/app/components/base/toast/context'
-import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
@@ -72,7 +76,6 @@ const Prompt: FC<ISimplePromptInput> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
-  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
@@ -92,7 +95,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }))
             return false
           }
         }
@@ -180,13 +183,18 @@ const Prompt: FC<ISimplePromptInput> = ({
             <div className="flex items-center space-x-1">
               <div className="h2 text-text-secondary system-sm-semibold-uppercase">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
-                <Tooltip
-                  popupContent={(
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <span className="i-ri-question-line ml-1 h-4 w-4 shrink-0 text-text-quaternary" />
+                    )}
+                  />
+                  <TooltipContent>
                     <div className="w-[180px]">
                       {t('promptTip', { ns: 'appDebug' })}
                     </div>
-                  )}
-                />
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
             <div className="flex items-center">

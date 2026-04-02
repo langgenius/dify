@@ -3,15 +3,29 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
 import TransferOwnershipModal from '../index'
 
+const toastMocks = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+}))
+
 vi.mock('@/context/app-context')
 vi.mock('@/service/common')
 vi.mock('@/service/use-common')
+vi.mock('@/app/components/base/ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => toastMocks.mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => toastMocks.mockNotify({ type: 'success', message }),
+    error: (message: string) => toastMocks.mockNotify({ type: 'error', message }),
+    warning: (message: string) => toastMocks.mockNotify({ type: 'warning', message }),
+    info: (message: string) => toastMocks.mockNotify({ type: 'info', message }),
+  },
+}))
 
 vi.mock('../member-selector', () => ({
   default: ({ onSelect }: { onSelect: (id: string) => void }) => (
@@ -21,7 +35,7 @@ vi.mock('../member-selector', () => ({
 
 describe('TransferOwnershipModal', () => {
   const mockOnClose = vi.fn()
-  const mockNotify = vi.fn()
+  const { mockNotify } = toastMocks
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -52,9 +66,9 @@ describe('TransferOwnershipModal', () => {
   })
 
   const renderModal = () => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <>
       <TransferOwnershipModal show onClose={mockOnClose} />
-    </ToastContext.Provider>,
+    </>,
   )
 
   const mockEmailVerification = ({

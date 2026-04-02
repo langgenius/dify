@@ -46,10 +46,9 @@ This document tracks the migration away from legacy overlay APIs.
 
 ## Toast migration strategy
 
-- During migration, `@/app/components/base/toast` and `@/app/components/base/ui/toast` may coexist.
+- `@/app/components/base/toast` has been replaced by `@/app/components/base/ui/toast`.
 - All new toast usage must go through `@/app/components/base/ui/toast`.
 - When a file with legacy toast usage is touched, prefer migrating that call site in the same change; full-repo toast cleanup is not required in one PR.
-- `@/app/components/base/ui/toast` is the design-system stack toast host. Legacy `ToastContext`, `ToastProvider`, anchored toast behavior, and ad-hoc mount patterns stay in `base/toast` until their call sites are migrated away.
 
 ## Allowlist maintenance
 
@@ -79,16 +78,16 @@ portal to `document.body` with explicit z-index values:
 | Legacy PortalToFollowElem callers | up to `z-1001` | various business components                  |
 | **New UI primitives**             | **`z-1002`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
 | Legacy Modal (highPriority)       | `z-1100`       | `base/modal` (`highPriority={true}`)         |
-| Toast (legacy + new)              | `z-1101`       | `base/toast`, `base/ui/toast`                |
+| Toast                             | `z-1101`       | `base/ui/toast`                              |
 
 `z-1002` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
 new primitives share the same z-index and rely on **DOM order** for stacking
 (later portal = on top).
 
-Toast intentionally stays one layer above the remaining legacy `highPriority`
-modal path (`z-1100`) so notifications keep their current visibility without
-falling back to `z-9999`.
+Toast stays one layer above the remaining legacy `highPriority` modal path
+(`z-1100`) so notifications keep their current visibility without falling
+back to `z-9999`.
 
 ### Rules
 

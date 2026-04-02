@@ -19,7 +19,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
 import Button from '../../button'
-import Toast from '../../toast'
+import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -170,7 +170,7 @@ const Question: FC<QuestionProps> = ({
               data-testid="copy-btn"
               onClick={() => {
                 copy(content)
-                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
               }}
             >
               <div className="i-ri-clipboard-line h-4 w-4" />

@@ -28,7 +28,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
@@ -145,7 +145,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      Toast.notify({ type: 'warning', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
     }
     startQuerying()
@@ -366,7 +366,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           copy(copyContent)
                         else
                           copy(JSON.stringify(copyContent))
-                        Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                        toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                       }}
                     >
                       <RiClipboardLine className="h-4 w-4" />
