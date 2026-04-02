@@ -7,7 +7,7 @@ import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
 import Tooltip from '../tooltip'
 
-export type InputWithCopyProps = {
+type InputWithCopyProps = {
   showCopyButton?: boolean
   copyValue?: string // Value to copy, defaults to input value
   onCopy?: (value: string) => void // Callback when copy is triggered

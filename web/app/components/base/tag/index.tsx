@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
-export type ITagProps = {
+type ITagProps = {
   children: string | React.ReactNode
   color?: keyof typeof COLOR_MAP
   className?: string

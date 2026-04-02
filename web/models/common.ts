@@ -5,18 +5,6 @@ export type CommonResponse = {
   result: 'success' | 'fail'
 }
 
-export type FileDownloadResponse = {
-  id: string
-  name: string
-  size: number
-  extension: string
-  url: string
-  download_url: string
-  mime_type: string
-  created_by: string
-  created_at: number
-}
-
 export type OauthResponse = {
   redirect_url: string
 }
@@ -62,20 +50,6 @@ export type LangGeniusVersionResponse = {
   current_env: string
 }
 
-export type TenantInfoResponse = {
-  name: string
-  created_at: string
-  providers: Array<{
-    provider: string
-    provider_name: string
-    token_is_set: boolean
-    is_valid: boolean
-    token_is_valid: boolean
-  }>
-  in_trail: boolean
-  trial_end_reason: null | 'trial_exceeded' | 'using_custom'
-}
-
 export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at' | 'avatar_url'> & {
   avatar: string
   status: 'pending' | 'active' | 'banned' | 'closed'
@@ -100,11 +74,6 @@ export type ProviderAzureToken = {
 export type ProviderAnthropicToken = {
   anthropic_api_key?: string
 }
-export type ProviderTokenType = {
-  [ProviderName.OPENAI]: string
-  [ProviderName.AZURE_OPENAI]: ProviderAzureToken
-  [ProviderName.ANTHROPIC]: ProviderAnthropicToken
-}
 export type Provider = {
   [Name in ProviderName]: {
     provider_name: Name
@@ -116,12 +85,6 @@ export type Provider = {
     token?: string | ProviderAzureToken | ProviderAnthropicToken
   }
 }[ProviderName]
-
-export type ProviderHosted = Provider & {
-  quota_type: string
-  quota_limit: number
-  quota_used: number
-}
 
 export type AccountIntegrate = {
   provider: 'google' | 'github'
@@ -179,8 +142,6 @@ export type DataSourceNotionWorkspace = {
   pages: DataSourceNotionPage[]
 }
 
-export type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
-
 export type DataSourceNotion = {
   id: string
   provider: string
@@ -188,36 +149,10 @@ export type DataSourceNotion = {
   source_info: DataSourceNotionWorkspace
 }
 
-export enum DataSourceCategory {
-  website = 'website',
-}
 export enum DataSourceProvider {
   fireCrawl = 'firecrawl',
   jinaReader = 'jinareader',
   waterCrawl = 'watercrawl',
-}
-
-export type FirecrawlConfig = {
-  api_key: string
-  base_url: string
-}
-
-export type WatercrawlConfig = {
-  api_key: string
-  base_url: string
-}
-
-export type DataSourceItem = {
-  id: string
-  category: DataSourceCategory
-  provider: DataSourceProvider
-  disabled: boolean
-  created_at: number
-  updated_at: number
-}
-
-export type DataSources = {
-  sources: DataSourceItem[]
 }
 
 export type PluginProvider = {
@@ -299,14 +234,6 @@ export type ModerateResponse = {
   flagged: boolean
   text: string
 }
-
-export type ModerationService = (
-  url: string,
-  body: {
-    app_id: string
-    text: string
-  },
-) => Promise<ModerateResponse>
 
 export type StructuredOutputRulesRequestBody = {
   instruction: string

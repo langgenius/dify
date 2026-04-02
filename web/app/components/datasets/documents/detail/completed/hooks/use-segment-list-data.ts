@@ -14,7 +14,7 @@ import { useDocumentContext } from '../../context'
 import { ProcessStatus } from '../../segment-add'
 
 const DEFAULT_LIMIT = 10
-export type UseSegmentListDataOptions = {
+type UseSegmentListDataOptions = {
   searchValue: string
   selectedStatus: boolean | 'all'
   selectedSegmentIds: string[]
@@ -24,7 +24,7 @@ export type UseSegmentListDataOptions = {
   onCloseSegmentDetail: () => void
   clearSelection: () => void
 }
-export type UseSegmentListDataReturn = {
+type UseSegmentListDataReturn = {
   segments: SegmentDetailModel[]
   isLoadingSegmentList: boolean
   segmentListData: ReturnType<typeof useSegmentList>['data']

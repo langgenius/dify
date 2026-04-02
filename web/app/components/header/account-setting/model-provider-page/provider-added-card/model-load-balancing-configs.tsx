@@ -24,7 +24,7 @@ import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
-export type ModelLoadBalancingConfigsProps = {
+type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
   setDraftConfig: Dispatch<SetStateAction<ModelLoadBalancingConfig | undefined>>
   provider: ModelProvider

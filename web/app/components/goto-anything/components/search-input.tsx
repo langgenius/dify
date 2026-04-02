@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
-export type SearchInputProps = {
+type SearchInputProps = {
   inputRef: RefObject<HTMLInputElement | null>
   value: string
   onChange: (value: string) => void

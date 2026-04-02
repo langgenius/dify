@@ -1,5 +1,5 @@
 import type { FetchOptionType, ResponseError } from './fetch'
-import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
   DataSourceNodeCompletedResponse,
@@ -51,7 +51,6 @@ export type IOnThought = (though: ThoughtItem) => void
 export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
-export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
@@ -171,14 +170,6 @@ function formatURL(url: string, isPublicAPI: boolean) {
     return url
   const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
-}
-
-export function format(text: string) {
-  let res = text.trim()
-  if (res.startsWith('\n'))
-    res = res.replace('\n', '')
-
-  return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
 export const handleStream = (
@@ -854,10 +845,6 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
 
 export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
-}
-
-export const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return put<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
