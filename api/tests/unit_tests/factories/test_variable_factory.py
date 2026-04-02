@@ -837,7 +837,7 @@ class TestBuildSegmentValueErrors:
             self.ValueErrorTestCase(
                 name="frozenset_type",
                 description="frozenset (unsupported type)",
-                test_value=frozenset([1, 2, 3]),
+                test_value=frozenset((1, 2, 3)),
             ),
             self.ValueErrorTestCase(
                 name="memoryview_type",

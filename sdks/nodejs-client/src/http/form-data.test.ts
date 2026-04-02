@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getFormDataHeaders, isFormData } from "./form-data";
 
 describe("form-data helpers", () => {
@@ -11,9 +11,15 @@ describe("form-data helpers", () => {
     expect(isFormData({})).toBe(false);
   });
 
+  it("detects native FormData", () => {
+    const form = new FormData();
+    form.append("field", "value");
+    expect(isFormData(form)).toBe(true);
+  });
+
   it("returns headers from form-data", () => {
     const formLike = {
-      append: () => {},
+      append: vi.fn(),
       getHeaders: () => ({ "content-type": "multipart/form-data" }),
     };
     expect(getFormDataHeaders(formLike)).toEqual({

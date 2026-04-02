@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from graphon.model_runtime.entities.provider_entities import FormType
 from sqlalchemy.orm import Session
@@ -71,6 +72,8 @@ class TestDatasourceProviderService:
     @pytest.fixture(autouse=True)
     def patch_externals(self):
         with (
+            patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
+            patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
             patch("httpx.request") as mock_httpx,
             patch("services.datasource_provider_service.dify_config") as mock_cfg,
             patch("services.datasource_provider_service.encrypter") as mock_enc,

@@ -306,14 +306,14 @@ class TestTriggerSubscriptionCrud:
             app.test_request_context("/"),
             patch("controllers.console.workspace.trigger_providers.current_user", mock_user()),
             patch("controllers.console.workspace.trigger_providers.db") as mock_db,
-            patch("controllers.console.workspace.trigger_providers.Session") as mock_session_cls,
+            patch("controllers.console.workspace.trigger_providers.sessionmaker") as mock_session_cls,
             patch("controllers.console.workspace.trigger_providers.TriggerProviderService.delete_trigger_provider"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription"
             ),
         ):
             mock_db.engine = MagicMock()
-            mock_session_cls.return_value.__enter__.return_value = mock_session
+            mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
 
             result = method(api, "sub1")
 
@@ -327,14 +327,14 @@ class TestTriggerSubscriptionCrud:
             app.test_request_context("/"),
             patch("controllers.console.workspace.trigger_providers.current_user", mock_user()),
             patch("controllers.console.workspace.trigger_providers.db") as mock_db,
-            patch("controllers.console.workspace.trigger_providers.Session") as session_cls,
+            patch("controllers.console.workspace.trigger_providers.sessionmaker") as session_cls,
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.delete_trigger_provider",
                 side_effect=ValueError("bad"),
             ),
         ):
             mock_db.engine = MagicMock()
-            session_cls.return_value.__enter__.return_value = MagicMock()
+            session_cls.return_value.begin.return_value.__enter__.return_value = MagicMock()
 
             with pytest.raises(BadRequest):
                 method(api, "sub1")

@@ -347,7 +347,7 @@ class TestGetBuiltinToolProviderCredentials:
     def test_returns_empty_when_no_providers(self, mock_db):
         mock_db.session.no_autoflush.__enter__ = MagicMock(return_value=None)
         mock_db.session.no_autoflush.__exit__ = MagicMock(return_value=False)
-        mock_db.session.query.return_value.filter_by.return_value.order_by.return_value.all.return_value = []
+        mock_db.session.scalars.return_value.all.return_value = []
 
         result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google")
 
@@ -362,7 +362,7 @@ class TestGetBuiltinToolProviderCredentials:
         mock_db.session.no_autoflush.__exit__ = MagicMock(return_value=False)
 
         provider = MagicMock(provider="google", is_default=False)
-        mock_db.session.query.return_value.filter_by.return_value.order_by.return_value.all.return_value = [provider]
+        mock_db.session.scalars.return_value.all.return_value = [provider]
 
         mock_encrypter = MagicMock()
         mock_encrypter.decrypt.return_value = {"key": "decrypted"}
