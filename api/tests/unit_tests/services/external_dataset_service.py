@@ -294,7 +294,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         api = Mock(spec=ExternalKnowledgeApis)
         mock_db_session.query.return_value.filter_by.return_value.first.return_value = api
 
-        result = ExternalDatasetService.get_external_knowledge_api("api-id")
+        result = ExternalDatasetService.get_external_knowledge_api("api-id", "tenant-id")
         assert result is api
 
     def test_get_external_knowledge_api_not_found_raises(self, mock_db_session: MagicMock):
@@ -305,7 +305,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
 
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.get_external_knowledge_api("missing-id")
+            ExternalDatasetService.get_external_knowledge_api("missing-id", "tenant-id")
 
     def test_update_external_knowledge_api_success_with_hidden_api_key(self, mock_db_session: MagicMock):
         """
