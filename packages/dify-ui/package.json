@@ -12,15 +12,18 @@
   "exports": {
     "./context-menu": {
       "types": "./dist/context-menu/index.d.ts",
-      "import": "./dist/context-menu/index.js"
+      "import": "./dist/context-menu/index.js",
+      "default": "./dist/context-menu/index.js"
     },
     "./dropdown-menu": {
       "types": "./dist/dropdown-menu/index.d.ts",
-      "import": "./dist/dropdown-menu/index.js"
+      "import": "./dist/dropdown-menu/index.js",
+      "default": "./dist/dropdown-menu/index.js"
     },
     "./tailwind-preset": {
       "types": "./dist/tailwind-preset.d.ts",
-      "import": "./dist/tailwind-preset.js"
+      "import": "./dist/tailwind-preset.js",
+      "default": "./dist/tailwind-preset.js"
     },
     "./styles.css": "./dist/styles.css",
     "./markdown.css": "./dist/markdown.css",
@@ -32,7 +35,8 @@
     "./themes/markdown-dark.css": "./dist/themes/markdown-dark.css",
     "./tokens/tailwind-theme-var-define": {
       "types": "./dist/tokens/tailwind-theme-var-define.d.ts",
-      "import": "./dist/tokens/tailwind-theme-var-define.js"
+      "import": "./dist/tokens/tailwind-theme-var-define.js",
+      "default": "./dist/tokens/tailwind-theme-var-define.js"
     },
     "./package.json": "./package.json"
   },
