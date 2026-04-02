@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .dot-flashing {
   position: relative;
   animation: dot-flashing 1s infinite linear alternate;

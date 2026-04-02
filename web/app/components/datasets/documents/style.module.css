@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .documentTable tbody td {
   padding: 5px 10px 5px 12px;
   box-sizing: border-box;

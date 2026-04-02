@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .gridBg {
   background-size: 4px 4px;
   background-image:

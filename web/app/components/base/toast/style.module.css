@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .toast {
   display: flex;
   justify-content: center;

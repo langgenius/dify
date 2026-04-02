@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .pageHeader {
   @apply px-16 flex justify-between items-center;
   position: sticky;

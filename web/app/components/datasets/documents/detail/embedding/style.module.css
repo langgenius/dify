@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .progressBar {
   @apply absolute top-0 h-4;
 }

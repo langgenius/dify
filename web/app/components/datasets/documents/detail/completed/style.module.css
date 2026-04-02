@@ -1,3 +1,5 @@
+@reference "../../../../../styles/globals.css";
+
 .docSearchWrapper {
   @apply sticky w-full -top-3 flex items-center mb-3 justify-between z-[11] flex-wrap gap-y-1 pr-3;
 }
