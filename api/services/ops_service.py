@@ -1,9 +1,7 @@
-from typing import Any
-
 from sqlalchemy import select
 
 from core.ops.entities.config_entity import BaseTracingConfig
-from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
+from core.ops.ops_trace_manager import OpsTraceManager, TracingProviderConfigEntry, provider_config_map
 from extensions.ext_database import db
 from models.model import App, TraceAppConfig
 
@@ -150,7 +148,7 @@ class OpsService:
         except KeyError:
             return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
-        provider_config: dict[str, Any] = provider_config_map[tracing_provider]
+        provider_config: TracingProviderConfigEntry = provider_config_map[tracing_provider]
         config_class: type[BaseTracingConfig] = provider_config["config_class"]
         other_keys: list[str] = provider_config["other_keys"]
 
