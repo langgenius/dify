@@ -565,7 +565,7 @@ describe('Empty', () => {
     it('should have z-index for center content', () => {
       const { container } = render(<Empty />)
 
-      const centerContent = container.querySelector('.z-\\[2\\]')
+      const centerContent = container.querySelector('.z-2')
       expect(centerContent).toBeInTheDocument()
     })
   })
@@ -578,11 +578,11 @@ describe('Empty', () => {
       const { container } = render(<Empty />)
 
       // Right line
-      const rightLine = container.querySelector('.right-\\[-1px\\]')
+      const rightLine = container.querySelector('.-right-px')
       expect(rightLine).toBeInTheDocument()
 
       // Left line
-      const leftLine = container.querySelector('.left-\\[-1px\\]')
+      const leftLine = container.querySelector('.-left-px')
       expect(leftLine).toBeInTheDocument()
     })
 
@@ -720,7 +720,7 @@ describe('Empty', () => {
     it('should render overlay with correct z-index', () => {
       const { container } = render(<Empty />)
 
-      const overlay = container.querySelector('.z-\\[1\\]')
+      const overlay = container.querySelector('.z-1')
       expect(overlay).toBeInTheDocument()
     })
 
@@ -734,7 +734,7 @@ describe('Empty', () => {
     it('should not render overlay when lightCard is true', () => {
       const { container } = render(<Empty lightCard />)
 
-      const overlay = container.querySelector('.inset-0.z-\\[1\\]')
+      const overlay = container.querySelector('.inset-0.z-1')
       expect(overlay).not.toBeInTheDocument()
     })
   })
@@ -770,8 +770,8 @@ describe('Empty and Line Integration', () => {
     const { container } = render(<Empty />)
 
     // Check for Line positioning classes
-    expect(container.querySelector('.right-\\[-1px\\]')).toBeInTheDocument()
-    expect(container.querySelector('.left-\\[-1px\\]')).toBeInTheDocument()
+    expect(container.querySelector('.-right-px')).toBeInTheDocument()
+    expect(container.querySelector('.-left-px')).toBeInTheDocument()
     expect(container.querySelectorAll('.rotate-90').length).toBe(2)
   })
 

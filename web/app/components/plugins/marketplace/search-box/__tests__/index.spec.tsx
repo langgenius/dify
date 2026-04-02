@@ -452,7 +452,7 @@ describe('SearchBoxWrapper', () => {
       const { container } = render(<SearchBoxWrapper />)
 
       // Check for z-11 class from wrapper
-      expect(container.querySelector('.z-\\[11\\]')).toBeInTheDocument()
+      expect(container.querySelector('.z-11')).toBeInTheDocument()
     })
   })
 
