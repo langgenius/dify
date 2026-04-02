@@ -4104,11 +4104,6 @@
       "count": 4
     }
   },
-  "app/components/base/ui/toast/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 13
-    }
-  },
   "app/components/base/ui/tooltip/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
