@@ -10,6 +10,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.db_migration_lock import DbMigrationAutoRenewLock
+from libs.db_migration_utils import try_create_db_if_not_exists
 from libs.rsa import generate_key_pair
 from models import Tenant
 from models.model import App, AppMode, Conversation
@@ -135,6 +136,16 @@ def upgrade_db():
         migration_succeeded = False
         try:
             click.echo(click.style("Starting database migration.", fg="green"))
+
+            # ensure the target database exists before migrations
+            try_create_db_if_not_exists(
+                db_type=dify_config.DB_TYPE,
+                host=dify_config.DB_HOST,
+                port=dify_config.DB_PORT,
+                username=dify_config.DB_USERNAME,
+                password=dify_config.DB_PASSWORD,
+                database=dify_config.DB_DATABASE,
+            )
 
             # run db migration
             import flask_migrate
