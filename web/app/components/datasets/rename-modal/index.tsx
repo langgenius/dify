@@ -2,17 +2,17 @@
 import type { MouseEventHandler } from 'react'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import type { DataSet } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import { toast } from '@/app/components/base/ui/toast'
 import { updateDatasetSetting } from '@/service/datasets'
-import { cn } from '@/utils/classnames'
 import AppIcon from '../../base/app-icon'
 import AppIconPicker from '../../base/app-icon-picker'
 
@@ -91,14 +91,14 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   return (
     <Modal className="w-[520px] max-w-[520px] rounded-xl px-8 py-6" isShow={show} onClose={noop}>
       <div className="flex items-center justify-between pb-2">
-        <div className="text-xl font-medium leading-[30px] text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
+        <div className="text-xl leading-[30px] font-medium text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
         <div className="cursor-pointer p-2" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </div>
       <div>
         <div className={cn('flex flex-col py-4')}>
-          <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
+          <div className="shrink-0 py-2 text-sm leading-[20px] font-medium text-text-primary">
             {t('form.name', { ns: 'datasetSettings' })}
           </div>
           <div className="flex items-center gap-x-2">
@@ -107,7 +107,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           </div>
         </div>
         <div className={cn('flex flex-col py-4')}>
-          <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
+          <div className="shrink-0 py-2 text-sm leading-[20px] font-medium text-text-primary">
             {t('form.desc', { ns: 'datasetSettings' })}
           </div>
           <div className="w-full">

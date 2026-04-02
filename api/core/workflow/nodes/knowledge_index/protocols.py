@@ -1,7 +1,17 @@
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any, Protocol, TypedDict
 
 from pydantic import BaseModel, Field
+
+
+class IndexingResultDict(TypedDict):
+    dataset_id: str
+    dataset_name: str
+    batch: Any
+    document_id: str
+    document_name: str
+    created_at: float
+    display_status: str
 
 
 class PreviewItem(BaseModel):
@@ -33,15 +43,20 @@ class IndexProcessorProtocol(Protocol):
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict | None = None,
-    ) -> dict[str, Any]: ...
+        summary_index_setting: dict[str, Any] | None = None,
+    ) -> IndexingResultDict: ...
 
     def get_preview_output(
-        self, chunks: Any, dataset_id: str, document_id: str, chunk_structure: str, summary_index_setting: dict | None
+        self,
+        chunks: Any,
+        dataset_id: str,
+        document_id: str,
+        chunk_structure: str,
+        summary_index_setting: dict[str, Any] | None,
     ) -> Preview: ...
 
 
 class SummaryIndexServiceProtocol(Protocol):
     def generate_and_vectorize_summary(
-        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict | None = None
+        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict[str, Any] | None = None
     ) -> None: ...

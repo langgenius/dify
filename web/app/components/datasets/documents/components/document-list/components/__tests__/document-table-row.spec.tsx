@@ -103,23 +103,23 @@ describe('DocumentTableRow', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-document.txt')).toBeInTheDocument()
+      expect(screen.getByText('test-document.txt'))!.toBeInTheDocument()
     })
 
     it('should render index number correctly', () => {
       render(<DocumentTableRow {...defaultProps} index={5} />, { wrapper: createWrapper() })
-      expect(screen.getByText('6')).toBeInTheDocument()
+      expect(screen.getByText('6'))!.toBeInTheDocument()
     })
 
     it('should render document name with tooltip', () => {
       render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-document.txt')).toBeInTheDocument()
+      expect(screen.getByText('test-document.txt'))!.toBeInTheDocument()
     })
 
     it('should render checkbox element', () => {
       const { container } = render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
       const checkbox = findCheckbox(container)
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
     })
   })
 
@@ -127,14 +127,14 @@ describe('DocumentTableRow', () => {
     it('should show check icon when isSelected is true', () => {
       const { container } = render(<DocumentTableRow {...defaultProps} isSelected />, { wrapper: createWrapper() })
       const checkbox = findCheckbox(container)
-      expect(checkbox).toBeInTheDocument()
-      expect(screen.getByTestId('check-icon-doc-row-doc-1')).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
+      expect(screen.getByTestId('check-icon-doc-row-doc-1'))!.toBeInTheDocument()
     })
 
     it('should not show check icon when isSelected is false', () => {
       const { container } = render(<DocumentTableRow {...defaultProps} isSelected={false} />, { wrapper: createWrapper() })
       const checkbox = findCheckbox(container)
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
       expect(screen.queryByTestId('check-icon-doc-row-doc-1')).not.toBeInTheDocument()
     })
 
@@ -200,13 +200,13 @@ describe('DocumentTableRow', () => {
     it('should display word count less than 1000 as is', () => {
       const doc = createMockDoc({ word_count: 500 })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('500')).toBeInTheDocument()
+      expect(screen.getByText('500'))!.toBeInTheDocument()
     })
 
     it('should display word count 1000 or more in k format', () => {
       const doc = createMockDoc({ word_count: 1500 })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('1.5k')).toBeInTheDocument()
+      expect(screen.getByText('1.5k'))!.toBeInTheDocument()
     })
 
     it('should display 0 with empty style when word_count is 0', () => {
@@ -219,7 +219,7 @@ describe('DocumentTableRow', () => {
     it('should handle undefined word_count', () => {
       const doc = createMockDoc({ word_count: undefined as unknown as number })
       const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
   })
 
@@ -227,13 +227,13 @@ describe('DocumentTableRow', () => {
     it('should display hit count less than 1000 as is', () => {
       const doc = createMockDoc({ hit_count: 100 })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('100')).toBeInTheDocument()
+      expect(screen.getByText('100'))!.toBeInTheDocument()
     })
 
     it('should display hit count 1000 or more in k format', () => {
       const doc = createMockDoc({ hit_count: 2500 })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('2.5k')).toBeInTheDocument()
+      expect(screen.getByText('2.5k'))!.toBeInTheDocument()
     })
 
     it('should display 0 with empty style when hit_count is 0', () => {
@@ -248,12 +248,13 @@ describe('DocumentTableRow', () => {
     it('should render ChunkingModeLabel with general mode', () => {
       render(<DocumentTableRow {...defaultProps} isGeneralMode isQAMode={false} />, { wrapper: createWrapper() })
       // ChunkingModeLabel should be rendered
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      // ChunkingModeLabel should be rendered
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should render ChunkingModeLabel with QA mode', () => {
       render(<DocumentTableRow {...defaultProps} isGeneralMode={false} isQAMode />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 
@@ -261,13 +262,13 @@ describe('DocumentTableRow', () => {
     it('should render SummaryStatus when summary_index_status is present', () => {
       const doc = createMockDoc({ summary_index_status: 'completed' })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should not render SummaryStatus when summary_index_status is absent', () => {
       const doc = createMockDoc({ summary_index_status: undefined })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 
@@ -282,7 +283,7 @@ describe('DocumentTableRow', () => {
       // Find the rename button by finding the RiEditLine icon's parent
       const renameButtons = container.querySelectorAll('.cursor-pointer.rounded-md')
       if (renameButtons.length > 0) {
-        fireEvent.click(renameButtons[0])
+        fireEvent.click(renameButtons[0]!)
         expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
         expect(mockPush).not.toHaveBeenCalled()
       }
@@ -292,13 +293,13 @@ describe('DocumentTableRow', () => {
   describe('Operations', () => {
     it('should pass selectedIds to Operations component', () => {
       render(<DocumentTableRow {...defaultProps} selectedIds={['doc-1', 'doc-2']} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should pass onSelectedIdChange to Operations component', () => {
       const onSelectedIdChange = vi.fn()
       render(<DocumentTableRow {...defaultProps} onSelectedIdChange={onSelectedIdChange} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 
@@ -306,7 +307,7 @@ describe('DocumentTableRow', () => {
     it('should render with FILE data source type', () => {
       const doc = createMockDoc({ data_source_type: DataSourceType.FILE })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should render with NOTION data source type', () => {
@@ -315,13 +316,13 @@ describe('DocumentTableRow', () => {
         data_source_info: { notion_page_icon: 'icon.png' },
       })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should render with WEB data source type', () => {
       const doc = createMockDoc({ data_source_type: DataSourceType.WEB })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 
@@ -329,13 +330,13 @@ describe('DocumentTableRow', () => {
     it('should handle document with very long name', () => {
       const doc = createMockDoc({ name: `${'a'.repeat(500)}.txt` })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should handle document with special characters in name', () => {
       const doc = createMockDoc({ name: '<script>test</script>.txt' })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByText('<script>test</script>.txt')).toBeInTheDocument()
+      expect(screen.getByText('<script>test</script>.txt'))!.toBeInTheDocument()
     })
 
     it('should memoize the component', () => {
@@ -343,7 +344,7 @@ describe('DocumentTableRow', () => {
       const { rerender } = render(<DocumentTableRow {...defaultProps} />, { wrapper })
 
       rerender(<DocumentTableRow {...defaultProps} />)
-      expect(screen.getByRole('row')).toBeInTheDocument()
+      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 })

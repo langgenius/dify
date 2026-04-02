@@ -1,6 +1,7 @@
 import json
 from enum import StrEnum
 from json import JSONDecodeError
+from typing import Any
 
 from extensions.ext_redis import redis_client
 
@@ -18,7 +19,7 @@ class ToolParameterCache:
             f":identity_id:{identity_id}"
         )
 
-    def get(self) -> dict | None:
+    def get(self) -> dict[str, Any] | None:
         """
         Get cached model provider credentials.
 
@@ -36,7 +37,7 @@ class ToolParameterCache:
         else:
             return None
 
-    def set(self, parameters: dict):
+    def set(self, parameters: dict[str, Any]):
         """Cache model provider credentials."""
         redis_client.setex(self.cache_key, 86400, json.dumps(parameters))
 

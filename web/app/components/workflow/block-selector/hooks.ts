@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BLOCKS, START_BLOCKS } from './constants'
+import { BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
@@ -15,17 +15,6 @@ export const useBlocks = () => {
   const { t } = useTranslation()
 
   return BLOCKS.map((block) => {
-    return {
-      ...block,
-      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
-    }
-  })
-}
-
-export const useStartBlocks = () => {
-  const { t } = useTranslation()
-
-  return START_BLOCKS.map((block) => {
     return {
       ...block,
       title: t(`blocks.${block.type}`, { ns: 'workflow' }),

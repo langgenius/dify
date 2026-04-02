@@ -19,11 +19,11 @@ const FileInput = ({
       if (fileConfig.number_limits) {
         for (let i = 0; i < targetFiles.length; i++) {
           if (i + 1 + files.length <= fileConfig.number_limits)
-            handleLocalFileUpload(targetFiles[i])
+            handleLocalFileUpload(targetFiles[i]!)
         }
       }
       else {
-        handleLocalFileUpload(targetFiles[0])
+        handleLocalFileUpload(targetFiles[0]!)
       }
     }
   }

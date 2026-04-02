@@ -1,14 +1,22 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import { PortalToFollowElem, PortalToFollowElemContent } from '@/app/components/base/portal-to-follow-elem'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
 
@@ -104,12 +112,12 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
       <PortalToFollowElemContent className="z-60 h-full w-full">
         <div className="fixed inset-0 flex items-center justify-center bg-black/25">
           <div className="shadows-shadow-xl relative flex w-[480px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
-            <div className="flex flex-col items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
-              <div className="grow self-stretch text-text-primary title-2xl-semi-bold">
+            <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+              <div className="grow self-stretch title-2xl-semi-bold text-text-primary">
                 {isEditMode ? t('editExternalAPIFormTitle', { ns: 'dataset' }) : t('createExternalAPI', { ns: 'dataset' })}
               </div>
               {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
-                <div className="flex items-center text-text-tertiary system-xs-regular">
+                <div className="flex items-center system-xs-regular text-text-tertiary">
                   {t('editExternalAPIFormWarning.front', { ns: 'dataset' })}
                   <span className="flex cursor-pointer items-center text-text-accent">
                     &nbsp;
@@ -121,13 +129,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                       popupClassName="flex items-center self-stretch w-[320px]"
                       popupContent={(
                         <div className="p-1">
-                          <div className="flex items-start self-stretch pb-0.5 pl-2 pr-3 pt-1">
-                            <div className="text-text-tertiary system-xs-medium-uppercase">{`${datasetBindings?.length} ${t('editExternalAPITooltipTitle', { ns: 'dataset' })}`}</div>
+                          <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
+                            <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t('editExternalAPITooltipTitle', { ns: 'dataset' })}`}</div>
                           </div>
                           {datasetBindings?.map(binding => (
                             <div key={binding.id} className="flex items-center gap-1 self-stretch px-2 py-1">
                               <RiBook2Line className="h-4 w-4 text-text-secondary" />
-                              <div className="text-text-secondary system-sm-medium">{binding.name}</div>
+                              <div className="system-sm-medium text-text-secondary">{binding.name}</div>
                             </div>
                           ))}
                         </div>
@@ -141,7 +149,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                 </div>
               )}
             </div>
-            <ActionButton className="absolute right-5 top-5" onClick={onCancel}>
+            <ActionButton className="absolute top-5 right-5" onClick={onCancel}>
               <RiCloseLine className="h-[18px] w-[18px] shrink-0 text-text-tertiary" />
             </ActionButton>
             <Form value={formData} onChange={handleDataChange} formSchemas={formSchemas} className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3" />
@@ -166,7 +174,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
               </Button>
             </div>
             <div className="flex items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle
-              bg-background-soft px-2 py-3 text-text-tertiary system-xs-regular"
+              bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary"
             >
               <RiLock2Fill className="h-3 w-3 text-text-quaternary" />
               {t('externalAPIForm.encrypted.front', { ns: 'dataset' })}
@@ -176,7 +184,27 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
               {t('externalAPIForm.encrypted.end', { ns: 'dataset' })}
             </div>
           </div>
-          {showConfirm && (datasetBindings?.length ?? 0) > 0 && (<Confirm isShow={showConfirm} type="warning" title="Warning" content={`${t('editExternalAPIConfirmWarningContent.front', { ns: 'dataset' })} ${datasetBindings?.length} ${t('editExternalAPIConfirmWarningContent.end', { ns: 'dataset' })}`} onCancel={() => setShowConfirm(false)} onConfirm={handleSave} />)}
+          <AlertDialog
+            open={showConfirm && (datasetBindings?.length ?? 0) > 0}
+            onOpenChange={open => !open && setShowConfirm(false)}
+          >
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  Warning
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {`${t('editExternalAPIConfirmWarningContent.front', { ns: 'dataset' })} ${datasetBindings?.length} ${t('editExternalAPIConfirmWarningContent.end', { ns: 'dataset' })}`}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton onClick={handleSave}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

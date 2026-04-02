@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.nodes.base.entities import VariableSelector
@@ -8,9 +10,29 @@ from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.runtime import GraphRuntimeState
 from graphon.template_rendering import TemplateRenderError
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _build_template_transform_node(
+    *,
+    node_data,
+    graph_init_params,
+    graph_runtime_state,
+    node_id: str = "test_node",
+    **kwargs,
+) -> TemplateTransformNode:
+    typed_node_data = (
+        node_data
+        if isinstance(node_data, TemplateTransformNodeData)
+        else TemplateTransformNodeData.model_validate(node_data)
+    )
+    return TemplateTransformNode(
+        node_id=node_id,
+        config=typed_node_data,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+        **kwargs,
+    )
 
 
 class TestTemplateTransformNode:
@@ -59,9 +81,8 @@ class TestTemplateTransformNode:
     def test_node_initialization(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
         """Test that TemplateTransformNode initializes correctly."""
         mock_renderer = MagicMock()
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -75,9 +96,8 @@ class TestTemplateTransformNode:
     def test_get_title(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
         """Test _get_title method."""
         mock_renderer = MagicMock()
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -88,9 +108,8 @@ class TestTemplateTransformNode:
     def test_get_description(self, basic_node_data, mock_graph_runtime_state, graph_init_params):
         """Test _get_description method."""
         mock_renderer = MagicMock()
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -108,9 +127,8 @@ class TestTemplateTransformNode:
         }
 
         mock_renderer = MagicMock()
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -143,9 +161,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
 
         with pytest.raises(ValueError, match="max_output_length must be a positive integer"):
-            TemplateTransformNode(
-                id="test_node",
-                config={"id": "test_node", "data": basic_node_data},
+            _build_template_transform_node(
+                node_data=basic_node_data,
                 graph_init_params=graph_init_params,
                 graph_runtime_state=mock_graph_runtime_state,
                 jinja2_template_renderer=mock_renderer,
@@ -170,9 +187,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Hello Alice, you are 30 years old!"
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -198,9 +214,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Value: "
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -218,9 +233,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.side_effect = TemplateRenderError("Template syntax error")
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -238,9 +252,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "This is a very long output that exceeds the limit"
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -260,9 +273,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "1234567890"
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": basic_node_data},
+        node = _build_template_transform_node(
+            node_data=basic_node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -302,9 +314,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "apple, banana, orange (Total: 3)"
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -375,8 +386,8 @@ class TestTemplateTransformNode:
         )
 
         assert mapping == {
-            "node_123.var1": ["sys", "input1"],
-            "node_123.empty_selector": [],
+            "node_123.var1": ("sys", "input1"),
+            "node_123.empty_selector": (),
         }
 
     def test_extract_variable_selector_to_variable_mapping_ignores_invalid_entries(self):
@@ -409,9 +420,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "This is a static message."
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -448,9 +458,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Total: $31.5"
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -477,9 +486,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Name: John Doe, Email: john@example.com"
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
@@ -507,9 +515,8 @@ class TestTemplateTransformNode:
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Tags: #python #ai #workflow "
 
-        node = TemplateTransformNode(
-            id="test_node",
-            config={"id": "test_node", "data": node_data},
+        node = _build_template_transform_node(
+            node_data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
             jinja2_template_renderer=mock_renderer,

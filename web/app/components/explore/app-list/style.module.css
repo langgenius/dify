@@ -1,5 +1,3 @@
-@reference "../../../styles/globals.css";
-
 .textGradient {
   background: linear-gradient(to right, rgba(16, 74, 225, 1) 0, rgba(0, 152, 238, 1) 100%);
   -webkit-background-clip: text;

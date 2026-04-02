@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import type { SearchResult } from '../actions/types'
 import { Command } from 'cmdk'
 
-export type ResultItemProps = {
+type ResultItemProps = {
   result: SearchResult
   onSelect: () => void
 }
@@ -28,7 +28,7 @@ const ResultItem: FC<ResultItemProps> = ({ result, onSelect }) => {
           </div>
         )}
       </div>
-      <div className="text-xs capitalize text-text-quaternary">
+      <div className="text-xs text-text-quaternary capitalize">
         {result.type}
       </div>
     </Command.Item>

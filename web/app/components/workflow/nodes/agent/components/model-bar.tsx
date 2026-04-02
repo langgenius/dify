@@ -7,7 +7,7 @@ import { useModelList } from '@/app/components/header/account-setting/model-prov
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import Indicator from '@/app/components/header/indicator'
 
-export type ModelBarProps = {
+type ModelBarProps = {
   provider: string
   model: string
 } | {}
@@ -50,7 +50,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
             readonly
             deprecatedClassName="opacity-50"
           />
-          <Indicator color="red" className="absolute -right-0.5 -top-0.5" />
+          <Indicator color="red" className="absolute -top-0.5 -right-0.5" />
         </div>
       </Tooltip>
     )
@@ -74,7 +74,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
           readonly
           deprecatedClassName="opacity-50"
         />
-        {showWarn && <Indicator color="red" className="absolute -right-0.5 -top-0.5" />}
+        {showWarn && <Indicator color="red" className="absolute -top-0.5 -right-0.5" />}
       </div>
     </Tooltip>
   )

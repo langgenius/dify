@@ -1,7 +1,6 @@
-import json
 import logging
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 from yarl import URL
@@ -21,6 +20,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolParameter,
     ToolProviderType,
+    emoji_icon_adapter,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
@@ -48,21 +48,30 @@ class ToolTransformService:
             URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
         )
 
-        if provider_type == ToolProviderType.BUILT_IN:
-            return str(url_prefix / "builtin" / provider_name / "icon")
-        elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
-            try:
-                if isinstance(icon, str):
-                    return json.loads(icon)
+        match provider_type:
+            case ToolProviderType.BUILT_IN:
+                return str(url_prefix / "builtin" / provider_name / "icon")
+            case ToolProviderType.API | ToolProviderType.WORKFLOW:
+                try:
+                    if isinstance(icon, str):
+                        parsed = emoji_icon_adapter.validate_json(icon)
+                        return {"background": parsed["background"], "content": parsed["content"]}
+                    return {"background": icon["background"], "content": icon["content"]}
+                except (ValueError, ValidationError, KeyError):
+                    return {"background": "#252525", "content": "\ud83d\ude01"}
+            case ToolProviderType.MCP:
+                if isinstance(icon, Mapping):
+                    return {"background": icon.get("background", ""), "content": icon.get("content", "")}
                 return icon
-            except (json.JSONDecodeError, ValueError):
-                return {"background": "#252525", "content": "\ud83d\ude01"}
-        elif provider_type == ToolProviderType.MCP:
-            return icon
-        return ""
+            case ToolProviderType.PLUGIN | ToolProviderType.APP | ToolProviderType.DATASET_RETRIEVAL:
+                return ""
+            case _:
+                return ""
 
     @staticmethod
-    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity, PluginDatasourceProviderEntity]):
+    def repack_provider(
+        tenant_id: str, provider: dict[str, Any] | ToolProviderApiEntity | PluginDatasourceProviderEntity
+    ):
         """
         repack provider
 
@@ -419,7 +428,7 @@ class ToolTransformService:
 
     @staticmethod
     def convert_builtin_provider_to_credential_entity(
-        provider: BuiltinToolProvider, credentials: dict
+        provider: BuiltinToolProvider, credentials: dict[str, Any]
     ) -> ToolProviderCredentialApiEntity:
         return ToolProviderCredentialApiEntity(
             id=provider.id,

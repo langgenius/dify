@@ -1,9 +1,9 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel, SegmentsResponse, SegmentUpdater } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
 import { usePathname } from '@/next/navigation'
@@ -14,7 +14,7 @@ import { useDocumentContext } from '../../context'
 import { ProcessStatus } from '../../segment-add'
 
 const DEFAULT_LIMIT = 10
-export type UseSegmentListDataOptions = {
+type UseSegmentListDataOptions = {
   searchValue: string
   selectedStatus: boolean | 'all'
   selectedSegmentIds: string[]
@@ -24,7 +24,7 @@ export type UseSegmentListDataOptions = {
   onCloseSegmentDetail: () => void
   clearSelection: () => void
 }
-export type UseSegmentListDataReturn = {
+type UseSegmentListDataReturn = {
   segments: SegmentDetailModel[]
   isLoadingSegmentList: boolean
   segmentListData: ReturnType<typeof useSegmentList>['data']

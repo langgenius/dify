@@ -4,6 +4,7 @@ import type {
   EmbeddedChatbotContextValue,
 } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -23,7 +24,6 @@ import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs
 import Tooltip from '@/app/components/base/tooltip'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
-import { cn } from '@/utils/classnames'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 
 type Props = {
@@ -74,7 +74,7 @@ const TryApp: FC<Props> = ({
               background={appDetail.site.icon_background}
               imageUrl={appDetail.site.icon_url}
             />
-            <div className="system-md-semibold grow truncate text-text-primary" title={appDetail.name}>{appDetail.name}</div>
+            <div className="grow truncate system-md-semibold text-text-primary" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center gap-1">
             {currentConversationId && (

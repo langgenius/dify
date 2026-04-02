@@ -1,35 +1,33 @@
 import type { FC } from 'react'
 import type {
-  CodeBasedExtensionItem,
   ExternalDataTool,
 } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
-import { toast } from '@/app/components/base/ui/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions } from '@/service/use-common'
+import {
+  buildProviders,
+  formatExternalDataTool,
+  getProviderDefaultConfig,
+  getValidationError,
+} from './external-data-tool-modal-utils'
 
-const systemTypes = ['api']
 type ExternalDataToolModalProps = {
   data: ExternalDataTool
   onCancel: () => void
   onSave: (externalDataTool: ExternalDataTool) => void
   onValidateBeforeSave?: (externalDataTool: ExternalDataTool) => boolean
-}
-type Provider = {
-  key: string
-  name: string
-  form_schema?: CodeBasedExtensionItem['form_schema']
 }
 const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   data,
@@ -44,39 +42,18 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('external_data_tool')
 
-  const providers: Provider[] = [
-    {
-      key: 'api',
-      name: t('apiBasedExtension.selector.title', { ns: 'common' }),
-    },
-    ...(
-      codeBasedExtensionList
-        ? codeBasedExtensionList.data.map((item) => {
-            return {
-              key: item.name,
-              name: locale === 'zh-Hans' ? item.label['zh-Hans'] : item.label['en-US'],
-              form_schema: item.form_schema,
-            }
-          })
-        : []
-    ),
-  ]
+  const providers = buildProviders({
+    codeBasedExtensionList,
+    locale,
+    t,
+  })
   const currentProvider = providers.find(provider => provider.key === localeData.type)
 
   const handleDataTypeChange = (type: string) => {
-    let config: undefined | Record<string, any>
-    const currProvider = providers.find(provider => provider.key === type)
-
-    if (systemTypes.findIndex(t => t === type) < 0 && currProvider?.form_schema) {
-      config = currProvider?.form_schema.reduce((prev, next) => {
-        prev[next.variable] = next.default
-        return prev
-      }, {} as Record<string, any>)
-    }
     setLocaleData({
       ...localeData,
       type,
-      config,
+      config: getProviderDefaultConfig(type, providers),
     })
   }
 
@@ -107,70 +84,24 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     })
   }
 
-  const formatData = (originData: ExternalDataTool) => {
-    const { type, config } = originData
-    const params: Record<string, string | undefined> = {}
-
-    if (type === 'api')
-      params.api_based_extension_id = config?.api_based_extension_id
-
-    if (systemTypes.findIndex(t => t === type) < 0 && currentProvider?.form_schema) {
-      currentProvider.form_schema.forEach((form) => {
-        params[form.variable] = config?.[form.variable]
-      })
-    }
-
-    return {
-      ...originData,
-      type,
-      enabled: data.type ? data.enabled : true,
-      config: {
-        ...params,
-      },
-    }
-  }
-
   const handleSave = () => {
-    if (!localeData.type) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.toolType.title', { ns: 'appDebug' }) }))
+    const validationError = getValidationError({
+      currentProvider,
+      locale,
+      localeData,
+      t,
+    })
+    if (validationError) {
+      toast.error(validationError)
       return
     }
 
-    if (!localeData.label) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.name.title', { ns: 'appDebug' }) }))
-      return
-    }
-
-    if (!localeData.variable) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }))
-      return
-    }
-
-    if (localeData.variable && !/^[a-z_]\w{0,29}$/i.test(localeData.variable)) {
-      toast.error(t('varKeyError.notValid', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }))
-      return
-    }
-
-    if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
-      return
-    }
-
-    if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
-      for (let i = 0; i < currentProvider.form_schema.length; i++) {
-        if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
-          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }))
-          return
-        }
-      }
-    }
-
-    const formattedData = formatData(localeData)
+    const formattedData = formatExternalDataTool(localeData, currentProvider, !!data.type)
 
     if (onValidateBeforeSave && !onValidateBeforeSave(formattedData))
       return
 
-    onSave(formatData(formattedData))
+    onSave(formattedData)
   }
 
   const action = data.type ? t('operation.edit', { ns: 'common' }) : t('operation.add', { ns: 'common' })
@@ -185,7 +116,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
         </div>
         <div className="py-2">
-          <div className="text-sm font-medium leading-9 text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('apiBasedExtension.type', { ns: 'common' })}
           </div>
           <Select
@@ -198,14 +129,15 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             <SelectContent popupClassName="w-[354px]">
               {providers.map(option => (
                 <SelectItem key={option.key} value={option.key}>
-                  {option.name}
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="py-2">
-          <div className="text-sm font-medium leading-9 text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
           </div>
           <div className="flex items-center">
@@ -225,7 +157,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
         </div>
         <div className="py-2">
-          <div className="text-sm font-medium leading-9 text-text-primary">
+          <div className="text-sm leading-9 font-medium text-text-primary">
             {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
           </div>
           <input
@@ -258,7 +190,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           )
         }
         {
-          systemTypes.findIndex(t => t === localeData.type) < 0
+          localeData.type !== 'api'
           && currentProvider?.form_schema
           && (
             <FormGeneration

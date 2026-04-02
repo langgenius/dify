@@ -1,14 +1,14 @@
 import type { ChildChunkDetail, ChildSegmentsResponse, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useChildSegmentList, useChildSegmentListKey, useDeleteChildSegment, useUpdateChildSegment } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../../context'
 
-export type UseChildSegmentDataOptions = {
+type UseChildSegmentDataOptions = {
   searchValue: string
   currentPage: number
   limit: number
@@ -19,7 +19,7 @@ export type UseChildSegmentDataOptions = {
   refreshChunkListDataWithDetailChanged: () => void
   updateSegmentInCache: (segmentId: string, updater: (seg: SegmentDetailModel) => SegmentDetailModel) => void
 }
-export type UseChildSegmentDataReturn = {
+type UseChildSegmentDataReturn = {
   childSegments: ChildChunkDetail[]
   isLoadingChildSegmentList: boolean
   childChunkListData: ReturnType<typeof useChildSegmentList>['data']

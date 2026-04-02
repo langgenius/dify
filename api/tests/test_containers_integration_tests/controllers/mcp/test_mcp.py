@@ -444,7 +444,7 @@ class TestMCPAppApi:
         )
 
         session = MagicMock()
-        session.query().where().first.side_effect = [server, app]
+        session.scalar.side_effect = [server, app]
 
         result_server, result_app = api._get_mcp_server_and_app("server-1", session)
 

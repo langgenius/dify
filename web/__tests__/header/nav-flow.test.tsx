@@ -1,0 +1,237 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Nav from '@/app/components/header/nav'
+import { AppModeEnum } from '@/types/app'
+
+const mockPush = vi.fn()
+const mockSetAppDetail = vi.fn()
+const mockOnCreate = vi.fn()
+const mockOnLoadMore = vi.fn()
+
+let mockSelectedSegment = 'app'
+let mockIsCurrentWorkspaceEditor = true
+
+vi.mock('@headlessui/react', () => {
+  type MenuContextValue = {
+    open: boolean
+    setOpen: React.Dispatch<React.SetStateAction<boolean>>
+  }
+  const MenuContext = React.createContext<MenuContextValue | null>(null)
+
+  const Menu = ({
+    children,
+  }: {
+    children: React.ReactNode | ((props: { open: boolean }) => React.ReactNode)
+  }) => {
+    const [open, setOpen] = React.useState(false)
+    const value = React.useMemo(() => ({ open, setOpen }), [open])
+
+    return (
+      <MenuContext.Provider value={value}>
+        {typeof children === 'function' ? children({ open }) : children}
+      </MenuContext.Provider>
+    )
+  }
+
+  const MenuButton = ({
+    children,
+    onClick,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => {
+    const context = React.useContext(MenuContext)
+
+    return (
+      <button
+        type="button"
+        aria-expanded={context?.open ?? false}
+        onClick={(event) => {
+          context?.setOpen(v => !v)
+          onClick?.(event)
+        }}
+        {...props}
+      >
+        {children}
+      </button>
+    )
+  }
+
+  const MenuItems = ({
+    as: Component = 'div',
+    children,
+    ...props
+  }: {
+    as?: React.ElementType
+    children: React.ReactNode
+  } & Record<string, unknown>) => {
+    const context = React.useContext(MenuContext)
+    if (!context?.open)
+      return null
+
+    return <Component {...props}>{children}</Component>
+  }
+
+  const MenuItem = ({
+    as: Component = 'div',
+    children,
+    ...props
+  }: {
+    as?: React.ElementType
+    children: React.ReactNode
+  } & Record<string, unknown>) => <Component {...props}>{children}</Component>
+
+  return {
+    Menu,
+    MenuButton,
+    MenuItems,
+    MenuItem,
+    Transition: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  }
+})
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useSelectedLayoutSegment: () => mockSelectedSegment,
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
+
+vi.mock('@/next/link', () => ({
+  default: ({
+    href,
+    children,
+  }: {
+    href: string
+    children?: React.ReactNode
+  }) => <a href={href}>{children}</a>,
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: () => mockSetAppDetail,
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+  }),
+}))
+
+const navigationItems = [
+  {
+    id: 'app-1',
+    name: 'Alpha',
+    link: '/app/app-1/configuration',
+    icon_type: 'emoji' as const,
+    icon: '🤖',
+    icon_background: '#FFEAD5',
+    icon_url: null,
+    mode: AppModeEnum.CHAT,
+  },
+  {
+    id: 'app-2',
+    name: 'Bravo',
+    link: '/app/app-2/workflow',
+    icon_type: 'emoji' as const,
+    icon: '⚙️',
+    icon_background: '#E0F2FE',
+    icon_url: null,
+    mode: AppModeEnum.WORKFLOW,
+  },
+]
+
+const curNav = {
+  id: 'app-1',
+  name: 'Alpha',
+  icon_type: 'emoji' as const,
+  icon: '🤖',
+  icon_background: '#FFEAD5',
+  icon_url: null,
+  mode: AppModeEnum.CHAT,
+}
+
+const renderNav = (nav = curNav) => {
+  return render(
+    <Nav
+      isApp
+      icon={<span data-testid="nav-icon">icon</span>}
+      activeIcon={<span data-testid="nav-icon-active">active-icon</span>}
+      text="menus.apps"
+      activeSegment={['apps', 'app']}
+      link="/apps"
+      curNav={nav}
+      navigationItems={navigationItems}
+      createText="menus.newApp"
+      onCreate={mockOnCreate}
+      onLoadMore={mockOnLoadMore}
+      isLoadingMore={false}
+    />,
+  )
+}
+
+describe('Header Nav Flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSelectedSegment = 'app'
+    mockIsCurrentWorkspaceEditor = true
+  })
+
+  it('switches to another app from the selector and clears stale app detail first', async () => {
+    renderNav()
+
+    fireEvent.click(screen.getByRole('button', { name: /Alpha/i }))
+    fireEvent.click(await screen.findByText('Bravo'))
+
+    expect(mockSetAppDetail).toHaveBeenCalled()
+    expect(mockPush).toHaveBeenCalledWith('/app/app-2/workflow')
+  })
+
+  it('opens the nested create menu and emits all app creation branches', async () => {
+    renderNav()
+
+    fireEvent.click(screen.getByRole('button', { name: /Alpha/i }))
+    fireEvent.click(await screen.findByText('menus.newApp'))
+    fireEvent.click(await screen.findByText('newApp.startFromBlank'))
+    fireEvent.click(await screen.findByText('newApp.startFromTemplate'))
+    fireEvent.click(await screen.findByText('importDSL'))
+
+    expect(mockOnCreate).toHaveBeenNthCalledWith(1, 'blank')
+    expect(mockOnCreate).toHaveBeenNthCalledWith(2, 'template')
+    expect(mockOnCreate).toHaveBeenNthCalledWith(3, 'dsl')
+  })
+
+  it('keeps the current nav label in sync with prop updates', async () => {
+    const { rerender } = renderNav()
+
+    expect(screen.getByRole('button', { name: /Alpha/i })).toBeInTheDocument()
+
+    rerender(
+      <Nav
+        isApp
+        icon={<span data-testid="nav-icon">icon</span>}
+        activeIcon={<span data-testid="nav-icon-active">active-icon</span>}
+        text="menus.apps"
+        activeSegment={['apps', 'app']}
+        link="/apps"
+        curNav={{
+          ...curNav,
+          name: 'Alpha Renamed',
+        }}
+        navigationItems={navigationItems}
+        createText="menus.newApp"
+        onCreate={mockOnCreate}
+        onLoadMore={mockOnLoadMore}
+        isLoadingMore={false}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Alpha Renamed/i })).toBeInTheDocument()
+    })
+  })
+})

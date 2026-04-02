@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import NoPluginSelected from './no-plugin-selected'
 import PluginsSelected from './plugins-selected'
 import ToolPicker from './tool-picker'
@@ -34,12 +34,12 @@ const PluginsPicker: FC<Props> = ({
     set: setToolPicker,
   }] = useBoolean(false)
   return (
-    <div className="mt-2 radius-lg bg-background-section-burn p-2.5">
+    <div className="mt-2 rounded-[10px] bg-background-section-burn p-2.5">
       {hasSelected
         ? (
             <div className="flex justify-between text-text-tertiary">
               <div className="system-xs-medium">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { ns: 'plugin', num: value.length })}</div>
-              <div className="system-xs-medium cursor-pointer" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}</div>
+              <div className="cursor-pointer system-xs-medium" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}</div>
             </div>
           )
         : (

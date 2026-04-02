@@ -1,5 +1,6 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
@@ -17,7 +18,6 @@ import PureSelect from '@/app/components/base/select/pure'
 import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -281,7 +281,7 @@ const BaseField = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular',
+                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
                         value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
                         inputClassName,
@@ -327,21 +327,21 @@ const BaseField = ({
         </div>
       </div>
       {description && (
-        <div className="mt-4 text-text-tertiary system-xs-regular">
+        <div className="mt-4 system-xs-regular text-text-tertiary">
           {translatedDescription}
         </div>
       )}
       {
         url && (
           <a
-            className="mt-4 flex items-center text-text-accent system-xs-regular"
+            className="mt-4 flex items-center system-xs-regular text-text-accent"
             href={url}
             target="_blank"
           >
             <span className="break-all">
               {translatedHelp}
             </span>
-            <div className="i-ri-external-link-line ml-1 h-3 w-3 shrink-0" />
+            <div className="ml-1 i-ri-external-link-line h-3 w-3 shrink-0" />
           </a>
         )
       }

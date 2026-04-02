@@ -14,7 +14,7 @@ const Spinner: FC<Props> = ({ loading = false, children, className }) => {
       role="status"
     >
       <span
-        className="absolute! -m-px! h-px! w-px! overflow-hidden! whitespace-nowrap! border-0! p-0! [clip:rect(0,0,0,0)]!"
+        className="absolute! -m-px! h-px! w-px! overflow-hidden! border-0! p-0! whitespace-nowrap! [clip:rect(0,0,0,0)]!"
       >
         Loading...
       </span>

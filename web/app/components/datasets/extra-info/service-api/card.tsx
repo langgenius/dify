@@ -1,8 +1,8 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiBookOpenLine, RiKey2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
@@ -38,7 +38,7 @@ const Card = ({
             <div className="flex size-6 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <ApiAggregate className="size-4 text-text-primary-on-surface" />
             </div>
-            <div className="system-sm-semibold grow truncate text-text-secondary">
+            <div className="grow truncate system-sm-semibold text-text-secondary">
               {t('serviceApi.card.title', { ns: 'dataset' })}
             </div>
           </div>
@@ -62,7 +62,7 @@ const Card = ({
           </div>
           <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
             <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-              <div className="system-xs-medium truncate text-text-secondary">
+              <div className="truncate system-xs-medium text-text-secondary">
                 {apiBaseUrl}
               </div>
             </div>
@@ -81,7 +81,7 @@ const Card = ({
           onClick={handleOpenSecretKeyModal}
         >
           <RiKey2Line className="size-3.5 shrink-0" />
-          <span className="system-xs-medium px-[3px]">
+          <span className="px-[3px] system-xs-medium">
             {t('serviceApi.card.apiKey', { ns: 'dataset' })}
           </span>
         </Button>
@@ -96,7 +96,7 @@ const Card = ({
             className="gap-x-px text-text-tertiary"
           >
             <RiBookOpenLine className="size-3.5 shrink-0" />
-            <span className="system-xs-medium px-[3px]">
+            <span className="px-[3px] system-xs-medium">
               {t('serviceApi.card.apiReference', { ns: 'dataset' })}
             </span>
           </Button>

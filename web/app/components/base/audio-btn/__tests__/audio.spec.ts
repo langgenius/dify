@@ -6,7 +6,7 @@ import AudioPlayer from '../audio'
 const mockToastNotify = vi.hoisted(() => vi.fn())
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (message: string) => mockToastNotify({ type: 'error', message }),
   },
@@ -241,10 +241,10 @@ describe('AudioPlayer', () => {
 
       expect(player.mediaSource).toBe(mediaSource as unknown as MediaSource)
       expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(1)
-      expect(audio.src).toBe('blob:mock-url')
-      expect(audio.autoplay).toBe(true)
-      expect(audioContext.createMediaElementSource).toHaveBeenCalledWith(audio)
-      expect(audioContext.connect).toHaveBeenCalledTimes(1)
+      expect(audio!.src).toBe('blob:mock-url')
+      expect(audio!.autoplay).toBe(true)
+      expect(audioContext!.createMediaElementSource).toHaveBeenCalledWith(audio)
+      expect(audioContext!.connect).toHaveBeenCalledTimes(1)
     })
 
     it('should notify unsupported browser when no MediaSource implementation exists', () => {
@@ -254,7 +254,7 @@ describe('AudioPlayer', () => {
       const audio = testState.audios[0]
 
       expect(player.mediaSource).toBeNull()
-      expect(audio.src).toBe('')
+      expect(audio!.src).toBe('')
       expect(mockToastNotify).toHaveBeenCalledTimes(1)
       expect(mockToastNotify).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -271,8 +271,8 @@ describe('AudioPlayer', () => {
       const audio = testState.audios[0]
 
       expect(player.mediaSource).not.toBeNull()
-      expect(audio.disableRemotePlayback).toBe(true)
-      expect(audio.controls).toBe(true)
+      expect(audio!.disableRemotePlayback).toBe(true)
+      expect(audio!.controls).toBe(true)
     })
   })
 
@@ -282,14 +282,14 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
-      audio.emit('play')
-      audio.emit('ended')
-      audio.emit('error')
-      audio.emit('paused')
-      audio.emit('loaded')
-      audio.emit('timeupdate')
-      audio.emit('loadeddate')
-      audio.emit('canplay')
+      audio!.emit('play')
+      audio!.emit('ended')
+      audio!.emit('error')
+      audio!.emit('paused')
+      audio!.emit('loaded')
+      audio!.emit('timeupdate')
+      audio!.emit('loadeddate')
+      audio!.emit('canplay')
 
       expect(player.callback).toBe(callback)
       expect(callback).toHaveBeenCalledWith('play')
@@ -306,11 +306,11 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
       const mediaSource = testState.mediaSources[0]
 
-      mediaSource.emit('sourceopen')
-      mediaSource.emit('sourceopen')
+      mediaSource!.emit('sourceopen')
+      mediaSource!.emit('sourceopen')
 
-      expect(mediaSource.addSourceBuffer).toHaveBeenCalledTimes(1)
-      expect(player.sourceBuffer).toBe(mediaSource.sourceBuffer)
+      expect(mediaSource!.addSourceBuffer).toHaveBeenCalledTimes(1)
+      expect(player.sourceBuffer).toBe(mediaSource!.sourceBuffer)
     })
   })
 
@@ -366,12 +366,12 @@ describe('AudioPlayer', () => {
       const audioContext = testState.audioContexts[0]
 
       player.isLoadData = true
-      audioContext.state = 'suspended'
+      audioContext!.state = 'suspended'
       player.playAudio()
       await Promise.resolve()
 
-      expect(audioContext.resume).toHaveBeenCalledTimes(1)
-      expect(audio.play).toHaveBeenCalledTimes(1)
+      expect(audioContext!.resume).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith('play')
     })
 
@@ -382,11 +382,11 @@ describe('AudioPlayer', () => {
       const audioContext = testState.audioContexts[0]
 
       player.isLoadData = true
-      audioContext.state = 'running'
-      audio.ended = true
+      audioContext!.state = 'running'
+      audio!.ended = true
       player.playAudio()
 
-      expect(audio.play).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith('play')
     })
 
@@ -397,11 +397,11 @@ describe('AudioPlayer', () => {
       const audioContext = testState.audioContexts[0]
 
       player.isLoadData = true
-      audioContext.state = 'running'
-      audio.ended = false
+      audioContext!.state = 'running'
+      audio!.ended = false
       player.playAudio()
 
-      expect(audio.play).not.toHaveBeenCalled()
+      expect(audio!.play).not.toHaveBeenCalled()
       expect(callback).toHaveBeenCalledWith('play')
     })
 
@@ -427,8 +427,8 @@ describe('AudioPlayer', () => {
       player.pauseAudio()
 
       expect(callback).toHaveBeenCalledWith('paused')
-      expect(audio.pause).toHaveBeenCalledTimes(1)
-      expect(audioContext.suspend).toHaveBeenCalledTimes(1)
+      expect(audio!.pause).toHaveBeenCalledTimes(1)
+      expect(audioContext!.suspend).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -453,7 +453,7 @@ describe('AudioPlayer', () => {
 
         expect(player.isLoadData).toBe(false)
         expect(player.cacheBuffers).toHaveLength(0)
-        expect(mediaSource.endOfStream).toHaveBeenCalledTimes(1)
+        expect(mediaSource!.endOfStream).toHaveBeenCalledTimes(1)
         expect(callback).not.toHaveBeenCalledWith('play')
       }
       finally {
@@ -469,19 +469,19 @@ describe('AudioPlayer', () => {
       const mediaSource = testState.mediaSources[0]
       const audioBase64 = Buffer.from('hello').toString('base64')
 
-      mediaSource.emit('sourceopen')
-      audio.paused = true
+      mediaSource!.emit('sourceopen')
+      audio!.paused = true
       await player.playAudioWithAudio(audioBase64, true)
       await Promise.resolve()
 
       expect(player.isLoadData).toBe(true)
       expect(player.cacheBuffers).toHaveLength(0)
-      expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
-      const appendedAudioData = mediaSource.sourceBuffer.appendBuffer.mock.calls[0][0]
+      expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
+      const appendedAudioData = mediaSource!.sourceBuffer.appendBuffer.mock.calls[0]![0]
       expect(appendedAudioData).toBeInstanceOf(ArrayBuffer)
       expect(appendedAudioData.byteLength).toBeGreaterThan(0)
-      expect(audioContext.resume).toHaveBeenCalledTimes(1)
-      expect(audio.play).toHaveBeenCalledTimes(1)
+      expect(audioContext!.resume).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith('play')
     })
 
@@ -494,8 +494,8 @@ describe('AudioPlayer', () => {
       await player.playAudioWithAudio(Buffer.from('hello').toString('base64'), false)
 
       expect(player.isLoadData).toBe(false)
-      expect(audioContext.resume).not.toHaveBeenCalled()
-      expect(audio.play).not.toHaveBeenCalled()
+      expect(audioContext!.resume).not.toHaveBeenCalled()
+      expect(audio!.play).not.toHaveBeenCalled()
       expect(callback).not.toHaveBeenCalledWith('play')
     })
 
@@ -504,11 +504,11 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
-      audio.paused = false
-      audio.ended = true
+      audio!.paused = false
+      audio!.ended = true
       await player.playAudioWithAudio(Buffer.from('hello').toString('base64'), true)
 
-      expect(audio.play).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith('play')
     })
 
@@ -517,12 +517,12 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
-      audio.paused = false
-      audio.ended = false
-      audio.played = {}
+      audio!.paused = false
+      audio!.ended = false
+      audio!.played = {}
       await player.playAudioWithAudio(Buffer.from('hello').toString('base64'), true)
 
-      expect(audio.play).not.toHaveBeenCalled()
+      expect(audio!.play).not.toHaveBeenCalled()
       expect(callback).not.toHaveBeenCalledWith('play')
     })
 
@@ -531,12 +531,12 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
-      audio.paused = false
-      audio.ended = false
-      audio.played = null
+      audio!.paused = false
+      audio!.ended = false
+      audio!.played = null
       await player.playAudioWithAudio(Buffer.from('hello').toString('base64'), true)
 
-      expect(audio.play).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(1)
       expect(callback).toHaveBeenCalledWith('play')
     })
   })
@@ -567,8 +567,8 @@ describe('AudioPlayer', () => {
     it('should queue incoming buffer when source buffer is updating', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
-      mediaSource.emit('sourceopen')
-      mediaSource.sourceBuffer.updating = true
+      mediaSource!.emit('sourceopen')
+      mediaSource!.sourceBuffer.updating = true
 
       ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([1, 2, 3]))
 
@@ -578,16 +578,16 @@ describe('AudioPlayer', () => {
     it('should append previously queued buffer before new one when source buffer is idle', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
-      mediaSource.emit('sourceopen')
+      mediaSource!.emit('sourceopen')
 
       const existingBuffer = new ArrayBuffer(2)
       player.cacheBuffers = [existingBuffer]
-      mediaSource.sourceBuffer.updating = false
+      mediaSource!.sourceBuffer.updating = false
 
       ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([9]))
 
-      expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
-      expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledWith(existingBuffer)
+      expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
+      expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledWith(existingBuffer)
       expect(player.cacheBuffers.length).toBe(1)
     })
 
@@ -595,15 +595,15 @@ describe('AudioPlayer', () => {
       vi.useFakeTimers()
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
-      mediaSource.emit('sourceopen')
-      mediaSource.sourceBuffer.updating = false
+      mediaSource!.emit('sourceopen')
+      mediaSource!.sourceBuffer.updating = false
       player.cacheBuffers = [new ArrayBuffer(3)]
 
       ; (player as unknown as { finishStream: () => void }).finishStream()
       vi.advanceTimersByTime(50)
 
-      expect(mediaSource.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
-      expect(mediaSource.endOfStream).toHaveBeenCalledTimes(1)
+      expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
+      expect(mediaSource!.endOfStream).toHaveBeenCalledTimes(1)
       vi.useRealTimers()
     })
   })

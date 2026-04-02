@@ -47,23 +47,17 @@ def _cookie_domain() -> str | None:
 def _real_cookie_name(cookie_name: str) -> str:
     if is_secure() and _cookie_domain() is None:
         return "__Host-" + cookie_name
-    else:
-        return cookie_name
+    return cookie_name
 
 
 def _try_extract_from_header(request: Request) -> str | None:
     auth_header = request.headers.get("Authorization")
-    if auth_header:
-        if " " not in auth_header:
-            return None
-        else:
-            auth_scheme, auth_token = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != "bearer":
-                return None
-            else:
-                return auth_token
-    return None
+    if not auth_header or " " not in auth_header:
+        return None
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    if auth_scheme.lower() != "bearer":
+        return None
+    return auth_token
 
 
 def extract_refresh_token(request: Request) -> str | None:
@@ -90,14 +84,9 @@ def extract_webapp_access_token(request: Request) -> str | None:
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
-    def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code))
-
-    def _try_extract_passport_token_from_header(request: Request) -> str | None:
-        return request.headers.get(HEADER_NAME_PASSPORT)
-
-    ret = _try_extract_passport_token_from_cookie(request) or _try_extract_passport_token_from_header(request)
-    return ret
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code)) or request.headers.get(
+        HEADER_NAME_PASSPORT
+    )
 
 
 def set_access_token_to_cookie(request: Request, response: Response, token: str, samesite: str = "Lax"):
@@ -209,22 +198,18 @@ def check_csrf_token(request: Request, user_id: str):
 
     if not csrf_token:
         _unauthorized()
-    verified = {}
     try:
         verified = PassportService().verify(csrf_token)
-    except:
+    except Exception:
         _unauthorized()
+        raise  # unreachable, but helps the type checker see verified is always bound
 
     if verified.get("sub") != user_id:
         _unauthorized()
 
     exp: int | None = verified.get("exp")
-    if not exp:
+    if not exp or exp < int(datetime.now(UTC).timestamp()):
         _unauthorized()
-    else:
-        time_now = int(datetime.now().timestamp())
-        if exp < time_now:
-            _unauthorized()
 
 
 def generate_csrf_token(user_id: str) -> str:

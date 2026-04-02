@@ -2,8 +2,8 @@ from typing import Any, Union
 
 from flask import Response
 from flask_restx import Resource
-from graphon.variables.input_entities import VariableEntity
 from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.schema import register_schema_model
@@ -11,6 +11,7 @@ from controllers.mcp import mcp_ns
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request
 from extensions.ext_database import db
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer, AppMode, EndUser
@@ -80,11 +81,11 @@ class MCPAppApi(Resource):
 
     def _get_mcp_server_and_app(self, server_code: str, session: Session) -> tuple[AppMCPServer, App]:
         """Get and validate MCP server and app in one query session"""
-        mcp_server = session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
+        mcp_server = session.scalar(select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1))
         if not mcp_server:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Server Not Found")
 
-        app = session.query(App).where(App.id == mcp_server.app_id).first()
+        app = session.scalar(select(App).where(App.id == mcp_server.app_id).limit(1))
         if not app:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "App Not Found")
 
@@ -157,14 +158,20 @@ class MCPAppApi(Resource):
         except ValidationError as e:
             raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}")
 
-    def _convert_user_input_form(self, raw_form: list[dict]) -> list[VariableEntity]:
+    def _convert_user_input_form(self, raw_form: list[dict[str, Any]]) -> list[VariableEntity]:
         """Convert raw user input form to VariableEntity objects"""
         return [self._create_variable_entity(item) for item in raw_form]
 
-    def _create_variable_entity(self, item: dict) -> VariableEntity:
+    def _create_variable_entity(self, item: dict[str, Any]) -> VariableEntity:
         """Create a single VariableEntity from raw form item"""
-        variable_type = item.get("type", "") or list(item.keys())[0]
-        variable = item[variable_type]
+        variable_type_raw: str = item.get("type", "") or list(item.keys())[0]
+        try:
+            variable_type = VariableEntityType(variable_type_raw)
+        except ValueError as e:
+            raise MCPRequestError(
+                mcp_types.INVALID_PARAMS, f"Invalid user_input_form variable type: {variable_type_raw}"
+            ) from e
+        variable = item[variable_type_raw]
 
         return VariableEntity(
             type=variable_type,
@@ -177,7 +184,7 @@ class MCPAppApi(Resource):
             json_schema=variable.get("json_schema"),
         )
 
-    def _parse_mcp_request(self, args: dict) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
+    def _parse_mcp_request(self, args: dict[str, Any]) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
         """Parse and validate MCP request"""
         try:
             return mcp_types.ClientRequest.model_validate(args)
@@ -190,12 +197,12 @@ class MCPAppApi(Resource):
     def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
         """Get end user - manages its own database session"""
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            return (
-                session.query(EndUser)
+            return session.scalar(
+                select(EndUser)
                 .where(EndUser.tenant_id == tenant_id)
                 .where(EndUser.session_id == mcp_server_id)
                 .where(EndUser.type == "mcp")
-                .first()
+                .limit(1)
             )
 
     def _create_end_user(

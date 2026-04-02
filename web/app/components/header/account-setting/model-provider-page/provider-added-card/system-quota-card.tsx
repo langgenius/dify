@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import { createContext, use } from 'react'
 import styles from './quota-panel.module.css'
 
 type Variant = 'default' | 'destructive'
@@ -41,7 +41,7 @@ const SystemQuotaCard = ({
 }
 
 const Label = ({ children, className }: { children: ReactNode, className?: string }) => {
-  const variant = useContext(VariantContext)
+  const variant = use(VariantContext)
   return (
     <div className={cn(
       'relative z-1 flex items-center gap-1 truncate px-1.5 pt-1 system-xs-medium',

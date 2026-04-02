@@ -7,11 +7,11 @@ with support for different subscription tiers, rate limiting, and execution trac
 
 import json
 from datetime import UTC, datetime
-from typing import Any, Union
+from typing import Any
 
 from celery.result import AsyncResult
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
@@ -50,7 +50,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def trigger_workflow_async(
-        cls, session: Session, user: Union[Account, EndUser], trigger_data: TriggerData
+        cls, session: Session, user: Account | EndUser, trigger_data: TriggerData
     ) -> AsyncTriggerResponse:
         """
         Universal entry point for async workflow execution - THIS METHOD WILL NOT BLOCK
@@ -177,7 +177,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def reinvoke_trigger(
-        cls, session: Session, user: Union[Account, EndUser], workflow_trigger_log_id: str
+        cls, session: Session, user: Account | EndUser, workflow_trigger_log_id: str
     ) -> AsyncTriggerResponse:
         """
         Re-invoke a previously failed or rate-limited trigger - THIS METHOD WILL NOT BLOCK
@@ -237,7 +237,7 @@ class AsyncWorkflowService:
         Returns:
             Trigger log as dictionary or None if not found
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             trigger_log = trigger_log_repo.get_by_id(workflow_trigger_log_id, tenant_id)
 
@@ -263,7 +263,7 @@ class AsyncWorkflowService:
         Returns:
             List of trigger logs as dictionaries
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             logs = trigger_log_repo.get_recent_logs(
                 tenant_id=tenant_id, app_id=app_id, hours=hours, limit=limit, offset=offset
@@ -286,7 +286,7 @@ class AsyncWorkflowService:
         Returns:
             List of failed trigger logs as dictionaries
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             logs = trigger_log_repo.get_failed_for_retry(
                 tenant_id=tenant_id, max_retry_count=max_retry_count, limit=limit

@@ -1,6 +1,4 @@
-@import '../../themes/markdown-light.css';
-@import '../../themes/markdown-dark.css';
-@reference "./globals.css";
+@import '../../themes/markdown.css';
 
 .markdown-body {
   -ms-text-size-adjust: 100%;
@@ -73,7 +71,6 @@
 }
 
 .markdown-body abbr[title]:hover::after {
-  @apply shadow-xl shadow-shadow-shadow-5 rounded-md;
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -84,8 +81,12 @@
   font-size: 12px;
   line-height: 1;
   color: var(--color-text-secondary);
+  border-radius: 0.375rem;
   border: 0.5px solid var(--color-components-panel-border);
   background-color: var(--color-components-tooltip-bg);
+  box-shadow:
+    0px 8px 8px -4px var(--color-shadow-shadow-5),
+    0px 20px 24px -4px var(--color-shadow-shadow-5);
 }
 
 .markdown-body b,
@@ -1068,9 +1069,6 @@
   filter: invert(50%);
 }
 
-.markdown-body .react-syntax-highlighter-line-number {
-  color: var(--color-text-quaternary);
-}
 .markdown-body .abcjs-inline-audio .abcjs-btn {
   display: flex !important;
 }

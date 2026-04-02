@@ -1,11 +1,11 @@
 'use client'
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { updateFromGitHub } from '@/service/plugins'
 import { useInstallPackageFromGitHub, usePluginTaskList } from '@/service/use-plugins'
