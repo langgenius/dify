@@ -1127,11 +1127,6 @@
       "count": 6
     }
   },
-  "app/components/app/configuration/debug/debug-with-multiple-model/context.ts": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/debug/debug-with-multiple-model/debug-item.tsx": {
     "no-restricted-imports": {
       "count": 2
@@ -1389,14 +1384,6 @@
       "count": 1
     }
   },
-  "app/components/app/overview/apikey-info-panel/apikey-info-panel.test-utils.tsx": {
-    "style/comma-dangle": {
-      "count": 1
-    },
-    "style/no-multi-spaces": {
-      "count": 1
-    }
-  },
   "app/components/app/overview/apikey-info-panel/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -1423,9 +1410,6 @@
     }
   },
   "app/components/app/overview/app-chart.tsx": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 13
     }
@@ -1486,9 +1470,6 @@
     }
   },
   "app/components/app/text-generate/item/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 3
     },
@@ -1678,9 +1659,6 @@
   "app/components/base/amplitude/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multi-spaces": {
-      "count": 1
     }
   },
   "app/components/base/amplitude/utils.ts": {
@@ -2067,11 +2045,6 @@
       "count": 1
     }
   },
-  "app/components/base/chat/chat/context.ts": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    }
-  },
   "app/components/base/chat/chat/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 2
@@ -2168,9 +2141,6 @@
     "no-barrel-files/no-barrel-files": {
       "count": 2
     },
-    "style/no-trailing-spaces": {
-      "count": 1
-    },
     "unused-imports/no-unused-vars": {
       "count": 4
     }
@@ -2243,9 +2213,6 @@
     }
   },
   "app/components/base/date-and-time-picker/calendar/days-of-week.tsx": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -2788,11 +2755,6 @@
       "count": 3
     }
   },
-  "app/components/base/form/index.tsx": {
-    "style/no-multi-spaces": {
-      "count": 1
-    }
-  },
   "app/components/base/form/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -2845,17 +2807,11 @@
   "app/components/base/icons/src/public/billing/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 3
     }
   },
   "app/components/base/icons/src/public/common/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 3
     }
   },
   "app/components/base/icons/src/public/education/index.ts": {
@@ -2876,9 +2832,6 @@
   "app/components/base/icons/src/public/knowledge/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/base/icons/src/public/knowledge/online-drive/index.ts": {
@@ -2889,9 +2842,6 @@
   "app/components/base/icons/src/public/llm/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 9
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 7
     }
   },
   "app/components/base/icons/src/public/model/index.ts": {
@@ -2912,9 +2862,6 @@
   "app/components/base/icons/src/public/thought/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/base/icons/src/public/tracing/index.ts": {
@@ -2935,41 +2882,26 @@
   "app/components/base/icons/src/vender/line/alertsAndFeedback/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/communication/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/development/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
-    },
-    "style/no-multiple-empty-lines": {
       "count": 2
     }
   },
   "app/components/base/icons/src/vender/line/editor/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/base/icons/src/vender/line/education/index.ts": {
@@ -2980,25 +2912,16 @@
   "app/components/base/icons/src/vender/line/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 7
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/financeAndECommerce/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 12
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 5
     }
   },
   "app/components/base/icons/src/vender/line/images/index.ts": {
@@ -3009,25 +2932,16 @@
   "app/components/base/icons/src/vender/line/layout/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/mediaAndDevices/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/others/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 7
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/shapes/index.ts": {
@@ -3038,9 +2952,6 @@
   "app/components/base/icons/src/vender/line/time/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/line/users/index.ts": {
@@ -3056,9 +2967,6 @@
   "app/components/base/icons/src/vender/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 8
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/pipeline/index.ts": {
@@ -3074,9 +2982,6 @@
   "app/components/base/icons/src/vender/solid/FinanceAndECommerce/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/alertsAndFeedback/index.ts": {
@@ -3087,32 +2992,20 @@
   "app/components/base/icons/src/vender/solid/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/communication/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/base/icons/src/vender/solid/development/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/editor/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
-    "style/no-multiple-empty-lines": {
       "count": 1
     }
   },
@@ -3129,9 +3022,6 @@
   "app/components/base/icons/src/vender/solid/general/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 11
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 3
     }
   },
   "app/components/base/icons/src/vender/solid/layout/index.ts": {
@@ -3142,9 +3032,6 @@
   "app/components/base/icons/src/vender/solid/mediaAndDevices/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 3
     }
   },
   "app/components/base/icons/src/vender/solid/security/index.ts": {
@@ -3155,17 +3042,11 @@
   "app/components/base/icons/src/vender/solid/shapes/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/vender/solid/users/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/base/icons/src/vender/system/index.ts": {
@@ -3598,9 +3479,6 @@
     }
   },
   "app/components/base/portal-to-follow-elem/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3611,9 +3489,6 @@
     }
   },
   "app/components/base/premium-badge/index.tsx": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -4175,9 +4050,6 @@
   },
   "app/components/base/textarea/index.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "style/no-multi-spaces": {
       "count": 1
     }
   },
@@ -4752,9 +4624,6 @@
   "app/components/datasets/create/step-one/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/datasets/create/step-one/upgrade-card.tsx": {
@@ -4812,15 +4681,6 @@
   "app/components/datasets/create/step-two/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
-    },
-    "style/comma-dangle": {
-      "count": 1
-    },
-    "style/no-multi-spaces": {
-      "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 4
     }
   },
   "app/components/datasets/create/step-two/hooks/use-document-creation.ts": {
@@ -5020,9 +4880,6 @@
   "app/components/datasets/documents/components/document-list/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/components/document-list/components/sort-header.tsx": {
@@ -5037,7 +4894,7 @@
   },
   "app/components/datasets/documents/components/document-list/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/documents/components/documents-header.tsx": {
@@ -5410,9 +5267,6 @@
   "app/components/datasets/documents/detail/completed/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 5
     }
   },
   "app/components/datasets/documents/detail/completed/hooks/use-search-filter.ts": {
@@ -5500,12 +5354,6 @@
   "app/components/datasets/documents/detail/embedding/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
-    },
-    "style/no-trailing-spaces": {
-      "count": 4
     }
   },
   "app/components/datasets/documents/detail/embedding/hooks/use-embedding-status.ts": {
@@ -6250,15 +6098,6 @@
   "app/components/goto-anything/actions/commands/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/comma-dangle": {
-      "count": 1
-    },
-    "style/no-multi-spaces": {
-      "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 2
     }
   },
   "app/components/goto-anything/actions/commands/registry.ts": {
@@ -6282,9 +6121,6 @@
   "app/components/goto-anything/actions/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/goto-anything/actions/types.ts": {
@@ -6304,9 +6140,6 @@
   },
   "app/components/goto-anything/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
-    },
-    "style/no-multiple-empty-lines": {
       "count": 4
     }
   },
@@ -6330,9 +6163,6 @@
   },
   "app/components/goto-anything/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
-    },
-    "style/no-multiple-empty-lines": {
       "count": 4
     }
   },
@@ -6365,11 +6195,6 @@
   "app/components/header/account-dropdown/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 6
-    }
-  },
-  "app/components/header/account-dropdown/menu-item-content.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
     }
   },
   "app/components/header/account-dropdown/workplace-selector/index.tsx": {
@@ -6586,9 +6411,6 @@
   "app/components/header/account-setting/model-provider-page/declarations.ts": {
     "erasable-syntax-only/enums": {
       "count": 11
-    },
-    "style/indent": {
-      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 4
@@ -7404,9 +7226,6 @@
   "app/components/plugins/plugin-detail-panel/detail-header/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    },
-    "style/no-multi-spaces": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/detail-header/index.tsx": {
@@ -7572,12 +7391,6 @@
   "app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/list-view.tsx": {
@@ -7628,9 +7441,6 @@
   "app/components/plugins/plugin-detail-panel/tool-selector/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 7
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/components/reasoning-config-form.tsx": {
@@ -7670,9 +7480,6 @@
   "app/components/plugins/plugin-detail-panel/tool-selector/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
     }
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/hooks/use-tool-selector-state.ts": {
@@ -8623,12 +8430,6 @@
     }
   },
   "app/components/workflow/__tests__/fixtures.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
     "unused-imports/no-unused-vars": {
       "count": 2
     }
@@ -9757,9 +9558,6 @@
     }
   },
   "app/components/workflow/nodes/agent/panel.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -9930,9 +9728,6 @@
       "count": 1
     },
     "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
-    "style/indent": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -11226,9 +11021,6 @@
     }
   },
   "app/components/workflow/nodes/trigger-plugin/types.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -12366,11 +12158,6 @@
       "count": 1
     }
   },
-  "context/event-emitter.ts": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    }
-  },
   "context/external-api-panel-context.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
@@ -12397,12 +12184,6 @@
     }
   },
   "context/modal-context-provider.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -12413,9 +12194,6 @@
     }
   },
   "context/modal-context.ts": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -12425,32 +12203,14 @@
       "count": 1
     }
   },
-  "context/provider-context.ts": {
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    }
-  },
   "context/web-app-context.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "context/workspace-context.ts": {
-    "style/no-multiple-empty-lines": {
       "count": 1
     }
   },
   "contract/router.ts": {
     "unused-imports/no-unused-vars": {
       "count": 1
-    }
-  },
-  "eslint.config.mjs": {
-    "no-unused-vars": {
-      "count": 2
-    },
-    "unused-imports/no-unused-imports": {
-      "count": 2
     }
   },
   "hooks/use-async-window-open.spec.ts": {
@@ -12479,11 +12239,6 @@
       "count": 2
     }
   },
-  "hooks/use-moderate.ts": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "hooks/use-oauth.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -12492,9 +12247,6 @@
   "hooks/use-pay.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "react-refresh/only-export-components": {
-      "count": 3
     },
     "react/set-state-in-effect": {
       "count": 4
