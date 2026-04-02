@@ -4,4 +4,4 @@ project-excludes = [
     "migrations/",
 ]
 python-platform = "linux"
-python-version = "3.12.0"
+python-version = "3.12"
