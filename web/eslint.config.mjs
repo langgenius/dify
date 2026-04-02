@@ -26,7 +26,12 @@ const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
 export default antfu(
   {
-    react: false,
+    react: {
+      overrides: {
+        'react/set-state-in-effect': 'error',
+        'react/no-unnecessary-use-prefix': 'error',
+      },
+    },
     nextjs: {
       overrides: {
         'next/no-img-element': 'off',
@@ -53,13 +58,6 @@ export default antfu(
     },
     e18e: false,
     pnpm: false,
-  },
-  {
-    files: [GLOB_TS, GLOB_TSX],
-    rules: {
-      'react/set-state-in-effect': 'error',
-      'react/no-unnecessary-use-prefix': 'error',
-    },
   },
   {
     files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
