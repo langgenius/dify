@@ -112,6 +112,12 @@ def main():
     if not env_vars:
         print("Warning: No environment variables found in .env.example.")
 
+    missing_required_secret_vars = REQUIRED_SECRET_VARS - env_vars.keys()
+    if missing_required_secret_vars:
+        missing_sorted = ", ".join(sorted(missing_required_secret_vars))
+        print(f"Error: Missing required secret vars in .env.example: {missing_sorted}")
+        sys.exit(1)
+
     # Generate shared environment variables block
     shared_env_block = generate_shared_env_block(env_vars, anchor_name)
 
