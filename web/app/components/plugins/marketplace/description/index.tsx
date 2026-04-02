@@ -1,72 +1,236 @@
-import { useLocale, useTranslation } from '#i18n'
+'use client'
 
-const Description = () => {
-  const { t } = useTranslation('plugin')
-  const { t: tCommon } = useTranslation('common')
-  const locale = useLocale()
+import type { MotionValue } from 'motion/react'
+import { useTranslation } from '#i18n'
+import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+import marketPlaceBg from '@/public/marketplace/hero-bg.jpg'
+import marketplaceGradientNoise from '@/public/marketplace/hero-gradient-noise.svg'
+import { cn } from '@/utils/classnames'
+import { useCreationType } from '../atoms'
+import { PluginCategorySwitch, TemplateCategorySwitch } from '../category-switch/index'
+import { CREATION_TYPE } from '../search-params'
 
-  const isZhHans = locale === 'zh-Hans'
-
-  return (
-    <>
-      <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-center text-text-primary">
-        {t('marketplace.empower')}
-      </h1>
-      <h2 className="body-md-regular flex shrink-0 items-center justify-center text-center text-text-tertiary">
-        {
-          isZhHans && (
-            <>
-              <span className="mr-1">{tCommon('operation.in')}</span>
-              {t('marketplace.difyMarketplace')}
-              {t('marketplace.discover')}
-            </>
-          )
-        }
-        {
-          !isZhHans && (
-            <>
-              {t('marketplace.discover')}
-            </>
-          )
-        }
-        <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.models')}
-        </span>
-        ,
-        <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.tools')}
-        </span>
-        ,
-        <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.datasources')}
-        </span>
-        ,
-        <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.triggers')}
-        </span>
-        ,
-        <span className="body-md-medium relative z-[1] ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.agents')}
-        </span>
-        ,
-        <span className="body-md-medium relative z-[1] ml-1 mr-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.extensions')}
-        </span>
-        {t('marketplace.and')}
-        <span className="body-md-medium relative z-[1] ml-1 mr-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-          {t('category.bundles')}
-        </span>
-        {
-          !isZhHans && (
-            <>
-              <span className="mr-1">{tCommon('operation.in')}</span>
-              {t('marketplace.difyMarketplace')}
-            </>
-          )
-        }
-      </h2>
-    </>
-  )
+type DescriptionProps = {
+  className?: string
+  scrollContainerId?: string
+  marketplaceNav?: React.ReactNode
 }
 
-export default Description
+// Constants for collapse animation
+const MAX_SCROLL = 120 // pixels to fully collapse
+const EXPANDED_PADDING_TOP = 32 // pt-8
+const COLLAPSED_PADDING_TOP = 12 // pt-3
+const EXPANDED_PADDING_BOTTOM = 24 // pb-6
+const COLLAPSED_PADDING_BOTTOM = 12 // pb-3
+
+export const Description = ({
+  className,
+  scrollContainerId = 'marketplace-container',
+  marketplaceNav,
+}: DescriptionProps) => {
+  const { t } = useTranslation('plugin')
+  const creationType = useCreationType()
+  const isTemplatesView = creationType === CREATION_TYPE.templates
+  const heroTitleKey = isTemplatesView ? 'marketplace.templatesHeroTitle' : 'marketplace.pluginsHeroTitle'
+  const heroSubtitleKey = isTemplatesView ? 'marketplace.templatesHeroSubtitle' : 'marketplace.pluginsHeroSubtitle'
+  const rafRef = useRef<number | null>(null)
+  const lastProgressRef = useRef(0)
+  const headerRef = useRef<HTMLDivElement | null>(null)
+  const titleContentRef = useRef<HTMLDivElement | null>(null)
+  const progress = useMotionValue(0)
+  const titleHeight = useMotionValue(72)
+  const smoothProgress = useSpring(progress, { stiffness: 260, damping: 34 })
+
+  useLayoutEffect(() => {
+    const node = titleContentRef.current
+    if (!node)
+      return
+
+    const updateHeight = () => {
+      titleHeight.set(node.scrollHeight)
+    }
+
+    updateHeight()
+
+    if (typeof ResizeObserver === 'undefined')
+      return
+
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [titleHeight])
+
+  useEffect(() => {
+    const container = document.getElementById(scrollContainerId)
+    if (!container)
+      return
+
+    const handleScroll = () => {
+      // Cancel any pending animation frame
+      if (rafRef.current)
+        cancelAnimationFrame(rafRef.current)
+
+      // Use requestAnimationFrame for smooth updates
+      rafRef.current = requestAnimationFrame(() => {
+        const scrollTop = Math.round(container.scrollTop)
+        const heightDelta = container.scrollHeight - container.clientHeight
+        const effectiveMaxScroll = Math.max(1, Math.min(MAX_SCROLL, heightDelta))
+        const rawProgress = Math.min(Math.max(scrollTop / effectiveMaxScroll, 0), 1)
+        const snappedProgress = rawProgress >= 0.95
+          ? 1
+          : rawProgress <= 0.05
+            ? 0
+            : Math.round(rawProgress * 100) / 100
+
+        if (snappedProgress !== lastProgressRef.current) {
+          lastProgressRef.current = snappedProgress
+          progress.set(snappedProgress)
+        }
+      })
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    // Initial check
+    handleScroll()
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      if (rafRef.current)
+        cancelAnimationFrame(rafRef.current)
+    }
+  }, [progress, scrollContainerId])
+
+  // Calculate interpolated values
+  const contentOpacity = useTransform(smoothProgress, [0, 1], [1, 0])
+  const contentScale = useTransform(smoothProgress, [0, 1], [1, 0.9])
+  const titleMaxHeight: MotionValue<number> = useTransform(
+    [smoothProgress, titleHeight],
+    (values: number[]) => values[1] * (1 - values[0]),
+  )
+  const tabsMarginTop = useTransform(smoothProgress, [0, 1], [48, marketplaceNav ? 16 : 0])
+  const titleMarginTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? 80 : 0, 0])
+  const paddingTop = useTransform(smoothProgress, [0, 1], [marketplaceNav ? COLLAPSED_PADDING_TOP : EXPANDED_PADDING_TOP, COLLAPSED_PADDING_TOP])
+  const paddingBottom = useTransform(smoothProgress, [0, 1], [EXPANDED_PADDING_BOTTOM, COLLAPSED_PADDING_BOTTOM])
+
+  useEffect(() => {
+    const container = document.getElementById(scrollContainerId)
+    const header = headerRef.current
+    if (!container || !header)
+      return
+
+    let maxHeaderHeight = 0
+    let lastAppliedOffset = 0
+    const updateOffset = () => {
+      const currentHeaderHeight = Math.round(header.getBoundingClientRect().height)
+      maxHeaderHeight = Math.max(maxHeaderHeight, currentHeaderHeight)
+      const collapsedHeight = Math.max(0, maxHeaderHeight - currentHeaderHeight)
+      const currentScrollableTop = container.scrollHeight - container.clientHeight
+      const baseScrollableTop = Math.max(0, currentScrollableTop - lastAppliedOffset)
+      const shouldCompensate = baseScrollableTop <= maxHeaderHeight
+      const nextOffset = shouldCompensate ? collapsedHeight : 0
+      const offsetDelta = nextOffset - lastAppliedOffset
+
+      if (nextOffset > 0) {
+        // Only compensate when content is short enough that header collapse can clamp scrollTop.
+        container.style.setProperty('--marketplace-header-collapse-offset', `${nextOffset}px`)
+        if (offsetDelta !== 0 && container.scrollTop > 0)
+          container.scrollTop = Math.max(0, container.scrollTop + offsetDelta)
+      }
+      else {
+        container.style.removeProperty('--marketplace-header-collapse-offset')
+      }
+
+      lastAppliedOffset = nextOffset
+    }
+
+    updateOffset()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return () => {
+        container.style.removeProperty('--marketplace-header-collapse-offset')
+      }
+    }
+
+    const observer = new ResizeObserver(updateOffset)
+    observer.observe(header)
+    observer.observe(container)
+
+    return () => {
+      observer.disconnect()
+      container.style.removeProperty('--marketplace-header-collapse-offset')
+    }
+  }, [scrollContainerId])
+
+  return (
+    <motion.div
+      ref={headerRef}
+      className={cn(
+        'sticky top-[60px] z-20 mx-4 mt-4 shrink-0 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border px-6',
+        className,
+      )}
+      style={{
+        paddingTop,
+        paddingBottom,
+      }}
+    >
+      {/* Blue base background */}
+      <div className="absolute inset-0 bg-[rgba(0,51,255,0.9)]" />
+
+      {/* Decorative image with blend mode - showing top 1/3 of the image */}
+      <div
+        className="absolute inset-0 bg-no-repeat opacity-80 mix-blend-lighten"
+        style={{
+          backgroundImage: `url(${marketPlaceBg.src})`,
+          backgroundSize: '110% auto',
+          backgroundPosition: 'center top',
+        }}
+      />
+
+      {/* Gradient & Noise overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${marketplaceGradientNoise.src})` }}
+      />
+
+      {marketplaceNav}
+
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Title and subtitle - fade out and scale down */}
+        <motion.div
+          style={{
+            opacity: contentOpacity,
+            scale: contentScale,
+            transformOrigin: 'left top',
+            maxHeight: titleMaxHeight,
+            overflow: 'hidden',
+            willChange: 'opacity, transform',
+            marginTop: titleMarginTop,
+          }}
+        >
+          <div ref={titleContentRef}>
+            <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-text-primary-on-surface">
+              {t(heroTitleKey)}
+            </h1>
+            <h2 className="body-md-regular shrink-0 text-text-secondary-on-surface">
+              {t(heroSubtitleKey)}
+            </h2>
+          </div>
+        </motion.div>
+
+        {/* Category switch tabs - Plugin or Template based on creationType */}
+        <motion.div style={{ marginTop: tabsMarginTop }}>
+          {isTemplatesView
+            ? (
+                <TemplateCategorySwitch variant="hero" />
+              )
+            : (
+                <PluginCategorySwitch variant="hero" />
+              )}
+        </motion.div>
+      </div>
+    </motion.div>
+  )
+}

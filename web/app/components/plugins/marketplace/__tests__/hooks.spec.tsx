@@ -118,10 +118,10 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isSuccess).toBe(false)
     expect(typeof result.current.queryMarketplaceCollectionsAndPlugins).toBe('function')
-    expect(typeof result.current.setMarketplaceCollections).toBe('function')
-    expect(typeof result.current.setMarketplaceCollectionPluginsMap).toBe('function')
-    expect(result.current.marketplaceCollections).toBeUndefined()
-    expect(result.current.marketplaceCollectionPluginsMap).toBeUndefined()
+    expect(typeof result.current.setPluginCollections).toBe('function')
+    expect(typeof result.current.setPluginCollectionPluginsMap).toBe('function')
+    expect(result.current.pluginCollections).toBeUndefined()
+    expect(result.current.pluginCollectionPluginsMap).toBeUndefined()
   })
 })
 
@@ -427,8 +427,8 @@ describe('Hooks queryFn Coverage', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
     })
-    expect(result.current.marketplaceCollections).toBeDefined()
-    expect(result.current.marketplaceCollectionPluginsMap).toBeDefined()
+    expect(result.current.pluginCollections).toBeDefined()
+    expect(result.current.pluginCollectionPluginsMap).toBeDefined()
   })
 
   it('should test getNextPageParam via fetchNextPage behavior', async () => {

@@ -1,0 +1,183 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "588",
+      "height": "588",
+      "viewBox": "0 0 588 588",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "opacity": "0.2",
+          "clip-path": "url(#clip0_20862_53031)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "filter": "url(#filter0_d_20862_53031)"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M204.231 152.332L201.643 142.673C194.496 115.999 210.326 88.5823 236.999 81.4353C263.672 74.2882 291.089 90.1173 298.236 116.791L300.824 126.45L407.076 97.9798C417.745 95.1209 428.712 101.453 431.571 112.122L452.276 189.396C453.706 194.731 450.539 200.214 445.205 201.643C418.532 208.79 402.703 236.208 409.85 262.881C416.997 289.554 444.414 305.383 471.087 298.236C476.421 296.807 481.905 299.973 483.335 305.307L504.04 382.581C506.899 393.251 500.568 404.217 489.898 407.076L180.802 489.898C170.132 492.757 159.166 486.426 156.307 475.756L83.8375 205.297C80.9787 194.628 87.3104 183.661 97.9796 180.802L204.231 152.332Z",
+                  "fill": "#F2F4F7"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M237.257 82.4012C263.397 75.3971 290.266 90.9096 297.27 117.049L300.117 127.675L407.335 98.9457C417.471 96.2297 427.889 102.245 430.605 112.381L451.31 189.655C452.597 194.456 449.747 199.391 444.946 200.677C417.74 207.967 401.594 235.933 408.884 263.139C416.174 290.346 444.139 306.492 471.346 299.202C476.146 297.916 481.082 300.766 482.369 305.566L503.074 382.84C505.79 392.976 499.775 403.394 489.639 406.11L180.543 488.932C170.407 491.648 159.989 485.633 157.273 475.497L84.8034 205.038C82.0875 194.902 88.1027 184.484 98.2384 181.768L205.456 153.039L202.609 142.414C195.605 116.274 211.118 89.4053 237.257 82.4012Z",
+                  "stroke": "white",
+                  "stroke-width": "2"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "filter",
+            "attributes": {
+              "id": "filter0_d_20862_53031",
+              "x": "31.151",
+              "y": "59.719",
+              "width": "525.576",
+              "height": "514.866",
+              "filterUnits": "userSpaceOnUse",
+              "color-interpolation-filters": "sRGB"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-opacity": "0",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "in": "SourceAlpha",
+                  "type": "matrix",
+                  "values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+                  "result": "hardAlpha"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feMorphology",
+                "attributes": {
+                  "radius": "12",
+                  "operator": "erode",
+                  "in": "SourceAlpha",
+                  "result": "effect1_dropShadow_20862_53031"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feOffset",
+                "attributes": {
+                  "dy": "32"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feGaussianBlur",
+                "attributes": {
+                  "stdDeviation": "32"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feComposite",
+                "attributes": {
+                  "in2": "hardAlpha",
+                  "operator": "out"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feColorMatrix",
+                "attributes": {
+                  "type": "matrix",
+                  "values": "0 0 0 0 0.0352941 0 0 0 0 0.0352941 0 0 0 0 0.0431373 0 0 0 0.14 0"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in2": "BackgroundImageFix",
+                  "result": "effect1_dropShadow_20862_53031"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "SourceGraphic",
+                  "in2": "effect1_dropShadow_20862_53031",
+                  "result": "shape"
+                },
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_20862_53031"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "480",
+                  "height": "480",
+                  "fill": "white",
+                  "transform": "translate(0 124.233) rotate(-15)"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "PluginHeaderBg"
+}

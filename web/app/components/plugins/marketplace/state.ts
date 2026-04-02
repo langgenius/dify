@@ -1,38 +1,50 @@
-import type { PluginsSearchParams } from './types'
+import type { PluginsSearchParams, TemplateSearchParams } from './types'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
-import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchPluginText } from './atoms'
-import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import { useActivePluginCategory, useActiveTemplateCategory, useCreationType, useFilterPluginTags, useFilterTemplateLanguages, useMarketplacePluginSortValue, useMarketplaceSearchMode, useMarketplaceTemplateSortValue, useSearchText } from './atoms'
+import { CATEGORY_ALL } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
-import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './query'
-import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
+import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
+import { CREATION_TYPE } from './search-params'
+import { getCollectionsParams, getPluginFilterType, mapTemplateDetailToTemplate } from './utils'
 
-export function useMarketplaceData() {
-  const [searchPluginTextOriginal] = useSearchPluginText()
-  const searchPluginText = useDebounce(searchPluginTextOriginal, { wait: 500 })
+const getCategory = (category: string) => {
+  if (category === CATEGORY_ALL)
+    return undefined
+  return category
+}
+
+/**
+ * Hook for plugins marketplace data
+ * Only fetches plugins-related data
+ */
+export function usePluginsMarketplaceData(enabled = true) {
+  const [searchTextOriginal] = useSearchText()
+  const searchText = useDebounce(searchTextOriginal, { wait: 500 })
   const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
+  const [activePluginCategory] = useActivePluginCategory()
 
-  const collectionsQuery = useMarketplaceCollectionsAndPlugins(
-    getCollectionsParams(activePluginType),
+  const pluginsCollectionsQuery = useMarketplaceCollectionsAndPlugins(
+    getCollectionsParams(activePluginCategory),
+    { enabled },
   )
 
-  const sort = useMarketplaceSortValue()
+  const sort = useMarketplacePluginSortValue()
   const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
       return undefined
     return {
-      query: searchPluginText,
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
+      query: searchText,
+      category: getCategory(activePluginCategory),
       tags: filterPluginTags,
       sort_by: sort.sortBy,
       sort_order: sort.sortOrder,
-      type: getMarketplaceListFilterType(activePluginType),
+      type: getPluginFilterType(activePluginCategory),
     }
-  }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
+  }, [isSearchMode, searchText, activePluginCategory, filterPluginTags, sort])
 
-  const pluginsQuery = useMarketplacePlugins(queryParams)
+  const pluginsQuery = useMarketplacePlugins(queryParams, { enabled })
   const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
@@ -44,12 +56,89 @@ export function useMarketplaceData() {
   useMarketplaceContainerScroll(handlePageChange)
 
   return {
-    marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
-    marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
+    pluginCollections: pluginsCollectionsQuery.data?.marketplaceCollections,
+    pluginCollectionPluginsMap: pluginsCollectionsQuery.data?.marketplaceCollectionPluginsMap,
     plugins: pluginsQuery.data?.pages.flatMap(page => page.plugins),
     pluginsTotal: pluginsQuery.data?.pages[0]?.total,
     page: pluginsQuery.data?.pages.length || 1,
-    isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
+    isLoading: pluginsCollectionsQuery.isLoading || pluginsQuery.isLoading,
     isFetchingNextPage,
   }
+}
+
+/**
+ * Hook for templates marketplace data
+ * Only fetches templates-related data
+ */
+export function useTemplatesMarketplaceData(enabled = true) {
+  // Reuse existing atoms for search and sort
+  const [searchTextOriginal] = useSearchText()
+  const searchText = useDebounce(searchTextOriginal, { wait: 500 })
+  const [activeTemplateCategory] = useActiveTemplateCategory()
+  const [filterTemplateLanguages] = useFilterTemplateLanguages()
+
+  // Template collections query (for non-search mode)
+  const templateCollectionsQuery = useMarketplaceTemplateCollectionsAndTemplates(undefined, { enabled })
+
+  // Template-specific sort value (independent from plugin sort)
+  const sort = useMarketplaceTemplateSortValue()
+
+  // Search mode: when there's search text or non-default category
+  const isSearchMode = useMarketplaceSearchMode()
+
+  // Build query params for search mode
+  const queryParams = useMemo((): TemplateSearchParams | undefined => {
+    if (!isSearchMode)
+      return undefined
+    return {
+      query: searchText,
+      categories: activeTemplateCategory === CATEGORY_ALL ? undefined : [activeTemplateCategory],
+      sort_by: sort.sortBy,
+      sort_order: sort.sortOrder,
+      ...(filterTemplateLanguages.length > 0 ? { languages: filterTemplateLanguages } : {}),
+    }
+  }, [isSearchMode, searchText, activeTemplateCategory, sort, filterTemplateLanguages])
+
+  // Templates search query (for search mode)
+  const templatesQuery = useMarketplaceTemplates(queryParams, { enabled })
+  const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = templatesQuery
+
+  // Pagination handler
+  const handlePageChange = useCallback(() => {
+    if (hasNextPage && !isFetching)
+      fetchNextPage()
+  }, [fetchNextPage, hasNextPage, isFetching])
+
+  // Scroll pagination
+  useMarketplaceContainerScroll(handlePageChange)
+
+  return {
+    templateCollections: templateCollectionsQuery.data?.templateCollections,
+    templateCollectionTemplatesMap: templateCollectionsQuery.data?.templateCollectionTemplatesMap,
+    templates: templatesQuery.data?.pages.flatMap(page => page.templates).map(mapTemplateDetailToTemplate),
+    templatesTotal: templatesQuery.data?.pages[0]?.total,
+    page: templatesQuery.data?.pages.length || 1,
+    isLoading: templateCollectionsQuery.isLoading || templatesQuery.isLoading,
+    isFetchingNextPage,
+  }
+}
+
+export type PluginsMarketplaceData = ReturnType<typeof usePluginsMarketplaceData>
+export type TemplatesMarketplaceData = ReturnType<typeof useTemplatesMarketplaceData>
+export type MarketplaceData = PluginsMarketplaceData | TemplatesMarketplaceData
+
+export function isPluginsData(data: MarketplaceData): data is PluginsMarketplaceData {
+  return 'pluginCollections' in data
+}
+
+/**
+ * Main hook that routes to appropriate data based on creationType
+ * Returns either plugins or templates data based on URL parameter
+ */
+export function useMarketplaceData(): MarketplaceData {
+  const creationType = useCreationType()
+
+  const pluginsData = usePluginsMarketplaceData(creationType === CREATION_TYPE.plugins)
+  const templatesData = useTemplatesMarketplaceData(creationType === CREATION_TYPE.templates)
+  return creationType === CREATION_TYPE.templates ? templatesData : pluginsData
 }

@@ -3,7 +3,23 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import PluginTypeSwitch from '../plugin-type-switch'
+import { PluginCategorySwitch } from '../category-switch/plugin'
+
+const { mockRouterPush, mockNavigation } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockNavigation: {
+    pathname: '/plugins',
+    params: {} as Record<string, string | undefined>,
+  },
+}))
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+  usePathname: () => mockNavigation.pathname,
+  useParams: () => mockNavigation.params,
+}))
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
@@ -35,14 +51,16 @@ const createWrapper = (searchParams = '') => {
   return { Wrapper }
 }
 
-describe('PluginTypeSwitch', () => {
+describe('PluginCategorySwitch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockNavigation.pathname = '/plugins'
+    mockNavigation.params = {}
   })
 
   it('should render all category options', () => {
     const { Wrapper } = createWrapper()
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     expect(screen.getByText('All')).toBeInTheDocument()
     expect(screen.getByText('Models')).toBeInTheDocument()
@@ -56,7 +74,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should apply active styling to current category', () => {
     const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     const allButton = screen.getByText('All').closest('div')
     expect(allButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
@@ -64,7 +82,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should apply custom className', () => {
     const { Wrapper } = createWrapper()
-    const { container } = render(<PluginTypeSwitch className="custom-class" />, { wrapper: Wrapper })
+    const { container } = render(<PluginCategorySwitch className="custom-class" />, { wrapper: Wrapper })
 
     const outerDiv = container.firstChild as HTMLElement
     expect(outerDiv.className).toContain('custom-class')
@@ -72,7 +90,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should update category when option is clicked', () => {
     const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     fireEvent.click(screen.getByText('Models'))
 
@@ -82,7 +100,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should handle clicking on category with collections (Tools)', () => {
     const { Wrapper } = createWrapper('?category=model')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     fireEvent.click(screen.getByText('Tools'))
 
@@ -92,7 +110,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should handle clicking on category without collections (Models)', () => {
     const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     fireEvent.click(screen.getByText('Models'))
 
@@ -102,7 +120,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should handle clicking on bundles', () => {
     const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     fireEvent.click(screen.getByText('Bundles'))
 
@@ -112,7 +130,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should handle clicking on each category', () => {
     const { Wrapper } = createWrapper('?category=all')
-    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
     categories.forEach((category) => {
@@ -125,7 +143,7 @@ describe('PluginTypeSwitch', () => {
 
   it('should render icons for categories that have them', () => {
     const { Wrapper } = createWrapper()
-    const { container } = render(<PluginTypeSwitch />, { wrapper: Wrapper })
+    const { container } = render(<PluginCategorySwitch />, { wrapper: Wrapper })
 
     // "All" has no icon (icon: null), others should have SVG icons
     const svgs = container.querySelectorAll('svg')

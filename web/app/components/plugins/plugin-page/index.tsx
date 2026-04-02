@@ -3,7 +3,6 @@
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
 import {
-  RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
@@ -17,21 +16,20 @@ import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
-import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
+import SearchBoxWrapper from '../marketplace/search-box/search-box-wrapper'
 import { usePluginPageContext } from './context'
 import { PluginPageContextProvider } from './context-provider'
 import DebugInfo from './debug-info'
 import InstallPluginDropdown from './install-plugin-dropdown'
+import { SubmitRequestDropdown } from './nav-operations'
 import PluginTasks from './plugin-tasks'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
@@ -55,7 +53,6 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
@@ -149,18 +146,11 @@ const PluginPage = ({
       id="marketplace-container"
       ref={containerRef}
       style={{ scrollbarGutter: 'stable' }}
-      className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
-        ? 'rounded-t-xl bg-components-panel-bg'
-        : 'bg-background-body')}
+      className="relative flex grow flex-col overflow-y-auto rounded-t-xl border-t border-divider-subtle bg-components-panel-bg"
     >
-      <div
-        className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4',
-          isExploringMarketplace && 'bg-background-body',
-        )}
-      >
+      <div className="sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4">
         <div className="flex w-full items-center justify-between">
-          <div className="flex-1">
+          <div className="flex flex-1 items-center justify-start gap-2">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
               onChange={(nextTab) => {
@@ -169,38 +159,10 @@ const PluginPage = ({
               }}
               options={options}
             />
+            {!isPluginsTab && <SearchBoxWrapper />}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {
-              isExploringMarketplace && (
-                <>
-                  <Link
-                    href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
-                    target="_blank"
-                  >
-                    <Button
-                      variant="ghost"
-                      className="text-text-tertiary"
-                    >
-                      {t('requestAPlugin', { ns: 'plugin' })}
-                    </Button>
-                  </Link>
-                  <Link
-                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
-                    target="_blank"
-                  >
-                    <Button
-                      className="px-3"
-                      variant="secondary-accent"
-                    >
-                      <RiBookOpenLine className="mr-1 h-4 w-4" />
-                      {t('publishPlugins', { ns: 'plugin' })}
-                    </Button>
-                  </Link>
-                  <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
-                </>
-              )
-            }
+            {isExploringMarketplace && <SubmitRequestDropdown />}
             <PluginTasks />
             {canManagement && (
               <InstallPluginDropdown

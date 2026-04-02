@@ -41,6 +41,13 @@ export const preprocessThinkTag = (content: string) => {
   ])(content)
 }
 
+export const preprocessMarkdownContent = (content: string) => {
+  return flow([
+    preprocessThinkTag,
+    preprocessLaTeX,
+  ])(content)
+}
+
 /**
  * Transforms a URI for use in react-markdown, ensuring security and compatibility.
  * This function is designed to work with react-markdown v9+ which has stricter

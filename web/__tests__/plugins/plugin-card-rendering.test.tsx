@@ -75,11 +75,10 @@ vi.mock('@/app/components/plugins/card/base/description', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string, packageName: string }) => (
+  default: ({ orgName, downloadCount }: { orgName: string, downloadCount?: number }) => (
     <div data-testid="org-info">
       {orgName}
-      /
-      {packageName}
+      {typeof downloadCount === 'number' ? ` · ${downloadCount}` : null}
     </div>
   ),
 }))
@@ -124,7 +123,7 @@ describe('Plugin Card Rendering Integration', () => {
 
     expect(screen.getByTestId('card-icon')).toBeInTheDocument()
     expect(screen.getByTestId('title')).toHaveTextContent('Google Search')
-    expect(screen.getByTestId('org-info')).toHaveTextContent('langgenius/google-search')
+    expect(screen.getByTestId('org-info')).toHaveTextContent('langgenius')
     expect(screen.getByTestId('description')).toHaveTextContent('Search the web using Google')
   })
 

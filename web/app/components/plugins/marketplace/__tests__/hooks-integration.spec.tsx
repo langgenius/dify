@@ -42,8 +42,10 @@ const mockCollectionPlugins = vi.fn()
 
 vi.mock('@/service/client', () => ({
   marketplaceClient: {
-    collections: (...args: unknown[]) => mockCollections(...args),
-    collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+    plugins: {
+      collections: (...args: unknown[]) => mockCollections(...args),
+      collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+    },
   },
 }))
 
@@ -90,8 +92,8 @@ describe('useMarketplaceCollectionsAndPlugins (integration)', () => {
       expect(result.current.isSuccess).toBe(true)
     })
 
-    expect(result.current.marketplaceCollections).toBeDefined()
-    expect(result.current.marketplaceCollectionPluginsMap).toBeDefined()
+    expect(result.current.pluginCollections).toBeDefined()
+    expect(result.current.pluginCollectionPluginsMap).toBeDefined()
   })
 
   it('should handle query with empty params (truthy)', async () => {

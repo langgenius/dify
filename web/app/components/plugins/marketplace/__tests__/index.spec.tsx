@@ -8,24 +8,44 @@ vi.mock('@/context/query-client', () => ({
 }))
 
 vi.mock('../hydration-server', () => ({
-  HydrateQueryClient: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="hydration-client">{children}</div>
+  HydrateQueryClient: ({
+    children,
+    isMarketplacePlatform,
+  }: {
+    children: React.ReactNode
+    isMarketplacePlatform?: boolean
+  }) => (
+    <div data-testid="hydrate-query-client" data-marketplace-platform={String(Boolean(isMarketplacePlatform))}>{children}</div>
   ),
 }))
 
-vi.mock('../description', () => ({
-  default: () => <div data-testid="description">Description</div>,
-}))
-
-vi.mock('../list/list-wrapper', () => ({
-  default: ({ showInstallButton }: { showInstallButton: boolean }) => (
-    <div data-testid="list-wrapper" data-show-install={showInstallButton}>ListWrapper</div>
+vi.mock('../hydration-client', () => ({
+  HydrateClient: ({
+    children,
+    isMarketplacePlatform,
+  }: {
+    children: React.ReactNode
+    isMarketplacePlatform?: boolean
+  }) => (
+    <div data-testid="hydrate-client" data-marketplace-platform={String(Boolean(isMarketplacePlatform))}>{children}</div>
   ),
 }))
 
-vi.mock('../sticky-search-and-switch-wrapper', () => ({
-  default: ({ pluginTypeSwitchClassName }: { pluginTypeSwitchClassName?: string }) => (
-    <div data-testid="sticky-wrapper" data-classname={pluginTypeSwitchClassName}>StickyWrapper</div>
+vi.mock('../marketplace-header', () => ({
+  default: ({
+    marketplaceNav,
+  }: {
+    marketplaceNav?: React.ReactNode
+  }) => (
+    <div data-testid="marketplace-header">
+      {marketplaceNav}
+    </div>
+  ),
+}))
+
+vi.mock('../marketplace-content', () => ({
+  default: ({ showInstallButton }: { showInstallButton?: boolean }) => (
+    <div data-testid="marketplace-content" data-show-install={String(Boolean(showInstallButton))}>MarketplaceContent</div>
   ),
 }))
 
@@ -47,20 +67,20 @@ describe('Marketplace', () => {
     const { getByTestId } = render(element as React.ReactElement)
 
     expect(getByTestId('tanstack-initializer')).toBeInTheDocument()
-    expect(getByTestId('hydration-client')).toBeInTheDocument()
-    expect(getByTestId('description')).toBeInTheDocument()
-    expect(getByTestId('sticky-wrapper')).toBeInTheDocument()
-    expect(getByTestId('list-wrapper')).toBeInTheDocument()
+    expect(getByTestId('hydrate-query-client')).toBeInTheDocument()
+    expect(getByTestId('hydrate-client')).toBeInTheDocument()
+    expect(getByTestId('marketplace-header')).toBeInTheDocument()
+    expect(getByTestId('marketplace-content')).toBeInTheDocument()
   })
 
-  it('should pass showInstallButton=true by default to ListWrapper', async () => {
+  it('should pass showInstallButton=true by default to MarketplaceContent', async () => {
     const Marketplace = (await import('../index')).default
     const element = await Marketplace({})
 
     const { getByTestId } = render(element as React.ReactElement)
 
-    const listWrapper = getByTestId('list-wrapper')
-    expect(listWrapper.getAttribute('data-show-install')).toBe('true')
+    const marketplaceContent = getByTestId('marketplace-content')
+    expect(marketplaceContent.getAttribute('data-show-install')).toBe('true')
   })
 
   it('should pass showInstallButton=false when specified', async () => {
@@ -69,27 +89,26 @@ describe('Marketplace', () => {
 
     const { getByTestId } = render(element as React.ReactElement)
 
-    const listWrapper = getByTestId('list-wrapper')
-    expect(listWrapper.getAttribute('data-show-install')).toBe('false')
+    const marketplaceContent = getByTestId('marketplace-content')
+    expect(marketplaceContent.getAttribute('data-show-install')).toBe('false')
   })
 
-  it('should pass pluginTypeSwitchClassName to StickySearchAndSwitchWrapper', async () => {
+  it('should pass marketplaceNav to MarketplaceHeader', async () => {
     const Marketplace = (await import('../index')).default
-    const element = await Marketplace({ pluginTypeSwitchClassName: 'top-14' })
+    const element = await Marketplace({ marketplaceNav: <div data-testid="nav">Nav</div> })
 
     const { getByTestId } = render(element as React.ReactElement)
 
-    const stickyWrapper = getByTestId('sticky-wrapper')
-    expect(stickyWrapper.getAttribute('data-classname')).toBe('top-14')
+    expect(getByTestId('nav')).toBeInTheDocument()
   })
 
-  it('should render without pluginTypeSwitchClassName', async () => {
+  it('should pass isMarketplacePlatform to hydrate wrappers', async () => {
     const Marketplace = (await import('../index')).default
-    const element = await Marketplace({})
+    const element = await Marketplace({ isMarketplacePlatform: true })
 
     const { getByTestId } = render(element as React.ReactElement)
 
-    const stickyWrapper = getByTestId('sticky-wrapper')
-    expect(stickyWrapper.getAttribute('data-classname')).toBeNull()
+    expect(getByTestId('hydrate-query-client').getAttribute('data-marketplace-platform')).toBe('true')
+    expect(getByTestId('hydrate-client').getAttribute('data-marketplace-platform')).toBe('true')
   })
 })

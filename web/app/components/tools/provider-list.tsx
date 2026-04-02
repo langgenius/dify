@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import Card from '@/app/components/plugins/card'
-import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
+import CardTags from '@/app/components/plugins/card/card-tags'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
@@ -180,7 +180,7 @@ const ProviderList = () => {
                       name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
                     } as any}
                     footer={(
-                      <CardMoreInfo
+                      <CardTags
                         tags={collection.labels?.map(label => getTagLabel(label)) || []}
                       />
                     )}
@@ -196,7 +196,7 @@ const ProviderList = () => {
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (
             <Marketplace
-              searchPluginText={keywords}
+              searchText={keywords}
               filterPluginTags={tagFilterValue}
               isMarketplaceArrowVisible={isMarketplaceArrowVisible}
               showMarketplacePanel={showMarketplacePanel}

@@ -11,14 +11,14 @@ import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type MarketplaceProps = {
-  searchPluginText: string
+  searchText: string
   filterPluginTags: string[]
   isMarketplaceArrowVisible: boolean
   showMarketplacePanel: () => void
   marketplaceContext: ReturnType<typeof useMarketplace>
 }
 const Marketplace = ({
-  searchPluginText,
+  searchText,
   filterPluginTags,
   isMarketplaceArrowVisible,
   showMarketplacePanel,
@@ -29,8 +29,8 @@ const Marketplace = ({
   const { theme } = useTheme()
   const {
     isLoading,
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
+    pluginCollections,
+    pluginCollectionPluginsMap,
     plugins,
     page,
   } = marketplaceContext
@@ -79,7 +79,7 @@ const Marketplace = ({
             </span>
             {t('operation.in', { ns: 'common' })}
             <a
-              href={getMarketplaceUrl('', { language: locale, q: searchPluginText, tags: filterPluginTags.join(','), theme })}
+              href={getMarketplaceUrl('', { language: locale, q: searchText, tags: filterPluginTags.join(','), theme })}
               className="system-sm-medium ml-1 flex items-center text-text-accent"
               target="_blank"
             >
@@ -100,8 +100,8 @@ const Marketplace = ({
         {
           (!isLoading || page > 1) && (
             <List
-              marketplaceCollections={marketplaceCollections || []}
-              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+              pluginCollections={pluginCollections || []}
+              pluginCollectionPluginsMap={pluginCollectionPluginsMap || {}}
               plugins={plugins}
               showInstallButton
             />

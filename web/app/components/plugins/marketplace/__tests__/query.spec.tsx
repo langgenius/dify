@@ -20,16 +20,20 @@ const mockSearchAdvanced = vi.fn()
 
 vi.mock('@/service/client', () => ({
   marketplaceClient: {
-    collections: (...args: unknown[]) => mockCollections(...args),
-    collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
-    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
+    plugins: {
+      collections: (...args: unknown[]) => mockCollections(...args),
+      collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
+      searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
+    },
   },
   marketplaceQuery: {
-    collections: {
-      queryKey: (params: unknown) => ['marketplace', 'collections', params],
-    },
-    searchAdvanced: {
-      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
+    plugins: {
+      collections: {
+        queryKey: (params: unknown) => ['marketplace', 'plugins', 'collections', params],
+      },
+      searchAdvanced: {
+        queryKey: (params: unknown) => ['marketplace', 'plugins', 'searchAdvanced', params],
+      },
     },
   },
 }))

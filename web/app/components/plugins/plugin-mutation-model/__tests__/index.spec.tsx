@@ -610,7 +610,7 @@ describe('PluginMutationModal', () => {
       render(<PluginMutationModal {...props} />)
 
       expect(screen.getByText('my-organization')).toBeInTheDocument()
-      expect(screen.getByText('my-plugin-name')).toBeInTheDocument()
+      expect(screen.queryByText('my-plugin-name')).not.toBeInTheDocument()
     })
 
     it('should display plugin category', () => {
@@ -750,7 +750,7 @@ describe('PluginMutationModal', () => {
 
       render(<PluginMutationModal {...props} />)
 
-      expect(screen.getByText('plugin-with-special<chars>!@#$%')).toBeInTheDocument()
+      expect(screen.getByText('org<script>test</script>')).toBeInTheDocument()
     })
 
     it('should handle very long title', () => {

@@ -1,29 +1,147 @@
+import type { SearchTab } from './search-params'
 import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useQueryState } from 'nuqs'
-import { useCallback } from 'react'
-import { DEFAULT_SORT, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
-import { marketplaceSearchParamsParsers } from './search-params'
+import { useCallback, useMemo } from 'react'
+import { CATEGORY_ALL, DEFAULT_PLUGIN_SORT, DEFAULT_TEMPLATE_SORT, getValidatedPluginCategory, getValidatedTemplateCategory, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
+import { CREATION_TYPE, marketplaceSearchParamsParsers } from './search-params'
 
-const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
-export function useMarketplaceSort() {
-  return useAtom(marketplaceSortAtom)
+export const isMarketplacePlatformAtom = atom<boolean>(false)
+
+const marketplacePluginSortAtom = atom<PluginsSort>(DEFAULT_PLUGIN_SORT)
+export function useMarketplacePluginSort() {
+  return useAtom(marketplacePluginSortAtom)
 }
-export function useMarketplaceSortValue() {
-  return useAtomValue(marketplaceSortAtom)
+export function useMarketplacePluginSortValue() {
+  return useAtomValue(marketplacePluginSortAtom)
 }
-export function useSetMarketplaceSort() {
-  return useSetAtom(marketplaceSortAtom)
+export function useSetMarketplacePluginSort() {
+  return useSetAtom(marketplacePluginSortAtom)
 }
 
-export function useSearchPluginText() {
+const marketplaceTemplateSortAtom = atom<PluginsSort>(DEFAULT_TEMPLATE_SORT)
+export function useMarketplaceTemplateSort() {
+  return useAtom(marketplaceTemplateSortAtom)
+}
+export function useMarketplaceTemplateSortValue() {
+  return useAtomValue(marketplaceTemplateSortAtom)
+}
+export function useSetMarketplaceTemplateSort() {
+  return useSetAtom(marketplaceTemplateSortAtom)
+}
+
+export function useSearchText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
-export function useActivePluginType() {
-  return useQueryState('category', marketplaceSearchParamsParsers.category)
+export function useActivePluginCategory() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(Boolean)
+  const categoryFromPath = segments[1] || CATEGORY_ALL
+  const validatedCategory = getValidatedPluginCategory(categoryFromPath)
+  const handleChange = useCallback(
+    (newCategory: string) => {
+      router.push(`/plugins/${newCategory}`)
+    },
+    [router],
+  )
+
+  if (isAtMarketplace) {
+    return [validatedCategory, handleChange] as const
+  }
+  return [getValidatedPluginCategory(category), setCategory] as const
+}
+
+export function useActiveTemplateCategory() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const [category, setCategory] = useQueryState('category', marketplaceSearchParamsParsers.category)
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(Boolean)
+  const categoryFromPath = segments[1] || CATEGORY_ALL
+  const validatedCategory = getValidatedTemplateCategory(categoryFromPath)
+  const handleChange = useCallback(
+    (newCategory: string) => {
+      router.push(`/${CREATION_TYPE.templates}/${newCategory}`)
+    },
+    [router],
+  )
+
+  if (isAtMarketplace) {
+    return [validatedCategory, handleChange] as const
+  }
+  return [getValidatedTemplateCategory(category), setCategory] as const
 }
 export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
+}
+
+export function useFilterTemplateLanguages() {
+  return useQueryState('languages', marketplaceSearchParamsParsers.languages)
+}
+
+export function useSearchTab() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const state = useQueryState('searchTab', marketplaceSearchParamsParsers.searchTab)
+
+  const router = useRouter()
+  // /search/[searchTab]
+  const { searchTab } = useParams()
+  const handleChange = useCallback(
+    (newTab: string) => {
+      const location = new URL(window.location.href)
+      location.pathname = `/search/${newTab}`
+      router.push(location.href)
+    },
+    [router],
+  )
+
+  if (isAtMarketplace) {
+    return [searchTab, handleChange] as const
+  }
+  return state
+}
+
+export function useCreationType() {
+  const isAtMarketplace = useAtomValue(isMarketplacePlatformAtom)
+
+  const [creationType] = useQueryState('creationType', marketplaceSearchParamsParsers.creationType)
+
+  const pathname = usePathname()
+  const segments = pathname.split('/').filter(Boolean)
+
+  if (isAtMarketplace) {
+    if (segments[0] === CREATION_TYPE.templates || segments[0] === 'template')
+      return CREATION_TYPE.templates
+    return CREATION_TYPE.plugins
+  }
+  return creationType
+}
+
+// Search-page-specific filter hooks (separate from list-page category/tags)
+export function useSearchFilterCategories() {
+  return useQueryState('searchCategories', marketplaceSearchParamsParsers.searchCategories)
+}
+
+export function useSearchFilterLanguages() {
+  return useQueryState('searchLanguages', marketplaceSearchParamsParsers.searchLanguages)
+}
+
+export function useSearchFilterType() {
+  const [type, setType] = useQueryState('searchType', marketplaceSearchParamsParsers.searchType)
+  return [getValidatedPluginCategory(type), setType] as const
+}
+
+export function useSearchFilterTags() {
+  return useQueryState('searchTags', marketplaceSearchParamsParsers.searchTags)
 }
 
 /**
@@ -33,30 +151,74 @@ export function useFilterPluginTags() {
 export const searchModeAtom = atom<true | null>(null)
 
 export function useMarketplaceSearchMode() {
-  const [searchPluginText] = useSearchPluginText()
+  const creationType = useCreationType()
+  const [searchText] = useSearchText()
+  const [searchTab] = useSearchTab()
   const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
+  const [filterTemplateLanguages] = useFilterTemplateLanguages()
+  const [activePluginCategory] = useActivePluginCategory()
+  const [activeTemplateCategory] = useActiveTemplateCategory()
+  const isPluginsView = creationType === CREATION_TYPE.plugins
 
   const searchMode = useAtomValue(searchModeAtom)
-  const isSearchMode = !!searchPluginText
-    || filterPluginTags.length > 0
-    || (searchMode ?? (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType)))
+  const isSearchMode = searchTab || searchText
+    || (isPluginsView && filterPluginTags.length > 0)
+    || (searchMode ?? (isPluginsView && !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginCategory)))
+    || (!isPluginsView && activeTemplateCategory !== CATEGORY_ALL)
+    || (!isPluginsView && filterTemplateLanguages.length > 0)
   return isSearchMode
 }
 
+/**
+ * Returns the active sort state based on the current creationType.
+ * Plugins use `marketplacePluginSortAtom`, templates use `marketplaceTemplateSortAtom`.
+ */
+export function useActiveSort(): [PluginsSort, (sort: PluginsSort) => void] {
+  const creationType = useCreationType()
+  const [pluginSort, setPluginSort] = useAtom(marketplacePluginSortAtom)
+  const [templateSort, setTemplateSort] = useAtom(marketplaceTemplateSortAtom)
+  const isTemplates = creationType === CREATION_TYPE.templates
+
+  const sort = isTemplates ? templateSort : pluginSort
+  const setSort = useMemo(
+    () => isTemplates ? setTemplateSort : setPluginSort,
+    [isTemplates, setTemplateSort, setPluginSort],
+  )
+  return [sort, setSort]
+}
+
+export function useActiveSortValue(): PluginsSort {
+  const creationType = useCreationType()
+  const pluginSort = useAtomValue(marketplacePluginSortAtom)
+  const templateSort = useAtomValue(marketplaceTemplateSortAtom)
+  return creationType === CREATION_TYPE.templates ? templateSort : pluginSort
+}
+
 export function useMarketplaceMoreClick() {
-  const [,setQ] = useSearchPluginText()
-  const setSort = useSetAtom(marketplaceSortAtom)
+  const [, setQ] = useSearchText()
+  const [, setSearchTab] = useSearchTab()
+  const setPluginSort = useSetAtom(marketplacePluginSortAtom)
+  const setTemplateSort = useSetAtom(marketplaceTemplateSortAtom)
   const setSearchMode = useSetAtom(searchModeAtom)
 
-  return useCallback((searchParams?: SearchParamsFromCollection) => {
+  return useCallback((searchParams?: SearchParamsFromCollection, searchTab?: SearchTab) => {
     if (!searchParams)
       return
     setQ(searchParams?.query || '')
-    setSort({
-      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
-      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
-    })
+    if (searchTab === 'templates') {
+      setTemplateSort({
+        sortBy: searchParams?.sort_by || DEFAULT_TEMPLATE_SORT.sortBy,
+        sortOrder: searchParams?.sort_order || DEFAULT_TEMPLATE_SORT.sortOrder,
+      })
+    }
+    else {
+      setPluginSort({
+        sortBy: searchParams?.sort_by || DEFAULT_PLUGIN_SORT.sortBy,
+        sortOrder: searchParams?.sort_order || DEFAULT_PLUGIN_SORT.sortOrder,
+      })
+    }
     setSearchMode(true)
-  }, [setQ, setSort, setSearchMode])
+    if (searchTab)
+      setSearchTab(searchTab)
+  }, [setQ, setSearchTab, setPluginSort, setTemplateSort, setSearchMode])
 }

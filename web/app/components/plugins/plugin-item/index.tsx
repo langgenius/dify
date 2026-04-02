@@ -195,7 +195,7 @@ const PluginItem: FC<Props> = ({
           {source === PluginSource.marketplace && enable_marketplace
             && (
               <>
-                <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
+                <a href={getMarketplaceUrl(`/plugin/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
                   <div className="text-text-tertiary system-2xs-medium-uppercase">
                     {t('from', { ns: 'plugin' })}
                     {' '}

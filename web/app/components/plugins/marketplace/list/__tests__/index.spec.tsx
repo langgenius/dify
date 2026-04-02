@@ -1,4 +1,4 @@
-import type { MarketplaceCollection, SearchParamsFromCollection } from '../../types'
+import type { PluginCollection, SearchParamsFromCollection } from '../../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -20,6 +20,7 @@ vi.mock('#i18n', () => ({
         'plugin.marketplace.viewMore': 'View More',
         'plugin.marketplace.pluginsResult': `${options?.num || 0} plugins found`,
         'plugin.marketplace.noPluginFound': 'No plugins found',
+        'plugin.marketplace.noTemplateFound': 'No template found',
         'plugin.detailPanel.operation.install': 'Install',
         'plugin.detailPanel.operation.detail': 'Detail',
       }
@@ -34,21 +35,28 @@ const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
     mockMarketplaceData: {
       plugins: undefined as Plugin[] | undefined,
       pluginsTotal: 0,
-      marketplaceCollections: undefined as MarketplaceCollection[] | undefined,
-      marketplaceCollectionPluginsMap: undefined as Record<string, Plugin[]> | undefined,
+      pluginCollections: undefined as PluginCollection[] | undefined,
+      pluginCollectionPluginsMap: undefined as Record<string, Plugin[]> | undefined,
       isLoading: false,
       page: 1,
     },
     mockMoreClick: vi.fn(),
   }
 })
+let mockSearchMode = false
 
 vi.mock('../../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
+  isPluginsData: (data: Record<string, unknown>) => 'pluginCollections' in data,
 }))
 
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
+  useMarketplaceSearchMode: () => mockSearchMode,
+  useCreationType: () => 'plugins',
+  useFilterPluginTags: () => [[]],
+  useActivePluginCategory: () => ['all'],
+  useActiveTemplateCategory: () => ['all'],
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -99,12 +107,17 @@ vi.mock('@/i18n-config/language', () => ({
   getLanguage: (locale: string) => locale || 'en-US',
 }))
 
-vi.mock('../../utils', () => ({
-  getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
-    `/plugins/${plugin.org}/${plugin.name}`,
-  getPluginDetailLinkInMarketplace: (plugin: Plugin) =>
-    `/plugins/${plugin.org}/${plugin.name}`,
-}))
+// Mock marketplace utils
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
+      `/plugin/${plugin.org}/${plugin.name}`,
+    getPluginDetailLinkInMarketplace: (plugin: Plugin) =>
+      `/plugin/${plugin.org}/${plugin.name}`,
+  }
+})
 
 vi.mock('@/app/components/plugins/card', () => ({
   default: ({ payload, footer }: { payload: Plugin, footer?: React.ReactNode }) => (
@@ -116,10 +129,10 @@ vi.mock('@/app/components/plugins/card', () => ({
   ),
 }))
 
-vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number, tags: string[] }) => (
-    <div data-testid="card-more-info">
-      <span data-testid="download-count">{downloadCount}</span>
+// Mock CardTags component
+vi.mock('@/app/components/plugins/card/card-tags', () => ({
+  default: ({ tags }: { tags: string[] }) => (
+    <div data-testid="card-tags">
       <span data-testid="tags">{tags.join(',')}</span>
     </div>
   ),
@@ -139,10 +152,11 @@ vi.mock('../../sort-dropdown', () => ({
   ),
 }))
 
+// Mock Empty component
 vi.mock('../../empty', () => ({
-  default: ({ className }: { className?: string }) => (
+  default: ({ className, text }: { className?: string, text?: string }) => (
     <div data-testid="empty-component" className={className}>
-      No plugins found
+      {text || 'No plugins found'}
     </div>
   ),
 }))
@@ -188,7 +202,7 @@ const createMockPluginList = (count: number): Plugin[] =>
       label: { 'en-US': `Plugin ${i}` },
     }))
 
-const createMockCollection = (overrides?: Partial<MarketplaceCollection>): MarketplaceCollection => ({
+const createMockCollection = (overrides?: Partial<PluginCollection>): PluginCollection => ({
   name: `collection-${Math.random().toString(36).substring(7)}`,
   label: { 'en-US': 'Test Collection' },
   description: { 'en-US': 'Test collection description' },
@@ -200,7 +214,7 @@ const createMockCollection = (overrides?: Partial<MarketplaceCollection>): Marke
   ...overrides,
 })
 
-const createMockCollectionList = (count: number): MarketplaceCollection[] =>
+const createMockCollectionList = (count: number): PluginCollection[] =>
   Array.from({ length: count }, (_, i) =>
     createMockCollection({
       name: `collection-${i}`,
@@ -213,8 +227,8 @@ const createMockCollectionList = (count: number): MarketplaceCollection[] =>
 // ================================
 describe('List', () => {
   const defaultProps = {
-    marketplaceCollections: [] as MarketplaceCollection[],
-    marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
+    pluginCollections: [] as PluginCollection[],
+    pluginCollectionPluginsMap: {} as Record<string, Plugin[]>,
     plugins: undefined,
     showInstallButton: false,
     cardContainerClassName: '',
@@ -225,6 +239,7 @@ describe('List', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchMode = false
   })
 
   // ================================
@@ -248,8 +263,8 @@ describe('List', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          pluginCollections={collections}
+          pluginCollectionPluginsMap={pluginsMap}
         />,
       )
 
@@ -294,8 +309,8 @@ describe('List', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          pluginCollections={collections}
+          pluginCollectionPluginsMap={pluginsMap}
           plugins={[]}
         />,
       )
@@ -406,12 +421,12 @@ describe('List', () => {
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
-    it('should handle empty marketplaceCollections', () => {
+    it('should handle empty pluginCollections', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
         />,
       )
 
@@ -428,8 +443,8 @@ describe('List', () => {
       render(
         <List
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          pluginCollections={collections}
+          pluginCollectionPluginsMap={pluginsMap}
           plugins={undefined}
         />,
       )
@@ -476,12 +491,12 @@ describe('List', () => {
 // ================================
 describe('ListWithCollection', () => {
   const defaultProps = {
-    marketplaceCollections: [] as MarketplaceCollection[],
-    marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
+    variant: 'plugins' as const,
+    collections: [] as PluginCollection[],
+    collectionItemsMap: {} as Record<string, Plugin[]>,
     showInstallButton: false,
     cardContainerClassName: '',
     cardRender: undefined,
-    onMoreClick: undefined,
   }
 
   beforeEach(() => {
@@ -508,8 +523,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -528,8 +543,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -548,8 +563,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -562,21 +577,21 @@ describe('ListWithCollection', () => {
   // View More Button Tests
   // ================================
   describe('View More Button', () => {
-    it('should render View More button when collection is searchable', () => {
+    it('should render View More button when collection is searchable and exceeds display limit', () => {
       const collections = [createMockCollection({
-        name: 'collection-0',
+        name: 'searchable-collection',
         searchable: true,
         search_params: { query: 'test' },
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
+        'searchable-collection': createMockPluginList(5),
       }
 
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -587,16 +602,38 @@ describe('ListWithCollection', () => {
       const collections = [createMockCollection({
         name: 'collection-0',
         searchable: false,
+        search_params: undefined,
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
+        'collection-0': createMockPluginList(5),
       }
 
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      expect(screen.queryByText('View More')).not.toBeInTheDocument()
+    })
+
+    it('should not render View More button when items do not exceed display limit', () => {
+      const collections = [createMockCollection({
+        name: 'small-collection',
+        searchable: true,
+        search_params: { query: 'test' },
+      })]
+      const pluginsMap: Record<string, Plugin[]> = {
+        'small-collection': createMockPluginList(4),
+      }
+
+      render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -606,26 +643,106 @@ describe('ListWithCollection', () => {
     it('should call moreClick hook with search_params when View More is clicked', () => {
       const searchParams: SearchParamsFromCollection = { query: 'test-query', sort_by: 'install_count' }
       const collections = [createMockCollection({
-        name: 'collection-0',
+        name: 'clickable-collection',
         searchable: true,
         search_params: searchParams,
       })]
       const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
+        'clickable-collection': createMockPluginList(5),
       }
 
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
       fireEvent.click(screen.getByText('View More'))
 
       expect(mockMoreClick).toHaveBeenCalledTimes(1)
-      expect(mockMoreClick).toHaveBeenCalledWith(searchParams)
+      expect(mockMoreClick).toHaveBeenCalledWith(searchParams, undefined)
+    })
+  })
+
+  // ================================
+  // Grid Display Limit Tests
+  // ================================
+  describe('Grid Display Limit', () => {
+    it('should render at most 4 cards for searchable collections', () => {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(8),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(4)
+    })
+
+    it('should render all cards for non-searchable collections in carousel mode', () => {
+      const collections = [createMockCollection({
+        name: 'carousel-collection',
+        searchable: false,
+      })]
+      const pluginsMap: Record<string, Plugin[]> = {
+        'carousel-collection': createMockPluginList(8),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(8)
+    })
+
+    it('should render all cards when count is within the display limit', () => {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(3),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(3)
+    })
+
+    it('should render exactly 4 cards when collection has exactly 4 items', () => {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(4),
+      }
+
+      const { container } = render(
+        <ListWithCollection
+          {...defaultProps}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
+        />,
+      )
+
+      const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
+      expect(cards.length).toBe(4)
     })
   })
 
@@ -649,8 +766,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
           cardRender={customCardRender}
         />,
       )
@@ -673,8 +790,8 @@ describe('ListWithCollection', () => {
       const { container } = render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
           cardContainerClassName="custom-container"
         />,
       )
@@ -691,8 +808,8 @@ describe('ListWithCollection', () => {
       const { container } = render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
           showInstallButton={true}
         />,
       )
@@ -710,8 +827,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          collections={[]}
+          collectionItemsMap={{}}
         />,
       )
 
@@ -726,8 +843,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -744,8 +861,8 @@ describe('ListWithCollection', () => {
       render(
         <ListWithCollection
           {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
+          collections={collections}
+          collectionItemsMap={pluginsMap}
         />,
       )
 
@@ -761,11 +878,12 @@ describe('ListWithCollection', () => {
 describe('ListWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchMode = false
     // Reset mock data
     mockMarketplaceData.plugins = undefined
     mockMarketplaceData.pluginsTotal = 0
-    mockMarketplaceData.marketplaceCollections = undefined
-    mockMarketplaceData.marketplaceCollectionPluginsMap = undefined
+    mockMarketplaceData.pluginCollections = undefined
+    mockMarketplaceData.pluginCollectionPluginsMap = undefined
     mockMarketplaceData.isLoading = false
     mockMarketplaceData.page = 1
   })
@@ -804,22 +922,52 @@ describe('ListWrapper', () => {
 
       expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
     })
+
+    it('should render template empty state with flex content wrapper when templates are empty', () => {
+      mockSearchMode = true
+      delete (mockMarketplaceData as Record<string, unknown>).pluginCollections
+      delete (mockMarketplaceData as Record<string, unknown>).pluginCollectionPluginsMap
+      ;(mockMarketplaceData as Record<string, unknown>).templateCollections = []
+      ;(mockMarketplaceData as Record<string, unknown>).templateCollectionTemplatesMap = {}
+      ;(mockMarketplaceData as Record<string, unknown>).templates = []
+
+      const { container } = render(<ListWrapper />)
+
+      expect(screen.getByTestId('empty-component')).toBeInTheDocument()
+      expect(screen.getByText('No template found')).toBeInTheDocument()
+      expect(container.querySelector('.relative.flex.grow.flex-col')).toBeInTheDocument()
+    })
+
+    it('should keep plugin empty text when plugins are empty', () => {
+      mockSearchMode = true
+      mockMarketplaceData.plugins = []
+      mockMarketplaceData.pluginsTotal = 0
+      mockMarketplaceData.pluginCollections = []
+      mockMarketplaceData.pluginCollectionPluginsMap = {}
+
+      render(<ListWrapper />)
+
+      expect(screen.getByTestId('empty-component')).toBeInTheDocument()
+      expect(screen.getByText('No plugins found')).toBeInTheDocument()
+    })
   })
 
   // ================================
   // Plugins Header Tests
   // ================================
   describe('Plugins Header', () => {
-    it('should render plugins result count when plugins are present', () => {
+    it('should render list top info when search mode is enabled', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = createMockPluginList(5)
       mockMarketplaceData.pluginsTotal = 5
 
       render(<ListWrapper />)
 
-      expect(screen.getByText('5 plugins found')).toBeInTheDocument()
+      expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
     })
 
     it('should render SortDropdown when plugins are present', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = createMockPluginList(1)
 
       render(<ListWrapper />)
@@ -842,8 +990,8 @@ describe('ListWrapper', () => {
   describe('List Rendering Logic', () => {
     it('should render collections when not loading', () => {
       mockMarketplaceData.isLoading = false
-      mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-      mockMarketplaceData.marketplaceCollectionPluginsMap = {
+      mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+      mockMarketplaceData.pluginCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
@@ -855,8 +1003,8 @@ describe('ListWrapper', () => {
     it('should render List when loading but page > 1', () => {
       mockMarketplaceData.isLoading = true
       mockMarketplaceData.page = 2
-      mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-      mockMarketplaceData.marketplaceCollectionPluginsMap = {
+      mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+      mockMarketplaceData.pluginCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
@@ -880,13 +1028,13 @@ describe('ListWrapper', () => {
     })
 
     it('should show View More button and call moreClick hook', () => {
-      mockMarketplaceData.marketplaceCollections = [createMockCollection({
-        name: 'collection-0',
+      mockMarketplaceData.pluginCollections = [createMockCollection({
+        name: 'wrapper-collection',
         searchable: true,
         search_params: { query: 'test' },
       })]
-      mockMarketplaceData.marketplaceCollectionPluginsMap = {
-        'collection-0': createMockPluginList(1),
+      mockMarketplaceData.pluginCollectionPluginsMap = {
+        'wrapper-collection': createMockPluginList(5),
       }
 
       render(<ListWrapper />)
@@ -902,25 +1050,28 @@ describe('ListWrapper', () => {
   // ================================
   describe('Edge Cases', () => {
     it('should handle empty plugins array', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = []
       mockMarketplaceData.pluginsTotal = 0
 
       render(<ListWrapper />)
 
-      expect(screen.getByText('0 plugins found')).toBeInTheDocument()
       expect(screen.getByTestId('empty-component')).toBeInTheDocument()
     })
 
-    it('should handle large pluginsTotal', () => {
+    it('should handle many plugin results', () => {
+      mockSearchMode = true
       mockMarketplaceData.plugins = createMockPluginList(10)
       mockMarketplaceData.pluginsTotal = 10000
 
       render(<ListWrapper />)
 
-      expect(screen.getByText('10000 plugins found')).toBeInTheDocument()
+      expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
+      expect(screen.getByTestId('card-plugin-9')).toBeInTheDocument()
     })
 
     it('should handle both loading and has plugins', () => {
+      mockSearchMode = true
       mockMarketplaceData.isLoading = true
       mockMarketplaceData.page = 2
       mockMarketplaceData.plugins = createMockPluginList(5)
@@ -928,9 +1079,7 @@ describe('ListWrapper', () => {
 
       render(<ListWrapper />)
 
-      // Should show plugins header and list
-      expect(screen.getByText('50 plugins found')).toBeInTheDocument()
-      // Should not show loading because page > 1
+      expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
       expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
     })
   })
@@ -954,8 +1103,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -963,7 +1112,7 @@ describe('CardWrapper (via List integration)', () => {
       expect(screen.getByTestId('card-test-plugin')).toBeInTheDocument()
     })
 
-    it('should render CardMoreInfo with download count and tags', () => {
+    it('should render CardTags with tags', () => {
       const plugin = createMockPlugin({
         name: 'test-plugin',
         install_count: 5000,
@@ -972,14 +1121,13 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
 
-      expect(screen.getByTestId('card-more-info')).toBeInTheDocument()
-      expect(screen.getByTestId('download-count')).toHaveTextContent('5000')
+      expect(screen.getByTestId('card-tags')).toBeInTheDocument()
     })
   })
 
@@ -992,8 +1140,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={plugins}
         />,
       )
@@ -1012,8 +1160,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1032,8 +1180,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1053,15 +1201,15 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
       )
 
       const detailLink = screen.getByText('Detail').closest('a')
-      expect(detailLink).toHaveAttribute('href', '/plugins/test-org/link-test-plugin')
+      expect(detailLink).toHaveAttribute('href', '/plugin/test-org/link-test-plugin')
       expect(detailLink).toHaveAttribute('target', '_blank')
     })
 
@@ -1071,8 +1219,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1087,8 +1235,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1103,8 +1251,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
         />,
@@ -1129,8 +1277,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={false}
         />,
@@ -1149,8 +1297,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={false}
         />,
@@ -1164,8 +1312,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1187,8 +1335,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1204,8 +1352,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1221,8 +1369,8 @@ describe('CardWrapper (via List integration)', () => {
 
       render(
         <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
+          pluginCollections={[]}
+          pluginCollectionPluginsMap={{}}
           plugins={[plugin]}
         />,
       )
@@ -1243,8 +1391,8 @@ describe('Combined Workflows', () => {
     mockMarketplaceData.pluginsTotal = 0
     mockMarketplaceData.isLoading = false
     mockMarketplaceData.page = 1
-    mockMarketplaceData.marketplaceCollections = undefined
-    mockMarketplaceData.marketplaceCollectionPluginsMap = undefined
+    mockMarketplaceData.pluginCollections = undefined
+    mockMarketplaceData.pluginCollectionPluginsMap = undefined
   })
 
   it('should transition from loading to showing collections', async () => {
@@ -1257,8 +1405,8 @@ describe('Combined Workflows', () => {
 
     // Simulate loading complete
     mockMarketplaceData.isLoading = false
-    mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-    mockMarketplaceData.marketplaceCollectionPluginsMap = {
+    mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+    mockMarketplaceData.pluginCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
     }
 
@@ -1269,8 +1417,9 @@ describe('Combined Workflows', () => {
   })
 
   it('should transition from collections to search results', async () => {
-    mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
-    mockMarketplaceData.marketplaceCollectionPluginsMap = {
+    mockSearchMode = true
+    mockMarketplaceData.pluginCollections = createMockCollectionList(1)
+    mockMarketplaceData.pluginCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
     }
 
@@ -1285,20 +1434,21 @@ describe('Combined Workflows', () => {
     rerender(<ListWrapper />)
 
     expect(screen.queryByText('Collection 0')).not.toBeInTheDocument()
-    expect(screen.getByText('5 plugins found')).toBeInTheDocument()
+    expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
   })
 
   it('should handle empty search results', () => {
+    mockSearchMode = true
     mockMarketplaceData.plugins = []
     mockMarketplaceData.pluginsTotal = 0
 
     render(<ListWrapper />)
 
     expect(screen.getByTestId('empty-component')).toBeInTheDocument()
-    expect(screen.getByText('0 plugins found')).toBeInTheDocument()
   })
 
   it('should support pagination (page > 1)', () => {
+    mockSearchMode = true
     mockMarketplaceData.plugins = createMockPluginList(40)
     mockMarketplaceData.pluginsTotal = 80
     mockMarketplaceData.isLoading = true
@@ -1306,9 +1456,7 @@ describe('Combined Workflows', () => {
 
     render(<ListWrapper />)
 
-    // Should show existing results while loading more
-    expect(screen.getByText('80 plugins found')).toBeInTheDocument()
-    // Should not show loading spinner for pagination
+    expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
     expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
   })
 })
@@ -1332,8 +1480,9 @@ describe('Accessibility', () => {
 
     const { container } = render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        variant="plugins"
+        collections={collections}
+        collectionItemsMap={pluginsMap}
       />,
     )
 
@@ -1344,17 +1493,19 @@ describe('Accessibility', () => {
 
   it('should have clickable View More button', () => {
     const collections = [createMockCollection({
-      name: 'collection-0',
+      name: 'accessible-collection',
       searchable: true,
+      search_params: { query: 'test' },
     })]
     const pluginsMap: Record<string, Plugin[]> = {
-      'collection-0': createMockPluginList(1),
+      'accessible-collection': createMockPluginList(5),
     }
 
     render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        variant="plugins"
+        collections={collections}
+        collectionItemsMap={pluginsMap}
       />,
     )
 
@@ -1368,13 +1519,13 @@ describe('Accessibility', () => {
 
     const { container } = render(
       <List
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
+        pluginCollections={[]}
+        pluginCollectionPluginsMap={{}}
         plugins={plugins}
       />,
     )
 
-    const grid = container.querySelector('.grid-cols-4')
+    const grid = container.querySelector('.grid')
     expect(grid).toBeInTheDocument()
   })
 })
@@ -1393,8 +1544,8 @@ describe('Performance', () => {
     const startTime = performance.now()
     render(
       <List
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
+        pluginCollections={[]}
+        pluginCollectionPluginsMap={{}}
         plugins={plugins}
       />,
     )
@@ -1414,8 +1565,9 @@ describe('Performance', () => {
     const startTime = performance.now()
     render(
       <ListWithCollection
-        marketplaceCollections={collections}
-        marketplaceCollectionPluginsMap={pluginsMap}
+        variant="plugins"
+        collections={collections}
+        collectionItemsMap={pluginsMap}
       />,
     )
     const endTime = performance.now()

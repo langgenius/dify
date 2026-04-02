@@ -1,34 +1,48 @@
 import type { SearchParams } from 'nuqs'
+import type { Awaitable } from './hydration-server'
 import { TanstackQueryInitializer } from '@/context/query-client'
-import Description from './description'
+import { cn } from '@/utils/classnames'
+import { HydrateClient } from './hydration-client'
 import { HydrateQueryClient } from './hydration-server'
-import ListWrapper from './list/list-wrapper'
-import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
+import MarketplaceContent from './marketplace-content'
+import MarketplaceHeader from './marketplace-header'
 
 type MarketplaceProps = {
   showInstallButton?: boolean
-  pluginTypeSwitchClassName?: string
   /**
-   * Pass the search params from the request to prefetch data on the server.
+   * Pass the search params & params from the request to prefetch data on the server.
    */
-  searchParams?: Promise<SearchParams>
+  params?: Awaitable<{ category?: string, creationType?: string, searchTab?: string } | undefined>
+  searchParams?: Awaitable<SearchParams>
+  /**
+   * Whether the marketplace is the platform marketplace.
+   */
+  isMarketplacePlatform?: boolean
+  marketplaceNav?: React.ReactNode
 }
 
-const Marketplace = async ({
+const Marketplace = ({
   showInstallButton = true,
-  pluginTypeSwitchClassName,
+  params,
   searchParams,
+  isMarketplacePlatform = false,
+  marketplaceNav,
 }: MarketplaceProps) => {
   return (
     <TanstackQueryInitializer>
-      <HydrateQueryClient searchParams={searchParams}>
-        <Description />
-        <StickySearchAndSwitchWrapper
-          pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-        />
-        <ListWrapper
-          showInstallButton={showInstallButton}
-        />
+      <HydrateQueryClient
+        isMarketplacePlatform={isMarketplacePlatform}
+        searchParams={searchParams}
+        params={params}
+      >
+        <HydrateClient
+          isMarketplacePlatform={isMarketplacePlatform}
+        >
+          <MarketplaceHeader descriptionClassName={cn('mx-12 mt-1', isMarketplacePlatform && 'top-0 mx-0 mt-0 rounded-none')} marketplaceNav={marketplaceNav} />
+          <MarketplaceContent
+            showInstallButton={showInstallButton}
+          />
+        </HydrateClient>
       </HydrateQueryClient>
     </TanstackQueryInitializer>
   )

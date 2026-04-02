@@ -1,83 +1,83 @@
 'use client'
 
-import type { MarketplaceCollection } from '../types'
+import type { PluginCollection, Template, TemplateCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { useLocale, useTranslation } from '#i18n'
-import { RiArrowRightSLine } from '@remixicon/react'
-import { getLanguage } from '@/i18n-config/language'
-import { cn } from '@/utils/classnames'
-import { useMarketplaceMoreClick } from '../atoms'
+import { useTranslation } from '#i18n'
 import CardWrapper from './card-wrapper'
+import CollectionList from './collection-list'
+import TemplateCard from './template-card'
 
-type ListWithCollectionProps = {
-  marketplaceCollections: MarketplaceCollection[]
-  marketplaceCollectionPluginsMap: Record<string, Plugin[]>
-  showInstallButton?: boolean
+type BaseProps = {
   cardContainerClassName?: string
+}
+
+type PluginsVariant = BaseProps & {
+  variant: 'plugins'
+  collections: PluginCollection[]
+  collectionItemsMap: Record<string, Plugin[]>
+  showInstallButton?: boolean
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
 }
-const ListWithCollection = ({
-  marketplaceCollections,
-  marketplaceCollectionPluginsMap,
-  showInstallButton,
-  cardContainerClassName,
-  cardRender,
-}: ListWithCollectionProps) => {
+
+type TemplatesVariant = BaseProps & {
+  variant: 'templates'
+  collections: TemplateCollection[]
+  collectionItemsMap: Record<string, Template[]>
+}
+
+type ListWithCollectionProps = PluginsVariant | TemplatesVariant
+
+const ListWithCollection = (props: ListWithCollectionProps) => {
+  const { variant, cardContainerClassName } = props
   const { t } = useTranslation()
-  const locale = useLocale()
-  const onMoreClick = useMarketplaceMoreClick()
+
+  if (variant === 'plugins') {
+    const {
+      collections,
+      collectionItemsMap,
+      showInstallButton,
+      cardRender,
+    } = props
+
+    const renderPluginCard = (plugin: Plugin) => {
+      if (cardRender)
+        return cardRender(plugin)
+
+      return (
+        <CardWrapper
+          plugin={plugin}
+          showInstallButton={showInstallButton}
+        />
+      )
+    }
+
+    return (
+      <CollectionList
+        collections={collections}
+        collectionItemsMap={collectionItemsMap}
+        itemKeyField="plugin_id"
+        renderCard={renderPluginCard}
+        cardContainerClassName={cardContainerClassName}
+      />
+    )
+  }
+
+  const { collections, collectionItemsMap } = props
+
+  const renderTemplateCard = (template: Template) => (
+    <TemplateCard template={template} />
+  )
 
   return (
-    <>
-      {
-        marketplaceCollections.filter((collection) => {
-          return marketplaceCollectionPluginsMap[collection.name]?.length
-        }).map(collection => (
-          <div
-            key={collection.name}
-            className="py-3"
-          >
-            <div className="flex items-end justify-between">
-              <div>
-                <div className="title-xl-semi-bold text-text-primary">{collection.label[getLanguage(locale)]}</div>
-                <div className="system-xs-regular text-text-tertiary">{collection.description[getLanguage(locale)]}</div>
-              </div>
-              {
-                collection.searchable && (
-                  <div
-                    className="system-xs-medium flex cursor-pointer items-center text-text-accent "
-                    onClick={() => onMoreClick(collection.search_params)}
-                  >
-                    {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <RiArrowRightSLine className="h-4 w-4" />
-                  </div>
-                )
-              }
-            </div>
-            <div className={cn(
-              'mt-2 grid grid-cols-4 gap-3',
-              cardContainerClassName,
-            )}
-            >
-              {
-                marketplaceCollectionPluginsMap[collection.name].map((plugin) => {
-                  if (cardRender)
-                    return cardRender(plugin)
-
-                  return (
-                    <CardWrapper
-                      key={plugin.plugin_id}
-                      plugin={plugin}
-                      showInstallButton={showInstallButton}
-                    />
-                  )
-                })
-              }
-            </div>
-          </div>
-        ))
-      }
-    </>
+    <CollectionList
+      collections={collections}
+      collectionItemsMap={collectionItemsMap}
+      itemKeyField="id"
+      renderCard={renderTemplateCard}
+      viewMoreSearchTab="templates"
+      cardContainerClassName={cardContainerClassName}
+      emptyText={t('marketplace.noTemplateFound', { ns: 'plugin' })}
+    />
   )
 }
 

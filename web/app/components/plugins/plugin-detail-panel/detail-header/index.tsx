@@ -61,7 +61,7 @@ const getDetailUrl = (
     return `https://github.com/${repo}`
   }
   if (source === PluginSource.marketplace)
-    return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
+    return getMarketplaceUrl(`/plugin/${author}/${name}`, { language: locale, theme })
   return ''
 }
 
@@ -263,7 +263,7 @@ const DetailHeader = ({
           status={status}
           deprecatedReason={deprecated_reason}
           alternativePluginId={alternative_plugin_id}
-          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, { language: currentLocale, theme })}
+          alternativePluginURL={getMarketplaceUrl(`/plugin/${alternative_plugin_id}`, { language: currentLocale, theme })}
           className="mt-3"
         />
       )}

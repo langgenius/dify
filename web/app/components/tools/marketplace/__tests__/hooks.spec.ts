@@ -3,7 +3,7 @@ import type { Collection } from '@/app/components/tools/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
-import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
+import { getPluginCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useMarketplace } from '../hooks'
@@ -141,7 +141,7 @@ describe('useMarketplace', () => {
       await waitFor(() => {
         expect(mockQueryMarketplaceCollectionsAndPlugins).toHaveBeenCalledWith({
           category: PluginCategoryEnum.tool,
-          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
+          condition: getPluginCondition(PluginCategoryEnum.tool),
           exclude: ['plugin-c'],
           type: 'plugin',
         })

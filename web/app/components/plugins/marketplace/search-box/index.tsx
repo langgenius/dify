@@ -8,6 +8,9 @@ import TagsFilter from './tags-filter'
 type SearchBoxProps = {
   search: string
   onSearchChange: (search: string) => void
+  onSearchSubmit?: () => void
+  onSearchFocus?: () => void
+  onSearchBlur?: () => void
   wrapperClassName?: string
   inputClassName?: string
   tags: string[]
@@ -22,6 +25,9 @@ type SearchBoxProps = {
 const SearchBox = ({
   search,
   onSearchChange,
+  onSearchSubmit,
+  onSearchFocus,
+  onSearchBlur,
   wrapperClassName,
   inputClassName,
   tags,
@@ -58,6 +64,12 @@ const SearchBox = ({
                   onChange={(e) => {
                     onSearchChange(e.target.value)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter')
+                      onSearchSubmit?.()
+                  }}
+                  onFocus={onSearchFocus}
+                  onBlur={onSearchBlur}
                   placeholder={placeholder}
                 />
                 {
@@ -89,6 +101,12 @@ const SearchBox = ({
                   onChange={(e) => {
                     onSearchChange(e.target.value)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter')
+                      onSearchSubmit?.()
+                  }}
+                  onFocus={onSearchFocus}
+                  onBlur={onSearchBlur}
                   placeholder={placeholder}
                 />
                 {

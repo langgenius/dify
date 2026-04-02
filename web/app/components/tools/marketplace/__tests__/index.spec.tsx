@@ -13,8 +13,8 @@ import Marketplace from '../index'
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: (props: {
-    marketplaceCollections: unknown[]
-    marketplaceCollectionPluginsMap: Record<string, unknown[]>
+    pluginCollections: unknown[]
+    pluginCollectionPluginsMap: Record<string, unknown[]>
     plugins?: unknown[]
     showInstallButton?: boolean
   }) => {
@@ -84,8 +84,8 @@ const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
 
 const createMarketplaceContext = (overrides: Partial<ReturnType<typeof useMarketplace>> = {}) => ({
   isLoading: false,
-  marketplaceCollections: [],
-  marketplaceCollectionPluginsMap: {},
+  pluginCollections: [],
+  pluginCollectionPluginsMap: {},
   plugins: [],
   handleScroll: vi.fn(),
   page: 1,
@@ -104,7 +104,7 @@ describe('Marketplace', () => {
       const marketplaceContext = createMarketplaceContext({ isLoading: true, page: 1 })
       render(
         <Marketplace
-          searchPluginText=""
+          searchText=""
           filterPluginTags={[]}
           isMarketplaceArrowVisible={false}
           showMarketplacePanel={vi.fn()}
@@ -125,7 +125,7 @@ describe('Marketplace', () => {
       })
       render(
         <Marketplace
-          searchPluginText=""
+          searchText=""
           filterPluginTags={[]}
           isMarketplaceArrowVisible={false}
           showMarketplacePanel={vi.fn()}
@@ -150,7 +150,7 @@ describe('Marketplace', () => {
       const showMarketplacePanel = vi.fn()
       const { container } = render(
         <Marketplace
-          searchPluginText="vector"
+          searchText="vector"
           filterPluginTags={['tag-a', 'tag-b']}
           isMarketplaceArrowVisible
           showMarketplacePanel={showMarketplacePanel}

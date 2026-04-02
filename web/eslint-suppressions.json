@@ -2326,7 +2326,7 @@
   },
   "app/components/base/icons/src/public/plugins/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 9
     }
   },
   "app/components/base/icons/src/public/thought/index.ts": {
@@ -2446,7 +2446,7 @@
   },
   "app/components/base/icons/src/vender/plugin/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 5
     }
   },
   "app/components/base/icons/src/vender/solid/FinanceAndECommerce/index.ts": {
@@ -5233,9 +5233,17 @@
       "count": 1
     }
   },
-  "app/components/plugins/card/base/org-info.tsx": {
+  "app/components/plugins/card/base/download-count.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
+    }
+  },
+  "app/components/plugins/card/base/org-info.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 4
     }
   },
   "app/components/plugins/card/base/title.tsx": {
@@ -5243,9 +5251,9 @@
       "count": 1
     }
   },
-  "app/components/plugins/card/card-more-info.tsx": {
+  "app/components/plugins/card/card-tags.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/install-plugin/base/installed.tsx": {
@@ -5347,9 +5355,45 @@
       "count": 1
     }
   },
+  "app/components/plugins/marketplace/atoms.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/marketplace/category-switch/common.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/marketplace/category-switch/hero-languages-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    }
+  },
+  "app/components/plugins/marketplace/category-switch/hero-tags-filter.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/marketplace/category-switch/hero-tags-trigger.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/marketplace/category-switch/index.tsx": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
   "app/components/plugins/marketplace/description/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 2
     }
   },
   "app/components/plugins/marketplace/empty/index.tsx": {
@@ -5362,32 +5406,42 @@
       "count": 1
     }
   },
-  "app/components/plugins/marketplace/list/card-wrapper.tsx": {
-    "tailwindcss/no-unnecessary-whitespace": {
+  "app/components/plugins/marketplace/hydration-server.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
-  "app/components/plugins/marketplace/list/list-with-collection.tsx": {
+  "app/components/plugins/marketplace/list/collection-list.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
+    }
+  },
+  "app/components/plugins/marketplace/list/list-top-info.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    }
+  },
+  "app/components/plugins/marketplace/list/template-card.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/list/list-wrapper.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/marketplace/plugin-type-switch.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
+      "count": 4
     }
   },
   "app/components/plugins/marketplace/search-box/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
+    }
+  },
+  "app/components/plugins/marketplace/search-box/search-box-wrapper.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/marketplace/search-box/search-dropdown/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 11
     }
   },
   "app/components/plugins/marketplace/search-box/tags-filter.tsx": {
@@ -5398,6 +5452,11 @@
       "count": 1
     }
   },
+  "app/components/plugins/marketplace/search-box/trigger/index.ts": {
+    "no-barrel-files/no-barrel-files": {
+      "count": 2
+    }
+  },
   "app/components/plugins/marketplace/search-box/trigger/marketplace.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -5405,6 +5464,32 @@
   },
   "app/components/plugins/marketplace/search-box/trigger/tool-selector.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    }
+  },
+  "app/components/plugins/marketplace/search-page/creator-card.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 4
+    }
+  },
+  "app/components/plugins/marketplace/search-page/filter-chip.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 5
+    }
+  },
+  "app/components/plugins/marketplace/search-page/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    }
+  },
+  "app/components/plugins/marketplace/search-results-header.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 3
+    },
+    "tailwindcss/no-unnecessary-whitespace": {
       "count": 2
     }
   },
@@ -5906,6 +5991,14 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
+    }
+  },
+  "app/components/plugins/plugin-page/nav-operations.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 4
     }
   },
   "app/components/plugins/plugin-page/plugin-info.tsx": {

@@ -34,6 +34,7 @@ export type Props = {
   isLoading?: boolean
   loadingFileName?: string
   limitedInstall?: boolean
+  disableOrgLink?: boolean
 }
 
 const Card = ({
@@ -48,12 +49,13 @@ const Card = ({
   isLoading = false,
   loadingFileName,
   limitedInstall = false,
+  disableOrgLink = false,
 }: Props) => {
   const locale = useGetLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories(true)
   const currentWorkspaceId = useSelector(s => s.currentWorkspace.id)
-  const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [], from } = payload
+  const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [], from, install_count } = payload
   const { theme } = useTheme()
   const iconSrc = getPluginCardIconUrl(
     { from, name, org, type },
@@ -93,7 +95,8 @@ const Card = ({
             <OrgInfo
               className="mt-0.5"
               orgName={org}
-              packageName={name}
+              downloadCount={install_count}
+              linkToOrg={!disableOrgLink}
             />
           </div>
         </div>

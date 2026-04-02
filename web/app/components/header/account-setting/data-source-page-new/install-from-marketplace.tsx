@@ -64,8 +64,8 @@ const InstallFromMarketplace = ({
       {
         !isAllPluginsLoading && !collapse && (
           <List
-            marketplaceCollections={[]}
-            marketplaceCollectionPluginsMap={{}}
+            pluginCollections={[]}
+            pluginCollectionPluginsMap={{}}
             plugins={allPlugins}
             showInstallButton
             cardContainerClassName="grid grid-cols-2 gap-2"
