@@ -876,7 +876,8 @@ class TestDatasetTagsApiDelete:
         user_obj = Mock(spec=Account)
         user_obj.has_edit_permission = True
         mock_current_user.has_edit_permission = True
-        mock_current_user._get_current_object.return_value = user_obj
+        # Assign as plain lambda to avoid AsyncMock returning a coroutine
+        mock_current_user._get_current_object = lambda: user_obj
 
         mock_tag_svc.delete_tag.return_value = None
         mock_service_api_ns.payload = {"tag_id": "tag-1"}
@@ -899,7 +900,8 @@ class TestDatasetTagsApiDelete:
         user_obj = Mock(spec=Account)
         user_obj.has_edit_permission = False
         mock_current_user.has_edit_permission = False
-        mock_current_user._get_current_object.return_value = user_obj
+        # Assign as plain lambda to avoid AsyncMock returning a coroutine
+        mock_current_user._get_current_object = lambda: user_obj
 
         with app.test_request_context(
             "/datasets/tags",
