@@ -30,6 +30,10 @@ from core.workflow.node_factory import (
     is_start_node_type,
     resolve_workflow_node_class,
 )
+from core.workflow.runtime_state import (
+    bind_graph_runtime_state_to_graph,
+    create_graph_runtime_state,
+)
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -44,6 +48,10 @@ from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+def _build_free_node_workflow_id(node_id: str) -> str:
+    return f"free-node:{node_id}"
 
 
 class _WorkflowChildEngineBuilder:
@@ -77,9 +85,10 @@ class _WorkflowChildEngineBuilder:
         variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
         """Build a child engine with a fresh runtime state and only child-safe layers."""
-        child_graph_runtime_state = GraphRuntimeState(
+        child_graph_runtime_state = create_graph_runtime_state(
             variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
             start_at=time.perf_counter(),
+            workflow_id=workflow_id,
             execution_context=parent_graph_runtime_state.execution_context,
         )
         node_factory = DifyNodeFactory(
@@ -96,6 +105,11 @@ class _WorkflowChildEngineBuilder:
             graph_config=graph_config,
             node_factory=node_factory,
             root_node_id=root_node_id,
+        )
+        bind_graph_runtime_state_to_graph(
+            child_graph_runtime_state,
+            child_graph,
+            workflow_id=workflow_id,
         )
 
         command_channel = InMemoryChannel()
@@ -177,6 +191,11 @@ class WorkflowEntry:
         self.command_channel = command_channel
         execution_context = capture_current_context()
         graph_runtime_state.execution_context = execution_context
+        bind_graph_runtime_state_to_graph(
+            graph_runtime_state,
+            graph,
+            workflow_id=workflow_id,
+        )
         self._child_engine_builder = _WorkflowChildEngineBuilder()
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
@@ -270,9 +289,10 @@ class WorkflowEntry:
             run_context=run_context,
             call_depth=0,
         )
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = create_graph_runtime_state(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
+            workflow_id=workflow.id,
             execution_context=capture_current_context(),
         )
 
@@ -410,6 +430,7 @@ class WorkflowEntry:
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version="1")
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
+        workflow_id = _build_free_node_workflow_id(node_id)
 
         # init variable pool
         variable_pool = VariablePool()
@@ -424,14 +445,15 @@ class WorkflowEntry:
             invoke_from=InvokeFrom.DEBUGGER,
         )
         graph_init_context = DifyGraphInitContext(
-            workflow_id="",
+            workflow_id=workflow_id,
             graph_config=graph_dict,
             run_context=run_context,
             call_depth=0,
         )
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = create_graph_runtime_state(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
+            workflow_id=workflow_id,
             execution_context=capture_current_context(),
         )
 

@@ -30,6 +30,11 @@ from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.runtime_state import (
+    bind_graph_runtime_state_to_graph,
+    create_graph_runtime_state,
+    snapshot_graph_runtime_state,
+)
 from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -168,12 +173,21 @@ def _build_runtime_state(run_id: str) -> GraphRuntimeState:
         conversation_variables=[],
     )
     variable_pool.add(("sys", "workflow_run_id"), run_id)
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return create_graph_runtime_state(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
+        workflow_id="workflow",
+    )
 
 
 def _run_with_optional_pause(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> list[GraphEngineEvent]:
     command_channel = InMemoryChannel()
     graph = _build_graph(runtime_state, pause_on=pause_on)
+    bind_graph_runtime_state_to_graph(
+        runtime_state,
+        graph,
+        workflow_id="workflow",
+    )
     engine = GraphEngine(
         workflow_id="workflow",
         graph=graph,
@@ -204,7 +218,10 @@ def test_workflow_app_pause_resume_matches_baseline(mocker):
     paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
     assert isinstance(paused_events[-1], GraphRunPausedEvent)
     paused_nodes = _node_successes(paused_events)
-    snapshot = paused_state.dumps()
+    snapshot = snapshot_graph_runtime_state(
+        paused_state,
+        workflow_id="workflow",
+    )
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
@@ -244,7 +261,10 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker):
     paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
     assert isinstance(paused_events[-1], GraphRunPausedEvent)
     paused_nodes = _node_successes(paused_events)
-    snapshot = paused_state.dumps()
+    snapshot = snapshot_graph_runtime_state(
+        paused_state,
+        workflow_id="workflow",
+    )
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
@@ -281,7 +301,12 @@ def test_resume_emits_resumption_start_reason(mocker) -> None:
     initial_start = next(event for event in paused_events if isinstance(event, GraphRunStartedEvent))
     assert initial_start.reason == WorkflowStartReason.INITIAL
 
-    resumed_state = GraphRuntimeState.from_snapshot(paused_state.dumps())
+    resumed_state = GraphRuntimeState.from_snapshot(
+        snapshot_graph_runtime_state(
+            paused_state,
+            workflow_id="workflow",
+        )
+    )
     resumed_events = _run_with_optional_pause(resumed_state, pause_on=None)
     resume_start = next(event for event in resumed_events if isinstance(event, GraphRunStartedEvent))
     assert resume_start.reason == WorkflowStartReason.RESUMPTION

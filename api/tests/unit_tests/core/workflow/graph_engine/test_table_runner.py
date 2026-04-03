@@ -42,6 +42,7 @@ from graphon.variables import (
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.runtime_state import bind_graph_runtime_state_to_graph, create_graph_runtime_state
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 
@@ -65,9 +66,10 @@ class _TableTestChildEngineBuilder:
         root_node_id: str,
         variable_pool: VariablePool | None = None,
     ) -> GraphEngine:
-        child_graph_runtime_state = GraphRuntimeState(
+        child_graph_runtime_state = create_graph_runtime_state(
             variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
             start_at=time.perf_counter(),
+            workflow_id=workflow_id,
             execution_context=parent_graph_runtime_state.execution_context,
         )
         if self._use_mock_factory:
@@ -86,6 +88,11 @@ class _TableTestChildEngineBuilder:
         child_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
         if not child_graph:
             raise ValueError("child graph not found")
+        bind_graph_runtime_state_to_graph(
+            child_graph_runtime_state,
+            child_graph,
+            workflow_id=workflow_id,
+        )
 
         child_engine = GraphEngine(
             workflow_id=workflow_id,
@@ -261,7 +268,11 @@ class WorkflowRunner:
         )
         add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=root_node_inputs)
 
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        graph_runtime_state = create_graph_runtime_state(
+            variable_pool=variable_pool,
+            start_at=time.perf_counter(),
+            workflow_id=graph_init_params.workflow_id,
+        )
 
         if use_mock_factory:
             node_factory = MockNodeFactory(
@@ -274,6 +285,11 @@ class WorkflowRunner:
             graph_config=graph_config,
             node_factory=node_factory,
             root_node_id=root_node_id,
+        )
+        bind_graph_runtime_state_to_graph(
+            graph_runtime_state,
+            graph,
+            workflow_id=graph_init_params.workflow_id,
         )
 
         return graph, graph_runtime_state
@@ -366,6 +382,11 @@ class TableTestRunner:
 
         try:
             graph, graph_runtime_state = self._create_graph_runtime_state(test_case)
+            bind_graph_runtime_state_to_graph(
+                graph_runtime_state,
+                graph,
+                workflow_id="test_workflow",
+            )
 
             # Create and run the engine with configured worker settings
             engine = GraphEngine(

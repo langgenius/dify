@@ -22,6 +22,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -157,7 +158,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow.graph_dict
             )
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = create_graph_runtime_state(
+                variable_pool=variable_pool,
+                start_at=time.perf_counter(),
+                workflow_id=workflow.id,
+            )
 
             # init graph
             graph = self._init_rag_pipeline_graph(

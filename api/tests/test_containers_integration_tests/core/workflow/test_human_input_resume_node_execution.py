@@ -26,6 +26,11 @@ from core.repositories.human_input_repository import HumanInputFormEntity, Human
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.runtime_state import (
+    bind_graph_runtime_state_to_graph,
+    create_graph_runtime_state,
+    snapshot_graph_runtime_state,
+)
 from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -76,7 +81,11 @@ def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: s
         user_inputs={},
         conversation_variables=[],
     )
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return create_graph_runtime_state(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
+        workflow_id=workflow_id,
+    )
 
 
 def _build_graph(
@@ -285,6 +294,11 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
 
     def _run_graph(self, graph: Graph, runtime_state: GraphRuntimeState, execution_id: str) -> None:
+        bind_graph_runtime_state_to_graph(
+            runtime_state,
+            graph,
+            workflow_id=self.workflow.id,
+        )
         engine = GraphEngine(
             workflow_id=self.workflow.id,
             graph=graph,
@@ -314,7 +328,10 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         self._run_graph(paused_graph, runtime_state, execution_id)
 
-        snapshot = runtime_state.dumps()
+        snapshot = snapshot_graph_runtime_state(
+            runtime_state,
+            workflow_id=self.workflow.id,
+        )
         resumed_state = GraphRuntimeState.from_snapshot(snapshot)
         resume_repo = _mock_form_repository_with_submission(action_id="continue")
         resumed_graph = _build_graph(

@@ -5,6 +5,8 @@ from graphon.graph_events import (
     NodeRunStreamChunkEvent,
 )
 
+from core.workflow.runtime_state import bind_graph_runtime_state_to_graph
+
 from .test_table_runner import TableTestRunner
 
 
@@ -19,6 +21,11 @@ def test_tool_in_chatflow():
         fixture_data=fixture_data,
         query="1",
         use_mock_factory=True,
+    )
+    bind_graph_runtime_state_to_graph(
+        graph_runtime_state,
+        graph,
+        workflow_id="test_workflow",
     )
 
     # Create and run the engine

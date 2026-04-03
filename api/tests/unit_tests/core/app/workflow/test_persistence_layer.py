@@ -27,10 +27,11 @@ from graphon.graph_events import (
     NodeRunSucceededEvent,
 )
 from graphon.node_events import NodeRunResult
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 
 
@@ -60,7 +61,11 @@ def _make_layer(
         workflow_execution_id="run-id",
         conversation_id="conv-id",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(system_variables=system_variables), start_at=0.0)
+    runtime_state = create_graph_runtime_state(
+        variable_pool=VariablePool(system_variables=system_variables),
+        start_at=0.0,
+        workflow_id="workflow-id",
+    )
     read_only_state = ReadOnlyGraphRuntimeStateWrapper(runtime_state)
 
     application_generate_entity = WorkflowAppGenerateEntity.model_construct(

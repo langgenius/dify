@@ -72,6 +72,7 @@ from core.workflow.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -187,6 +188,9 @@ class WorkflowBasedAppRunner:
         Raises:
             ValueError: If neither single_iteration_run nor single_loop_run is specified
         """
+        if single_iteration_run is None and single_loop_run is None:
+            raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
+
         # Create initial runtime state with variable pool containing environment variables
         variable_pool = VariablePool()
         add_variables_to_pool(
@@ -196,10 +200,14 @@ class WorkflowBasedAppRunner:
                 environment_variables=workflow.environment_variables,
             ),
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+        graph_runtime_state = create_graph_runtime_state(
+            variable_pool=variable_pool,
+            start_at=time.time(),
+            workflow_id=workflow.id,
+        )
 
         # Determine which type of single node execution and get graph/variable_pool
-        if single_iteration_run:
+        if single_iteration_run is not None:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
                 workflow=workflow,
                 node_id=single_iteration_run.node_id,
@@ -209,7 +217,8 @@ class WorkflowBasedAppRunner:
                 node_type_label="iteration",
                 user_id=user_id,
             )
-        elif single_loop_run:
+        else:
+            assert single_loop_run is not None
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
                 workflow=workflow,
                 node_id=single_loop_run.node_id,
@@ -219,9 +228,6 @@ class WorkflowBasedAppRunner:
                 node_type_label="loop",
                 user_id=user_id,
             )
-        else:
-            raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
-
         # Return the graph, variable_pool, and the same graph_runtime_state used during graph creation
         # This ensures all nodes in the graph reference the same GraphRuntimeState instance
         return graph, variable_pool, graph_runtime_state

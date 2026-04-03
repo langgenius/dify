@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.human_input.entities import HumanInputNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import VariablePool
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -19,6 +19,7 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
+from core.workflow.runtime_state import create_graph_runtime_state, snapshot_graph_runtime_state
 from extensions.ext_storage import storage
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -136,7 +137,11 @@ def _create_workflow_pause_state(
     )
     db_session_with_containers.add(workflow_run)
 
-    runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+    runtime_state = create_graph_runtime_state(
+        variable_pool=variable_pool,
+        start_at=0.0,
+        workflow_id=workflow_id,
+    )
     resumption_context = WorkflowResumptionContext(
         generate_entity={
             "type": AppMode.WORKFLOW,
@@ -156,7 +161,10 @@ def _create_workflow_pause_state(
                 workflow_execution_id=workflow_run_id,
             ),
         },
-        serialized_graph_runtime_state=runtime_state.dumps(),
+        serialized_graph_runtime_state=snapshot_graph_runtime_state(
+            runtime_state,
+            workflow_id=workflow_id,
+        ),
     )
 
     state_object_key = f"workflow_pause_states/{workflow_run_id}.json"

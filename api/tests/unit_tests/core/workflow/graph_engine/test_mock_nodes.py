@@ -622,7 +622,8 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         from graphon.graph import Graph
         from graphon.graph_engine import GraphEngine, GraphEngineConfig
         from graphon.graph_engine.command_channels import InMemoryChannel
-        from graphon.runtime import GraphRuntimeState
+
+        from core.workflow.runtime_state import bind_graph_runtime_state_to_graph, create_graph_runtime_state
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
@@ -643,9 +644,10 @@ class MockIterationNode(MockNodeMixin, IterationNode):
         variable_pool_copy.add([self._node_id, "item"], item)
 
         # Create a new GraphRuntimeState for this iteration
-        graph_runtime_state_copy = GraphRuntimeState(
+        graph_runtime_state_copy = create_graph_runtime_state(
             variable_pool=variable_pool_copy,
             start_at=self.graph_runtime_state.start_at,
+            workflow_id=self.workflow_id,
             total_tokens=0,
             node_run_steps=0,
         )
@@ -666,6 +668,11 @@ class MockIterationNode(MockNodeMixin, IterationNode):
             from graphon.nodes.iteration.exc import IterationGraphNotFoundError
 
             raise IterationGraphNotFoundError("iteration graph not found")
+        bind_graph_runtime_state_to_graph(
+            graph_runtime_state_copy,
+            iteration_graph,
+            workflow_id=self.workflow_id,
+        )
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(
@@ -694,7 +701,8 @@ class MockLoopNode(MockNodeMixin, LoopNode):
         from graphon.graph import Graph
         from graphon.graph_engine import GraphEngine, GraphEngineConfig
         from graphon.graph_engine.command_channels import InMemoryChannel
-        from graphon.runtime import GraphRuntimeState
+
+        from core.workflow.runtime_state import bind_graph_runtime_state_to_graph, create_graph_runtime_state
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
@@ -708,9 +716,10 @@ class MockLoopNode(MockNodeMixin, LoopNode):
         )
 
         # Create a new GraphRuntimeState for this iteration
-        graph_runtime_state_copy = GraphRuntimeState(
+        graph_runtime_state_copy = create_graph_runtime_state(
             variable_pool=self.graph_runtime_state.variable_pool,
             start_at=start_at.timestamp(),
+            workflow_id=self.workflow_id,
         )
 
         # Create a MockNodeFactory with the same mock_config
@@ -725,6 +734,11 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 
         if not loop_graph:
             raise ValueError("loop graph not found")
+        bind_graph_runtime_state_to_graph(
+            graph_runtime_state_copy,
+            loop_graph,
+            workflow_id=self.workflow_id,
+        )
 
         # Create a new GraphEngine for this iteration
         graph_engine = GraphEngine(

@@ -16,6 +16,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -118,7 +119,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             root_node_id = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
 
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = create_graph_runtime_state(
+                variable_pool=variable_pool,
+                start_at=time.perf_counter(),
+                workflow_id=self._workflow.id,
+            )
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,

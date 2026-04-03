@@ -25,7 +25,7 @@ from graphon.nodes.human_input.entities import HumanInputNodeData, validate_huma
 from graphon.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import VariablePool
 from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
@@ -55,6 +55,7 @@ from core.workflow.node_factory import (
     is_start_node_type,
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -1151,9 +1152,10 @@ class WorkflowService:
             call_depth=0,
         )
         graph_init_params = graph_init_context.to_graph_init_params()
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = create_graph_runtime_state(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
+            workflow_id=workflow.id,
         )
         node = HumanInputNode(
             id=node_config["id"],

@@ -30,6 +30,11 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepository,
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.runtime_state import (
+    bind_graph_runtime_state_to_graph,
+    create_graph_runtime_state,
+    snapshot_graph_runtime_state,
+)
 from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -46,7 +51,10 @@ class InMemoryPauseStore:
         self._snapshot: str | None = None
 
     def save(self, runtime_state: GraphRuntimeState) -> None:
-        self._snapshot = runtime_state.dumps()
+        self._snapshot = snapshot_graph_runtime_state(
+            runtime_state,
+            workflow_id="workflow",
+        )
 
     def load(self) -> GraphRuntimeState:
         assert self._snapshot is not None
@@ -122,7 +130,11 @@ def _build_runtime_state() -> GraphRuntimeState:
         user_inputs={},
         conversation_variables=[],
     )
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return create_graph_runtime_state(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
+        workflow_id="workflow",
+    )
 
 
 def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepository) -> Graph:
@@ -200,6 +212,11 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
 
 
 def _run_graph(graph: Graph, runtime_state: GraphRuntimeState) -> list[object]:
+    bind_graph_runtime_state_to_graph(
+        runtime_state,
+        graph,
+        workflow_id="workflow",
+    )
     engine = GraphEngine(
         workflow_id="workflow",
         graph=graph,

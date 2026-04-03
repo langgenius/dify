@@ -28,7 +28,7 @@ from graphon.graph_engine.entities.commands import GraphEngineCommand
 from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from graphon.graph_events import GraphRunPausedEvent
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,7 @@ from core.app.layers.pause_state_persist_layer import (
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
 )
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -203,11 +204,13 @@ class TestPauseStatePersistenceLayerTestContainers:
         node_run_steps: int = 0,
         variables: dict[tuple[str, str], object] | None = None,
         workflow_run_id: str | None = None,
+        workflow_id: str | None = None,
     ) -> ReadOnlyGraphRuntimeState:
         """Create a real GraphRuntimeState for testing."""
         start_at = time()
 
         execution_id = workflow_run_id or getattr(self, "test_workflow_run_id", None) or str(uuid.uuid4())
+        resolved_workflow_id = workflow_id or getattr(self, "test_workflow_id", None) or str(uuid.uuid4())
 
         # Create variable pool
         variable_pool = VariablePool(system_variables=build_system_variables(workflow_execution_id=execution_id))
@@ -219,9 +222,10 @@ class TestPauseStatePersistenceLayerTestContainers:
         llm_usage = LLMUsage.empty_usage()
 
         # Create graph runtime state
-        graph_runtime_state = GraphRuntimeState(
+        graph_runtime_state = create_graph_runtime_state(
             variable_pool=variable_pool,
             start_at=start_at,
+            workflow_id=resolved_workflow_id,
             total_tokens=total_tokens,
             llm_usage=llm_usage,
             outputs=outputs or {},

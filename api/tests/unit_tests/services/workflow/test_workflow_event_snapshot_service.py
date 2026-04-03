@@ -9,11 +9,12 @@ from threading import Event
 import pytest
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import VariablePool
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.workflow.runtime_state import create_graph_runtime_state, snapshot_graph_runtime_state
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun
@@ -116,13 +117,20 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = create_graph_runtime_state(
+        variable_pool=VariablePool(),
+        start_at=0.0,
+        workflow_id="workflow-1",
+    )
     runtime_state.register_paused_node("node-1")
     runtime_state.outputs = {"result": "value"}
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
-        serialized_graph_runtime_state=runtime_state.dumps(),
+        serialized_graph_runtime_state=snapshot_graph_runtime_state(
+            runtime_state,
+            workflow_id="workflow-1",
+        ),
     )
 
 

@@ -33,6 +33,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
+from core.workflow.runtime_state import create_graph_runtime_state
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -188,7 +189,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=new_inputs)
 
             # init graph
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+            graph_runtime_state = create_graph_runtime_state(
+                variable_pool=variable_pool,
+                start_at=time.time(),
+                workflow_id=self._workflow.id,
+            )
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
