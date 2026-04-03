@@ -88,27 +88,18 @@ def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) 
 
 from .app_model_config_types import (
     AgentModeConfig,
-    AgentToolConfig,
     AnnotationReplyConfig,
-    AnnotationReplyDisabledConfig,
-    AnnotationReplyEnabledConfig,
     AppModelConfigDict,
     ChatPromptConfig,
-    ChatPromptMessage,
     CompletionPromptConfig,
-    CompletionPromptText,
-    ConversationHistoriesRole,
     DatasetConfigs,
     DeletedToolInfo,
-    EmbeddingModelInfo,
     EnabledConfig,
     ExternalDataToolConfig,
     FileUploadConfig,
-    ImageUploadConfig,
     ModelConfig,
     SensitiveWordAvoidanceConfig,
     UserInputFormItem,
-    UserInputFormItemConfig,
 )
 
 
