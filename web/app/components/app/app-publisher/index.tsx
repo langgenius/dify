@@ -21,6 +21,11 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import {
+  Tooltip as UITooltip,
+  TooltipContent as UITooltipContent,
+  TooltipTrigger as UITooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { appDefaultIconBackground } from '@/config'
@@ -31,7 +36,8 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
-import { AppModeEnum } from '@/types/app'
+import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
+import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
@@ -108,6 +114,21 @@ export type AppPublisherProps = {
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
+const WORKFLOW_TYPE_SWITCH_CONFIG = {
+  [AppTypeEnum.WORKFLOW]: {
+    targetType: AppTypeEnum.EVALUATION,
+    publishLabelKey: 'common.publishAsEvaluationWorkflow',
+    switchLabelKey: 'common.switchToEvaluationWorkflow',
+    tipKey: 'common.switchToEvaluationWorkflowTip',
+  },
+  [AppTypeEnum.EVALUATION]: {
+    targetType: AppTypeEnum.WORKFLOW,
+    publishLabelKey: 'common.publishAsStandardWorkflow',
+    switchLabelKey: 'common.switchToStandardWorkflow',
+    tipKey: 'common.switchToStandardWorkflowTip',
+  },
+} as const
+
 const AppPublisher = ({
   disabled = false,
   publishDisabled = false,
@@ -142,10 +163,13 @@ const AppPublisher = ({
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
+  const { mutateAsync: convertWorkflowType, isPending: isConvertingWorkflowType } = useConvertWorkflowTypeMutation()
 
   const appMode = (appDetail?.mode !== AppModeEnum.COMPLETION && appDetail?.mode !== AppModeEnum.WORKFLOW) ? AppModeEnum.CHAT : appDetail.mode
   const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
+  const workflowTypeSwitchConfig = appDetail?.type ? WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type as keyof typeof WORKFLOW_TYPE_SWITCH_CONFIG] : undefined
+  const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
@@ -235,6 +259,35 @@ const AppPublisher = ({
       setShowAppAccessControl(false)
     }
   }, [appDetail, setAppDetail])
+
+  const handleWorkflowTypeSwitch = useCallback(async () => {
+    if (!appDetail?.id || !workflowTypeSwitchConfig)
+      return
+
+    try {
+      await convertWorkflowType({
+        params: {
+          appId: appDetail.id,
+        },
+        query: {
+          target_type: workflowTypeSwitchConfig.targetType,
+        },
+      })
+
+      if (!publishedAt)
+        await handlePublish()
+
+      const latestAppDetail = await fetchAppDetailDirect({
+        url: '/apps',
+        id: appDetail.id,
+      })
+      setAppDetail(latestAppDetail)
+
+      if (publishedAt)
+        setOpen(false)
+    }
+    catch { }
+  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -336,6 +389,45 @@ const AppPublisher = ({
                               )
                         }
                       </Button>
+                      {workflowTypeSwitchConfig && (
+                        <button
+                          type="button"
+                          className="flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary system-sm-medium hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={handleWorkflowTypeSwitch}
+                          disabled={publishDisabled || published || isConvertingWorkflowType}
+                        >
+                          <span className="px-0.5">
+                            {t(
+                              publishedAt
+                                ? workflowTypeSwitchConfig.switchLabelKey
+                                : workflowTypeSwitchConfig.publishLabelKey,
+                              { ns: 'workflow' },
+                            )}
+                          </span>
+                          <UITooltip>
+                            <UITooltipTrigger
+                              render={(
+                                <span
+                                  aria-label={t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
+                                  className="flex h-4 w-4 items-center justify-center text-text-quaternary hover:text-text-tertiary"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                  }}
+                                >
+                                  <span className="i-ri-question-line h-3.5 w-3.5" />
+                                </span>
+                              )}
+                            />
+                            <UITooltipContent
+                              placement="top"
+                              popupClassName="w-[180px]"
+                            >
+                              {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
+                            </UITooltipContent>
+                          </UITooltip>
+                        </button>
+                      )}
                       {showStartNodeLimitHint && (
                         <div className="mt-3 flex flex-col items-stretch">
                           <p
@@ -357,9 +449,9 @@ const AppPublisher = ({
                     </>
                   )}
             </div>
-            {(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))
+            {!isEvaluationWorkflowType && (systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))
               ? <div className="py-2"><Loading /></div>
-              : (
+              : !isEvaluationWorkflowType && (
                   <>
                     <Divider className="my-0" />
                     {systemFeatures.webapp_auth.enabled && (
