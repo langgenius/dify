@@ -122,12 +122,14 @@ class TagService:
             raise NotFound("Tag not found")
         if payload.name != tag.name:
             existing = db.session.scalar(
-                select(Tag).where(
+                select(Tag)
+                .where(
                     Tag.name == payload.name,
                     Tag.tenant_id == current_user.current_tenant_id,
                     Tag.type == tag.type,
                     Tag.id != tag_id,
-                ).limit(1)
+                )
+                .limit(1)
             )
             if existing:
                 raise ValueError("Tag name already exists")
