@@ -1,5 +1,5 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { appDeleteContract } from './console/apps'
+import { appDeleteContract, appWorkflowTypeConvertContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   availableEvaluationMetricsContract,
@@ -98,6 +98,7 @@ export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
   apps: {
     deleteApp: appDeleteContract,
+    convertWorkflowType: appWorkflowTypeConvertContract,
   },
   explore: {
     apps: exploreAppsContract,

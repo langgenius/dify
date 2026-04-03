@@ -47,6 +47,14 @@ export enum AppModeEnum {
 }
 export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
 
+export enum AppTypeEnum {
+  WORKFLOW = 'workflow',
+  CHAT = 'chat',
+  RAG_PIPELINE = 'rag-pipeline',
+  SNIPPET = 'snippet',
+  EVALUATION = 'evaluation',
+}
+
 /**
  * Variable type
  */
@@ -325,6 +333,8 @@ export type App = {
 
   /** Mode */
   mode: AppModeEnum
+  /** Type */
+  type?: AppTypeEnum
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */

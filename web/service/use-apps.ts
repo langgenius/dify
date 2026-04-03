@@ -11,6 +11,7 @@ import type {
   WorkflowDailyConversationsResponse,
 } from '@/models/app'
 import type { App } from '@/types/app'
+import type { WorkflowTypeConversionTarget } from '@/types/workflow'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -147,6 +148,30 @@ export const useDeleteAppMutation = () => {
     },
   })
 }
+
+export const useConvertWorkflowTypeMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...consoleQuery.apps.convertWorkflowType.mutationOptions({
+      onSuccess: async (_, variables) => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: [NAME_SPACE, 'detail', variables.params.appId],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: [NAME_SPACE, 'list'],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: useAppFullListKey,
+          }),
+        ])
+      },
+    }),
+  })
+}
+
+export type { WorkflowTypeConversionTarget }
 
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
