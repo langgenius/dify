@@ -100,6 +100,7 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   query_variable_selector: ValueSelector
   query_attachment_selector: ValueSelector
   dataset_ids: string[]
+  dataset_id_variable_selector?: ValueSelector
   retrieval_mode: RETRIEVE_TYPE
   multiple_retrieval_config?: MultipleRetrievalConfig
   single_retrieval_config?: SingleRetrievalConfig

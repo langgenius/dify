@@ -28,14 +28,16 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
   checkValid(payload: KnowledgeRetrievalNodeType, t: any) {
     let errorMessages = ''
 
-    if (!errorMessages && (!payload.dataset_ids || payload.dataset_ids.length === 0))
+    const hasStaticDatasets = payload.dataset_ids && payload.dataset_ids.length > 0
+    const hasDynamicDatasets = payload.dataset_id_variable_selector && payload.dataset_id_variable_selector.length > 0
+    if (!errorMessages && !hasStaticDatasets && !hasDynamicDatasets)
       errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.knowledgeRetrieval.knowledge`, { ns: 'workflow' }) })
 
     if (!errorMessages && payload.retrieval_mode === RETRIEVE_TYPE.oneWay && !payload.single_retrieval_config?.model?.provider)
       errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t('modelProvider.systemReasoningModel.key', { ns: 'common' }) })
 
     const { _datasets, multiple_retrieval_config, retrieval_mode } = payload
-    if (retrieval_mode === RETRIEVE_TYPE.multiWay) {
+    if (retrieval_mode === RETRIEVE_TYPE.multiWay && hasStaticDatasets) {
       const checked = checkoutRerankModelConfiguredInRetrievalSettings(_datasets || [], multiple_retrieval_config)
 
       if (!errorMessages && !checked)

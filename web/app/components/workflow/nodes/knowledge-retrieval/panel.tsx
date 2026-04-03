@@ -30,7 +30,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     inputs,
     handleQueryVarChange,
     handleQueryAttachmentChange,
+    handleDatasetIdVarChange,
     filterStringVar,
+    filterStringOrArrayStringVar,
     filterFileVar,
     handleModelChanged,
     handleCompletionParamsChange,
@@ -90,9 +92,19 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           </Field>
         )}
 
+        <Field title={t(`${i18nPrefix}.datasetIdVariable`, { ns: 'workflow' })} tooltip={t(`${i18nPrefix}.datasetIdVariableTip`, { ns: 'workflow' }) as string}>
+          <VarReferencePicker
+            nodeId={id}
+            readonly={readOnly}
+            isShowNodeName
+            value={inputs.dataset_id_variable_selector || []}
+            onChange={handleDatasetIdVarChange}
+            filterVar={filterStringOrArrayStringVar}
+          />
+        </Field>
+
         <Field
           title={t(`${i18nPrefix}.knowledge`, { ns: 'workflow' })}
-          required
           operations={(
             <div className="flex items-center space-x-1">
               <RetrievalConfig

@@ -110,13 +110,14 @@ class MetadataFilteringCondition(BaseModel):
 
 class KnowledgeRetrievalNodeData(BaseNodeData):
     """
-    Knowledge retrieval Node Data.
+    Knowledge retrieval Node Data. Supports both static and dynamic dataset selection.
     """
 
     type: NodeType = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
     query_variable_selector: list[str] | None | str = None
     query_attachment_selector: list[str] | None | str = None
-    dataset_ids: list[str]
+    dataset_ids: list[str] = Field(default_factory=list)
+    dataset_id_variable_selector: list[str] | None = None
     retrieval_mode: Literal["single", "multiple"]
     multiple_retrieval_config: MultipleRetrievalConfig | None = None
     single_retrieval_config: SingleRetrievalConfig | None = None

@@ -22,6 +22,7 @@ from graphon.nodes.base import LLMUsageTrackingMixin
 from graphon.nodes.base.node import Node
 from graphon.variables import (
     ArrayFileSegment,
+    ArrayStringSegment,
     FileSegment,
     StringSegment,
 )
@@ -160,11 +161,46 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 llm_usage=usage,
             )
 
+    def _resolve_dataset_ids(self, node_data: KnowledgeRetrievalNodeData) -> list[str]:
+        """Merge static ``dataset_ids`` with any dynamically-resolved IDs."""
+        static_ids = list(node_data.dataset_ids)
+
+        if not node_data.dataset_id_variable_selector:
+            return static_ids
+
+        variable = self.graph_runtime_state.variable_pool.get(node_data.dataset_id_variable_selector)
+        dynamic_ids: list[str] = []
+        if variable is None:
+            logger.warning(
+                "dataset_id_variable_selector %s could not be resolved; "
+                "falling back to static dataset_ids only",
+                node_data.dataset_id_variable_selector,
+            )
+        elif isinstance(variable, ArrayStringSegment):
+            dynamic_ids = [v for v in variable.value if isinstance(v, str) and v]
+        elif isinstance(variable, StringSegment):
+            if variable.value:
+                dynamic_ids = [variable.value]
+        else:
+            logger.warning(
+                "dataset_id_variable_selector resolved to unsupported type %s; "
+                "expected string or array[string], falling back to static dataset_ids only",
+                type(variable).__name__,
+            )
+
+        seen: set[str] = set()
+        merged: list[str] = []
+        for did in static_ids + dynamic_ids:
+            if did not in seen:
+                seen.add(did)
+                merged.append(did)
+        return merged
+
     def _fetch_dataset_retriever(
         self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-        dataset_ids = node_data.dataset_ids
+        dataset_ids = self._resolve_dataset_ids(node_data)
         query = variables.get("query")
         attachments = variables.get("attachments")
         retrieval_resource_list = []
@@ -320,10 +356,11 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         node_id: str,
         node_data: KnowledgeRetrievalNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        # graph_config is not used in this node type
-        variable_mapping = {}
+        variable_mapping: dict[str, Sequence[str]] = {}
         if node_data.query_variable_selector:
             variable_mapping[node_id + ".query"] = node_data.query_variable_selector
         if node_data.query_attachment_selector:
             variable_mapping[node_id + ".queryAttachment"] = node_data.query_attachment_selector
+        if node_data.dataset_id_variable_selector:
+            variable_mapping[node_id + ".datasetIds"] = node_data.dataset_id_variable_selector
         return variable_mapping

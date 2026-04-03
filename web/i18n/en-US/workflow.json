@@ -703,6 +703,8 @@
   "nodes.knowledgeBase.rerankingModelIsInvalid": "Reranking model is invalid",
   "nodes.knowledgeBase.rerankingModelIsRequired": "Reranking model is required",
   "nodes.knowledgeBase.retrievalSettingIsRequired": "Retrieval setting is required",
+  "nodes.knowledgeRetrieval.datasetIdVariable": "Dataset Variable",
+  "nodes.knowledgeRetrieval.datasetIdVariableTip": "Provide dataset IDs dynamically via a variable (string or array[string]). The resolved IDs will be combined with any statically selected knowledge bases below.",
   "nodes.knowledgeRetrieval.knowledge": "Knowledge",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Automatically generate metadata filtering conditions based on Query Variable",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Automatically generate metadata filtering conditions based on user query",
