@@ -3142,9 +3142,6 @@
     "react/set-state-in-effect": {
       "count": 7
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 9
     }

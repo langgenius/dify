@@ -5,6 +5,10 @@ import { Theme } from '@/types/app'
 
 import CodeBlock from '../code-block'
 
+const { mockHighlightCode } = vi.hoisted(() => ({
+  mockHighlightCode: vi.fn(),
+}))
+
 type UseThemeReturn = {
   theme: Theme
 }
@@ -70,6 +74,10 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
+vi.mock('../shiki-highlight', () => ({
+  highlightCode: mockHighlightCode,
+}))
+
 vi.mock('echarts', () => ({
   getInstanceByDom: mockEcharts.getInstanceByDom,
 }))
@@ -130,6 +138,11 @@ describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTheme.mockReturnValue({ theme: Theme.light })
+    mockHighlightCode.mockImplementation(async ({ code, language }) => (
+      <pre className="shiki">
+        <code className={`language-${language}`}>{code}</code>
+      </pre>
+    ))
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
@@ -198,11 +211,13 @@ describe('CodeBlock', () => {
       expect(container.querySelector('code')?.textContent).toBe('plain text')
     })
 
-    it('should render syntax-highlighted output when language is standard', () => {
+    it('should render syntax-highlighted output when language is standard', async () => {
       render(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
 
       expect(screen.getByText('JavaScript')).toBeInTheDocument()
-      expect(document.querySelector('code.language-javascript')?.textContent).toContain('const x = 1;')
+      await waitFor(() => {
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain('const x = 1;')
+      })
     })
 
     it('should format unknown language labels with capitalized fallback when language is not in map', () => {
@@ -242,13 +257,26 @@ describe('CodeBlock', () => {
       expect(screen.queryByText(/Error rendering SVG/i)).not.toBeInTheDocument()
     })
 
-    it('should render syntax-highlighted output when language is standard and app theme is dark', () => {
+    it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {
       mockUseTheme.mockReturnValue({ theme: Theme.dark })
 
       render(<CodeBlock className="language-javascript">const y = 2;</CodeBlock>)
 
       expect(screen.getByText('JavaScript')).toBeInTheDocument()
-      expect(document.querySelector('code.language-javascript')?.textContent).toContain('const y = 2;')
+      await waitFor(() => {
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain('const y = 2;')
+      })
+    })
+
+    it('should fall back to plain code block when shiki highlighting fails', async () => {
+      mockHighlightCode.mockRejectedValueOnce(new Error('highlight failed'))
+
+      render(<CodeBlock className="language-javascript">const z = 3;</CodeBlock>)
+
+      await waitFor(() => {
+        expect(screen.getByText('const z = 3;')).toBeInTheDocument()
+      })
+      expect(document.querySelector('code.language-javascript')).toBeNull()
     })
   })
 
