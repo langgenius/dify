@@ -4,10 +4,9 @@ import uuid
 import pandas as pd
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import delete, or_, select, update
 from typing import TypedDict
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select, update
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
@@ -53,9 +52,7 @@ class AppAnnotationService:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -157,9 +154,7 @@ class AppAnnotationService:
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -199,9 +194,7 @@ class AppAnnotationService:
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -228,9 +221,7 @@ class AppAnnotationService:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -264,9 +255,7 @@ class AppAnnotationService:
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -286,10 +275,8 @@ class AppAnnotationService:
 
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
-        app_annotation_setting = (
-            db.session.scalar(
-                select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-            )
+        app_annotation_setting = db.session.scalar(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 
         if app_annotation_setting:
@@ -308,9 +295,7 @@ class AppAnnotationService:
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -332,10 +317,8 @@ class AppAnnotationService:
 
         db.session.commit()
         # if annotation reply is enabled , delete annotation index
-        app_annotation_setting = (
-            db.session.scalar(
-                select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-            )
+        app_annotation_setting = db.session.scalar(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 
         if app_annotation_setting:
@@ -348,9 +331,7 @@ class AppAnnotationService:
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -371,9 +352,7 @@ class AppAnnotationService:
 
         # Step 2: Bulk delete hit histories in a single query
         db.session.execute(
-            delete(AppAnnotationHitHistory).where(
-                AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
-            )
+            delete(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete))
         )
 
         # Step 3: Trigger async tasks for search index deletion
@@ -409,9 +388,7 @@ class AppAnnotationService:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -533,9 +510,7 @@ class AppAnnotationService:
         _, current_tenant_id = current_account_with_tenant()
         # get app info
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -606,9 +581,7 @@ class AppAnnotationService:
         _, current_tenant_id = current_account_with_tenant()
         # get app info
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -645,9 +618,7 @@ class AppAnnotationService:
         current_user, current_tenant_id = current_account_with_tenant()
         # get app info
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
@@ -693,19 +664,15 @@ class AppAnnotationService:
     def clear_all_annotations(cls, app_id: str):
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
-            select(App)
-            .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
-            .limit(1)
+            select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
             raise NotFound("App not found")
 
         # if annotation reply is enabled, delete annotation index
-        app_annotation_setting = (
-            db.session.scalar(
-                select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
-            )
+        app_annotation_setting = db.session.scalar(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 
         annotations_iter = db.session.scalars(
