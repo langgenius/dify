@@ -1,5 +1,4 @@
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
-import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
 import { useTranslation } from 'react-i18next'
 import { usePageSelectorModel } from '@/app/components/base/notion-page-selector/page-selector/use-page-selector-model'
 import VirtualPageList from '@/app/components/base/notion-page-selector/page-selector/virtual-page-list'
@@ -17,8 +16,6 @@ type PageSelectorProps = {
   currentCredentialId?: string
 }
 
-export type { NotionPageTreeItem, NotionPageTreeMap }
-
 const PageSelector = ({
   checkedIds,
   disabledValue,
@@ -29,7 +26,7 @@ const PageSelector = ({
   canPreview = true,
   onPreview,
   isMultipleChoice = true,
-  currentCredentialId,
+  currentCredentialId: _currentCredentialId,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
   const selectionMode = isMultipleChoice ? 'multiple' : 'single'
@@ -41,7 +38,6 @@ const PageSelector = ({
     handleToggle,
   } = usePageSelectorModel({
     checkedIds,
-    resetKey: currentCredentialId,
     list,
     onPreview,
     onSelect,

@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-export const useVirtualizer = ({
+const mockVirtualizer = ({
   count,
   estimateSize,
 }: {
@@ -32,3 +32,5 @@ export const useVirtualizer = ({
     scrollToIndex: vi.fn(),
   }
 }
+
+export { mockVirtualizer as useVirtualizer }

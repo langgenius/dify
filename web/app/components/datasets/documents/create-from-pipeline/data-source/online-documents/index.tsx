@@ -158,6 +158,7 @@ const OnlineDocuments = ({
           {documentsData?.length
             ? (
                 <PageSelector
+                  key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
                   checkedIds={selectedPagesId}
                   disabledValue={new Set()}
                   searchValue={searchValue}
@@ -167,7 +168,6 @@ const OnlineDocuments = ({
                   canPreview={!isInPipeline}
                   onPreview={handlePreviewPage}
                   isMultipleChoice={supportBatchUpload}
-                  currentCredentialId={currentCredentialId}
                 />
               )
             : (

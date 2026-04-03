@@ -172,6 +172,7 @@ const NotionPageSelector = ({
               )
             : (
                 <PageSelector
+                  key={currentCredential.credentialId || 'default'}
                   value={selectedPagesId}
                   disabledValue={pagesMapAndSelectedPagesId[2]}
                   searchValue={searchValue}

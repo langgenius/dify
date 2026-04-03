@@ -1,6 +1,6 @@
-import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import type { NotionPageSelectionMode } from './types'
-import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import { startTransition, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { buildNotionPageTree, getNextSelectedPageIds, getRootPageIds, getVisiblePageRows } from './utils'
 
 type UsePageSelectorModelProps = {
@@ -11,7 +11,6 @@ type UsePageSelectorModelProps = {
   onSelect: (selectedPagesId: Set<string>) => void
   previewPageId?: string
   onPreview?: (selectedPageId: string) => void
-  resetKey?: string
   selectionMode: NotionPageSelectionMode
 }
 
@@ -23,17 +22,11 @@ export const usePageSelectorModel = ({
   onSelect,
   previewPageId,
   onPreview,
-  resetKey,
   selectionMode,
 }: UsePageSelectorModelProps) => {
   const deferredSearchValue = useDeferredValue(searchValue)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
   const [localPreviewPageId, setLocalPreviewPageId] = useState('')
-  const listSignature = useMemo(() => list.map(item => item.page_id).join('|'), [list])
-
-  useEffect(() => {
-    setExpandedIds(new Set())
-  }, [listSignature, resetKey])
 
   const treeMap = useMemo(() => buildNotionPageTree(list, pagesMap), [list, pagesMap])
   const rootPageIds = useMemo(() => getRootPageIds(list, pagesMap), [list, pagesMap])

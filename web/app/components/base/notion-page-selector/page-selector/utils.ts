@@ -1,5 +1,5 @@
-import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import type { NotionPageRow, NotionPageSelectionMode, NotionPageTreeItem, NotionPageTreeMap } from './types'
+import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
 export const recursivePushInParentDescendants = (
   pagesMap: DataSourceNotionPageMap,
@@ -135,8 +135,9 @@ export const getNextSelectedPageIds = ({
   const descendants = treeMap[pageId]?.descendants ?? new Set<string>()
 
   if (selectionMode === 'single') {
-    if (nextCheckedIds.has(pageId))
+    if (nextCheckedIds.has(pageId)) {
       nextCheckedIds.delete(pageId)
+    }
     else {
       nextCheckedIds.clear()
       nextCheckedIds.add(pageId)

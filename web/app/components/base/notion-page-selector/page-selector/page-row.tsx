@@ -41,7 +41,7 @@ const NotionPageRow = ({
 
   return (
     <div
-      className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover', isPreviewed && 'bg-state-base-hover')}
+      className={cn('group flex cursor-pointer items-center rounded-md pr-[2px] pl-2 hover:bg-state-base-hover', isPreviewed && 'bg-state-base-hover')}
       style={style}
       data-testid={`notion-page-row-${pageId}`}
     >
@@ -84,7 +84,7 @@ const NotionPageRow = ({
         src={row.page.page_icon}
       />
       <div
-        className="grow truncate text-[13px] font-medium leading-4 text-text-secondary"
+        className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}
         data-testid={`notion-page-name-${pageId}`}
       >
@@ -93,8 +93,8 @@ const NotionPageRow = ({
       {showPreview && (
         <div
           className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
-          font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
-          hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
+          leading-4 font-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
+          group-hover:flex hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover"
           onClick={() => onPreview(pageId)}
           data-testid={`notion-page-preview-${pageId}`}
         >

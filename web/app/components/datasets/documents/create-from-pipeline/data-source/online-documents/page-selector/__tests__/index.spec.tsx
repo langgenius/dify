@@ -1,9 +1,9 @@
-import type { NotionPageTreeItem, NotionPageTreeMap } from '../index'
+import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { recursivePushInParentDescendants } from '@/app/components/base/notion-page-selector/page-selector/utils'
 import PageSelector from '../index'
-import { recursivePushInParentDescendants } from '../utils'
 
 vi.mock('@tanstack/react-virtual')
 
@@ -55,7 +55,6 @@ const createDefaultProps = (overrides?: Partial<PageSelectorProps>): PageSelecto
     canPreview: true,
     onPreview: vi.fn(),
     isMultipleChoice: true,
-    currentCredentialId: 'cred-1',
     ...overrides,
   }
 }
