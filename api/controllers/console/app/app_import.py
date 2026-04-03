@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
