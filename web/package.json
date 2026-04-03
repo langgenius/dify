@@ -220,7 +220,6 @@
     "knip": "catalog:",
     "postcss": "catalog:",
     "react-server-dom-webpack": "catalog:",
-    "sass": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",
     "tsx": "catalog:",

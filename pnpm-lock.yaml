@@ -468,9 +468,6 @@ catalogs:
     remark-directive:
       specifier: 4.0.0
       version: 4.0.0
-    sass:
-      specifier: 1.98.0
-      version: 1.98.0
     scheduler:
       specifier: 0.27.0
       version: 0.27.0
@@ -1171,9 +1168,6 @@ importers:
       react-server-dom-webpack:
         specifier: 'catalog:'
         version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
-      sass:
-        specifier: 'catalog:'
-        version: 1.98.0
       storybook:
         specifier: 'catalog:'
         version: 10.3.4(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -12951,6 +12945,7 @@ snapshots:
   chokidar@4.0.3:
     dependencies:
       readdirp: 4.1.2
+    optional: true
 
   chownr@1.1.4:
     optional: true
@@ -14492,7 +14487,8 @@ snapshots:
 
   immer@11.1.4: {}
 
-  immutable@5.1.5: {}
+  immutable@5.1.5:
+    optional: true
 
   import-fresh@3.3.1:
     dependencies:
@@ -16196,7 +16192,8 @@ snapshots:
       util-deprecate: 1.0.2
     optional: true
 
-  readdirp@4.1.2: {}
+  readdirp@4.1.2:
+    optional: true
 
   recast@0.23.11:
     dependencies:
@@ -16499,6 +16496,7 @@ snapshots:
       source-map-js: 1.2.1
     optionalDependencies:
       '@parcel/watcher': 2.5.6
+    optional: true
 
   satori@0.16.0:
     dependencies:

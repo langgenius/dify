@@ -1,5 +1,7 @@
 catalogMode: prefer
 trustPolicy: no-downgrade
+trustPolicyExclude:
+  - chokidar@4.0.3
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:
@@ -228,7 +230,6 @@ catalog:
   reactflow: 11.11.4
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
-  sass: 1.98.0
   scheduler: 0.27.0
   sharp: 0.34.5
   sortablejs: 1.15.7
