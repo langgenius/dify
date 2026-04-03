@@ -79,6 +79,7 @@ export const usePageSelectorModel = ({
 
   return {
     currentPreviewPageId,
+    effectiveSearchValue: deferredSearchValue,
     rows,
     handlePreview,
     handleSelect,

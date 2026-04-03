@@ -3331,11 +3331,6 @@
       "count": 2
     }
   },
-  "app/components/base/notion-page-selector/base.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    }
-  },
   "app/components/base/notion-page-selector/credential-selector/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2

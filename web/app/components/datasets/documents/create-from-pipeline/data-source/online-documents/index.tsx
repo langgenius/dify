@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import { startTransition, useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
@@ -106,13 +106,11 @@ const OnlineDocuments = ({
     if (!currentCredentialId)
       return
     getOnlineDocuments()
-  }, [currentCredentialId])
+  }, [currentCredentialId, getOnlineDocuments])
 
   const handleSearchValueChange = useCallback((value: string) => {
     const { setSearchValue } = dataSourceStore.getState()
-    startTransition(() => {
-      setSearchValue(value)
-    })
+    setSearchValue(value)
   }, [dataSourceStore])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {

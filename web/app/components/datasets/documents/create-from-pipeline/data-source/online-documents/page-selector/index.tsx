@@ -32,6 +32,7 @@ const PageSelector = ({
   const selectionMode = isMultipleChoice ? 'multiple' : 'single'
   const {
     currentPreviewPageId,
+    effectiveSearchValue,
     rows,
     handlePreview,
     handleSelect,
@@ -63,7 +64,7 @@ const PageSelector = ({
       onToggle={handleToggle}
       previewPageId={currentPreviewPageId}
       rows={rows}
-      searchValue={searchValue}
+      searchValue={effectiveSearchValue}
       selectionMode={selectionMode}
       showPreview={canPreview}
     />

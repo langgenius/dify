@@ -29,6 +29,7 @@ const PageSelector = ({
   const { t } = useTranslation()
   const {
     currentPreviewPageId,
+    effectiveSearchValue,
     rows,
     handlePreview,
     handleSelect,
@@ -61,7 +62,7 @@ const PageSelector = ({
       onToggle={handleToggle}
       previewPageId={currentPreviewPageId}
       rows={rows}
-      searchValue={searchValue}
+      searchValue={effectiveSearchValue}
       selectionMode="multiple"
       showPreview={canPreview}
     />
