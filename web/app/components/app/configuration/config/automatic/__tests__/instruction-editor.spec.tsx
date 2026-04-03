@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { GeneratorType } from '../types'
 import InstructionEditor from '../instruction-editor'
+import { GeneratorType } from '../types'
 
 const mockEmit = vi.fn()
 

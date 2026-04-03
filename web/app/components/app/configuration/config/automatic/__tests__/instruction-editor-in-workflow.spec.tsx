@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { VarType } from '@/app/components/workflow/types'
-import { GeneratorType } from '../types'
 import InstructionEditorInWorkflow from '../instruction-editor-in-workflow'
+import { GeneratorType } from '../types'
 
 const mockUseAvailableVarList = vi.fn()
 const mockUseWorkflowVariableType = vi.fn()

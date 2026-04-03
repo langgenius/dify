@@ -1,6 +1,6 @@
 import type { ChatItemInTree } from '../../base/chat/types'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { Annotation, ChatMessage, LogAnnotation } from '@/models/log'
+import type { Annotation, ChatMessage } from '@/models/log'
 import type { FileResponse } from '@/types/workflow'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
