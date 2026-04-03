@@ -1,4 +1,4 @@
-# trustPolicy: no-downgrade
+trustPolicy: no-downgrade
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:
