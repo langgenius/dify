@@ -148,7 +148,6 @@ catalog:
   "@types/qs": 6.15.0
   "@types/react": 19.2.14
   "@types/react-dom": 19.2.3
-  "@types/react-syntax-highlighter": 15.5.13
   "@types/sortablejs": 1.15.9
   "@typescript-eslint/eslint-plugin": 8.58.0
   "@typescript-eslint/parser": 8.58.0
