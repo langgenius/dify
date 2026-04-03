@@ -3,7 +3,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { Collection } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { AnnotationReplyConfig, DatasetConfigs, ModelConfig, PromptVariable } from '@/models/debug'
-import type { ModelConfig as BackendModelConfig, UserInputFormItem } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, UserInputFormItem, VisionSettings } from '@/types/app'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
 import { toast } from '@/app/components/base/ui/toast'
@@ -626,7 +626,7 @@ export const createModelChangeHandler = ({
       text?: string
     }
   }
-  handleSetVisionConfig: (config: Record<string, unknown>, notNoticeFormattingChanged?: boolean) => void
+  handleSetVisionConfig: (config: VisionSettings, notNoticeFormattingChanged?: boolean) => void
   isAdvancedMode: boolean
   migrateToDefaultPrompt: (force?: boolean, modelModeType?: ModelModeType) => Promise<void>
   mode: AppModeEnum
@@ -635,7 +635,7 @@ export const createModelChangeHandler = ({
   setCompletionParams: (value: FormValue) => void
   setModelConfig: (config: ModelConfig) => void
   t: (key: string, options?: Record<string, unknown>) => string
-  visionConfig: Record<string, unknown>
+  visionConfig: VisionSettings
 }) => async ({
   features = [],
   mode: nextModelMode = resolvedModelModeType,

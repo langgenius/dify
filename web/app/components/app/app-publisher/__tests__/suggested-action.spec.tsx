@@ -1,3 +1,4 @@
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SuggestedAction from '../suggested-action'
 
@@ -31,7 +32,7 @@ describe('SuggestedAction', () => {
   })
 
   it('should forward click events when enabled', () => {
-    const handleClick = vi.fn((event: MouseEvent) => {
+    const handleClick = vi.fn((event: ReactMouseEvent<HTMLAnchorElement>) => {
       event.preventDefault()
     })
 

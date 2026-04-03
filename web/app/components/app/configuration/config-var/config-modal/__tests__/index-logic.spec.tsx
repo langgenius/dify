@@ -46,7 +46,7 @@ vi.mock('../form-fields', () => ({
         <button data-testid="valid-json-change" onClick={() => props.onJSONSchemaChange('{\n  \"foo\": \"bar\"\n}')}>valid-json-change</button>
         <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>empty-json-change</button>
         <button data-testid="invalid-json-change" onClick={() => props.onJSONSchemaChange('{invalid-json}')}>invalid-json-change</button>
-        <button data-testid="type-change" onClick={() => props.onTypeChange({ value: InputVarType.file })}>type-change</button>
+        <button data-testid="type-change" onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}>type-change</button>
         <button data-testid="file-payload-change" onClick={() => props.onFilePayloadChange({ ...props.tempPayload, default: 'file-default' })}>file-payload-change</button>
       </div>
     )
@@ -137,7 +137,7 @@ describe('ConfigModal logic', () => {
 
     fireEvent.click(screen.getByTestId('type-change'))
     await waitFor(() => {
-      expect(screen.getByTestId('payload-type')).toHaveTextContent(InputVarType.file)
+      expect(screen.getByTestId('payload-type')).toHaveTextContent(InputVarType.singleFile)
     })
 
     fireEvent.click(screen.getByTestId('file-payload-change'))

@@ -1,5 +1,6 @@
 /* eslint-disable ts/no-explicit-any */
-import { AgentStrategy, AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import type { VisionSettings } from '@/types/app'
+import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import {
   buildConfigurationDatasetConfigs,
   buildPublishBody,
@@ -17,6 +18,13 @@ const mockFetchAndMergeValidCompletionParams = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastWarning = vi.fn()
+
+const baseVisionConfig: VisionSettings = {
+  enabled: false,
+  number_limits: 1,
+  detail: Resolution.high,
+  transfer_methods: [TransferMethod.remote_url],
+}
 
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
@@ -683,7 +691,7 @@ describe('useConfiguration utils', () => {
       setCompletionParams,
       setModelConfig,
       t: (key: string) => key,
-      visionConfig: { enabled: false },
+      visionConfig: baseVisionConfig,
     })
 
     await onModelChange({
@@ -695,7 +703,10 @@ describe('useConfiguration utils', () => {
 
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.completion)
     expect(setModelConfig).toHaveBeenCalledTimes(1)
-    expect(handleSetVisionConfig).toHaveBeenCalledWith({ enabled: true }, true)
+    expect(handleSetVisionConfig).toHaveBeenCalledWith({
+      ...baseVisionConfig,
+      enabled: true,
+    }, true)
     expect(setCompletionParams).toHaveBeenCalledWith({ temperature: 0.3 })
   })
 
@@ -734,7 +745,7 @@ describe('useConfiguration utils', () => {
       setCompletionParams,
       setModelConfig,
       t: (key: string) => key,
-      visionConfig: { enabled: false },
+      visionConfig: baseVisionConfig,
     })
 
     await onModelChange({

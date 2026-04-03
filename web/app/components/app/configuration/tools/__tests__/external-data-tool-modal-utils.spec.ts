@@ -1,3 +1,5 @@
+import type { I18nText } from '@/i18n-config/language'
+import type { CodeBasedExtensionItem } from '@/models/common'
 import { LanguagesSupported } from '@/i18n-config/language'
 import {
   buildProviders,
@@ -13,14 +15,14 @@ const t = (key: string, options?: Record<string, unknown>) => {
   return key
 }
 
-const codeBasedExtensionList = {
+const i18n = (en: string, zh = en): I18nText =>
+  ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText
+
+const codeBasedExtensionList: { data: CodeBasedExtensionItem[] } = {
   data: [
     {
       name: 'code-tool',
-      label: {
-        'en-US': 'Code Provider',
-        'zh-Hans': '代码提供方',
-      },
+      label: i18n('Code Provider', '代码提供方'),
       form_schema: [
         {
           variable: 'api_key',
@@ -29,10 +31,7 @@ const codeBasedExtensionList = {
           type: 'text',
           placeholder: '',
           options: [],
-          label: {
-            'en-US': 'API Key',
-            'zh-Hans': '接口密钥',
-          },
+          label: i18n('API Key', '接口密钥'),
         },
       ],
     },

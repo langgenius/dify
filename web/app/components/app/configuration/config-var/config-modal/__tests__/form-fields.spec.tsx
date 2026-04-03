@@ -86,14 +86,16 @@ vi.mock('../../config-string', () => ({
 
 const t = (key: string) => key
 
+const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
+
 const createBaseProps = () => {
-  const payloadChangeHandlers: Record<string, ReturnType<typeof vi.fn>> = {
-    default: vi.fn(),
-    hide: vi.fn(),
-    label: vi.fn(),
-    max_length: vi.fn(),
-    options: vi.fn(),
-    required: vi.fn(),
+  const payloadChangeHandlers: Record<string, ReturnType<typeof createPayloadChangeHandler>> = {
+    default: createPayloadChangeHandler(),
+    hide: createPayloadChangeHandler(),
+    label: createPayloadChangeHandler(),
+    max_length: createPayloadChangeHandler(),
+    options: createPayloadChangeHandler(),
+    required: createPayloadChangeHandler(),
   }
 
   return {
@@ -106,7 +108,7 @@ const createBaseProps = () => {
     onJSONSchemaChange: vi.fn(),
     onPayloadChange: (key: string) => {
       if (!payloadChangeHandlers[key])
-        payloadChangeHandlers[key] = vi.fn()
+        payloadChangeHandlers[key] = createPayloadChangeHandler()
       return payloadChangeHandlers[key]
     },
     onTypeChange: vi.fn(),

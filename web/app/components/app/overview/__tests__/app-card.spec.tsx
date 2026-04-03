@@ -336,13 +336,13 @@ describe('AppCard', () => {
 
     const refreshButton = container.querySelector('[class*="refreshIcon"]')?.parentElement as HTMLElement
     fireEvent.click(refreshButton)
-    expect(screen.getByTestId('confirm-overlay')).toBeInTheDocument()
+    expect(screen.getByText('overview.appInfo.regenerateNotice')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
 
     expect(mockOnGenerateCode).not.toHaveBeenCalled()
     return waitFor(() => {
-      expect(screen.queryByTestId('confirm-overlay')).not.toBeInTheDocument()
+      expect(screen.queryByText('overview.appInfo.regenerateNotice')).not.toBeInTheDocument()
     })
   })
 

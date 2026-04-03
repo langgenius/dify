@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { VarType } from '@/app/components/workflow/types'
+import { GeneratorType } from '../types'
 import InstructionEditorInWorkflow from '../instruction-editor-in-workflow'
 
 const mockUseAvailableVarList = vi.fn()
@@ -58,7 +59,7 @@ describe('InstructionEditorInWorkflow', () => {
         value="instruction"
         editorKey="editor-1"
         onChange={vi.fn()}
-        generatorType="prompt"
+        generatorType={GeneratorType.prompt}
         isShowCurrentBlock
       />,
     )

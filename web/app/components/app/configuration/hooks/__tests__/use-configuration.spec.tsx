@@ -240,9 +240,10 @@ describe('useConfiguration', () => {
       { temperature: 0.7 },
       true,
     )
+    expect(result.current.appPublisherProps.onPublish).toBeDefined()
 
     await act(async () => {
-      await result.current.appPublisherProps.onPublish(undefined, result.current.featuresData)
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
     expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({

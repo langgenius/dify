@@ -1,6 +1,7 @@
 import type { ChatItemInTree } from '../../base/chat/types'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatMessage, LogAnnotation } from '@/models/log'
+import type { FileResponse } from '@/types/workflow'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -32,11 +33,29 @@ type ConversationLogDetail = {
   name?: string
 }
 
+type ConversationFeedbackStats = {
+  dislike?: number
+  like?: number
+}
+
 const getUserInputVariable = (item: UserInputFormItem) => {
   const variable = Object.values(item)[0]?.variable
 
   return typeof variable === 'string' ? variable : undefined
 }
+
+const toFileResponse = (file: NonNullable<ChatMessage['message_files']>[number]): FileResponse => ({
+  related_id: file.id ?? file.upload_file_id,
+  extension: '',
+  filename: '',
+  size: 0,
+  mime_type: '',
+  transfer_method: file.transfer_method,
+  type: file.type,
+  url: file.url,
+  upload_file_id: file.upload_file_id,
+  remote_url: file.url,
+})
 
 export const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
@@ -47,7 +66,7 @@ export const getFormattedChatList = (messages: ChatMessage[], conversationId: st
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query,
       isAnswer: false,
-      message_files: getProcessedFilesFromResponse(questionFiles.map(file => ({ ...file, related_id: file.id }))),
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
       parentMessageId: item.parent_message_id || undefined,
     })
 
@@ -60,7 +79,7 @@ export const getFormattedChatList = (messages: ChatMessage[], conversationId: st
       adminFeedback: item.feedbacks?.find(feedback => feedback.from_source === 'admin'),
       feedbackDisabled: false,
       isAnswer: true,
-      message_files: getProcessedFilesFromResponse(answerFiles.map(file => ({ ...file, related_id: file.id }))),
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
       log: [
         ...(item.message ?? []),
         ...(item.message?.[item.message.length - 1]?.role !== 'assistant'
@@ -300,18 +319,25 @@ export const getDetailVarList = (detail: ConversationLogDetail, varValues: Recor
     if (!variable)
       return []
 
+    const value = varValues[variable] ?? detail.message?.inputs?.[variable]
+
+    if (typeof value !== 'string')
+      return []
+
     return [{
       label: variable,
-      value: varValues[variable] || detail.message?.inputs?.[variable],
+      value,
     }]
   }) || []
 
 export const getCompletionMessageFiles = (detail: ConversationLogDetail, isChatMode: boolean) => {
-  if (isChatMode || !detail.message.message_files?.length)
+  const messageFiles = detail.message?.message_files
+
+  if (isChatMode || !messageFiles?.length)
     return []
 
-  return detail.message.message_files.map(item => item.url)
+  return messageFiles.flatMap(item => item.url ? [item.url] : [])
 }
 
-export const hasConversationFeedback = (stats: LogAnnotation | { like?: number, dislike?: number }) =>
+export const hasConversationFeedback = (stats?: ConversationFeedbackStats | null) =>
   Boolean(stats?.like || stats?.dislike)

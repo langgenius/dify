@@ -1,7 +1,7 @@
 /* eslint-disable ts/no-explicit-any */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
-import { PromptMode } from '@/models/debug'
+import { PromptMode, PromptRole } from '@/models/debug'
 import { fetchPromptTemplate } from '@/service/debug'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import useAdvancedPromptConfig from '../use-advanced-prompt-config'
@@ -33,10 +33,10 @@ describe('useAdvancedPromptConfig', () => {
     }))
 
     act(() => {
-      result.current.setCurrentAdvancedPrompt([{ role: 'system', text: `hello ${QUERY_PLACEHOLDER_TEXT}` }], true)
+      result.current.setCurrentAdvancedPrompt([{ role: PromptRole.system, text: `hello ${QUERY_PLACEHOLDER_TEXT}` }], true)
     })
 
-    expect(result.current.currentAdvancedPrompt).toEqual([{ role: 'system', text: `hello ${QUERY_PLACEHOLDER_TEXT}` }])
+    expect(result.current.currentAdvancedPrompt).toEqual([{ role: PromptRole.system, text: `hello ${QUERY_PLACEHOLDER_TEXT}` }])
     expect(result.current.hasSetBlockStatus.query).toBe(true)
     expect(handleUserChangedPrompt).toHaveBeenCalledTimes(1)
   })
@@ -78,7 +78,7 @@ describe('useAdvancedPromptConfig', () => {
     }))
 
     act(() => {
-      result.current.setCurrentAdvancedPrompt([{ role: 'system', text: 'ignored' }], true)
+      result.current.setCurrentAdvancedPrompt([{ role: PromptRole.system, text: 'ignored' }], true)
     })
 
     expect(result.current.currentAdvancedPrompt).toEqual([])
@@ -137,7 +137,7 @@ describe('useAdvancedPromptConfig', () => {
   it('should migrate a simple chat prompt template and replace the pre-prompt placeholder', async () => {
     mockFetchPromptTemplate.mockResolvedValue({
       chat_prompt_config: {
-        prompt: [{ role: 'system', text: `hello ${PRE_PROMPT_PLACEHOLDER_TEXT}` }],
+        prompt: [{ role: PromptRole.system, text: `hello ${PRE_PROMPT_PLACEHOLDER_TEXT}` }],
       },
       completion_prompt_config: {
         prompt: { text: PRE_PROMPT_PLACEHOLDER_TEXT },
@@ -167,7 +167,7 @@ describe('useAdvancedPromptConfig', () => {
     })
 
     expect(result.current.chatPromptConfig.prompt).toEqual([
-      { role: 'system', text: 'hello system prompt' },
+      { role: PromptRole.system, text: 'hello system prompt' },
     ])
   })
 
@@ -176,7 +176,7 @@ describe('useAdvancedPromptConfig', () => {
     const setStop = vi.fn()
     mockFetchPromptTemplate.mockResolvedValue({
       chat_prompt_config: {
-        prompt: [{ role: 'system', text: `chat ${PRE_PROMPT_PLACEHOLDER_TEXT}` }],
+        prompt: [{ role: PromptRole.system, text: `chat ${PRE_PROMPT_PLACEHOLDER_TEXT}` }],
       },
       completion_prompt_config: {
         prompt: {
