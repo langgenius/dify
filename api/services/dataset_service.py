@@ -2018,25 +2018,29 @@ class DocumentService:
                         if not knowledge_config.data_source.info_list.file_info_list:
                             raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-                        files = list(db.session.scalars(
-                            select(UploadFile).where(
-                                UploadFile.tenant_id == dataset.tenant_id,
-                                UploadFile.id.in_(upload_file_list),
-                            )
-                        ).all())
+                        files = list(
+                            db.session.scalars(
+                                select(UploadFile).where(
+                                    UploadFile.tenant_id == dataset.tenant_id,
+                                    UploadFile.id.in_(upload_file_list),
+                                )
+                            ).all()
+                        )
                         if len(files) != len(set(upload_file_list)):
                             raise FileNotExistsError("One or more files not found.")
 
                         file_names = [file.name for file in files]
-                        db_documents = list(db.session.scalars(
-                            select(Document).where(
-                                Document.dataset_id == dataset.id,
-                                Document.tenant_id == current_user.current_tenant_id,
-                                Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                                Document.enabled == True,
-                                Document.name.in_(file_names),
-                            )
-                        ).all())
+                        db_documents = list(
+                            db.session.scalars(
+                                select(Document).where(
+                                    Document.dataset_id == dataset.id,
+                                    Document.tenant_id == current_user.current_tenant_id,
+                                    Document.data_source_type == DataSourceType.UPLOAD_FILE,
+                                    Document.enabled == True,
+                                    Document.name.in_(file_names),
+                                )
+                            ).all()
+                        )
                         documents_map = {document.name: document for document in db_documents}
                         for file in files:
                             data_source_info: dict[str, str | bool] = {
@@ -2081,14 +2085,16 @@ class DocumentService:
                             raise ValueError("No notion info list found.")
                         exist_page_ids = []
                         exist_document = {}
-                        documents = list(db.session.scalars(
-                            select(Document).where(
-                                Document.dataset_id == dataset.id,
-                                Document.tenant_id == current_user.current_tenant_id,
-                                Document.data_source_type == DataSourceType.NOTION_IMPORT,
-                                Document.enabled == True,
-                            )
-                        ).all())
+                        documents = list(
+                            db.session.scalars(
+                                select(Document).where(
+                                    Document.dataset_id == dataset.id,
+                                    Document.tenant_id == current_user.current_tenant_id,
+                                    Document.data_source_type == DataSourceType.NOTION_IMPORT,
+                                    Document.enabled == True,
+                                )
+                            ).all()
+                        )
                         if documents:
                             for document in documents:
                                 data_source_info = json.loads(document.data_source_info)
@@ -2517,14 +2523,17 @@ class DocumentService:
     def get_tenant_documents_count():
         assert isinstance(current_user, Account)
 
-        documents_count = db.session.scalar(
-            select(func.count(Document.id)).where(
-                Document.completed_at.isnot(None),
-                Document.enabled == True,
-                Document.archived == False,
-                Document.tenant_id == current_user.current_tenant_id,
+        documents_count = (
+            db.session.scalar(
+                select(func.count(Document.id)).where(
+                    Document.completed_at.isnot(None),
+                    Document.enabled == True,
+                    Document.archived == False,
+                    Document.tenant_id == current_user.current_tenant_id,
+                )
             )
-        ) or 0
+            or 0
+        )
         return documents_count
 
     @staticmethod
@@ -2649,7 +2658,9 @@ class DocumentService:
         # update document segment
 
         db.session.execute(
-            update(DocumentSegment).where(DocumentSegment.document_id == document.id).values(status=SegmentStatus.RE_SEGMENT)
+            update(DocumentSegment)
+            .where(DocumentSegment.document_id == document.id)
+            .values(status=SegmentStatus.RE_SEGMENT)
         )
         db.session.commit()
         # trigger async task

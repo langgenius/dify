@@ -1206,7 +1206,10 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            mock_db.session.scalars.return_value.all.side_effect = [[upload_file_a, upload_file_b], [duplicate_document]]
+            mock_db.session.scalars.return_value.all.side_effect = [
+                [upload_file_a, upload_file_b],
+                [duplicate_document],
+            ]
 
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset,
