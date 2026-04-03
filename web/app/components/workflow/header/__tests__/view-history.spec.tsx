@@ -117,8 +117,11 @@ describe('ViewHistory', () => {
     vi.clearAllMocks()
     mockIsChatMode = false
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
+      data: { pages: [{ data: [], has_more: false, limit: 20 }] satisfies WorkflowRunHistoryResponse[] },
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     })
   })
 
@@ -142,8 +145,11 @@ describe('ViewHistory', () => {
   it('renders the icon trigger variant and loading state, and clears log modals on trigger click', () => {
     const onClearLogAndMessageModal = vi.fn()
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
+      data: { pages: [{ data: [], has_more: false, limit: 20 }] satisfies WorkflowRunHistoryResponse[] },
       isLoading: true,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     })
 
     renderWorkflowComponent(
@@ -187,9 +193,12 @@ describe('ViewHistory', () => {
 
     mockUseWorkflowRunHistory.mockReturnValue({
       data: {
-        data: [pausedRun, failedRun, succeededRun],
-      } satisfies WorkflowRunHistoryResponse,
+        pages: [{ data: [pausedRun, failedRun, succeededRun], has_more: false, limit: 20 }] satisfies WorkflowRunHistoryResponse[],
+      },
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     })
 
     const { store } = renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
@@ -231,9 +240,12 @@ describe('ViewHistory', () => {
 
     mockUseWorkflowRunHistory.mockReturnValue({
       data: {
-        data: [chatRun],
-      } satisfies WorkflowRunHistoryResponse,
+        pages: [{ data: [chatRun], has_more: false, limit: 20 }] satisfies WorkflowRunHistoryResponse[],
+      },
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     })
 
     renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
@@ -250,8 +262,11 @@ describe('ViewHistory', () => {
   it('closes the popup from the close button and clears log modals', () => {
     const onClearLogAndMessageModal = vi.fn()
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
+      data: { pages: [{ data: [], has_more: false, limit: 20 }] satisfies WorkflowRunHistoryResponse[] },
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     })
 
     renderWorkflowComponent(

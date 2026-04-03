@@ -27,13 +27,25 @@ export const useAppWorkflow = (appID: string) => {
 }
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
+const WORKFLOW_RUN_HISTORY_LIMIT = 20
 
 export const useWorkflowRunHistory = (url?: string, enabled = true) => {
-  return useQuery<WorkflowRunHistoryResponse>({
+  return useInfiniteQuery<WorkflowRunHistoryResponse>({
     queryKey: [...WorkflowRunHistoryKey, url],
-    queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
+    queryFn: ({ pageParam }) => get<WorkflowRunHistoryResponse>(url as string, {
+      params: {
+        limit: WORKFLOW_RUN_HISTORY_LIMIT,
+        ...(pageParam ? { last_id: pageParam } : {}),
+      },
+    }),
     enabled: !!url && enabled,
     staleTime: 0,
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.has_more || !lastPage.data.length)
+        return undefined
+      return lastPage.data[lastPage.data.length - 1].id
+    },
   })
 }
 

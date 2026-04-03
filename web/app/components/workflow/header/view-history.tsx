@@ -1,5 +1,7 @@
 import {
   memo,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -57,7 +59,25 @@ const ViewHistory = ({
   const {
     data,
     isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el)
+      return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage)
+        fetchNextPage()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
+
+  const allRuns = data?.pages.flatMap(page => page.data) ?? []
 
   return (
     (
@@ -113,7 +133,7 @@ const ViewHistory = ({
               maxHeight: 'calc(2 / 3 * 100vh)',
             }}
           >
-            <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
               <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
               <button
                 type="button"
@@ -138,7 +158,7 @@ const ViewHistory = ({
               !isLoading && (
                 <div className="p-2">
                   {
-                    !data?.data.length && (
+                    !allRuns.length && (
                       <div className="py-12">
                         <span className="i-custom-vender-line-time-clock-play-slim mx-auto mb-2 h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
@@ -148,7 +168,7 @@ const ViewHistory = ({
                     )
                   }
                   {
-                    data?.data.map(item => (
+                    allRuns.map(item => (
                       <div
                         key={item.id}
                         className={cn(
@@ -203,6 +223,11 @@ const ViewHistory = ({
                       </div>
                     ))
                   }
+                  {hasNextPage && (
+                    <div ref={sentinelRef} className="flex h-8 items-center justify-center">
+                      {isFetchingNextPage && <Loading />}
+                    </div>
+                  )}
                 </div>
               )
             }
