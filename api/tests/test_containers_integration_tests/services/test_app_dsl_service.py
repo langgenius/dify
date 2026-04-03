@@ -407,9 +407,7 @@ class TestAppDslService:
             app, "invalid-workflow-id"
         )
 
-    def test_import_chat_app_with_engine_session(
-        self, flask_app_with_containers, mock_external_service_dependencies
-    ):
+    def test_import_chat_app_with_engine_session(self, flask_app_with_containers, mock_external_service_dependencies):
         """
         Test that importing a chat app via Session(db.engine) succeeds.
 
