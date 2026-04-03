@@ -62,7 +62,7 @@ class TestDatasetServiceQueries:
         self, mock_dataset_query_dependencies
     ):
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.DATASET_OPERATOR)
-        mock_dataset_query_dependencies["db"].session.query.return_value.filter_by.return_value.all.return_value = []
+        mock_dataset_query_dependencies["db"].session.scalars.return_value.all.return_value = []
 
         items, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user)
 
@@ -108,9 +108,7 @@ class TestDatasetServiceQueries:
         dataset_process_rule.rules_dict = {"delimiter": "\n"}
 
         with patch("services.dataset_service.db") as mock_db:
-            (
-                mock_db.session.query.return_value.where.return_value.order_by.return_value.limit.return_value.one_or_none.return_value
-            ) = dataset_process_rule
+            (mock_db.session.execute.return_value.scalar_one_or_none.return_value) = dataset_process_rule
 
             result = DatasetService.get_process_rules("dataset-1")
 
@@ -118,9 +116,7 @@ class TestDatasetServiceQueries:
 
     def test_get_process_rules_falls_back_to_default_rules_when_missing(self):
         with patch("services.dataset_service.db") as mock_db:
-            (
-                mock_db.session.query.return_value.where.return_value.order_by.return_value.limit.return_value.one_or_none.return_value
-            ) = None
+            (mock_db.session.execute.return_value.scalar_one_or_none.return_value) = None
 
             result = DatasetService.get_process_rules("dataset-1")
 
@@ -151,7 +147,7 @@ class TestDatasetServiceQueries:
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock()
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = dataset
+            mock_db.session.get.return_value = dataset
 
             result = DatasetService.get_dataset(dataset.id)
 
@@ -308,7 +304,7 @@ class TestDatasetServiceCreationAndUpdate:
         account = SimpleNamespace(id="user-1")
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = object()
+            mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Dataset with name Dataset already exists"):
                 DatasetService.create_empty_dataset("tenant-1", "Dataset", None, "economy", account)
@@ -319,6 +315,7 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.select"),
             patch(
                 "services.dataset_service.Dataset",
                 side_effect=lambda **kwargs: SimpleNamespace(id="dataset-1", **kwargs),
@@ -326,7 +323,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch.object(DatasetService, "check_embedding_model_setting") as check_embedding,
         ):
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
             model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = default_embedding_model
 
             dataset = DatasetService.create_empty_dataset(
@@ -355,6 +352,7 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.select"),
             patch(
                 "services.dataset_service.Dataset",
                 side_effect=lambda **kwargs: SimpleNamespace(id="dataset-1", **kwargs),
@@ -368,7 +366,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "check_embedding_model_setting") as check_embedding,
             patch.object(DatasetService, "check_reranking_model_setting") as check_reranking,
         ):
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
 
             dataset = DatasetService.create_empty_dataset(
@@ -412,7 +410,7 @@ class TestDatasetServiceCreationAndUpdate:
         )
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = object()
+            mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Existing Dataset already exists"):
                 DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity)
@@ -435,12 +433,13 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.select"),
             patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
             patch("services.dataset_service.generate_incremental_name", return_value="Untitled 2") as generate_name,
             patch("services.dataset_service.Pipeline", side_effect=pipeline_factory),
             patch("services.dataset_service.Dataset", side_effect=dataset_factory),
         ):
-            mock_db.session.query.return_value.filter_by.return_value.all.return_value = [
+            mock_db.session.scalars.return_value.all.return_value = [
                 SimpleNamespace(name="Untitled"),
                 SimpleNamespace(name="Untitled 1"),
             ]
@@ -465,7 +464,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.current_user", SimpleNamespace(id=None)),
         ):
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(ValueError, match="Current user or current user id not found"):
                 DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity)
@@ -520,7 +519,7 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_has_dataset_same_name_returns_true_when_query_matches(self):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.first.return_value = object()
+            mock_db.session.scalar.return_value = object()
 
             result = DatasetService._has_dataset_same_name("tenant-1", "dataset-1", "Dataset")
 
@@ -630,7 +629,7 @@ class TestDatasetServiceCreationAndUpdate:
             result = DatasetService._update_internal_dataset(dataset, update_payload.copy(), user)
 
         assert result is dataset
-        updated_values = mock_db.session.query.return_value.filter_by.return_value.update.call_args.args[0]
+        updated_values = mock_db.session.execute.call_args.args[0].compile().params
         assert updated_values["name"] == "Updated Dataset"
         assert updated_values["description"] is None
         assert updated_values["retrieval_model"] == {"top_k": 4}
@@ -658,13 +657,13 @@ class TestDatasetServiceCreationAndUpdate:
         with patch("services.dataset_service.db") as mock_db:
             DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
-        mock_db.session.query.assert_not_called()
+        mock_db.session.get.assert_not_called()
 
     def test_update_pipeline_knowledge_base_node_data_returns_when_pipeline_is_missing(self):
         dataset = SimpleNamespace(runtime_mode="rag_pipeline", pipeline_id="pipeline-1")
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_db.session.get.return_value = None
 
             DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
@@ -703,7 +702,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.RagPipelineService", return_value=rag_pipeline_service),
             patch("services.dataset_service.Workflow.new", return_value=new_workflow) as workflow_new,
         ):
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = pipeline
+            mock_db.session.get.return_value = pipeline
 
             DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
 
@@ -725,7 +724,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.RagPipelineService", return_value=rag_pipeline_service),
         ):
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = pipeline
+            mock_db.session.get.return_value = pipeline
 
             with pytest.raises(RuntimeError, match="boom"):
                 DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
@@ -1364,7 +1363,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(NoPermissionError, match="do not have permission"):
                 DatasetService.check_dataset_permission(dataset, user)
@@ -1382,7 +1381,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         with patch("services.dataset_service.db") as mock_db:
             DatasetService.check_dataset_permission(dataset, user)
 
-        mock_db.session.query.assert_not_called()
+        mock_db.session.scalar.assert_not_called()
 
     def test_check_dataset_permission_allows_partial_team_member_with_binding(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
@@ -1395,7 +1394,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.first.return_value = object()
+            mock_db.session.scalar.return_value = object()
 
             DatasetService.check_dataset_permission(dataset, user)
 
@@ -1427,7 +1426,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.all.return_value = []
+            mock_db.session.scalars.return_value.all.return_value = []
 
             with pytest.raises(NoPermissionError, match="do not have permission"):
                 DatasetService.check_dataset_operator_permission(user=user, dataset=dataset)
@@ -1446,9 +1445,7 @@ class TestDatasetServicePermissionsAndLifecycle:
     def test_get_related_apps_returns_ordered_query_results(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.desc.side_effect = lambda column: column
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.all.return_value = [
-                "relation-1"
-            ]
+            mock_db.session.scalars.return_value.all.return_value = ["relation-1"]
 
             result = DatasetService.get_related_apps("dataset-1")
 
