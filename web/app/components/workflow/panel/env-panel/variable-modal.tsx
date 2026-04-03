@@ -12,7 +12,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
-export type ModalPropsType = {
+type ModalPropsType = {
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void
@@ -161,7 +161,7 @@ const VariableModal = ({
               type !== 'number'
                 ? (
                     <textarea
-                      className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+                      className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-hidden system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                       value={value}
                       placeholder={t('env.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                       onChange={e => setValue(e.target.value)}
@@ -183,7 +183,7 @@ const VariableModal = ({
           <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('env.modal.description', { ns: 'workflow' })}</div>
           <div className="flex">
             <textarea
-              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-hidden system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
               placeholder={t('env.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}

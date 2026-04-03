@@ -80,7 +80,7 @@ const MetadataFilter = ({
               </div>
               <div className="mt-1 px-4">
                 <ModelParameterModal
-                  popupClassName="!w-[387px]"
+                  popupClassName="w-[387px]!"
                   isInWorkflow
                   isAdvancedMode={true}
                   provider={metadataModelConfig?.provider || ''}

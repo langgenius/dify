@@ -146,7 +146,7 @@ describe('Select wrappers', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
       expect(trigger).toHaveAttribute('data-disabled')
-      expect(trigger.className).toContain('data-[disabled]:bg-components-input-bg-disabled')
+      expect(trigger.className).toContain('data-disabled:bg-components-input-bg-disabled')
     })
 
     it('should apply disabled placeholder color class for compound state', () => {
@@ -155,7 +155,7 @@ describe('Select wrappers', () => {
       })
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('data-[disabled]:data-[placeholder]:text-components-input-text-disabled')
+      expect(trigger.className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
     })
 
     it('should show error icon and apply destructive styling when variant is destructive', () => {
@@ -185,7 +185,7 @@ describe('Select wrappers', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
       expect(trigger).toHaveAttribute('data-readonly')
-      expect(trigger.className).toContain('data-[readonly]:bg-transparent')
+      expect(trigger.className).toContain('data-readonly:bg-transparent')
     })
 
     it('should hide arrow icon via CSS when Root is readOnly', () => {
@@ -194,7 +194,7 @@ describe('Select wrappers', () => {
       })
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
-      const iconWrapper = trigger.querySelector('[class*="group-data-[readonly]:hidden"]')
+      const iconWrapper = trigger.querySelector('[class*="group-data-readonly:hidden"]')
       expect(iconWrapper).toBeInTheDocument()
     })
 
@@ -210,7 +210,7 @@ describe('Select wrappers', () => {
       renderOpenSelect()
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('data-[placeholder]:text-components-input-text-placeholder')
+      expect(trigger.className).toContain('data-placeholder:text-components-input-text-placeholder')
     })
   })
 

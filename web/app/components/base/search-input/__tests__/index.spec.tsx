@@ -79,7 +79,7 @@ describe('SearchInput', () => {
     it('applies white style', () => {
       const { container } = render(<SearchInput value="" onChange={() => {}} white />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('!bg-white')
+      expect(wrapper).toHaveClass('bg-white!')
     })
 
     it('applies custom className', () => {

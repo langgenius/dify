@@ -31,7 +31,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   //     <Tooltip
   //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.agentThought })}
   //     >
-  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+  //       <ModelBadge className={`mr-0.5 px-0! w-[18px] justify-center text-gray-500 ${className}`}>
   //         <Robot className='w-3 h-3' />
   //       </ModelBadge>
   //     </Tooltip>
@@ -43,7 +43,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   //     <Tooltip
   //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.toolCall })}
   //     >
-  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+  //       <ModelBadge className={`mr-0.5 px-0! w-[18px] justify-center text-gray-500 ${className}`}>
   //         <MagicWand className='w-3 h-3' />
   //       </ModelBadge>
   //     </Tooltip>
@@ -55,7 +55,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
   //     <Tooltip
   //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.multiToolCall })}
   //     >
-  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+  //       <ModelBadge className={`mr-0.5 px-0! w-[18px] justify-center text-gray-500 ${className}`}>
   //         <MagicBox className='w-3 h-3' />
   //       </ModelBadge>
   //     </Tooltip>
@@ -81,7 +81,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <div className="inline-block cursor-help">
           <ModelBadge
             className={cn(
-              'w-[18px] justify-center !px-0',
+              'w-[18px] justify-center px-0!',
               className,
             )}
           >
@@ -111,7 +111,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <div className="inline-block cursor-help">
           <ModelBadge
             className={cn(
-              'w-[18px] justify-center !px-0',
+              'w-[18px] justify-center px-0!',
               className,
             )}
           >
@@ -141,7 +141,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <div className="inline-block cursor-help">
           <ModelBadge
             className={cn(
-              'w-[18px] justify-center !px-0',
+              'w-[18px] justify-center px-0!',
               className,
             )}
           >
@@ -171,7 +171,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         <div className="inline-block cursor-help">
           <ModelBadge
             className={cn(
-              'w-[18px] justify-center !px-0',
+              'w-[18px] justify-center px-0!',
               className,
             )}
           >

@@ -137,7 +137,7 @@ const EndpointCard = ({
 
   return (
     <div className="rounded-xl bg-background-section-burn p-0.5">
-      <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
+      <div className="group radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
         <div className="flex items-center">
           <div className="mb-1 flex h-6 grow items-center gap-1 text-text-secondary system-md-semibold">
             <RiLoginCircleLine className="h-4 w-4" />

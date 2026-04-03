@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from graphon.file import FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -7,7 +7,6 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.variables.input_entities import VariableEntity
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from core.app.app_config.entities import (
     DatasetEntity,

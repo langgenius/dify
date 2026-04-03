@@ -114,7 +114,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
         isPC
           ? 'h-full w-0 grow'
           : isShowResultPanel
-            ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-sm'
+            ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-xs'
             : resultExisted
               ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
               : '',
@@ -134,13 +134,13 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
               onShowResultPanel()
           }}
         >
-          <div className="h-1 w-8 cursor-grab rounded bg-divider-solid" />
+          <div className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
         </div>
       )}
       <div
         className={cn(
           'relative flex h-full flex-col',
-          !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
+          !isPC && 'h-[calc(100vh-36px)] rounded-t-2xl shadow-lg backdrop-blur-xs',
           !isPC
             ? isShowResultPanel
               ? 'bg-background-default-burn'
@@ -180,7 +180,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           )}
         </div>
         {isCallBatchAPI && allFailedTaskList.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm">
+          <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-xs">
             <span aria-hidden className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
             <div className="text-text-secondary system-sm-medium">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
             <div className="h-3.5 w-px bg-divider-regular"></div>
