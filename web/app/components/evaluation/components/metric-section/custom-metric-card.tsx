@@ -6,7 +6,7 @@ import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
-import CustomMetricEditorCard from '../custom-metric-editor-card'
+import CustomMetricEditorCard from '../custom-metric-editor'
 import { getToneClasses } from '../metric-selector/utils'
 
 type CustomMetricCardProps = EvaluationResourceProps & {

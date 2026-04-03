@@ -51,6 +51,7 @@
   "judgeModel.title": "判定模型",
   "metrics.add": "添加指标",
   "metrics.addCustom": "添加自定义指标",
+  "metrics.addNode": "添加节点",
   "metrics.added": "已添加",
   "metrics.custom.addMapping": "添加映射",
   "metrics.custom.description": "选择评测工作流并完成变量映射后即可运行测试。",

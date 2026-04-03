@@ -1,4 +1,5 @@
 import type {
+  AvailableEvaluationWorkflowsResponse,
   EvaluationConfig,
   EvaluationConfigData,
   EvaluationFileInfo,
@@ -273,6 +274,21 @@ export const availableEvaluationMetricsContract = base
     method: 'GET',
   })
   .output(type<EvaluationMetricsListResponse>())
+
+export const availableEvaluationWorkflowsContract = base
+  .route({
+    path: '/workspaces/current/available-evaluation-workflows',
+    method: 'GET',
+  })
+  .input(type<{
+    query: {
+      page?: number
+      limit?: number
+      keyword?: string
+      user_id?: string
+    }
+  }>())
+  .output(type<AvailableEvaluationWorkflowsResponse>())
 
 export const evaluationFileContract = base
   .route({

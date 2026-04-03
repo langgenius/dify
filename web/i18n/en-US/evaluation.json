@@ -51,6 +51,7 @@
   "judgeModel.title": "Judge Model",
   "metrics.add": "Add Metric",
   "metrics.addCustom": "Add Custom Metrics",
+  "metrics.addNode": "Add Node",
   "metrics.added": "Added",
   "metrics.collapseNodes": "Collapse nodes",
   "metrics.custom.addMapping": "Add Mapping",

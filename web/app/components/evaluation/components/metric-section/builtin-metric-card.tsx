@@ -114,6 +114,7 @@ const BuiltinMetricCard = ({
                 render={(
                   <button
                     type="button"
+                    aria-label={t('metrics.addNode')}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-background-default-hover text-text-tertiary transition-colors hover:bg-state-base-hover"
                   />
                 )}

@@ -1,6 +1,9 @@
 'use client'
 
-import type { CustomMetricMapping, EvaluationMetric, EvaluationResourceProps, EvaluationResourceType } from '../types'
+import type { CustomMetricMapping, EvaluationMetric, EvaluationResourceProps, EvaluationResourceType } from '../../types'
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { Node } from '@/app/components/workflow/types'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
@@ -12,10 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/base/ui/select'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppWorkflow } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
-import { getEvaluationMockConfig } from '../mock'
-import { isCustomMetricConfigured, useEvaluationStore } from '../store'
-import { groupFieldOptions } from '../utils'
+import { getEvaluationMockConfig } from '../../mock'
+import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
+import { groupFieldOptions } from '../../utils'
+import WorkflowSelector from './workflow-selector'
 
 type CustomMetricEditorCardProps = EvaluationResourceProps & {
   metric: EvaluationMetric
@@ -27,6 +33,27 @@ type MappingRowProps = {
   targetOptions: Array<{ id: string, label: string }>
   onUpdate: (patch: { sourceFieldId?: string | null, targetVariableId?: string | null }) => void
   onRemove: () => void
+}
+
+const getWorkflowTargetVariables = (
+  nodes?: Array<Node>,
+) => {
+  const startNode = nodes?.find(node => node.data.type === BlockEnum.Start) as Node<StartNodeType> | undefined
+  if (!startNode || !Array.isArray(startNode.data.variables))
+    return []
+
+  return startNode.data.variables.map(variable => ({
+    id: variable.variable,
+    label: typeof variable.label === 'string' ? variable.label : variable.variable,
+  }))
+}
+
+const getWorkflowName = (workflow: {
+  marked_name?: string
+  app_name?: string
+  id: string
+}) => {
+  return workflow.marked_name || workflow.app_name || workflow.id
 }
 
 function MappingRow({
@@ -82,12 +109,14 @@ const CustomMetricEditorCard = ({
   metric,
 }: CustomMetricEditorCardProps) => {
   const { t } = useTranslation('evaluation')
-  const config = getEvaluationMockConfig(resourceType)
   const setCustomMetricWorkflow = useEvaluationStore(state => state.setCustomMetricWorkflow)
   const addCustomMetricMapping = useEvaluationStore(state => state.addCustomMetricMapping)
   const updateCustomMetricMapping = useEvaluationStore(state => state.updateCustomMetricMapping)
   const removeCustomMetricMapping = useEvaluationStore(state => state.removeCustomMetricMapping)
-  const selectedWorkflow = config.workflowOptions.find(option => option.id === metric.customConfig?.workflowId)
+  const { data: selectedWorkflow } = useAppWorkflow(metric.customConfig?.workflowAppId ?? '')
+  const targetOptions = useMemo(() => {
+    return getWorkflowTargetVariables(selectedWorkflow?.graph.nodes)
+  }, [selectedWorkflow?.graph.nodes])
   const isConfigured = isCustomMetricConfigured(metric)
 
   if (!metric.customConfig)
@@ -95,27 +124,15 @@ const CustomMetricEditorCard = ({
 
   return (
     <div className="px-3 pb-3 pt-1">
-      <Select value={metric.customConfig.workflowId ?? ''} onValueChange={value => value && setCustomMetricWorkflow(resourceType, resourceId, metric.id, value)}>
-        <SelectTrigger className="h-auto rounded-lg bg-components-input-bg-normal p-1 hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-              <div className="flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                <span aria-hidden="true" className="i-ri-equalizer-2-line h-3.5 w-3.5 text-text-tertiary" />
-              </div>
-            </div>
-            <div className="min-w-0 flex-1 px-1 py-1 text-left">
-              <div className={cn('truncate system-sm-regular', selectedWorkflow ? 'text-text-secondary' : 'text-components-input-text-placeholder')}>
-                {selectedWorkflow?.label ?? t('metrics.custom.workflowPlaceholder')}
-              </div>
-            </div>
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          {config.workflowOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <WorkflowSelector
+        value={metric.customConfig.workflowId}
+        selectedWorkflowName={metric.customConfig.workflowName ?? (selectedWorkflow ? getWorkflowName(selectedWorkflow) : null)}
+        onSelect={workflow => setCustomMetricWorkflow(resourceType, resourceId, metric.id, {
+          workflowId: workflow.id,
+          workflowAppId: workflow.app_id,
+          workflowName: getWorkflowName(workflow),
+        })}
+      />
 
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between gap-3">
@@ -136,7 +153,7 @@ const CustomMetricEditorCard = ({
               key={mapping.id}
               resourceType={resourceType}
               mapping={mapping}
-              targetOptions={selectedWorkflow?.targetVariables ?? []}
+              targetOptions={targetOptions}
               onUpdate={patch => updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, patch)}
               onRemove={() => removeCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id)}
             />

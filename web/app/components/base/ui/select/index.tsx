@@ -9,8 +9,6 @@ import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
 export const Select = BaseSelect.Root
-export const SelectGroup = BaseSelect.Group
-export const SelectGroupLabel = BaseSelect.GroupLabel
 export const SelectValue = BaseSelect.Value
 /** @public */
 export const SelectGroup = BaseSelect.Group

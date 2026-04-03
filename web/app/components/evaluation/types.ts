@@ -70,6 +70,8 @@ export type CustomMetricMapping = {
 
 export type CustomMetricConfig = {
   workflowId: string | null
+  workflowAppId: string | null
+  workflowName: string | null
   mappings: CustomMetricMapping[]
 }
 

@@ -67,6 +67,8 @@ export const createCustomMetric = (): EvaluationMetric => ({
   badges: ['Workflow'],
   customConfig: {
     workflowId: null,
+    workflowAppId: null,
+    workflowName: null,
     mappings: [createCustomMetricMapping()],
   },
 })

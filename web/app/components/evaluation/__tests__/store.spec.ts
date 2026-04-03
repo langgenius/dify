@@ -24,7 +24,11 @@ describe('evaluation store', () => {
     expect(initialMetric).toBeDefined()
     expect(isCustomMetricConfigured(initialMetric!)).toBe(false)
 
-    store.setCustomMetricWorkflow(resourceType, resourceId, initialMetric!.id, config.workflowOptions[0].id)
+    store.setCustomMetricWorkflow(resourceType, resourceId, initialMetric!.id, {
+      workflowId: config.workflowOptions[0].id,
+      workflowAppId: 'custom-workflow-app-id',
+      workflowName: config.workflowOptions[0].label,
+    })
     store.updateCustomMetricMapping(resourceType, resourceId, initialMetric!.id, initialMetric!.customConfig!.mappings[0].id, {
       sourceFieldId: config.fieldOptions[0].id,
       targetVariableId: config.workflowOptions[0].targetVariables[0].id,
@@ -32,6 +36,8 @@ describe('evaluation store', () => {
 
     const configuredMetric = useEvaluationStore.getState().resources['workflow:app-1'].metrics.find(metric => metric.id === initialMetric!.id)
     expect(isCustomMetricConfigured(configuredMetric!)).toBe(true)
+    expect(configuredMetric!.customConfig!.workflowAppId).toBe('custom-workflow-app-id')
+    expect(configuredMetric!.customConfig!.workflowName).toBe(config.workflowOptions[0].label)
   })
 
   it('should add and remove builtin metrics', () => {

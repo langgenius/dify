@@ -1,11 +1,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import MetricSection from '..'
 import { useEvaluationStore } from '../../../store'
 
+const mockUseAvailableEvaluationWorkflows = vi.hoisted(() => vi.fn())
 const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
 const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/use-evaluation', () => ({
+  useAvailableEvaluationWorkflows: (...args: unknown[]) => mockUseAvailableEvaluationWorkflows(...args),
   useAvailableEvaluationMetrics: (...args: unknown[]) => mockUseAvailableEvaluationMetrics(...args),
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
 }))
@@ -14,7 +17,19 @@ const resourceType = 'workflow' as const
 const resourceId = 'metric-section-resource'
 
 const renderMetricSection = () => {
-  return render(<MetricSection resourceType={resourceType} resourceId={resourceId} />)
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MetricSection resourceType={resourceType} resourceId={resourceId} />
+    </QueryClientProvider>,
+  )
 }
 
 describe('MetricSection', () => {
@@ -26,6 +41,17 @@ describe('MetricSection', () => {
       data: {
         metrics: ['answer-correctness'],
       },
+      isLoading: false,
+    })
+
+    mockUseAvailableEvaluationWorkflows.mockReturnValue({
+      data: {
+        pages: [{ items: [], page: 1, limit: 20, has_more: false }],
+      },
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetching: false,
+      isFetchingNextPage: false,
       isLoading: false,
     })
 

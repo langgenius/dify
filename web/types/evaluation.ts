@@ -105,6 +105,34 @@ export type EvaluationMetricsListResponse = {
   metrics: string[]
 }
 
+export type EvaluationWorkflowOperator = {
+  id: string
+  name: string
+  email: string
+}
+
+export type AvailableEvaluationWorkflow = {
+  id: string
+  app_id: string
+  app_name: string
+  type: string
+  version: string
+  marked_name: string
+  marked_comment: string
+  hash: string
+  created_by: EvaluationWorkflowOperator
+  created_at: number
+  updated_by: EvaluationWorkflowOperator | null
+  updated_at: number
+}
+
+export type AvailableEvaluationWorkflowsResponse = {
+  items: AvailableEvaluationWorkflow[]
+  page: number
+  limit: number
+  has_more: boolean
+}
+
 export type EvaluationNodeInfoRequest = {
   metrics?: string[]
 }

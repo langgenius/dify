@@ -32,7 +32,12 @@ type EvaluationStore = {
   addBuiltinMetric: (resourceType: EvaluationResourceType, resourceId: string, optionId: string, nodeInfoList?: NodeInfo[]) => void
   addCustomMetric: (resourceType: EvaluationResourceType, resourceId: string) => void
   removeMetric: (resourceType: EvaluationResourceType, resourceId: string, metricId: string) => void
-  setCustomMetricWorkflow: (resourceType: EvaluationResourceType, resourceId: string, metricId: string, workflowId: string) => void
+  setCustomMetricWorkflow: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    metricId: string,
+    workflow: { workflowId: string, workflowAppId: string, workflowName: string },
+  ) => void
   addCustomMetricMapping: (resourceType: EvaluationResourceType, resourceId: string, metricId: string) => void
   updateCustomMetricMapping: (
     resourceType: EvaluationResourceType,
@@ -122,7 +127,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
-  setCustomMetricWorkflow: (resourceType, resourceId, metricId, workflowId) => {
+  setCustomMetricWorkflow: (resourceType, resourceId, metricId, workflow) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
@@ -131,7 +136,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
           customConfig: metric.customConfig
             ? {
                 ...metric.customConfig,
-                workflowId,
+                workflowId: workflow.workflowId,
+                workflowAppId: workflow.workflowAppId,
+                workflowName: workflow.workflowName,
                 mappings: metric.customConfig.mappings.map(mapping => ({
                   ...mapping,
                   targetVariableId: null,
