@@ -1,7 +1,7 @@
-import type { BundledLanguage, BundledTheme } from 'shiki'
+import type { JSX } from 'react'
+import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
 import ReactEcharts from 'echarts-for-react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { codeToHtml } from 'shiki'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
@@ -11,6 +11,7 @@ import useTheme from '@/hooks/use-theme'
 import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
+import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
@@ -61,28 +62,31 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language: string, theme: BundledTheme }) => {
-  const [html, setHtml] = useState<string>('')
+const ShikiCodeBlock = memo(({ code, language, theme, initial }: { code: string, language: string, theme: BundledTheme, initial?: JSX.Element }) => {
+  const [nodes, setNodes] = useState(initial)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false
-    codeToHtml(code, {
-      lang: language as BundledLanguage,
+
+    void highlightCode({
+      code,
+      language: language as BundledLanguage,
       theme,
     }).then((result) => {
       if (!cancelled)
-        setHtml(result)
+        setNodes(result)
     }).catch((error) => {
       console.error('Shiki highlighting failed:', error)
       if (!cancelled)
-        setHtml('')
+        setNodes(undefined)
     })
+
     return () => {
       cancelled = true
     }
   }, [code, language, theme])
 
-  if (!html) {
+  if (!nodes) {
     return (
       <pre style={{
         paddingLeft: 12,
@@ -100,14 +104,15 @@ const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language
 
   return (
     <div
-      dangerouslySetInnerHTML={{ __html: html }}
       style={{
         borderBottomLeftRadius: '10px',
         borderBottomRightRadius: '10px',
         overflow: 'auto',
       }}
       className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:py-2!"
-    />
+    >
+      {nodes}
+    </div>
   )
 })
 ShikiCodeBlock.displayName = 'ShikiCodeBlock'

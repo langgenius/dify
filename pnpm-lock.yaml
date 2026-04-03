@@ -330,6 +330,9 @@ catalogs:
     happy-dom:
       specifier: 20.8.9
       version: 20.8.9
+    hast-util-to-jsx-runtime:
+      specifier: 2.3.6
+      version: 2.3.6
     hono:
       specifier: 4.12.10
       version: 4.12.10
@@ -809,6 +812,9 @@ importers:
       foxact:
         specifier: 'catalog:'
         version: 0.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      hast-util-to-jsx-runtime:
+        specifier: 'catalog:'
+        version: 2.3.6
       html-entities:
         specifier: 'catalog:'
         version: 2.6.0

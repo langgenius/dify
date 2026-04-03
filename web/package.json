@@ -100,6 +100,7 @@
     "es-toolkit": "catalog:",
     "fast-deep-equal": "catalog:",
     "foxact": "catalog:",
+    "hast-util-to-jsx-runtime": "catalog:",
     "html-entities": "catalog:",
     "html-to-image": "catalog:",
     "i18next": "catalog:",
