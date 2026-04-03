@@ -127,34 +127,7 @@ const normalizeSnippetListParams = (params: SnippetListParams) => {
   }
 }
 
-const isNotFoundError = (error: unknown) => {
-  return !!error && typeof error === 'object' && 'status' in error && error.status === 404
-}
-
 const snippetListKey = (params: SnippetListParams) => ['snippets', 'list', params]
-
-export const useSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
-  const query = normalizeSnippetListParams(params)
-
-  return useQuery(consoleQuery.snippets.list.queryOptions({
-    input: { query },
-    enabled: options?.enabled ?? true,
-  }))
-}
-
-export const useSnippetListItems = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
-  return useQuery<SnippetListItemUIModel[]>({
-    queryKey: [...consoleQuery.snippets.list.queryKey({ input: { query: normalizeSnippetListParams(params) } }), 'items'],
-    queryFn: async () => {
-      const response = await consoleClient.snippets.list({
-        query: normalizeSnippetListParams(params),
-      })
-
-      return response.data.map(toSnippetListItem)
-    },
-    enabled: options?.enabled ?? true,
-  })
-}
 
 export const useInfiniteSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
   const normalizedParams = normalizeSnippetListParams(params)
@@ -183,42 +156,6 @@ export const useSnippetApiDetail = (snippetId: string) => {
     },
     enabled: !!snippetId,
   }))
-}
-
-export const useSnippetDetail = (snippetId: string) => {
-  return useQuery<SnippetDetailPayload | null>({
-    queryKey: [...consoleQuery.snippets.detail.queryKey({
-      input: {
-        params: { snippetId },
-      },
-    }), 'payload'],
-    enabled: !!snippetId,
-    queryFn: async () => {
-      try {
-        const [snippet, workflow] = await Promise.all([
-          consoleClient.snippets.detail({
-            params: { snippetId },
-          }),
-          consoleClient.snippets.draftWorkflow({
-            params: { snippetId },
-          }).catch((error) => {
-            if (isNotFoundError(error))
-              return undefined
-
-            throw error
-          }),
-        ])
-
-        return buildSnippetDetailPayload(snippet, workflow)
-      }
-      catch (error) {
-        if (isNotFoundError(error))
-          return null
-
-        throw error
-      }
-    },
-  })
 }
 
 export const useCreateSnippetMutation = () => {
@@ -269,34 +206,6 @@ export const useExportSnippetMutation = () => {
         query: { include_secret: include ? 'true' : 'false' },
       })
     },
-  })
-}
-
-export const usePublishSnippetMutation = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    ...consoleQuery.snippets.publishWorkflow.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.snippets.key(),
-        })
-      },
-    }),
-  })
-}
-
-export const useIncrementSnippetUseCountMutation = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    ...consoleQuery.snippets.incrementUseCount.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.snippets.key(),
-        })
-      },
-    }),
   })
 }
 

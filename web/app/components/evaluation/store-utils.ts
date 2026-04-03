@@ -12,13 +12,13 @@ import type {
 import type { NodeInfo } from '@/types/evaluation'
 import { getComparisonOperators, getDefaultOperator, getEvaluationMockConfig } from './mock'
 
-export type EvaluationStoreResources = Record<string, EvaluationResourceState>
+type EvaluationStoreResources = Record<string, EvaluationResourceState>
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 
 export const buildResourceKey = (resourceType: EvaluationResourceType, resourceId: string) => `${resourceType}:${resourceId}`
 
-export const conditionOperatorsWithoutValue: ComparisonOperator[] = ['is_empty', 'is_not_empty']
+const conditionOperatorsWithoutValue: ComparisonOperator[] = ['is_empty', 'is_not_empty']
 
 export const requiresConditionValue = (operator: ComparisonOperator) => !conditionOperatorsWithoutValue.includes(operator)
 
@@ -100,7 +100,7 @@ export const buildInitialState = (resourceType: EvaluationResourceType): Evaluat
   }
 }
 
-export const getResourceState = (
+const getResourceState = (
   resources: EvaluationStoreResources,
   resourceType: EvaluationResourceType,
   resourceId: string,

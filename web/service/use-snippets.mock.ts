@@ -1,6 +1,5 @@
 import type { Node } from '@/app/components/workflow/types'
 import type { SnippetDetailPayload, SnippetInputField, SnippetListItem } from '@/models/snippet'
-import { useQuery } from '@tanstack/react-query'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import httpDefault from '@/app/components/workflow/nodes/http/default'
@@ -11,9 +10,7 @@ import { BlockEnum, PromptRole } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { AppModeEnum } from '@/types/app'
 
-const NAME_SPACE = 'snippets'
-
-export const getSnippetListMock = (): SnippetListItem[] => ([
+const getSnippetListMock = (): SnippetListItem[] => ([
   {
     id: 'snippet-1',
     name: 'Tone Rewriter',
@@ -205,24 +202,4 @@ export const getSnippetDetailMock = (snippetId: string): SnippetDetailPayload | 
       autoSavedAt: 'Auto-saved · a few seconds ago',
     },
   }
-}
-
-export const useSnippetDetail = (snippetId: string) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'detail', snippetId],
-    queryFn: async () => getSnippetDetailMock(snippetId),
-    enabled: !!snippetId,
-  })
-}
-
-export const publishSnippet = async (_snippetId: string) => {
-  return Promise.resolve()
-}
-
-export const runSnippet = async (_snippetId: string) => {
-  return Promise.resolve()
-}
-
-export const updateSnippetInputFields = async (_snippetId: string, _fields: SnippetInputField[]) => {
-  return Promise.resolve()
 }

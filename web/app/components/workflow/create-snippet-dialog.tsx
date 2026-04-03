@@ -21,7 +21,7 @@ export type CreateSnippetDialogPayload = {
   graph: SnippetCanvasData
 }
 
-export type CreateSnippetDialogInitialValue = {
+type CreateSnippetDialogInitialValue = {
   name?: string
   description?: string
   icon?: AppIconSelection
@@ -111,8 +111,8 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
         <DialogContent className="w-[520px] max-w-[520px] p-0">
           <DialogCloseButton />
 
-          <div className="px-6 pb-3 pt-6">
-            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+          <div className="px-6 pt-6 pb-3">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {title || t('snippet.createDialogTitle', { ns: 'workflow' })}
             </DialogTitle>
           </div>
@@ -120,7 +120,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
           <div className="space-y-4 px-6 py-2">
             <div className="flex items-end gap-3">
               <div className="flex-1 pb-0.5">
-                <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
+                <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
                   {t('snippet.nameLabel', { ns: 'workflow' })}
                 </div>
                 <Input
@@ -144,7 +144,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
             </div>
 
             <div>
-              <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-medium">
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
                 {t('snippet.descriptionLabel', { ns: 'workflow' })}
               </div>
               <Textarea
@@ -157,7 +157,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-5">
+          <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button disabled={isSubmitting} onClick={handleClose}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
@@ -174,7 +174,7 @@ const CreateSnippetDialog: FC<CreateSnippetDialogProps> = ({
         </DialogContent>
 
         <DialogPortal>
-          <div className="pointer-events-none fixed left-1/2 top-1/2 z-[1002] flex -translate-x-1/2 translate-y-[170px] items-center gap-1 text-text-quaternary body-xs-regular">
+          <div className="pointer-events-none fixed top-1/2 left-1/2 z-[1002] flex -translate-x-1/2 translate-y-[170px] items-center gap-1 body-xs-regular text-text-quaternary">
             <span>{t('snippet.shortcuts.press', { ns: 'workflow' })}</span>
             <ShortcutsName keys={['ctrl', 'enter']} textColor="secondary" />
             <span>{t('snippet.shortcuts.toConfirm', { ns: 'workflow' })}</span>

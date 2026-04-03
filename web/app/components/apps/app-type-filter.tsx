@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppListCategory } from './app-type-filter-shared'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,8 +18,8 @@ import { isAppListCategory } from './app-type-filter-shared'
 const chipClassName = 'flex h-8 items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-[13px] leading-[18px] text-text-secondary hover:bg-components-input-bg-hover'
 
 type AppTypeFilterProps = {
-  activeTab: import('./app-type-filter-shared').AppListCategory
-  onChange: (value: import('./app-type-filter-shared').AppListCategory) => void
+  activeTab: AppListCategory
+  onChange: (value: AppListCategory) => void
 }
 
 const AppTypeFilter = ({

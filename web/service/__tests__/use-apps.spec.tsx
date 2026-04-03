@@ -76,10 +76,13 @@ describe('useConvertWorkflowTypeMutation', () => {
 
     // Assert
     await waitFor(() => {
-      expect(convertWorkflowTypeMutationFn).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
-        query: { target_type: 'evaluation' },
-      })
+      expect(convertWorkflowTypeMutationFn).toHaveBeenCalledWith(
+        {
+          params: { appId: 'app-1' },
+          query: { target_type: 'evaluation' },
+        },
+        expect.any(Object),
+      )
     })
     await waitFor(() => {
       expect(invalidateQueries).toHaveBeenCalledWith({

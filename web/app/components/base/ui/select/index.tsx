@@ -9,6 +9,8 @@ import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
 export const Select = BaseSelect.Root
+export const SelectGroup = BaseSelect.Group
+export const SelectGroupLabel = BaseSelect.GroupLabel
 export const SelectValue = BaseSelect.Value
 
 const selectTriggerVariants = cva(
@@ -78,7 +80,7 @@ export function SelectTrigger({
         role="button"
         aria-label="Clear selection"
         tabIndex={-1}
-        className="shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary group-data-disabled:hidden group-data-readonly:hidden"
+        className="shrink-0 cursor-pointer text-text-quaternary group-data-disabled:hidden group-data-readonly:hidden hover:text-text-secondary"
         onClick={(e) => {
           e.stopPropagation()
           onClear?.()
@@ -91,7 +93,7 @@ export function SelectTrigger({
   }
   else {
     trailingIcon = (
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-open:text-text-secondary group-data-readonly:hidden">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     )
@@ -169,7 +171,7 @@ export function SelectContent({
         <BaseSelect.Popup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
+            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...popupProps}
@@ -194,8 +196,8 @@ export function SelectItem({
   return (
     <BaseSelect.Item
       className={cn(
-        'flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary outline-hidden system-sm-medium',
-        'data-disabled:cursor-not-allowed data-highlighted:bg-state-base-hover data-disabled:opacity-50',
+        'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-state-base-hover',
         className,
       )}
       {...props}

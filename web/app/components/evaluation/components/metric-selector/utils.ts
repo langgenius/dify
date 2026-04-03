@@ -6,7 +6,7 @@ export const toEvaluationTargetType = (resourceType: 'workflow' | 'snippet'): Ev
   return resourceType === 'snippet' ? 'snippets' : 'app'
 }
 
-export const humanizeMetricId = (metricId: string) => {
+const humanizeMetricId = (metricId: string) => {
   return metricId
     .split(/[-_]/g)
     .filter(Boolean)

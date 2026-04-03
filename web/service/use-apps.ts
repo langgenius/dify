@@ -11,7 +11,6 @@ import type {
   WorkflowDailyConversationsResponse,
 } from '@/models/app'
 import type { App } from '@/types/app'
-import type { WorkflowTypeConversionTarget } from '@/types/workflow'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -170,8 +169,6 @@ export const useConvertWorkflowTypeMutation = () => {
     }),
   })
 }
-
-export type { WorkflowTypeConversionTarget }
 
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
