@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from core.tools.__base.tool_provider import ToolProviderController
@@ -42,20 +42,22 @@ class WorkflowToolManageService:
         labels: list[str] | None = None,
     ):
         # check if the name is unique
-        existing_workflow_tool_provider = (
-            db.session.query(WorkflowToolProvider)
+        existing_workflow_tool_provider = db.session.scalar(
+            select(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 # name or app_id
                 or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
             )
-            .first()
+            .limit(1)
         )
 
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        app: App | None = db.session.query(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
+        app: App | None = db.session.scalar(
+            select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1)
+        )
 
         if app is None:
             raise ValueError(f"App {workflow_app_id} not found")
@@ -122,30 +124,30 @@ class WorkflowToolManageService:
         :return: the updated tool
         """
         # check if the name is unique
-        existing_workflow_tool_provider = (
-            db.session.query(WorkflowToolProvider)
+        existing_workflow_tool_provider = db.session.scalar(
+            select(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 WorkflowToolProvider.name == name,
                 WorkflowToolProvider.id != workflow_tool_id,
             )
-            .first()
+            .limit(1)
         )
 
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} already exists")
 
-        workflow_tool_provider: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        workflow_tool_provider: WorkflowToolProvider | None = db.session.scalar(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .first()
+            .limit(1)
         )
 
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        app: App | None = (
-            db.session.query(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).first()
+        app: App | None = db.session.scalar(
+            select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
         )
 
         if app is None:
@@ -234,9 +236,11 @@ class WorkflowToolManageService:
         :param tenant_id: the tenant id
         :param workflow_tool_id: the workflow tool id
         """
-        db.session.query(WorkflowToolProvider).where(
-            WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id
-        ).delete()
+        db.session.execute(
+            delete(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id
+            )
+        )
 
         db.session.commit()
 
@@ -251,10 +255,10 @@ class WorkflowToolManageService:
         :param workflow_tool_id: the workflow tool id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        db_tool: WorkflowToolProvider | None = db.session.scalar(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .first()
+            .limit(1)
         )
         return cls._get_workflow_tool(tenant_id, db_tool)
 
@@ -267,10 +271,10 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        db_tool: WorkflowToolProvider | None = db.session.scalar(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
-            .first()
+            .limit(1)
         )
         return cls._get_workflow_tool(tenant_id, db_tool)
 
@@ -284,8 +288,8 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = (
-            db.session.query(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
+        workflow_app: App | None = db.session.scalar(
+            select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
         )
 
         if workflow_app is None:
@@ -331,10 +335,10 @@ class WorkflowToolManageService:
         :param workflow_tool_id: the workflow tool id
         :return: the list of tools
         """
-        db_tool: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
+        db_tool: WorkflowToolProvider | None = db.session.scalar(
+            select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .first()
+            .limit(1)
         )
 
         if db_tool is None:

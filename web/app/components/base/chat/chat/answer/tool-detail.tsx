@@ -45,19 +45,19 @@ const ToolDetail = ({
       {
         expand && (
           <>
-            <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
+            <div className="mx-1 mb-0.5 radius-lg bg-components-panel-on-panel-item-bg text-text-secondary">
               <div className="system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1">
                 {t('thought.requestTitle', { ns: 'tools' })}
               </div>
-              <div className="code-xs-regular break-words px-3 pb-2 pt-1">
+              <div className="code-xs-regular wrap-break-word px-3 pb-2 pt-1">
                 {input}
               </div>
             </div>
-            <div className="mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
+            <div className="mx-1 mb-1 radius-lg bg-components-panel-on-panel-item-bg text-text-secondary">
               <div className="system-xs-semibold-uppercase flex h-7 items-center justify-between px-2 pt-1">
                 {t('thought.responseTitle', { ns: 'tools' })}
               </div>
-              <div className="code-xs-regular break-words px-3 pb-2 pt-1">
+              <div className="code-xs-regular wrap-break-word px-3 pb-2 pt-1">
                 {output}
               </div>
             </div>

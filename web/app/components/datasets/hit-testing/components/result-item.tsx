@@ -84,7 +84,7 @@ const ResultItem = ({
             {!isFold && (
               <div className="space-y-2">
                 {child_chunks.map(item => (
-                  <div key={item.id} className="ml-[7px] border-l-[2px] border-text-accent-secondary pl-[7px]">
+                  <div key={item.id} className="ml-[7px] border-l-2 border-text-accent-secondary pl-[7px]">
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>
                 ))}

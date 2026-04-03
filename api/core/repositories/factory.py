@@ -7,7 +7,7 @@ allowing users to configure different repository backends through string paths.
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol, Union
+from typing import Literal, Protocol
 
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from sqlalchemy.engine import Engine
@@ -61,8 +61,8 @@ class DifyCoreRepositoryFactory:
     @classmethod
     def create_workflow_execution_repository(
         cls,
-        session_factory: Union[sessionmaker, Engine],
-        user: Union[Account, EndUser],
+        session_factory: sessionmaker | Engine,
+        user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom,
     ) -> WorkflowExecutionRepository:
@@ -97,8 +97,8 @@ class DifyCoreRepositoryFactory:
     @classmethod
     def create_workflow_node_execution_repository(
         cls,
-        session_factory: Union[sessionmaker, Engine],
-        user: Union[Account, EndUser],
+        session_factory: sessionmaker | Engine,
+        user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowNodeExecutionTriggeredFrom,
     ) -> WorkflowNodeExecutionRepository:

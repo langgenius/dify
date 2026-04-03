@@ -51,7 +51,7 @@ const VariableTypeSelector = ({
           <RiArrowDownSLine className="ml-0.5 h-4 w-4 text-text-quaternary" />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={cn('z-[11] w-full', popupClassName)}>
+      <PortalToFollowElemContent className={cn('z-11 w-full', popupClassName)}>
         <div className="radius-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {list.map((item: any) => (
             <div

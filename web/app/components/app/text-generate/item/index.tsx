@@ -28,7 +28,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
@@ -38,7 +38,7 @@ import ResultTab from './result-tab'
 
 const MAX_DEPTH = 3
 
-export type IGenerationItemProps = {
+type IGenerationItemProps = {
   isWorkflow?: boolean
   workflowProcessData?: WorkflowProcess
   className?: string
@@ -66,12 +66,6 @@ export type IGenerationItemProps = {
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
 }
-
-export const copyIcon = (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M9.3335 2.33341C9.87598 2.33341 10.1472 2.33341 10.3698 2.39304C10.9737 2.55486 11.4454 3.02657 11.6072 3.63048C11.6668 3.85302 11.6668 4.12426 11.6668 4.66675V10.0334C11.6668 11.0135 11.6668 11.5036 11.4761 11.8779C11.3083 12.2072 11.0406 12.4749 10.7113 12.6427C10.337 12.8334 9.84692 12.8334 8.86683 12.8334H5.1335C4.1534 12.8334 3.66336 12.8334 3.28901 12.6427C2.95973 12.4749 2.69201 12.2072 2.52423 11.8779C2.3335 11.5036 2.3335 11.0135 2.3335 10.0334V4.66675C2.3335 4.12426 2.3335 3.85302 2.39313 3.63048C2.55494 3.02657 3.02665 2.55486 3.63056 2.39304C3.8531 2.33341 4.12435 2.33341 4.66683 2.33341M5.60016 3.50008H8.40016C8.72686 3.50008 8.89021 3.50008 9.01499 3.4365C9.12475 3.38058 9.21399 3.29134 9.26992 3.18158C9.3335 3.05679 9.3335 2.89345 9.3335 2.56675V2.10008C9.3335 1.77338 9.3335 1.61004 9.26992 1.48525C9.21399 1.37549 9.12475 1.28625 9.01499 1.23033C8.89021 1.16675 8.72686 1.16675 8.40016 1.16675H5.60016C5.27347 1.16675 5.11012 1.16675 4.98534 1.23033C4.87557 1.28625 4.78634 1.37549 4.73041 1.48525C4.66683 1.61004 4.66683 1.77338 4.66683 2.10008V2.56675C4.66683 2.89345 4.66683 3.05679 4.73041 3.18158C4.78634 3.29134 4.87557 3.38058 4.98534 3.4365C5.11012 3.50008 5.27347 3.50008 5.60016 3.50008Z" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
 
 const GenerationItem: FC<IGenerationItemProps> = ({
   isWorkflow,
@@ -145,7 +139,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      Toast.notify({ type: 'warning', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
     }
     startQuerying()
@@ -338,14 +332,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {/* action buttons */}
               <div className="absolute bottom-1 right-2 flex items-center">
                 {!isInWebApp && (appSourceType !== AppSourceType.installedApp) && !isResponding && (
-                  <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                  <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                     <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
                       <RiFileList3Line className="h-4 w-4" />
                       {/* <div>{t('common.operation.log')}</div> */}
                     </ActionButton>
                   </div>
                 )}
-                <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                   {moreLikeThis && !isTryApp && (
                     <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
                       <RiSparklingLine className="h-4 w-4" />
@@ -366,7 +360,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           copy(copyContent)
                         else
                           copy(JSON.stringify(copyContent))
-                        Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                        toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                       }}
                     >
                       <RiClipboardLine className="h-4 w-4" />
@@ -384,7 +378,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   )}
                 </div>
                 {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
-                  <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
+                  <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                     {!feedback?.rating && (
                       <>
                         <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>

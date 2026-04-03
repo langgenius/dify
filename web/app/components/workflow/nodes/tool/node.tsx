@@ -38,7 +38,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         <div className="pointer-events-auto absolute right-3 top-[-32px] z-40">
           <InstallPluginButton
             size="small"
-            className="!font-medium !text-text-accent"
+            className="font-medium! text-text-accent!"
             extraIdentifiers={[
               data.plugin_id,
               data.provider_id,
@@ -75,7 +75,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           ))}
           {showAuthorizationWarning && (
             <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-              <span className="mr-1 size-[4px] shrink-0 rounded-[2px] bg-text-warning-secondary" />
+              <span className="mr-1 size-[4px] shrink-0 radius-2xs bg-text-warning-secondary" />
               <div className="grow truncate text-text-warning system-xs-medium" title={t('nodes.tool.authorizationRequired', { ns: 'workflow' })}>
                 {t('nodes.tool.authorizationRequired', { ns: 'workflow' })}
               </div>

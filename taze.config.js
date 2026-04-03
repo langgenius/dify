@@ -6,15 +6,5 @@ export default defineConfig({
     'react-syntax-highlighter',
     'react-window',
     '@types/react-window',
-
-    // We can not upgrade these yet
-    'tailwind-merge',
-    'tailwindcss',
-    'typescript',
   ],
-
-  write: true,
-  install: false,
-  recursive: true,
-  interactive: true,
 })

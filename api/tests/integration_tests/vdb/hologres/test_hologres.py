@@ -6,8 +6,12 @@ from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerT
 
 from core.rag.datasource.vdb.hologres.hologres_vector import HologresVector, HologresVectorConfig
 from core.rag.models.document import Document
-from tests.integration_tests.vdb.__mock.hologres import setup_hologres_mock
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text
+
+pytest_plugins = (
+    "tests.integration_tests.vdb.test_vector_store",
+    "tests.integration_tests.vdb.__mock.hologres",
+)
 
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 

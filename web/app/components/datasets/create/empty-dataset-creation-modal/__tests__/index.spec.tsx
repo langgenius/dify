@@ -1,9 +1,26 @@
 import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import EmptyDatasetCreationModal from '../index'
+
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 // Mock Next.js router
 const mockPush = vi.fn()
@@ -21,15 +38,6 @@ vi.mock('@/service/datasets', () => ({
 // Mock useInvalidDatasetList hook
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: vi.fn(),
-}))
-
-// Mock ToastContext - need to mock both createContext and useContext from use-context-selector
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', () => ({
-  createContext: vi.fn(() => ({
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-  })),
-  useContext: vi.fn(() => ({ notify: mockNotify })),
 }))
 
 // Type cast mocked functions

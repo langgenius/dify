@@ -15,7 +15,6 @@ import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
 export const DropdownMenu = Menu.Root
-export const DropdownMenuPortal = Menu.Portal
 export const DropdownMenuTrigger = Menu.Trigger
 export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group
@@ -131,7 +130,7 @@ function renderDropdownMenuPopup({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-[1002] outline-none', className)}
+        className={cn('z-1002 outline-hidden', className)}
         {...positionerProps}
       >
         <Menu.Popup

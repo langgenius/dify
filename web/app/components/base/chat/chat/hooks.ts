@@ -29,7 +29,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -65,7 +65,6 @@ export const useChat = (
 ) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { notify } = useToastContext()
   const conversationIdRef = useRef('')
   const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -636,7 +635,7 @@ export const useChat = (
     setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -1175,7 +1174,6 @@ export const useChat = (
     config?.suggested_questions_after_answer,
     updateCurrentQAOnTree,
     updateChatTreeNode,
-    notify,
     handleResponding,
     formatTime,
     createAudioPlayerManager,

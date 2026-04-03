@@ -18,7 +18,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8"
+      className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8"
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >

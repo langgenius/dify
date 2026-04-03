@@ -17,7 +17,7 @@ const InfoPanel: FC<Props> = ({
         <div className="system-2xs-semibold-uppercase uppercase text-text-secondary">
           {title}
         </div>
-        <div className="system-xs-regular break-words text-text-tertiary">
+        <div className="system-xs-regular wrap-break-word text-text-tertiary">
           {content}
         </div>
       </div>

@@ -64,7 +64,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   return (
     <Listbox multiple value={value} onChange={onChange} disabled={disabled}>
       <div className="group/simple-select relative h-8 grow">
-        <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
+        <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-hidden group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
           <span className={textClassName}>
             {renderLabel()}
           </span>
@@ -72,7 +72,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
             {isLoading ? <LoadingIndicator /> : <ToggleIndicator />}
           </span>
         </ListboxButton>
-        <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
+        <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-xs focus:outline-hidden sm:text-sm">
           {items.map(item => (
             <ListboxOption
               key={item.value}

@@ -135,7 +135,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
       title={t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
       isShow={isShow}
       onClose={onClose}
-      className="w-[640px] !max-w-2xl"
+      className="w-[640px] max-w-2xl!"
       wrapperClassName={className}
       closable={true}
     >
