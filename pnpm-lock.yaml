@@ -213,9 +213,6 @@ catalogs:
     '@types/react-dom':
       specifier: 19.2.3
       version: 19.2.3
-    '@types/react-syntax-highlighter':
-      specifier: 15.5.13
-      version: 15.5.13
     '@types/react-window':
       specifier: 1.8.8
       version: 1.8.8
@@ -450,9 +447,6 @@ catalogs:
     react-sortablejs:
       specifier: 6.1.4
       version: 6.1.4
-    react-syntax-highlighter:
-      specifier: 15.6.6
-      version: 15.6.6
     react-textarea-autosize:
       specifier: 8.5.9
       version: 8.5.9
@@ -474,6 +468,9 @@ catalogs:
     sharp:
       specifier: 0.34.5
       version: 0.34.5
+    shiki:
+      specifier: 4.0.2
+      version: 4.0.2
     sortablejs:
       specifier: 1.15.7
       version: 1.15.7
@@ -604,540 +601,7 @@ overrides:
 importers:
 
   .:
-<<<<<<< HEAD:web/pnpm-lock.yaml
-    dependencies:
-      '@amplitude/analytics-browser':
-        specifier: 2.36.4
-        version: 2.36.4
-      '@amplitude/plugin-session-replay-browser':
-        specifier: 1.26.1
-        version: 1.26.1(@amplitude/rrweb@2.0.0-alpha.35)(rollup@4.59.0)
-      '@base-ui/react':
-        specifier: 1.3.0
-        version: 1.3.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@emoji-mart/data':
-        specifier: 1.2.1
-        version: 1.2.1
-      '@floating-ui/react':
-        specifier: 0.27.19
-        version: 0.27.19(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@formatjs/intl-localematcher':
-        specifier: 0.8.1
-        version: 0.8.1
-      '@headlessui/react':
-        specifier: 2.2.9
-        version: 2.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@heroicons/react':
-        specifier: 2.2.0
-        version: 2.2.0(react@19.2.4)
-      '@hono/node-server':
-        specifier: 1.19.11
-        version: 1.19.11(hono@4.12.7)
-      '@lexical/code':
-        specifier: npm:lexical-code-no-prism@0.41.0
-        version: lexical-code-no-prism@0.41.0(@lexical/utils@0.41.0)(lexical@0.41.0)
-      '@lexical/link':
-        specifier: 0.41.0
-        version: 0.41.0
-      '@lexical/list':
-        specifier: 0.41.0
-        version: 0.41.0
-      '@lexical/react':
-        specifier: 0.41.0
-        version: 0.41.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(yjs@13.6.29)
-      '@lexical/selection':
-        specifier: 0.41.0
-        version: 0.41.0
-      '@lexical/text':
-        specifier: 0.41.0
-        version: 0.41.0
-      '@lexical/utils':
-        specifier: 0.41.0
-        version: 0.41.0
-      '@octokit/core':
-        specifier: 7.0.6
-        version: 7.0.6
-      '@octokit/request-error':
-        specifier: 7.1.0
-        version: 7.1.0
-      '@orpc/client':
-        specifier: 1.13.6
-        version: 1.13.6
-      '@orpc/contract':
-        specifier: 1.13.6
-        version: 1.13.6
-      '@orpc/openapi-client':
-        specifier: 1.13.6
-        version: 1.13.6
-      '@orpc/tanstack-query':
-        specifier: 1.13.6
-        version: 1.13.6(@orpc/client@1.13.6)(@tanstack/query-core@5.90.20)
-      '@remixicon/react':
-        specifier: 4.9.0
-        version: 4.9.0(react@19.2.4)
-      '@sentry/react':
-        specifier: 10.43.0
-        version: 10.43.0(react@19.2.4)
-      '@streamdown/math':
-        specifier: 1.0.2
-        version: 1.0.2(react@19.2.4)
-      '@svgdotjs/svg.js':
-        specifier: 3.2.5
-        version: 3.2.5
-      '@t3-oss/env-nextjs':
-        specifier: 0.13.10
-        version: 0.13.10(typescript@5.9.3)(valibot@1.2.0(typescript@5.9.3))(zod@4.3.6)
-      '@tailwindcss/typography':
-        specifier: 0.5.19
-        version: 0.5.19(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))
-      '@tanstack/react-form':
-        specifier: 1.28.5
-        version: 1.28.5(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tanstack/react-query':
-        specifier: 5.90.21
-        version: 5.90.21(react@19.2.4)
-      abcjs:
-        specifier: 6.6.2
-        version: 6.6.2
-      ahooks:
-        specifier: 3.9.6
-        version: 3.9.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      class-variance-authority:
-        specifier: 0.7.1
-        version: 0.7.1
-      clsx:
-        specifier: 2.1.1
-        version: 2.1.1
-      cmdk:
-        specifier: 1.1.1
-        version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      copy-to-clipboard:
-        specifier: 3.3.3
-        version: 3.3.3
-      cron-parser:
-        specifier: 5.5.0
-        version: 5.5.0
-      dayjs:
-        specifier: 1.11.20
-        version: 1.11.20
-      decimal.js:
-        specifier: 10.6.0
-        version: 10.6.0
-      dompurify:
-        specifier: 3.3.3
-        version: 3.3.3
-      echarts:
-        specifier: 6.0.0
-        version: 6.0.0
-      echarts-for-react:
-        specifier: 3.0.6
-        version: 3.0.6(echarts@6.0.0)(react@19.2.4)
-      elkjs:
-        specifier: 0.11.1
-        version: 0.11.1
-      embla-carousel-autoplay:
-        specifier: 8.6.0
-        version: 8.6.0(embla-carousel@8.6.0)
-      embla-carousel-react:
-        specifier: 8.6.0
-        version: 8.6.0(react@19.2.4)
-      emoji-mart:
-        specifier: 5.6.0
-        version: 5.6.0
-      es-toolkit:
-        specifier: 1.45.1
-        version: 1.45.1
-      fast-deep-equal:
-        specifier: 3.1.3
-        version: 3.1.3
-      foxact:
-        specifier: 0.2.54
-        version: 0.2.54(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      hono:
-        specifier: 4.12.7
-        version: 4.12.7
-      html-entities:
-        specifier: 2.6.0
-        version: 2.6.0
-      html-to-image:
-        specifier: 1.11.13
-        version: 1.11.13
-      i18next:
-        specifier: 25.8.18
-        version: 25.8.18(typescript@5.9.3)
-      i18next-resources-to-backend:
-        specifier: 1.2.1
-        version: 1.2.1
-      immer:
-        specifier: 11.1.4
-        version: 11.1.4
-      jotai:
-        specifier: 2.18.1
-        version: 2.18.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4)
-      js-audio-recorder:
-        specifier: 1.0.7
-        version: 1.0.7
-      js-cookie:
-        specifier: 3.0.5
-        version: 3.0.5
-      js-yaml:
-        specifier: 4.1.1
-        version: 4.1.1
-      jsonschema:
-        specifier: 1.5.0
-        version: 1.5.0
-      katex:
-        specifier: 0.16.38
-        version: 0.16.38
-      ky:
-        specifier: 1.14.3
-        version: 1.14.3
-      lamejs:
-        specifier: 1.2.1
-        version: 1.2.1
-      lexical:
-        specifier: 0.41.0
-        version: 0.41.0
-      mermaid:
-        specifier: 11.13.0
-        version: 11.13.0
-      mime:
-        specifier: 4.1.0
-        version: 4.1.0
-      mitt:
-        specifier: 3.0.1
-        version: 3.0.1
-      modern-monaco:
-        specifier: 0.4.0
-        version: 0.4.0(typescript@5.9.3)
-      negotiator:
-        specifier: 1.0.0
-        version: 1.0.0
-      next:
-        specifier: 16.1.6
-        version: 16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0)
-      next-themes:
-        specifier: 0.4.6
-        version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      nuqs:
-        specifier: 2.8.9
-        version: 2.8.9(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0))(react@19.2.4)
-      pinyin-pro:
-        specifier: 3.28.0
-        version: 3.28.0
-      qrcode.react:
-        specifier: 4.2.0
-        version: 4.2.0(react@19.2.4)
-      qs:
-        specifier: 6.15.0
-        version: 6.15.0
-      react:
-        specifier: 19.2.4
-        version: 19.2.4
-      react-18-input-autosize:
-        specifier: 3.0.0
-        version: 3.0.0(react@19.2.4)
-      react-dom:
-        specifier: 19.2.4
-        version: 19.2.4(react@19.2.4)
-      react-easy-crop:
-        specifier: 5.5.6
-        version: 5.5.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react-hotkeys-hook:
-        specifier: 5.2.4
-        version: 5.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react-i18next:
-        specifier: 16.5.8
-        version: 16.5.8(i18next@25.8.18(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
-      react-multi-email:
-        specifier: 1.0.25
-        version: 1.0.25(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react-papaparse:
-        specifier: 4.4.0
-        version: 4.4.0
-      react-pdf-highlighter:
-        specifier: 8.0.0-rc.0
-        version: 8.0.0-rc.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react-slider:
-        specifier: 2.0.6
-        version: 2.0.6(react@19.2.4)
-      react-sortablejs:
-        specifier: 6.1.4
-        version: 6.1.4(@types/sortablejs@1.15.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sortablejs@1.15.7)
-      react-textarea-autosize:
-        specifier: 8.5.9
-        version: 8.5.9(@types/react@19.2.14)(react@19.2.4)
-      react-window:
-        specifier: 1.8.11
-        version: 1.8.11(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      reactflow:
-        specifier: 11.11.4
-        version: 11.11.4(@types/react@19.2.14)(immer@11.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      remark-breaks:
-        specifier: 4.0.0
-        version: 4.0.0
-      remark-directive:
-        specifier: 4.0.0
-        version: 4.0.0
-      scheduler:
-        specifier: 0.27.0
-        version: 0.27.0
-      semver:
-        specifier: 7.7.4
-        version: 7.7.4
-      sharp:
-        specifier: 0.34.5
-        version: 0.34.5
-      shiki:
-        specifier: 4.0.2
-        version: 4.0.2
-      sortablejs:
-        specifier: 1.15.7
-        version: 1.15.7
-      streamdown:
-        specifier: 2.4.0
-        version: 2.4.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      string-ts:
-        specifier: 2.3.1
-        version: 2.3.1
-      tailwind-merge:
-        specifier: 2.6.1
-        version: 2.6.1
-      tldts:
-        specifier: 7.0.25
-        version: 7.0.25
-      unist-util-visit:
-        specifier: 5.1.0
-        version: 5.1.0
-      use-context-selector:
-        specifier: 2.0.0
-        version: 2.0.0(react@19.2.4)(scheduler@0.27.0)
-      uuid:
-        specifier: 13.0.0
-        version: 13.0.0
-      zod:
-        specifier: 4.3.6
-        version: 4.3.6
-      zundo:
-        specifier: 2.3.0
-        version: 2.3.0(zustand@5.0.11(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4)))
-      zustand:
-        specifier: 5.0.11
-        version: 5.0.11(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
-      '@antfu/eslint-config':
-        specifier: 7.7.2
-        version: 7.7.2(@eslint-react/eslint-plugin@2.13.0(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3))(@next/eslint-plugin-next@16.1.6)(@typescript-eslint/rule-tester@8.57.0(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.57.0(typescript@5.9.3))(@typescript-eslint/utils@8.57.0(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3))(@voidzero-dev/vite-plus-test@0.1.11(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(esbuild@0.27.2)(jiti@1.21.7)(jsdom@28.1.0(canvas@3.2.1))(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(@vue/compiler-sfc@3.5.30)(eslint-plugin-react-hooks@7.0.1(eslint@10.0.3(jiti@1.21.7)))(eslint-plugin-react-refresh@0.5.2(eslint@10.0.3(jiti@1.21.7)))(eslint@10.0.3(jiti@1.21.7))(oxlint@1.55.0(oxlint-tsgolint@0.16.0))(typescript@5.9.3)
-      '@chromatic-com/storybook':
-        specifier: 5.0.1
-        version: 5.0.1(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@egoist/tailwindcss-icons':
-        specifier: 1.9.2
-        version: 1.9.2(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))
-      '@eslint-react/eslint-plugin':
-        specifier: 2.13.0
-        version: 2.13.0(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3)
-      '@iconify-json/heroicons':
-        specifier: 1.2.3
-        version: 1.2.3
-      '@iconify-json/ri':
-        specifier: 1.2.10
-        version: 1.2.10
-      '@mdx-js/loader':
-        specifier: 3.1.1
-        version: 3.1.1(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
-      '@mdx-js/react':
-        specifier: 3.1.1
-        version: 3.1.1(@types/react@19.2.14)(react@19.2.4)
-      '@mdx-js/rollup':
-        specifier: 3.1.1
-        version: 3.1.1(rollup@4.59.0)
-      '@next/eslint-plugin-next':
-        specifier: 16.1.6
-        version: 16.1.6
-      '@next/mdx':
-        specifier: 16.1.6
-        version: 16.1.6(@mdx-js/loader@3.1.1(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))
-      '@rgrove/parse-xml':
-        specifier: 4.2.0
-        version: 4.2.0
-      '@storybook/addon-docs':
-        specifier: 10.2.17
-        version: 10.2.17(@types/react@19.2.14)(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(esbuild@0.27.2)(rollup@4.59.0)(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
-      '@storybook/addon-links':
-        specifier: 10.2.17
-        version: 10.2.17(react@19.2.4)(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@storybook/addon-onboarding':
-        specifier: 10.2.17
-        version: 10.2.17(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@storybook/addon-themes':
-        specifier: 10.2.17
-        version: 10.2.17(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@storybook/nextjs-vite':
-        specifier: 10.2.17
-        version: 10.2.17(@babel/core@7.29.0)(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(esbuild@0.27.2)(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rollup@4.59.0)(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
-      '@storybook/react':
-        specifier: 10.2.17
-        version: 10.2.17(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
-      '@tanstack/eslint-plugin-query':
-        specifier: 5.91.4
-        version: 5.91.4(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3)
-      '@tanstack/react-devtools':
-        specifier: 0.9.13
-        version: 0.9.13(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.11)
-      '@tanstack/react-form-devtools':
-        specifier: 0.2.18
-        version: 0.2.18(@types/react@19.2.14)(csstype@3.2.3)(react@19.2.4)(solid-js@1.9.11)
-      '@tanstack/react-query-devtools':
-        specifier: 5.91.3
-        version: 5.91.3(@tanstack/react-query@5.90.21(react@19.2.4))(react@19.2.4)
-      '@testing-library/dom':
-        specifier: 10.4.1
-        version: 10.4.1
-      '@testing-library/jest-dom':
-        specifier: 6.9.1
-        version: 6.9.1
-      '@testing-library/react':
-        specifier: 16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@testing-library/user-event':
-        specifier: 14.6.1
-        version: 14.6.1(@testing-library/dom@10.4.1)
-      '@tsslint/cli':
-        specifier: 3.0.2
-        version: 3.0.2(@tsslint/compat-eslint@3.0.2(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
-      '@tsslint/compat-eslint':
-        specifier: 3.0.2
-        version: 3.0.2(jiti@1.21.7)(typescript@5.9.3)
-      '@tsslint/config':
-        specifier: 3.0.2
-        version: 3.0.2(@tsslint/compat-eslint@3.0.2(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
-      '@types/js-cookie':
-        specifier: 3.0.6
-        version: 3.0.6
-      '@types/js-yaml':
-        specifier: 4.0.9
-        version: 4.0.9
-      '@types/negotiator':
-        specifier: 0.6.4
-        version: 0.6.4
-      '@types/node':
-        specifier: 25.5.0
-        version: 25.5.0
-      '@types/postcss-js':
-        specifier: 4.1.0
-        version: 4.1.0
-      '@types/qs':
-        specifier: 6.15.0
-        version: 6.15.0
-      '@types/react':
-        specifier: 19.2.14
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: 19.2.3
-        version: 19.2.3(@types/react@19.2.14)
-      '@types/react-slider':
-        specifier: 1.3.6
-        version: 1.3.6
-      '@types/react-window':
-        specifier: 1.8.8
-        version: 1.8.8
-      '@types/semver':
-        specifier: 7.7.1
-        version: 7.7.1
-      '@types/sortablejs':
-        specifier: 1.15.9
-        version: 1.15.9
-      '@typescript-eslint/parser':
-        specifier: 8.57.0
-        version: 8.57.0(eslint@10.0.3(jiti@1.21.7))(typescript@5.9.3)
-      '@typescript/native-preview':
-        specifier: 7.0.0-dev.20260312.1
-        version: 7.0.0-dev.20260312.1
-      '@vitejs/plugin-react':
-        specifier: 6.0.0
-        version: 6.0.0(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
-      '@vitejs/plugin-rsc':
-        specifier: 0.5.21
-        version: 0.5.21(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(react-dom@19.2.4(react@19.2.4))(react-server-dom-webpack@19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3)))(react@19.2.4)
-      '@vitest/coverage-v8':
-        specifier: 4.1.0
-        version: 4.1.0(@voidzero-dev/vite-plus-test@0.1.11(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(esbuild@0.27.2)(jiti@1.21.7)(jsdom@28.1.0(canvas@3.2.1))(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
-      '@voidzero-dev/vite-plus-core':
-        specifier: 0.1.11
-        version: 0.1.11(@types/node@25.5.0)(esbuild@0.27.2)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
-      agentation:
-        specifier: 2.3.2
-        version: 2.3.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      autoprefixer:
-        specifier: 10.4.27
-        version: 10.4.27(postcss@8.5.8)
-      code-inspector-plugin:
-        specifier: 1.4.4
-        version: 1.4.4
-      eslint:
-        specifier: 10.0.3
-        version: 10.0.3(jiti@1.21.7)
-      eslint-plugin-better-tailwindcss:
-        specifier: 4.3.2
-        version: 4.3.2(eslint@10.0.3(jiti@1.21.7))(oxlint@1.55.0(oxlint-tsgolint@0.16.0))(tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.2))(typescript@5.9.3)
-      eslint-plugin-hyoban:
-        specifier: 0.14.1
-        version: 0.14.1(eslint@10.0.3(jiti@1.21.7))
-      eslint-plugin-react-hooks:
-        specifier: 7.0.1
-        version: 7.0.1(eslint@10.0.3(jiti@1.21.7))
-      eslint-plugin-react-refresh:
-        specifier: 0.5.2
-        version: 0.5.2(eslint@10.0.3(jiti@1.21.7))
-      eslint-plugin-sonarjs:
-        specifier: 4.0.2
-        version: 4.0.2(eslint@10.0.3(jiti@1.21.7))
-      eslint-plugin-storybook:
-        specifier: 10.2.17
-        version: 10.2.17(eslint@10.0.3(jiti@1.21.7))(storybook@10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
-      husky:
-        specifier: 9.1.7
-        version: 9.1.7
-      iconify-import-svg:
-        specifier: 0.1.2
-        version: 0.1.2
-      jsdom:
-        specifier: 28.1.0
-        version: 28.1.0(canvas@3.2.1)
-      jsdom-testing-mocks:
-        specifier: 1.16.0
-        version: 1.16.0
-      knip:
-        specifier: 5.86.0
-        version: 5.86.0(@types/node@25.5.0)(typescript@5.9.3)
-      lint-staged:
-        specifier: 16.3.3
-        version: 16.3.3
-      nock:
-        specifier: 14.0.11
-        version: 14.0.11
-      postcss:
-        specifier: 8.5.8
-        version: 8.5.8
-      postcss-js:
-        specifier: 5.1.0
-        version: 5.1.0(postcss@8.5.8)
-      react-server-dom-webpack:
-        specifier: 19.2.4
-        version: 19.2.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(webpack@5.105.4(esbuild@0.27.2)(uglify-js@3.19.3))
-      sass:
-        specifier: 1.98.0
-        version: 1.98.0
-      storybook:
-        specifier: 10.2.17
-        version: 10.2.17(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      tailwindcss:
-        specifier: 3.4.19
-        version: 3.4.19(tsx@4.21.0)(yaml@2.8.2)
-=======
-    devDependencies:
->>>>>>> main:pnpm-lock.yaml
       taze:
         specifier: 'catalog:'
         version: 19.11.0
@@ -1447,9 +911,6 @@ importers:
       react-sortablejs:
         specifier: 'catalog:'
         version: 6.1.4(@types/sortablejs@1.15.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sortablejs@1.15.7)
-      react-syntax-highlighter:
-        specifier: 'catalog:'
-        version: 15.6.6(react@19.2.4)
       react-textarea-autosize:
         specifier: 'catalog:'
         version: 8.5.9(@types/react@19.2.14)(react@19.2.4)
@@ -1471,6 +932,9 @@ importers:
       sharp:
         specifier: 'catalog:'
         version: 0.34.5
+      shiki:
+        specifier: 'catalog:'
+        version: 4.0.2
       sortablejs:
         specifier: 'catalog:'
         version: 1.15.7
@@ -1628,9 +1092,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
-      '@types/react-syntax-highlighter':
-        specifier: 'catalog:'
-        version: 15.5.13
       '@types/react-window':
         specifier: 'catalog:'
         version: 1.8.8
@@ -4860,14 +4321,6 @@ packages:
     peerDependencies:
       '@types/react': ^19.2.0
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  '@types/react-slider@1.3.6':
-    resolution: {integrity: sha512-RS8XN5O159YQ6tu3tGZIQz1/9StMLTg/FCIPxwqh2gwVixJnlfIodtVx+fpXVMZHe7A58lAX1Q4XTgAGOQaCQg==}
-=======
-  '@types/react-syntax-highlighter@15.5.13':
-    resolution: {integrity: sha512-uLGJ87j6Sz8UaBAooU0T6lWJ0dBmjZgN1PZTrj05TNql2/XpC6+4HhMT5syIdFUUt+FASfCeLLv4kBygNU+8qA==}
->>>>>>> main:pnpm-lock.yaml
-
   '@types/react-window@1.8.8':
     resolution: {integrity: sha512-8Ls660bHR1AUA2kuRvVG9D/4XpRC6wjAaPT9dil7Ckc76eP9TKWZwwmgfq8Q1LANX3QNDnoU4Zp48A3w+zK69Q==}
 
@@ -5728,14 +5181,6 @@ packages:
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
-
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  colorette@2.0.20:
-    resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
-=======
-  comma-separated-tokens@1.0.8:
-    resolution: {integrity: sha512-GHuDRO12Sypu2cV70d1dkA2EUmXHgntrzbpvOB+Qy+49ypNfGgFQIC2fhhXbnyrJRynDCAARsT7Ou0M6hirpfw==}
->>>>>>> main:pnpm-lock.yaml
 
   comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
@@ -6844,19 +6289,8 @@ packages:
     resolution: {integrity: sha512-Ox1pJVrDCyGHMG9CFg1tmrRUMRPRsAWYc/PinY0XzJU4K7y7vjNoLKIQ7BR5UJMCxNN8EM1MNDmHWA/B3aZUuw==}
     engines: {node: '>=6'}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  hono@4.12.7:
-    resolution: {integrity: sha512-jq9l1DM0zVIvsm3lv9Nw9nlJnMNPOcAtsbsgiUhWcFzPE99Gvo6yRTlszSLLYacMeQ6quHD6hMfId8crVHvexw==}
-=======
-  highlight.js@10.7.3:
-    resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
-
-  highlightjs-vue@1.0.0:
-    resolution: {integrity: sha512-PDEfEF102G23vHmPhLyPboFCD+BkMGu+GuJe2d9/eH4FsCwvgBpnc9n0pGE+ffKdph38s6foEZiEjdgHdzp+IA==}
-
   hono@4.12.10:
     resolution: {integrity: sha512-mx/p18PLy5og9ufies2GOSUqep98Td9q4i/EF6X7yJgAiIopxqdfIO3jbqsi3jRgTgw88jMDEzVKi+V2EF+27w==}
->>>>>>> main:pnpm-lock.yaml
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@9.0.2:
@@ -7327,19 +6761,11 @@ packages:
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  lru-cache@11.2.6:
-    resolution: {integrity: sha512-ESL2CrkS/2wTPfuend7Zhkzo2u0daGJ/A2VucJOgQ/C48S/zB8MMeMHSGKYpXhIjbPxfuezITkaBH1wqv00DDQ==}
-=======
   lower-case@2.0.2:
     resolution: {integrity: sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==}
 
-  lowlight@1.20.0:
-    resolution: {integrity: sha512-8Ktj+prEb1RoCPkEOrPMYUN/nCggB7qAWe3a7OpMjWQkh3l2RD5wKRQ+o8Q8YuI9RG/xs95waaI/E6ym/7NsTw==}
-
   lru-cache@11.2.7:
     resolution: {integrity: sha512-aY/R+aEsRelme17KGQa/1ZSIpLpNYYrhcrepKTZgE+W3WM16YMCaPwOHLHsmopZHELU0Ojin1lPVxKR0MihncA==}
->>>>>>> main:pnpm-lock.yaml
     engines: {node: 20 || >=22}
 
   lru-cache@5.1.1:
@@ -8033,17 +7459,10 @@ packages:
     resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}
     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-=======
-  prismjs@1.30.0:
-    resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
-    engines: {node: '>=6'}
-
   progress@2.0.3:
     resolution: {integrity: sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==}
     engines: {node: '>=0.4.0'}
 
->>>>>>> main:pnpm-lock.yaml
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
 
@@ -8292,7 +7711,9 @@ packages:
     resolution: {integrity: sha512-J8rn6v4DBb2nnFqkqwy6/NnTYMcgLA+sLr0iIO41qpv0n+ngb7ksag2tMRl0inb1bbO/esUwzW1vbJi7K0sI0g==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
+  reflect-metadata@0.2.2:
+    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
+
   regex-recursion@6.0.2:
     resolution: {integrity: sha512-0YCaSCq2VRIebiaUviZNs0cBz1kg5kVS2UKUfNIx8YVs1cN3AV7NTctO5FOKBA+UT2BPJIWZauYHPqJODG50cg==}
 
@@ -8301,13 +7722,6 @@ packages:
 
   regex@6.1.0:
     resolution: {integrity: sha512-6VwtthbV4o/7+OaAF9I5L5V3llLEsoPyq9P1JVXkedTP33c7MfCG0/5NOPcSJn0TzXcG9YUrR0gQSWioew3LDg==}
-=======
-  reflect-metadata@0.2.2:
-    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
-
-  refractor@3.6.0:
-    resolution: {integrity: sha512-MY9W41IOWxxk31o+YvFCNyNzdkc9M20NoZK5vq6jkv4I/uh2zkWcfudj0Q1fovjUQJrNewS9NMzeTtqPf+n5EA==}
->>>>>>> main:pnpm-lock.yaml
 
   regexp-ast-analysis@0.7.1:
     resolution: {integrity: sha512-sZuz1dYW/ZsfG17WSAG7eS85r5a0dDsvg+7BiiYR5o6lKCAtUrEwdmRmaGF6rwVj3LcmAeYkOWKEPlbPzN3Y3A==}
@@ -9105,14 +8519,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  vinext@https://pkg.pr.new/vinext@18fe3ea:
-    resolution: {integrity: sha512-nvKr+BQLFE9/bHNEaQKnc6GNjEVmRLGgWJ5dTD5ucxGhMUx0Mi5+3xf+lNOQZ1RKI5hncMbD1ydb0wyewiwTYw==, tarball: https://pkg.pr.new/vinext@18fe3ea}
-    version: 0.0.5
-=======
   vinext@0.0.39:
     resolution: {integrity: sha512-2WCW5wKy4YkCGFtoUGDmfxMBPULGOXEqd7Rczwi4cMEx2SG8UnY5/56XXGAnjf8aIIrx8ggOVWJSebH96QdjZg==}
->>>>>>> main:pnpm-lock.yaml
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -12497,14 +11905,6 @@ snapshots:
     dependencies:
       '@types/react': 19.2.14
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  '@types/react-slider@1.3.6':
-=======
-  '@types/react-syntax-highlighter@15.5.13':
->>>>>>> main:pnpm-lock.yaml
-    dependencies:
-      '@types/react': 19.2.14
-
   '@types/react-window@1.8.8':
     dependencies:
       '@types/react': 19.2.14
@@ -13483,12 +12883,6 @@ snapshots:
       color-name: 1.1.4
 
   color-name@1.1.4: {}
-
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  colorette@2.0.20: {}
-=======
-  comma-separated-tokens@1.0.8: {}
->>>>>>> main:pnpm-lock.yaml
 
   comma-separated-tokens@2.0.3: {}
 
@@ -14889,15 +14283,7 @@ snapshots:
 
   hex-rgb@4.3.0: {}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  hono@4.12.7: {}
-=======
-  highlight.js@10.7.3: {}
-
-  highlightjs-vue@1.0.0: {}
-
   hono@4.12.10: {}
->>>>>>> main:pnpm-lock.yaml
 
   hosted-git-info@9.0.2:
     dependencies:
@@ -15285,20 +14671,11 @@ snapshots:
 
   loupe@3.2.1: {}
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  lru-cache@11.2.6: {}
-=======
   lower-case@2.0.2:
     dependencies:
       tslib: 2.8.1
 
-  lowlight@1.20.0:
-    dependencies:
-      fault: 1.0.4
-      highlight.js: 10.7.3
-
   lru-cache@11.2.7: {}
->>>>>>> main:pnpm-lock.yaml
 
   lru-cache@5.1.1:
     dependencies:
@@ -16399,13 +15776,8 @@ snapshots:
       ansi-styles: 5.2.0
       react-is: 17.0.2
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-=======
-  prismjs@1.30.0: {}
-
   progress@2.0.3: {}
 
->>>>>>> main:pnpm-lock.yaml
   prop-types@15.8.1:
     dependencies:
       loose-envify: 1.4.0
@@ -16592,19 +15964,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.14
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-=======
-  react-syntax-highlighter@15.6.6(react@19.2.4):
-    dependencies:
-      '@babel/runtime': 7.29.2
-      highlight.js: 10.7.3
-      highlightjs-vue: 1.0.0
-      lowlight: 1.20.0
-      prismjs: 1.30.0
-      react: 19.2.4
-      refractor: 3.6.0
-
->>>>>>> main:pnpm-lock.yaml
   react-textarea-autosize@8.5.9(@types/react@19.2.14)(react@19.2.4):
     dependencies:
       '@babel/runtime': 7.29.2
@@ -16707,13 +16066,9 @@ snapshots:
     dependencies:
       '@eslint-community/regexpp': 4.12.2
 
-<<<<<<< HEAD:web/pnpm-lock.yaml
-  regex-recursion@6.0.2:
-=======
   reflect-metadata@0.2.2: {}
 
-  refractor@3.6.0:
->>>>>>> main:pnpm-lock.yaml
+  regex-recursion@6.0.2:
     dependencies:
       regex-utilities: 2.3.0
 

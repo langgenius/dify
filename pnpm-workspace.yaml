@@ -147,7 +147,6 @@ catalog:
   "@types/qs": 6.15.0
   "@types/react": 19.2.14
   "@types/react-dom": 19.2.3
-  "@types/react-syntax-highlighter": 15.5.13
   "@types/react-window": 1.8.8
   "@types/sortablejs": 1.15.9
   "@typescript-eslint/eslint-plugin": 8.58.0
@@ -228,7 +227,6 @@ catalog:
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.2.4
   react-sortablejs: 6.1.4
-  react-syntax-highlighter: 15.6.6
   react-textarea-autosize: 8.5.9
   react-window: 1.8.11
   reactflow: 11.11.4
@@ -236,6 +234,7 @@ catalog:
   remark-directive: 4.0.0
   scheduler: 0.27.0
   sharp: 0.34.5
+  shiki: 4.0.2
   sortablejs: 1.15.7
   std-semver: 1.0.8
   storybook: 10.3.4
