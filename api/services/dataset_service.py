@@ -14,7 +14,7 @@ from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import exists, func, select, update
+from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -3147,10 +3147,9 @@ class SegmentService:
         lock_name = f"add_segment_lock_document_id_{document.id}"
         try:
             with redis_client.lock(lock_name, timeout=600):
-                max_position = (
-                    db.session.query(func.max(DocumentSegment.position))
+                max_position = db.session.scalar(
+                    select(func.max(DocumentSegment.position))
                     .where(DocumentSegment.document_id == document.id)
-                    .scalar()
                 )
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
@@ -3202,7 +3201,7 @@ class SegmentService:
                 segment_document.status = SegmentStatus.ERROR
                 segment_document.error = str(e)
                 db.session.commit()
-            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            segment = db.session.get(DocumentSegment, segment_document.id)
             return segment
         except LockNotOwnedError:
             pass
@@ -3225,10 +3224,9 @@ class SegmentService:
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
                     )
-                max_position = (
-                    db.session.query(func.max(DocumentSegment.position))
+                max_position = db.session.scalar(
+                    select(func.max(DocumentSegment.position))
                     .where(DocumentSegment.document_id == document.id)
-                    .scalar()
                 )
                 pre_segment_data_list = []
                 segment_data_list = []
@@ -3373,11 +3371,7 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
-                        .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                    processing_rule = db.session.get(DatasetProcessRule, document.dataset_process_rule_id)
                     if processing_rule:
                         VectorService.generate_child_chunks(
                             segment, document, dataset, embedding_model_instance, processing_rule, True
@@ -3395,13 +3389,13 @@ class SegmentService:
                         # Query existing summary from database
                         from models.dataset import DocumentSegmentSummary
 
-                        existing_summary = (
-                            db.session.query(DocumentSegmentSummary)
+                        existing_summary = db.session.scalar(
+                            select(DocumentSegmentSummary)
                             .where(
                                 DocumentSegmentSummary.chunk_id == segment.id,
                                 DocumentSegmentSummary.dataset_id == dataset.id,
                             )
-                            .first()
+                            .limit(1)
                         )
 
                         # Check if summary has changed
@@ -3477,11 +3471,7 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
-                        .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                    processing_rule = db.session.get(DatasetProcessRule, document.dataset_process_rule_id)
                     if processing_rule:
                         VectorService.generate_child_chunks(
                             segment, document, dataset, embedding_model_instance, processing_rule, True
@@ -3493,13 +3483,13 @@ class SegmentService:
                 if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     from models.dataset import DocumentSegmentSummary
 
-                    existing_summary = (
-                        db.session.query(DocumentSegmentSummary)
+                    existing_summary = db.session.scalar(
+                        select(DocumentSegmentSummary)
                         .where(
                             DocumentSegmentSummary.chunk_id == segment.id,
                             DocumentSegmentSummary.dataset_id == dataset.id,
                         )
-                        .first()
+                        .limit(1)
                     )
 
                     if args.summary is None:
@@ -3565,7 +3555,7 @@ class SegmentService:
             segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             db.session.commit()
-        new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
+        new_segment = db.session.get(DocumentSegment, segment.id)
         if not new_segment:
             raise ValueError("new_segment is not found")
         return new_segment
@@ -3585,15 +3575,13 @@ class SegmentService:
             # Get child chunk IDs before parent segment is deleted
             child_node_ids = []
             if segment.index_node_id:
-                child_chunks = (
-                    db.session.query(ChildChunk.index_node_id)
+                child_node_ids = list(db.session.scalars(
+                    select(ChildChunk.index_node_id)
                     .where(
                         ChildChunk.segment_id == segment.id,
                         ChildChunk.dataset_id == dataset.id,
                     )
-                    .all()
-                )
-                child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
+                ).all())
 
             delete_segment_from_index_task.delay(
                 [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
@@ -3612,17 +3600,15 @@ class SegmentService:
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
-        segments_info = (
-            db.session.query(DocumentSegment)
-            .with_entities(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count)
+        segments_info = db.session.execute(
+            select(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count)
             .where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
                 DocumentSegment.tenant_id == current_user.current_tenant_id,
             )
-            .all()
-        )
+        ).all()
 
         if not segments_info:
             return
@@ -3634,15 +3620,15 @@ class SegmentService:
         # Get child chunk IDs before parent segments are deleted
         child_node_ids = []
         if index_node_ids:
-            child_chunks = (
-                db.session.query(ChildChunk.index_node_id)
-                .where(
-                    ChildChunk.segment_id.in_(segment_db_ids),
-                    ChildChunk.dataset_id == dataset.id,
-                )
-                .all()
-            )
-            child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
+            child_node_ids = [
+                nid for nid in db.session.scalars(
+                    select(ChildChunk.index_node_id)
+                    .where(
+                        ChildChunk.segment_id.in_(segment_db_ids),
+                        ChildChunk.dataset_id == dataset.id,
+                    )
+                ).all() if nid
+            ]
 
         # Start async cleanup with both parent and child node IDs
         if index_node_ids or child_node_ids:
@@ -3658,7 +3644,7 @@ class SegmentService:
         db.session.add(document)
 
         # Delete database records
-        db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
+        db.session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)))
         db.session.commit()
 
     @classmethod
@@ -3732,15 +3718,14 @@ class SegmentService:
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
-            max_position = (
-                db.session.query(func.max(ChildChunk.position))
+            max_position = db.session.scalar(
+                select(func.max(ChildChunk.position))
                 .where(
                     ChildChunk.tenant_id == current_user.current_tenant_id,
                     ChildChunk.dataset_id == dataset.id,
                     ChildChunk.document_id == document.id,
                     ChildChunk.segment_id == segment.id,
                 )
-                .scalar()
             )
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
@@ -3900,10 +3885,10 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
-        result = (
-            db.session.query(ChildChunk)
+        result = db.session.scalar(
+            select(ChildChunk)
             .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
-            .first()
+            .limit(1)
         )
         return result if isinstance(result, ChildChunk) else None
 
@@ -3938,10 +3923,10 @@ class SegmentService:
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
         """Get a segment by its ID."""
-        result = (
-            db.session.query(DocumentSegment)
+        result = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
+            .limit(1)
         )
         return result if isinstance(result, DocumentSegment) else None
 
@@ -3984,15 +3969,15 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding(
         cls, provider_name: str, model_name: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        dataset_collection_binding = (
-            db.session.query(DatasetCollectionBinding)
+        dataset_collection_binding = db.session.scalar(
+            select(DatasetCollectionBinding)
             .where(
                 DatasetCollectionBinding.provider_name == provider_name,
                 DatasetCollectionBinding.model_name == model_name,
                 DatasetCollectionBinding.type == collection_type,
             )
             .order_by(DatasetCollectionBinding.created_at)
-            .first()
+            .limit(1)
         )
 
         if not dataset_collection_binding:
@@ -4010,13 +3995,13 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding_by_id_and_type(
         cls, collection_binding_id: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        dataset_collection_binding = (
-            db.session.query(DatasetCollectionBinding)
+        dataset_collection_binding = db.session.scalar(
+            select(DatasetCollectionBinding)
             .where(
                 DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
             )
             .order_by(DatasetCollectionBinding.created_at)
-            .first()
+            .limit(1)
         )
         if not dataset_collection_binding:
             raise ValueError("Dataset collection binding not found")
@@ -4038,7 +4023,7 @@ class DatasetPermissionService:
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
         try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.execute(delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
@@ -4074,7 +4059,7 @@ class DatasetPermissionService:
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
         try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.execute(delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
             db.session.commit()
         except Exception as e:
             db.session.rollback()
