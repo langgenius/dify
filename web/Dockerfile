@@ -24,7 +24,6 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
 COPY web/package.json /app/web/
 COPY e2e/package.json /app/e2e/
-COPY packages/iconify-collections/package.json /app/packages/iconify-collections/
 COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
 COPY packages /app/packages
 
