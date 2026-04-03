@@ -1,6 +1,7 @@
 import enum
 import uuid
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
@@ -135,7 +136,7 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
             # Some enums expose value_of() to keep reading legacy persisted values backward-compatible.
             value_of = getattr(self._enum_class, "value_of", None)
             if callable(value_of):
-                return value_of(value)
+                return cast(Callable[[str], T], value_of)(value)
             raise
 
     def process_bind_param(self, value: T | str | None, dialect: Dialect) -> str | None:
