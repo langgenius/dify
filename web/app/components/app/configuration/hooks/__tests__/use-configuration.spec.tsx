@@ -18,7 +18,12 @@ const mockSetConversationHistoriesRole = vi.fn()
 const mockSetChatPromptConfig = vi.fn()
 const mockSetCompletionPromptConfig = vi.fn()
 const mockSetCurrentAdvancedPrompt = vi.fn()
-let latestAdvancedPromptConfigOptions: Record<string, unknown> | undefined
+type AdvancedPromptConfigOptions = {
+  onUserChangedPrompt: () => void
+  setStop: (stop: string[]) => void
+}
+
+let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
 let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
@@ -106,7 +111,7 @@ vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
 }))
 
 vi.mock('../use-advanced-prompt-config', () => ({
-  default: (options: Record<string, unknown>) => {
+  default: (options: AdvancedPromptConfigOptions) => {
     latestAdvancedPromptConfigOptions = options
     return {
       chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
