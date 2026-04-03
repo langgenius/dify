@@ -163,7 +163,7 @@ catalog:
   class-variance-authority: 0.7.1
   clsx: 2.1.1
   cmdk: 1.1.1
-  code-inspector-plugin: 1.5.0
+  code-inspector-plugin: 1.5.1
   copy-to-clipboard: 3.3.3
   cron-parser: 5.5.0
   dayjs: 1.11.20
