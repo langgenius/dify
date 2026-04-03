@@ -1,12 +1,7 @@
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast/context'
-import {
-  DSL_EXPORT_CHECK,
-} from '@/app/components/workflow/constants'
+import { toast } from '@/app/components/base/ui/toast'
+import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
@@ -16,21 +11,17 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
-
   const handleExportDSL = useCallback(async (include = false) => {
     const { pipelineId, knowledgeName } = workflowStore.getState()
     if (!pipelineId)
       return
-
     if (exporting)
       return
-
     try {
       setExporting(true)
       await doSyncWorkflowDraft()
@@ -42,13 +33,12 @@ export const useDSL = () => {
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
     finally {
       setExporting(false)
     }
-  }, [notify, t, doSyncWorkflowDraft, exporting, exportPipelineConfig, workflowStore])
-
+  }, [t, doSyncWorkflowDraft, exporting, exportPipelineConfig, workflowStore])
   const exportCheck = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()
     if (!pipelineId)
@@ -68,10 +58,9 @@ export const useDSL = () => {
       } as any)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
-  }, [eventEmitter, handleExportDSL, notify, t, workflowStore])
-
+  }, [eventEmitter, handleExportDSL, t, workflowStore])
   return {
     exportCheck,
     handleExportDSL,

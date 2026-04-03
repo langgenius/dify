@@ -250,7 +250,7 @@ const TextGeneration: FC<Props> = ({
                 showResultPanel()
             }}
           >
-            <div className="h-1 w-8 cursor-grab rounded bg-divider-solid" />
+            <div className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
           </div>
         )}
         {renderResWrap}

@@ -37,7 +37,7 @@ const TagManagementModal = dynamic(() => import('@/app/components/base/tag-manag
   ssr: false,
 })
 
-export type IAppDetailLayoutProps = {
+type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
 }

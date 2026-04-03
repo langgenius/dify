@@ -134,14 +134,14 @@ const ConditionItem = ({
         <div className="flex items-center p-1">
           <div className="w-0 grow">
             <div className="flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-1 pr-1.5 shadow-xs">
-              <div className="mr-0.5 p-[1px]">
+              <div className="mr-0.5 p-px">
                 <MetadataIcon type={currentMetadata?.type} className="h-3 w-3" />
               </div>
               <div className="system-xs-medium mr-0.5 min-w-0 flex-1 truncate text-text-secondary">{currentMetadata?.name}</div>
               <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
             </div>
           </div>
-          <div className="mx-1 h-3 w-[1px] bg-divider-regular"></div>
+          <div className="mx-1 h-3 w-px bg-divider-regular"></div>
           <ConditionOperator
             disabled={!canChooseOperator}
             variableType={currentMetadata?.type || MetadataFilteringVariableType.string}

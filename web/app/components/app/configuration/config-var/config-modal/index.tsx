@@ -15,7 +15,7 @@ import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { SimpleSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
@@ -52,7 +52,7 @@ const normalizeSelectDefaultValue = (inputVar: InputVar) => {
   return inputVar
 }
 
-export type IConfigModalProps = {
+type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
   isShow: boolean
@@ -98,10 +98,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
     const { isValid, errorMessageKey } = checkKeys([value], canBeEmpty)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }))
       return false
     }
     return true
@@ -219,10 +216,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
       return
     }
     handlePayloadChange('variable')(e.target.value)
@@ -264,7 +258,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       return
 
     if (!tempPayload.label) {
-      Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }) })
+      toast.error(t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }))
       return
     }
     if (isStringInput || type === InputVarType.number) {
@@ -272,7 +266,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     else if (type === InputVarType.select) {
       if (options?.length === 0) {
-        Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }) })
+        toast.error(t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }))
         return
       }
       const obj: Record<string, boolean> = {}
@@ -285,7 +279,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         obj[o] = true
       })
       if (hasRepeatedItem) {
-        Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }) })
+        toast.error(t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }))
         return
       }
       onConfirm(payloadToSave, moreInfo)
@@ -293,12 +287,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
     else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       if (tempPayload.allowed_file_types?.length === 0) {
         const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }) })
-        Toast.notify({ type: 'error', message: errorMessages })
+        toast.error(errorMessages)
         return
       }
       if (tempPayload.allowed_file_types?.includes(SupportUploadFileTypes.custom) && !tempPayload.allowed_file_extensions?.length) {
         const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.custom.name', { ns: 'appDebug' }) })
-        Toast.notify({ type: 'error', message: errorMessages })
+        toast.error(errorMessages)
         return
       }
       onConfirm(payloadToSave, moreInfo)
@@ -308,12 +302,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
         try {
           const schema = JSON.parse(normalizedJsonSchema)
           if (schema?.type !== 'object') {
-            Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }) })
+            toast.error(t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }))
             return
           }
         }
         catch {
-          Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }) })
+          toast.error(t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }))
           return
         }
       }
@@ -472,7 +466,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 value={jsonSchemaStr}
                 onChange={handleJSONSchemaChange}
                 noWrapper
-                className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+                className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
                 placeholder={
                   <div className="whitespace-pre">{jsonConfigPlaceHolder}</div>
                 }
@@ -480,12 +474,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </Field>
           )}
 
-          <div className="!mt-5 flex h-6 items-center space-x-2">
+          <div className="mt-5! flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
           </div>
 
-          <div className="!mt-5 flex h-6 items-center space-x-2">
+          <div className="mt-5! flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hide', { ns: 'appDebug' })}</span>
           </div>

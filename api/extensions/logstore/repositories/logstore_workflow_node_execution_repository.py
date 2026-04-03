@@ -11,7 +11,7 @@ import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -20,6 +20,7 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from extensions.logstore.aliyun_logstore import AliyunLogStore
@@ -48,10 +49,10 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     """
     logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
-    inputs = json.loads(data.get("inputs", "{}"))
-    process_data = json.loads(data.get("process_data", "{}"))
-    outputs = json.loads(data.get("outputs", "{}"))
-    metadata = json.loads(data.get("execution_metadata", "{}"))
+    inputs = JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
+    process_data = JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
+    outputs = JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
+    metadata = JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
 
     # Convert metadata to domain enum keys
     domain_metadata = {}
@@ -108,7 +109,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):

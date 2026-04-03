@@ -1,7 +1,7 @@
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, Union
+from typing import Any
 
 from graphon.variables.types import SegmentType
 from sqlalchemy import asc, desc, func, or_, select
@@ -37,7 +37,7 @@ class ConversationService:
         *,
         session: Session,
         app_model: App,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
@@ -119,7 +119,7 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         name: str | None,
         auto_generate: bool,
     ):
@@ -137,11 +137,11 @@ class ConversationService:
     @classmethod
     def auto_generate_name(cls, app_model: App, conversation: Conversation):
         # get conversation first message
-        message = (
-            db.session.query(Message)
+        message = db.session.scalar(
+            select(Message)
             .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
             .order_by(Message.created_at.asc())
-            .first()
+            .limit(1)
         )
 
         if not message:
@@ -159,9 +159,9 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def get_conversation(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
-        conversation = (
-            db.session.query(Conversation)
+    def get_conversation(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+        conversation = db.session.scalar(
+            select(Conversation)
             .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
@@ -170,7 +170,7 @@ class ConversationService:
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
                 Conversation.is_deleted == False,
             )
-            .first()
+            .limit(1)
         )
 
         if not conversation:
@@ -179,7 +179,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
+    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
         """
         Delete a conversation only if it belongs to the given user and app context.
 
@@ -209,7 +209,7 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         limit: int,
         last_id: str | None,
         variable_name: str | None = None,
@@ -278,7 +278,7 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         variable_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         new_value: Any,
     ):
         """

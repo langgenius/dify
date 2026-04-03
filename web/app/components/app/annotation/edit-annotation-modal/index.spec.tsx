@@ -1,7 +1,6 @@
-import type { IToastProps, ToastHandle } from '@/app/components/base/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import EditAnnotationModal from './index'
 
 const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
@@ -37,10 +36,8 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-type ToastNotifyProps = Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>
-type ToastWithNotify = typeof Toast & { notify: (props: ToastNotifyProps) => ToastHandle }
-const toastWithNotify = Toast as unknown as ToastWithNotify
-const toastNotifySpy = vi.spyOn(toastWithNotify, 'notify').mockReturnValue({ clear: vi.fn() })
+const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
+const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
 describe('EditAnnotationModal', () => {
   const defaultProps = {
@@ -55,7 +52,8 @@ describe('EditAnnotationModal', () => {
   }
 
   afterAll(() => {
-    toastNotifySpy.mockRestore()
+    toastSuccessSpy.mockRestore()
+    toastErrorSpy.mockRestore()
   })
 
   beforeEach(() => {
@@ -437,10 +435,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          message: 'API Error',
-          type: 'error',
-        })
+        expect(toastErrorSpy).toHaveBeenCalledWith('API Error')
       })
       expect(mockOnAdded).not.toHaveBeenCalled()
 
@@ -475,10 +470,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          message: 'common.api.actionFailed',
-          type: 'error',
-        })
+        expect(toastErrorSpy).toHaveBeenCalledWith('common.api.actionFailed')
       })
       expect(mockOnAdded).not.toHaveBeenCalled()
 
@@ -517,10 +509,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          message: 'API Error',
-          type: 'error',
-        })
+        expect(toastErrorSpy).toHaveBeenCalledWith('API Error')
       })
       expect(mockOnEdited).not.toHaveBeenCalled()
 
@@ -557,10 +546,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          message: 'common.api.actionFailed',
-          type: 'error',
-        })
+        expect(toastErrorSpy).toHaveBeenCalledWith('common.api.actionFailed')
       })
       expect(mockOnEdited).not.toHaveBeenCalled()
 
@@ -641,10 +627,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        })
+        expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
       })
     })
   })

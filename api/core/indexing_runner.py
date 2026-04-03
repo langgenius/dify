@@ -10,7 +10,7 @@ from typing import Any
 
 from flask import Flask, current_app
 from graphon.model_runtime.entities.model_entities import ModelType
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -78,7 +78,7 @@ class IndexingRunner:
                     continue
 
                 # get dataset
-                dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
+                dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
                 if not dataset:
                     raise ValueError("no dataset found")
@@ -95,7 +95,7 @@ class IndexingRunner:
                 text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
                 # transform
-                current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+                current_user = db.session.get(Account, requeried_document.created_by)
                 if not current_user:
                     raise ValueError("no current user found")
                 current_user.set_tenant_id(dataset.tenant_id)
@@ -137,23 +137,24 @@ class IndexingRunner:
                 return
 
             # get dataset
-            dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
+            dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = (
-                db.session.query(DocumentSegment)
-                .filter_by(dataset_id=dataset.id, document_id=requeried_document.id)
-                .all()
-            )
+            document_segments = db.session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == requeried_document.id,
+                )
+            ).all()
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
                 if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     # delete child chunks
-                    db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
+                    db.session.execute(delete(ChildChunk).where(ChildChunk.segment_id == document_segment.id))
             db.session.commit()
             # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == requeried_document.dataset_process_rule_id)
@@ -167,7 +168,7 @@ class IndexingRunner:
             text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
             # transform
-            current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+            current_user = db.session.get(Account, requeried_document.created_by)
             if not current_user:
                 raise ValueError("no current user found")
             current_user.set_tenant_id(dataset.tenant_id)
@@ -207,17 +208,18 @@ class IndexingRunner:
                 return
 
             # get dataset
-            dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
+            dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = (
-                db.session.query(DocumentSegment)
-                .filter_by(dataset_id=dataset.id, document_id=requeried_document.id)
-                .all()
-            )
+            document_segments = db.session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == requeried_document.id,
+                )
+            ).all()
 
             documents = []
             if document_segments:
@@ -289,7 +291,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset_id:
-            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = db.session.get(Dataset, dataset_id)
             if not dataset:
                 raise ValueError("Dataset not found.")
             if IndexTechniqueType.HIGH_QUALITY in {dataset.indexing_technique, indexing_technique}:
@@ -652,24 +654,26 @@ class IndexingRunner:
     @staticmethod
     def _process_keyword_index(flask_app, dataset_id, document_id, documents):
         with flask_app.app_context():
-            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = db.session.get(Dataset, dataset_id)
             if not dataset:
                 raise ValueError("no dataset found")
             keyword = Keyword(dataset)
             keyword.create(documents)
             if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 document_ids = [document.metadata["doc_id"] for document in documents]
-                db.session.query(DocumentSegment).where(
-                    DocumentSegment.document_id == document_id,
-                    DocumentSegment.dataset_id == dataset_id,
-                    DocumentSegment.index_node_id.in_(document_ids),
-                    DocumentSegment.status == SegmentStatus.INDEXING,
-                ).update(
-                    {
-                        DocumentSegment.status: SegmentStatus.COMPLETED,
-                        DocumentSegment.enabled: True,
-                        DocumentSegment.completed_at: naive_utc_now(),
-                    }
+                db.session.execute(
+                    update(DocumentSegment)
+                    .where(
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.dataset_id == dataset_id,
+                        DocumentSegment.index_node_id.in_(document_ids),
+                        DocumentSegment.status == SegmentStatus.INDEXING,
+                    )
+                    .values(
+                        status=SegmentStatus.COMPLETED,
+                        enabled=True,
+                        completed_at=naive_utc_now(),
+                    )
                 )
 
                 db.session.commit()
@@ -703,17 +707,19 @@ class IndexingRunner:
             )
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
-            db.session.query(DocumentSegment).where(
-                DocumentSegment.document_id == dataset_document.id,
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.index_node_id.in_(document_ids),
-                DocumentSegment.status == SegmentStatus.INDEXING,
-            ).update(
-                {
-                    DocumentSegment.status: SegmentStatus.COMPLETED,
-                    DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: naive_utc_now(),
-                }
+            db.session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.document_id == dataset_document.id,
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.index_node_id.in_(document_ids),
+                    DocumentSegment.status == SegmentStatus.INDEXING,
+                )
+                .values(
+                    status=SegmentStatus.COMPLETED,
+                    enabled=True,
+                    completed_at=naive_utc_now(),
+                )
             )
 
             db.session.commit()
@@ -734,10 +740,17 @@ class IndexingRunner:
         """
         Update the document indexing status.
         """
-        count = db.session.query(DatasetDocument).filter_by(id=document_id, is_paused=True).count()
+        count = (
+            db.session.scalar(
+                select(func.count())
+                .select_from(DatasetDocument)
+                .where(DatasetDocument.id == document_id, DatasetDocument.is_paused == True)
+            )
+            or 0
+        )
         if count > 0:
             raise DocumentIsPausedError()
-        document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+        document = db.session.get(DatasetDocument, document_id)
         if not document:
             raise DocumentIsDeletedPausedError()
 
@@ -745,7 +758,7 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)  # type: ignore
+        db.session.execute(update(DatasetDocument).where(DatasetDocument.id == document_id).values(update_params))  # type: ignore
         db.session.commit()
 
     @staticmethod
@@ -753,7 +766,9 @@ class IndexingRunner:
         """
         Update the document segment by document id.
         """
-        db.session.query(DocumentSegment).filter_by(document_id=dataset_document_id).update(update_params)
+        db.session.execute(
+            update(DocumentSegment).where(DocumentSegment.document_id == dataset_document_id).values(update_params)
+        )
         db.session.commit()
 
     def _transform(

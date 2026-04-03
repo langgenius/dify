@@ -79,7 +79,7 @@ const HeaderModals: FC<HeaderModalsProps> = ({
             <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
               {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
               {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
               <span className="text-text-secondary system-md-semibold">{label[locale]}</span>
               {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}

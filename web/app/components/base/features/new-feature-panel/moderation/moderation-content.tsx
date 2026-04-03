@@ -53,7 +53,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
               <div className="relative h-20 rounded-lg bg-components-input-bg-normal px-3 py-2">
                 <textarea
                   value={config.preset_response || ''}
-                  className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-none"
+                  className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
                   placeholder={t('feature.moderation.modal.content.placeholder', { ns: 'appDebug' }) || ''}
                   onChange={e => handleConfigChange('preset_response', e.target.value)}
                 />

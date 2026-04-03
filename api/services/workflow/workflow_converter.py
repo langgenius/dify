@@ -1,12 +1,12 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from graphon.file import FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.variables.input_entities import VariableEntity
-from typing_extensions import TypedDict
+from sqlalchemy import select
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -648,10 +648,10 @@ class WorkflowConverter:
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = (
-            db.session.query(APIBasedExtension)
+        api_based_extension = db.session.scalar(
+            select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
+            .limit(1)
         )
 
         if not api_based_extension:

@@ -35,8 +35,8 @@ import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
-import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
+import { toast } from '../../base/ui/toast'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
@@ -219,7 +219,7 @@ const AppPublisher = ({
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
-        Toast.notify({ type: 'error', message: `${err.message || err}` })
+        toast.error(`${err.message || err}`)
       },
     })
   }, [appDetail?.id, openAsyncWindow])
@@ -275,7 +275,7 @@ const AppPublisher = ({
             <span className="i-ri-arrow-down-s-line h-4 w-4 text-components-button-primary-text" />
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[11]">
+        <PortalToFollowElemContent className="z-11">
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <div className="p-4 pt-3">
               <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">

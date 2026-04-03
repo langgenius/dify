@@ -1,9 +1,9 @@
 trustPolicy: no-downgrade
-minimumReleaseAge: 1440
+minimumReleaseAge: 2880
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:
-  '@parcel/watcher': false
+  "@parcel/watcher": false
   canvas: false
   esbuild: false
   sharp: false
@@ -11,6 +11,7 @@ packages:
   - web
   - e2e
   - sdks/nodejs-client
+  - packages/*
 overrides:
   "@lexical/code": npm:lexical-code-no-prism@0.41.0
   "@monaco-editor/loader": 1.7.0
@@ -78,7 +79,7 @@ catalog:
   "@egoist/tailwindcss-icons": 1.9.2
   "@emoji-mart/data": 1.2.1
   "@eslint-react/eslint-plugin": 3.0.0
-  "@eslint/js": ^10.0.1
+  "@eslint/js": 10.0.1
   "@floating-ui/react": 0.27.19
   "@formatjs/intl-localematcher": 0.8.2
   "@headlessui/react": 2.2.9
@@ -116,7 +117,9 @@ catalog:
   "@streamdown/math": 1.0.2
   "@svgdotjs/svg.js": 3.2.5
   "@t3-oss/env-nextjs": 0.13.11
+  "@tailwindcss/postcss": 4.2.2
   "@tailwindcss/typography": 0.5.19
+  "@tailwindcss/vite": 4.2.2
   "@tanstack/eslint-plugin-query": 5.95.2
   "@tanstack/react-devtools": 0.10.0
   "@tanstack/react-form": 1.28.5
@@ -141,7 +144,7 @@ catalog:
   "@types/react-syntax-highlighter": 15.5.13
   "@types/react-window": 1.8.8
   "@types/sortablejs": 1.15.9
-  "@typescript-eslint/eslint-plugin": ^8.57.2
+  "@typescript-eslint/eslint-plugin": 8.57.2
   "@typescript-eslint/parser": 8.57.2
   "@typescript/native-preview": 7.0.0-dev.20260329.1
   "@vitejs/plugin-react": 6.0.1
@@ -183,7 +186,6 @@ catalog:
   hono: 4.12.9
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  husky: 9.1.7
   i18next: 25.10.10
   i18next-resources-to-backend: 1.2.1
   iconify-import-svg: 0.1.2
@@ -198,7 +200,6 @@ catalog:
   ky: 1.14.3
   lamejs: 1.2.1
   lexical: 0.42.0
-  lint-staged: 16.4.0
   mermaid: 11.13.0
   mime: 4.1.0
   mitt: 3.0.1
@@ -236,8 +237,8 @@ catalog:
   storybook: 10.3.3
   streamdown: 2.5.0
   string-ts: 2.3.1
-  tailwind-merge: 2.6.1
-  tailwindcss: 3.4.19
+  tailwind-merge: 3.5.0
+  tailwindcss: 4.2.2
   taze: 19.10.0
   tldts: 7.0.27
   tsup: ^8.5.1

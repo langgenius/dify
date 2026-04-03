@@ -120,7 +120,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
         else
           setControlFocus(Date.now())
       }}
-      className={cn(className, 'group/picker-trigger-wrap relative !flex', !readonly && 'cursor-pointer')}
+      className={cn(className, 'group/picker-trigger-wrap relative flex!', !readonly && 'cursor-pointer')}
       data-testid="var-reference-picker-trigger"
     >
       <>
@@ -203,7 +203,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                                                   handleVariableJump(outputVarNodeId || '')
                                               }}
                                             >
-                                              <div className="h-3 px-[1px]">
+                                              <div className="h-3 px-px">
                                                 {'type' in (outputVarNode || {}) && outputVarNode?.type && (
                                                   <div className="h-3 w-3" />
                                                 )}

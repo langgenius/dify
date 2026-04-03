@@ -54,7 +54,7 @@ export const ChecklistPluginGroup = memo(({
   }
 
   return (
-    <div className="overflow-clip rounded-[10px] bg-components-panel-on-panel-item-bg">
+    <div className="overflow-clip radius-lg bg-components-panel-on-panel-item-bg">
       <div className="flex items-center gap-2 px-2 pt-2">
         <div className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-icon-bg-midnight-solid shadow-xs">
           <span className="i-ri-download-line size-3.5 text-white" />

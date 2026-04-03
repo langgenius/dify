@@ -25,7 +25,7 @@ vi.mock('i18next', () => ({
   t: (key: string) => key,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: notifyMock,
   },

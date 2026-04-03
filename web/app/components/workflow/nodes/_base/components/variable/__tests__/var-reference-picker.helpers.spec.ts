@@ -33,7 +33,7 @@ describe('var-reference-picker.helpers', () => {
   })
 
   it('should resolve output variable nodes for normal, system, iteration, and loop variables', () => {
-    const startNode = createStartNode({ id: 'start-1', data: { title: 'Start Node' } })
+    const startNode = createStartNode({ id: 'inset-s-1', data: { title: 'Start Node' } })
     const normalNode = createNode({ id: 'node-a', data: { type: BlockEnum.Code, title: 'Answer Node' } })
     const iterationNode = createNode({ id: 'iter-parent', data: { type: BlockEnum.Iteration, title: 'Iteration Parent' } }) as Node<CommonNodeType>
     const loopNode = createLoopNode({ id: 'loop-parent', data: { title: 'Loop Parent' } }) as Node<CommonNodeType>

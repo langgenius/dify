@@ -102,12 +102,12 @@ export type PeriodParamsWithTimeRange = {
   query?: TimeRange
 }
 
-export type IBizChartProps = {
+type IBizChartProps = {
   period: PeriodParams
   id: string
 }
 
-export type IChartProps = {
+type IChartProps = {
   className?: string
   basicInfo: { title: string, explanation: string, timePeriod: string }
   valueKey?: string
@@ -282,7 +282,7 @@ const Chart: React.FC<IChartProps> = ({
                   </span>
                 </span>
               )}
-          textStyle={{ main: `!text-3xl !font-normal ${sumData === 0 ? '!text-text-quaternary' : ''}` }}
+          textStyle={{ main: `text-3xl! font-normal! ${sumData === 0 ? 'text-text-quaternary!' : ''}` }}
         />
       </div>
       <ReactECharts option={options} style={{ height: 160 }} />
@@ -508,5 +508,3 @@ export const AvgUserInteractions: FC<IBizChartProps> = ({ id, period }) => {
     />
   )
 }
-
-export default Chart
