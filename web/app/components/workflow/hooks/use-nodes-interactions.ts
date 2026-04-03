@@ -1484,7 +1484,7 @@ export const useNodesInteractions = () => {
               targetHandle,
               type: CUSTOM_EDGE,
               data: {
-                ...(edge.data || {}),
+                ...edge.data,
                 sourceType: newCurrentNode.data.type,
                 targetType: targetNodeForEdge.data.type,
                 isInIteration,
@@ -1524,7 +1524,7 @@ export const useNodesInteractions = () => {
               targetHandle,
               type: CUSTOM_EDGE,
               data: {
-                ...(edge.data || {}),
+                ...edge.data,
                 sourceType: sourceNode.data.type,
                 targetType: newCurrentNode.data.type,
                 isInIteration: newNodeIsInIteration,

@@ -320,7 +320,7 @@ describe('assigner path', () => {
         <VarList
           readonly={false}
           nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.set, value: '{\"a\":1}' })]}
+          list={[createOperation({ operation: WriteMode.set, value: '{"a":1}' })]}
           onChange={onChange}
           filterVar={vi.fn(() => true)}
           filterToAssignedVar={vi.fn(() => true)}
@@ -332,9 +332,9 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{\"a\":2}' } })
+      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{"a":2}' } })
       expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.set, value: '{\"a\":2}' }),
+        createOperation({ operation: WriteMode.set, value: '{"a":2}' }),
       ], '{"a":2}')
 
       onChange.mockClear()
