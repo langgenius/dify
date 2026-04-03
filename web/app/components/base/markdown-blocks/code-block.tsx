@@ -106,7 +106,7 @@ const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language
         borderBottomRightRadius: '10px',
         overflow: 'auto',
       }}
-      className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:p-3!"
+      className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:py-3!"
     />
   )
 })
