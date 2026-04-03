@@ -6,10 +6,5 @@ export default defineConfig({
     'react-syntax-highlighter',
     'react-window',
     '@types/react-window',
-
-    // We can not upgrade these yet
-    'typescript',
   ],
-
-  maturityPeriod: 2,
 })

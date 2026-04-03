@@ -743,9 +743,6 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -3630,17 +3627,11 @@
     }
   },
   "app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/update-block.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -7972,9 +7963,6 @@
     }
   },
   "app/components/signin/countdown.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -8372,7 +8360,7 @@
   },
   "app/components/workflow/block-selector/index-bar.tsx": {
     "react-refresh/only-export-components": {
-      "count": 5
+      "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
