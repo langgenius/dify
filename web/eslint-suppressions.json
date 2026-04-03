@@ -3351,14 +3351,6 @@
       "count": 1
     }
   },
-  "app/components/base/notion-page-selector/page-selector/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/base/notion-page-selector/search-input/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -4832,16 +4824,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/title.tsx": {
