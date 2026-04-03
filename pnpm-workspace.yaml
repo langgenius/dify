@@ -2,6 +2,8 @@ catalogMode: prefer
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - chokidar@4.0.3
+  - reselect@5.1.1
+  - semver@6.3.1
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:
