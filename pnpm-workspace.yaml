@@ -41,6 +41,7 @@ overrides:
   is-generator-function: npm:@nolyfill/is-generator-function@^1.0.44
   is-typed-array: npm:@nolyfill/is-typed-array@^1.0.44
   isarray: npm:@nolyfill/isarray@^1.0.44
+  lodash@>=4.0.0 <= 4.17.23: 4.18.0
   lodash-es@>=4.0.0 <= 4.17.23: 4.18.0
   object.assign: npm:@nolyfill/object.assign@^1.0.44
   object.entries: npm:@nolyfill/object.entries@^1.0.44

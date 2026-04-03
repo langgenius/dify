@@ -569,6 +569,7 @@ overrides:
   is-generator-function: npm:@nolyfill/is-generator-function@^1.0.44
   is-typed-array: npm:@nolyfill/is-typed-array@^1.0.44
   isarray: npm:@nolyfill/isarray@^1.0.44
+  lodash@>=4.0.0 <= 4.17.23: 4.18.0
   lodash-es@>=4.0.0 <= 4.17.23: 4.18.0
   object.assign: npm:@nolyfill/object.assign@^1.0.44
   object.entries: npm:@nolyfill/object.entries@^1.0.44
@@ -6769,8 +6770,9 @@ packages:
   lodash.sortby@4.7.0:
     resolution: {integrity: sha512-HDWXG8isMntAyRF5vZ7xKuEvOhT4AhlRt/3czTSjvGUxjYCBVRQY48ViDHyfYz9VIoBkW4TMGQNapx+l3RUwdA==}
 
-  lodash@4.17.23:
-    resolution: {integrity: sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==}
+  lodash@4.18.0:
+    resolution: {integrity: sha512-l1mfj2atMqndAHI3ls7XqPxEjV2J9ZkcNyHpoZA3r2T1LLwDB69jgkMWh71YKwhBbK0G2f4WSn05ahmQXVxupA==}
+    deprecated: Bad release. Please use lodash@4.17.21 instead.
 
   longest-streak@3.1.0:
     resolution: {integrity: sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g==}
@@ -12589,7 +12591,7 @@ snapshots:
       dayjs: 1.11.20
       intersection-observer: 0.12.2
       js-cookie: 3.0.5
-      lodash: 4.17.23
+      lodash: 4.18.0
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
       react-fast-compare: 3.2.2
@@ -14702,7 +14704,7 @@ snapshots:
 
   lodash.sortby@4.7.0: {}
 
-  lodash@4.17.23: {}
+  lodash@4.18.0: {}
 
   longest-streak@3.1.0: {}
 
