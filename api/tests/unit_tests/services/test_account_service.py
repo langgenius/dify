@@ -556,12 +556,8 @@ class TestTenantService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Setup smart database query mock - no existing tenant joins
-        query_results = {
-            ("TenantAccountJoin", "account_id", "user-123"): None,
-            ("TenantAccountJoin", "tenant_id", "tenant-456"): None,  # For has_roles check
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        # Mock scalar to return None (no existing tenant joins)
+        mock_db_dependencies["db"].session.scalar.return_value = None
 
         # Setup external service mocks
         mock_external_service_dependencies[
@@ -650,9 +646,8 @@ class TestTenantService:
         mock_tenant.id = "tenant-456"
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Setup smart database query mock - no existing member
-        query_results = {("TenantAccountJoin", "tenant_id", "tenant-456"): None}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        # Mock scalar to return None (no existing member)
+        mock_db_dependencies["db"].session.scalar.return_value = None
 
         # Mock database operations
         mock_db_dependencies["db"].session.add = MagicMock()
@@ -693,16 +688,8 @@ class TestTenantService:
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
 
-            query_mock_permission = MagicMock()
-            query_mock_permission.filter_by.return_value.first.return_value = mock_operator_join
-
-            query_mock_ta = MagicMock()
-            query_mock_ta.filter_by.return_value.first.return_value = mock_ta
-
-            query_mock_count = MagicMock()
-            query_mock_count.filter_by.return_value.count.return_value = 0
-
-            mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
+            # scalar calls: permission check, ta lookup, remaining count
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, 0]
 
             with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
@@ -741,17 +728,8 @@ class TestTenantService:
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
 
-            query_mock_permission = MagicMock()
-            query_mock_permission.filter_by.return_value.first.return_value = mock_operator_join
-
-            query_mock_ta = MagicMock()
-            query_mock_ta.filter_by.return_value.first.return_value = mock_ta
-
-            # Remaining join count = 1 (still in another workspace)
-            query_mock_count = MagicMock()
-            query_mock_count.filter_by.return_value.count.return_value = 1
-
-            mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta, query_mock_count]
+            # scalar calls: permission check, ta lookup, remaining count = 1
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, 1]
 
             with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
@@ -781,13 +759,8 @@ class TestTenantService:
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
 
-            query_mock_permission = MagicMock()
-            query_mock_permission.filter_by.return_value.first.return_value = mock_operator_join
-
-            query_mock_ta = MagicMock()
-            query_mock_ta.filter_by.return_value.first.return_value = mock_ta
-
-            mock_db.session.query.side_effect = [query_mock_permission, query_mock_ta]
+            # scalar calls: permission check, ta lookup (no count needed for active member)
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta]
 
             with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
@@ -810,13 +783,8 @@ class TestTenantService:
 
         # Mock the complex query in switch_tenant method
         with patch("services.account_service.db") as mock_db:
-            # Mock the join query that returns the tenant_account_join
-            mock_query = MagicMock()
-            mock_where = MagicMock()
-            mock_where.first.return_value = mock_tenant_join
-            mock_query.where.return_value = mock_where
-            mock_query.join.return_value = mock_query
-            mock_db.session.query.return_value = mock_query
+            # Mock scalar for the join query
+            mock_db.session.scalar.return_value = mock_tenant_join
 
             # Execute test
             TenantService.switch_tenant(mock_account, "tenant-456")
@@ -851,20 +819,8 @@ class TestTenantService:
 
         # Mock the database queries in update_member_role method
         with patch("services.account_service.db") as mock_db:
-            # Mock the first query for operator permission check
-            mock_query1 = MagicMock()
-            mock_filter1 = MagicMock()
-            mock_filter1.first.return_value = mock_operator_join
-            mock_query1.filter_by.return_value = mock_filter1
-
-            # Mock the second query for target member
-            mock_query2 = MagicMock()
-            mock_filter2 = MagicMock()
-            mock_filter2.first.return_value = mock_target_join
-            mock_query2.filter_by.return_value = mock_filter2
-
-            # Make the query method return different mocks for different calls
-            mock_db.session.query.side_effect = [mock_query1, mock_query2]
+            # scalar calls: permission check, target member lookup
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join]
 
             # Execute test
             TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator)
@@ -886,9 +842,7 @@ class TestTenantService:
             tenant_id="tenant-456", account_id="operator-123", role="owner"
         )
 
-        # Setup smart database query mock
-        query_results = {("TenantAccountJoin", "tenant_id", "tenant-456"): mock_operator_join}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.scalar.return_value = mock_operator_join
 
         # Execute test - should not raise exception
         TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "add")
