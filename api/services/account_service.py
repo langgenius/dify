@@ -1123,11 +1123,13 @@ class TenantService:
     @staticmethod
     def get_join_tenants(account: Account) -> list[Tenant]:
         """Get account join tenants"""
-        return list(db.session.scalars(
-            select(Tenant)
-            .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
-            .where(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
-        ).all())
+        return list(
+            db.session.scalars(
+                select(Tenant)
+                .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                .where(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
+            ).all()
+        )
 
     @staticmethod
     def get_current_tenant_by_account(account: Account):
@@ -1307,9 +1309,12 @@ class TenantService:
         should_delete_account = False
         if account.status == AccountStatus.PENDING:
             # autoflush flushes ta deletion before this query, so 0 means no remaining joins
-            remaining_joins = db.session.scalar(
-                select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.account_id == account_id)
-            ) or 0
+            remaining_joins = (
+                db.session.scalar(
+                    select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.account_id == account_id)
+                )
+                or 0
+            )
             if remaining_joins == 0:
                 db.session.delete(account)
                 should_delete_account = True
