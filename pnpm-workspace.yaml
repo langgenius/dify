@@ -188,6 +188,7 @@ catalog:
   fast-deep-equal: 3.1.3
   foxact: 0.3.0
   happy-dom: 20.8.9
+  hast-util-to-jsx-runtime: 2.3.6
   hono: 4.12.10
   html-entities: 2.6.0
   html-to-image: 1.11.13
@@ -228,13 +229,13 @@ catalog:
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.2.4
   react-sortablejs: 6.1.4
-  react-syntax-highlighter: 15.6.6
   react-textarea-autosize: 8.5.9
   reactflow: 11.11.4
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
   scheduler: 0.27.0
   sharp: 0.34.5
+  shiki: 4.0.2
   sortablejs: 1.15.7
   std-semver: 1.0.8
   storybook: 10.3.4

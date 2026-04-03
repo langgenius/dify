@@ -8,7 +8,7 @@ from hashlib import sha256
 from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 
@@ -1392,10 +1392,10 @@ class RegisterService:
             db.session.add(dify_setup)
             db.session.commit()
         except Exception as e:
-            db.session.query(DifySetup).delete()
-            db.session.query(TenantAccountJoin).delete()
-            db.session.query(Account).delete()
-            db.session.query(Tenant).delete()
+            db.session.execute(delete(DifySetup))
+            db.session.execute(delete(TenantAccountJoin))
+            db.session.execute(delete(Account))
+            db.session.execute(delete(Tenant))
             db.session.commit()
 
             logger.exception("Setup account failed, email: %s, name: %s", email, name)
@@ -1496,7 +1496,11 @@ class RegisterService:
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
-            ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+            ta = db.session.scalar(
+                select(TenantAccountJoin)
+                .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+                .limit(1)
+            )
 
             if not ta:
                 TenantService.create_tenant_member(tenant, account, role)
@@ -1553,21 +1557,18 @@ class RegisterService:
         if not invitation_data:
             return None
 
-        tenant = (
-            db.session.query(Tenant)
-            .where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
-            .first()
+        tenant = db.session.scalar(
+            select(Tenant).where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal").limit(1)
         )
 
         if not tenant:
             return None
 
-        tenant_account = (
-            db.session.query(Account, TenantAccountJoin.role)
+        tenant_account = db.session.execute(
+            select(Account, TenantAccountJoin.role)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
             .where(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
-            .first()
-        )
+        ).first()
 
         if not tenant_account:
             return None
