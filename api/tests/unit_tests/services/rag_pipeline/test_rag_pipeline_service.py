@@ -720,8 +720,7 @@ def test_get_second_step_parameters_success(mocker, rag_pipeline_service) -> Non
 
 
 def test_publish_customized_pipeline_template_success(mocker, rag_pipeline_service) -> None:
-    from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate
-    from models.workflow import Workflow
+    from models.dataset import Pipeline
 
     # 1. Setup mocks
     pipeline = mocker.Mock(spec=Pipeline)

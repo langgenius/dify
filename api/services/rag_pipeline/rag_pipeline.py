@@ -1206,8 +1206,9 @@ class RagPipelineService:
                 raise ValueError("Template name is already exists")
 
         max_position = db.session.scalar(
-            select(func.max(PipelineCustomizedTemplate.position))
-            .where(PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id)
+            select(func.max(PipelineCustomizedTemplate.position)).where(
+                PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id
+            )
         )
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
@@ -1239,8 +1240,7 @@ class RagPipelineService:
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
         return (
             db.session.scalar(
-                select(func.count(Workflow.id))
-                .where(
+                select(func.count(Workflow.id)).where(
                     Workflow.tenant_id == pipeline.tenant_id,
                     Workflow.app_id == pipeline.id,
                     Workflow.version == Workflow.VERSION_DRAFT,
@@ -1358,9 +1358,7 @@ class RagPipelineService:
         if type and type != "all":
             stmt = stmt.where(PipelineRecommendedPlugin.type == type)
 
-        pipeline_recommended_plugins = db.session.scalars(
-            stmt.order_by(PipelineRecommendedPlugin.position.asc())
-        ).all()
+        pipeline_recommended_plugins = db.session.scalars(stmt.order_by(PipelineRecommendedPlugin.position.asc())).all()
 
         if not pipeline_recommended_plugins:
             return {
@@ -1400,9 +1398,7 @@ class RagPipelineService:
         Retry error document
         """
         document_pipeline_execution_log = db.session.scalar(
-            select(DocumentPipelineExecutionLog)
-            .where(DocumentPipelineExecutionLog.document_id == document.id)
-            .limit(1)
+            select(DocumentPipelineExecutionLog).where(DocumentPipelineExecutionLog.document_id == document.id).limit(1)
         )
         if not document_pipeline_execution_log:
             raise ValueError("Document pipeline execution log not found")
