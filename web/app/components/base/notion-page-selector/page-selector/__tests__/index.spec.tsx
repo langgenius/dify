@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PageSelector from '../index'
 
+vi.mock('@tanstack/react-virtual')
+
 const buildPage = (overrides: Partial<DataSourceNotionPage>): DataSourceNotionPage => ({
   page_id: 'page-id',
   page_name: 'Page name',

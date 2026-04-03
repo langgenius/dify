@@ -15,7 +15,6 @@ import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
-// Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
   javascript: 'JavaScript',
