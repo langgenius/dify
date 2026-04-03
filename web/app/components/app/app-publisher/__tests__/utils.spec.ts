@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
+import { basePath } from '@/utils/var'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppMode,
@@ -25,7 +26,7 @@ describe('app-publisher utils', () => {
         appBaseUrl: 'https://example.com',
         accessToken: 'token-1',
         mode: AppModeEnum.CHAT,
-      })).toBe('https://example.com/app/chat/token-1')
+      })).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
 

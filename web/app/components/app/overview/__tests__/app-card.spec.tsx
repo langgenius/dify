@@ -2,6 +2,7 @@ import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
+import { basePath } from '@/utils/var'
 import AppCard from '../app-card'
 
 const mockPush = vi.fn()
@@ -21,6 +22,9 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceEditor: true,
+    langGeniusVersionInfo: {
+      current_env: 'TESTING',
+    },
   }),
 }))
 
@@ -71,6 +75,10 @@ vi.mock('@/service/access-control', () => ({
   }),
 }))
 
+vi.mock('../embedded', () => ({
+  default: () => null,
+}))
+
 const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {
   writable: true,
@@ -115,7 +123,7 @@ describe('AppCard', () => {
 
     fireEvent.click(screen.getByText('overview.appInfo.launch'))
 
-    expect(mockWindowOpen).toHaveBeenCalledWith('https://example.com/app/chat/access-token', '_blank')
+    expect(mockWindowOpen).toHaveBeenCalledWith(`https://example.com${basePath}/chat/access-token`, '_blank')
   })
 
   it('should show the access-control not-set badge when specific access has no subjects', () => {

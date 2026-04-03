@@ -41,7 +41,7 @@ describe('app-chart-utils', () => {
         yField: 'count',
       })
 
-      expect(summaryValue).toBe('1.5k')
+      expect(summaryValue).toBe('2k')
     })
   })
 

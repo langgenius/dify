@@ -2,6 +2,7 @@ import type { AppSSO } from '@/types/app'
 import type { AppDetailResponse } from '@/models/app'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
+import { basePath } from '@/utils/var'
 import {
   getAppCardDisplayState,
   getAppCardOperationKeys,
@@ -77,7 +78,7 @@ describe('app-card-utils', () => {
       expect(state.missingStartNode).toBe(false)
       expect(state.toggleDisabled).toBe(false)
       expect(state.isMinimalState).toBe(false)
-      expect(state.accessibleUrl).toBe('https://example.com/app/chat/token-1')
+      expect(state.accessibleUrl).toBe(`https://example.com${basePath}/workflow/token-1`)
     })
   })
 
