@@ -918,7 +918,7 @@
     counter-increment: line;
     content: counter(line);
     display: inline-block;
-    width: 2rem;
+    width: 1rem;
     margin-right: 0.75rem;
     text-align: right;
     color: var(--color-text-quaternary);
