@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
+    METRIC_VALUE_TYPE_MAPPING,
     DefaultMetric,
     EvaluationCategory,
     EvaluationConfigData,
@@ -32,6 +33,7 @@ from models.evaluation import (
 )
 from models.model import App, AppMode
 from models.snippet import CustomizedSnippet
+from models.workflow import Workflow
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -306,10 +308,32 @@ class EvaluationService:
             }
         )
         config.judgement_conditions = json.dumps(data.judgment_config.model_dump() if data.judgment_config else {})
+        config.customized_workflow_id = (
+            data.customized_metrics.evaluation_workflow_id if data.customized_metrics else None
+        )
         config.updated_by = account_id
         session.commit()
         session.refresh(config)
         return config
+
+    @classmethod
+    def list_targets_by_customized_workflow(
+        cls,
+        session: Session,
+        tenant_id: str,
+        customized_workflow_id: str,
+    ) -> list[EvaluationConfiguration]:
+        """Return all evaluation configs that reference the given workflow as customized metrics."""
+        from sqlalchemy import select
+
+        return list(
+            session.scalars(
+                select(EvaluationConfiguration).where(
+                    EvaluationConfiguration.tenant_id == tenant_id,
+                    EvaluationConfiguration.customized_workflow_id == customized_workflow_id,
+                )
+            ).all()
+        )
 
     # ---- Evaluation Run Management ----
 
@@ -483,6 +507,71 @@ class EvaluationService:
         return [m.value for m in EvaluationMetricName]
 
     @classmethod
+    def _nodes_for_metrics_from_workflow(
+        cls,
+        workflow: Workflow,
+        metrics: list[str],
+    ) -> dict[str, list[dict[str, str]]]:
+        node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
+        for node_id, node_data in workflow.walk_nodes():
+            ntype = node_data.get("type", "")
+            node_type_to_nodes.setdefault(ntype, []).append(
+                NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
+            )
+
+        result: dict[str, list[dict[str, str]]] = {}
+        for metric in metrics:
+            required_node_type = METRIC_NODE_TYPE_MAPPING.get(metric)
+            if required_node_type is None:
+                result[metric] = []
+                continue
+            result[metric] = node_type_to_nodes.get(required_node_type, [])
+        return result
+
+    @classmethod
+    def _union_supported_metric_names(cls) -> list[str]:
+        """Metric names the current evaluation framework supports for any :class:`EvaluationCategory`."""
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for category in EvaluationCategory:
+            for name in cls.get_supported_metrics(category):
+                if name not in seen:
+                    seen.add(name)
+                    ordered.append(name)
+        return ordered
+
+    @classmethod
+    def get_default_metrics_with_nodes_for_published_target(
+        cls,
+        target: Union[App, CustomizedSnippet],
+        target_type: str,
+    ) -> list[DefaultMetric]:
+        """List default metrics and matching nodes using only the *published* workflow graph.
+
+        Metrics are those supported by the configured evaluation framework and present in
+        :data:`METRIC_NODE_TYPE_MAPPING`. Node lists are derived from the published workflow only
+        (no draft fallback).
+        """
+        workflow = cls._resolve_published_workflow(target, target_type)
+        if not workflow:
+            return []
+
+        supported = cls._union_supported_metric_names()
+        metric_names = sorted(m for m in supported if m in METRIC_NODE_TYPE_MAPPING)
+        if not metric_names:
+            return []
+
+        nodes_by_metric = cls._nodes_for_metrics_from_workflow(workflow, metric_names)
+        return [
+            DefaultMetric(
+                metric=m,
+                value_type=METRIC_VALUE_TYPE_MAPPING.get(m, "number"),
+                node_info_list=[NodeInfo.model_validate(n) for n in nodes_by_metric.get(m, [])],
+            )
+            for m in metric_names
+        ]
+
+    @classmethod
     def get_nodes_for_metrics(
         cls,
         target: Union[App, CustomizedSnippet],
@@ -509,28 +598,27 @@ class EvaluationService:
             ]
             return {"all": all_nodes}
 
-        node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
-        for node_id, node_data in workflow.walk_nodes():
-            ntype = node_data.get("type", "")
-            node_type_to_nodes.setdefault(ntype, []).append(
-                NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
-            )
+        return cls._nodes_for_metrics_from_workflow(workflow, metrics)
 
-        result: dict[str, list[dict[str, str]]] = {}
-        for metric in metrics:
-            required_node_type = METRIC_NODE_TYPE_MAPPING.get(metric)
-            if required_node_type is None:
-                result[metric] = []
-                continue
-            result[metric] = node_type_to_nodes.get(required_node_type, [])
-        return result
+    @classmethod
+    def _resolve_published_workflow(
+        cls,
+        target: Union[App, CustomizedSnippet],
+        target_type: str,
+    ) -> Workflow | None:
+        """Resolve only the published workflow for the target (no draft fallback)."""
+        if target_type == "snippets" and isinstance(target, CustomizedSnippet):
+            return SnippetService().get_published_workflow(snippet=target)
+        if target_type == "app" and isinstance(target, App):
+            return WorkflowService().get_published_workflow(app_model=target)
+        return None
 
     @classmethod
     def _resolve_workflow(
         cls,
         target: Union[App, CustomizedSnippet],
         target_type: str,
-    ) -> "Workflow | None":
+    ) -> Workflow | None:
         """Resolve the *published* (preferred) or *draft* workflow for the target."""
         if target_type == "snippets" and isinstance(target, CustomizedSnippet):
             snippet_service = SnippetService()

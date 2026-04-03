@@ -36,6 +36,7 @@ class EvaluationConfiguration(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="evaluation_configuration_pkey"),
         sa.Index("evaluation_configuration_target_idx", "tenant_id", "target_type", "target_id"),
+        sa.Index("evaluation_configuration_workflow_idx", "customized_workflow_id"),
         sa.UniqueConstraint("tenant_id", "target_type", "target_id", name="evaluation_configuration_unique"),
     )
 
@@ -48,6 +49,7 @@ class EvaluationConfiguration(Base):
     evaluation_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metrics_config: Mapped[str | None] = mapped_column(LongText, nullable=True)
     judgement_conditions: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    customized_workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     updated_by: Mapped[str] = mapped_column(StringUUID, nullable=False)

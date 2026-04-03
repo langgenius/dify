@@ -1,85 +1,52 @@
 """Judgment condition entities for evaluation metric assessment.
 
-Key concepts:
-  - **condition_type**: Determines operator semantics and type coercion.
-    - "string": string operators (contains, is, start with, …).
-    - "number": numeric operators (>, <, =, ≠, ≥, ≤).
-    - "datetime": temporal operators (before, after).
+Condition structure mirrors the workflow if-else ``Condition`` model from
+``graphon.utils.condition.entities``.  The left-hand side uses
+``variable_selector`` — a two-element list ``[node_id, metric_name]`` — to
+uniquely identify an evaluation metric (different nodes may produce metrics
+with the same name).
 
-Typical usage:
+Operators reuse ``SupportedComparisonOperator`` from the workflow engine so
+that type semantics stay consistent across the platform.
+
+Typical usage::
+
     judgment_config = JudgmentConfig(
         logical_operator="and",
         conditions=[
             JudgmentCondition(
-                metric_name="faithfulness",
+                variable_selector=["node_abc", "faithfulness"],
                 comparison_operator=">",
-                condition_value="0.8",
-                condition_type="number",
+                value="0.8",
             )
         ],
     )
 """
 
-from enum import StrEnum
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
-class JudgmentConditionType(StrEnum):
-    """Category of the condition, controls operator semantics and type coercion."""
-
-    STRING = "string"
-    NUMBER = "number"
-    DATETIME = "datetime"
-
-
-# Supported comparison operators for judgment conditions.
-JudgmentComparisonOperator = Literal[
-    # string
-    "contains",
-    "not contains",
-    "start with",
-    "end with",
-    "is",
-    "is not",
-    "empty",
-    "not empty",
-    "in",
-    "not in",
-    # number
-    "=",
-    "≠",
-    ">",
-    "<",
-    "≥",
-    "≤",
-    # datetime
-    "before",
-    "after",
-    # universal
-    "null",
-    "not null",
-]
+from graphon.utils.condition.entities import SupportedComparisonOperator
 
 
 class JudgmentCondition(BaseModel):
     """A single judgment condition that checks one metric value.
 
+    Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
+    side being a metric selector instead of a workflow variable selector.
+
     Attributes:
-        metric_name: The name of the evaluation metric to check (left side).
-            Must match an EvaluationMetric.name in the results.
-        comparison_operator: The comparison operator to apply.
-        condition_value: The comparison target (right side). For unary operators
-            such as ``empty`` or ``null`` this can be ``None``.
-        condition_type: Controls type coercion and which operators are valid.
-            "string" (default), "number", or "datetime".
+        variable_selector: ``[node_id, metric_name]`` identifying the metric.
+        comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
+        value: The comparison target (right side).  For unary operators such
+            as ``empty`` or ``null`` this can be ``None``.
     """
 
-    metric_name: str
-    comparison_operator: JudgmentComparisonOperator
-    condition_value: Any | None = None
-    condition_type: JudgmentConditionType = JudgmentConditionType.STRING
+    variable_selector: list[str]
+    comparison_operator: SupportedComparisonOperator
+    value: str | Sequence[str] | bool | None = None
 
 
 class JudgmentConfig(BaseModel):
@@ -99,15 +66,15 @@ class JudgmentConditionResult(BaseModel):
     """Result of evaluating a single judgment condition.
 
     Attributes:
-        metric_name: Which metric was checked.
+        variable_selector: ``[node_id, metric_name]`` that was checked.
         comparison_operator: The operator that was applied.
-        expected_value: The resolved comparison value (after variable resolution).
+        expected_value: The resolved comparison value.
         actual_value: The actual metric value that was evaluated.
         passed: Whether this individual condition passed.
         error: Error message if the condition evaluation failed.
     """
 
-    metric_name: str
+    variable_selector: list[str]
     comparison_operator: str
     expected_value: Any = None
     actual_value: Any = None

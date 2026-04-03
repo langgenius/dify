@@ -15,9 +15,11 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationDatasetInput,
     EvaluationItemResult,
     EvaluationRunData,
+    NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
+from core.evaluation.judgment.processor import JudgmentProcessor
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
@@ -28,7 +30,7 @@ from extensions.ext_database import db
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
-from models.evaluation import EvaluationRun, EvaluationRunStatus
+from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus
 from models.model import UploadFile
 from services.evaluation_service import EvaluationService
 
@@ -41,11 +43,12 @@ def run_evaluation(run_data_dict: dict[str, Any]) -> None:
 
     Workflow:
     1. Deserialize EvaluationRunData
-    2. Update status to RUNNING
-    3. Select appropriate Runner based on evaluation_category
-    4. Execute runner.run() which handles target execution + metric computation
-    5. Generate result XLSX
-    6. Update EvaluationRun status to COMPLETED
+    2. Execute target and collect node results
+    3. Evaluate metrics via runners (one per metric-node pair)
+    4. Merge results per test-data row (1 item = 1 EvaluationRunItem)
+    5. Apply judgment conditions
+    6. Persist results + generate result XLSX
+    7. Update EvaluationRun status to COMPLETED
     """
     run_data = EvaluationRunData.model_validate(run_data_dict)
 
@@ -70,15 +73,18 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
         logger.error("EvaluationRun %s not found", run_data.evaluation_run_id)
         return
 
-    # Check if cancelled
     if evaluation_run.status == EvaluationRunStatus.CANCELLED:
         logger.info("EvaluationRun %s was cancelled", run_data.evaluation_run_id)
         return
 
-    # Get evaluation instance
     evaluation_instance = EvaluationManager.get_evaluation_instance()
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
+
+    # Mark as running
+    evaluation_run.status = EvaluationRunStatus.RUNNING
+    evaluation_run.started_at = naive_utc_now()
+    session.commit()
 
     if run_data.target_type == "dataset":
         results: list[EvaluationItemResult] = _execute_retrieval_test(
@@ -95,18 +101,19 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
             target_id=run_data.target_id,
             input_list=run_data.input_list,
         )
+
+        workflow_run_id_map = {
+            item.index: wf_run_id
+            for item, wf_run_id in zip(run_data.input_list, workflow_run_ids)
+            if wf_run_id
+        }
+
         results = _execute_evaluation_runner(
             session=session,
             run_data=run_data,
             evaluation_instance=evaluation_instance,
             node_run_result_mapping_list=node_run_result_mapping_list,
-        )
-
-        _backfill_workflow_run_ids(
-            session=session,
-            evaluation_run_id=run_data.evaluation_run_id,
-            input_list=run_data.input_list,
-            workflow_run_ids=workflow_run_ids,
+            workflow_run_id_map=workflow_run_id_map,
         )
 
     # Compute summary metrics
@@ -119,7 +126,7 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     result_file_id = _store_result_file(run_data.tenant_id, run_data.evaluation_run_id, result_xlsx, session)
 
     # Update run to completed
-    evaluation_run: EvaluationRun = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
+    evaluation_run = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
     if evaluation_run:
         evaluation_run.status = EvaluationRunStatus.COMPLETED
         evaluation_run.completed_at = naive_utc_now()
@@ -131,78 +138,80 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     logger.info("Evaluation run %s completed successfully", run_data.evaluation_run_id)
 
 
+# ---------------------------------------------------------------------------
+# Evaluation orchestration — merge + judgment + persist
+# ---------------------------------------------------------------------------
+
+
 def _execute_evaluation_runner(
     session: Any,
     run_data: EvaluationRunData,
     evaluation_instance: BaseEvaluationInstance,
     node_run_result_mapping_list: list[dict[str, NodeRunResult]],
+    workflow_run_id_map: dict[int, str] | None = None,
 ) -> list[EvaluationItemResult]:
-    """Execute the evaluation runner."""
-    default_metrics = run_data.default_metrics
-    customized_metrics = run_data.customized_metrics
-    results: list[EvaluationItemResult] = []
-    for default_metric in default_metrics:
+    """Evaluate all metrics, merge per-item, apply judgment, persist once.
+
+    Ensures 1 test-data row = 1 EvaluationRunItem with all metrics combined.
+    """
+    results_by_index: dict[int, EvaluationItemResult] = {}
+
+    # Phase 1: Default metrics — one batch per (metric, node) pair
+    for default_metric in run_data.default_metrics:
         for node_info in default_metric.node_info_list:
             node_run_result_list: list[NodeRunResult] = []
-            for node_run_result_mapping in node_run_result_mapping_list:
-                node_run_result = node_run_result_mapping.get(node_info.node_id)
-                if node_run_result is not None:
-                    node_run_result_list.append(node_run_result)
-            if node_run_result_list:
-                runner = _create_runner(EvaluationCategory(node_info.type), evaluation_instance, session)
-                results.extend(
-                    runner.run(
-                        evaluation_run_id=run_data.evaluation_run_id,
-                        tenant_id=run_data.tenant_id,
-                        target_id=run_data.target_id,
-                        target_type=run_data.target_type,
-                        default_metric=default_metric,
-                        customized_metrics=None,
-                        model_provider=run_data.evaluation_model_provider,
-                        model_name=run_data.evaluation_model,
-                        node_run_result_list=node_run_result_list,
-                        judgment_config=run_data.judgment_config,
-                        input_list=run_data.input_list,
-                    )
+            item_indices: list[int] = []
+            for i, mapping in enumerate(node_run_result_mapping_list):
+                node_result = mapping.get(node_info.node_id)
+                if node_result is not None:
+                    node_run_result_list.append(node_result)
+                    item_indices.append(i)
+
+            if not node_run_result_list:
+                continue
+
+            runner = _create_runner(EvaluationCategory(node_info.type), evaluation_instance)
+            try:
+                evaluated = runner.evaluate_metrics(
+                    node_run_result_list=node_run_result_list,
+                    default_metric=default_metric,
+                    model_provider=run_data.evaluation_model_provider,
+                    model_name=run_data.evaluation_model,
+                    tenant_id=run_data.tenant_id,
                 )
-    if customized_metrics:
-        runner = _create_runner(EvaluationCategory.WORKFLOW, evaluation_instance, session)
-        results.extend(
-            runner.run(
-                evaluation_run_id=run_data.evaluation_run_id,
-                tenant_id=run_data.tenant_id,
-                target_id=run_data.target_id,
-                target_type=run_data.target_type,
-                default_metric=None,
-                customized_metrics=customized_metrics,
-                node_run_result_list=None,
+            except Exception:
+                logger.exception(
+                    "Failed metrics for %s on node %s", default_metric.metric, node_info.node_id
+                )
+                continue
+
+            _stamp_and_merge(evaluated, item_indices, node_info, results_by_index)
+
+    # Phase 2: Customized metrics
+    if run_data.customized_metrics:
+        try:
+            customized_results = evaluation_instance.evaluate_with_customized_workflow(
                 node_run_result_mapping_list=node_run_result_mapping_list,
-                judgment_config=run_data.judgment_config,
-                input_list=run_data.input_list,
+                customized_metrics=run_data.customized_metrics,
+                tenant_id=run_data.tenant_id,
             )
-        )
+            for result in customized_results:
+                _merge_result(results_by_index, result.index, result)
+        except Exception:
+            logger.exception("Failed customized metrics for run %s", run_data.evaluation_run_id)
+
+    results = list(results_by_index.values())
+
+    # Phase 3: Judgment
+    if run_data.judgment_config:
+        results = _apply_judgment(results, run_data.judgment_config)
+
+    # Phase 4: Persist — one EvaluationRunItem per test-data row
+    _persist_results(
+        session, run_data.evaluation_run_id, results, run_data.input_list, workflow_run_id_map
+    )
+
     return results
-
-
-def _create_runner(
-    category: EvaluationCategory,
-    evaluation_instance: BaseEvaluationInstance,
-    session: Any,
-) -> BaseEvaluationRunner:
-    """Create the appropriate runner for the evaluation category."""
-    match category:
-        case EvaluationCategory.LLM:
-            return LLMEvaluationRunner(evaluation_instance, session)
-        case EvaluationCategory.RETRIEVAL | EvaluationCategory.KNOWLEDGE_BASE:
-            return RetrievalEvaluationRunner(evaluation_instance, session)
-        case EvaluationCategory.AGENT:
-            return AgentEvaluationRunner(evaluation_instance, session)
-        case EvaluationCategory.WORKFLOW:
-            return WorkflowEvaluationRunner(evaluation_instance, session)
-        case EvaluationCategory.SNIPPET:
-            return SnippetEvaluationRunner(evaluation_instance, session)
-        case _:
-            raise ValueError(f"Unknown evaluation category: {category}")
 
 
 def _execute_retrieval_test(
@@ -223,45 +232,142 @@ def _execute_retrieval_test(
         input_list=run_data.input_list,
     )
 
-    results: list[EvaluationItemResult] = []
-    runner = RetrievalEvaluationRunner(evaluation_instance, session)
-    results.extend(
-        runner.run(
-            evaluation_run_id=run_data.evaluation_run_id,
-            tenant_id=run_data.tenant_id,
-            target_id=run_data.target_id,
-            target_type=run_data.target_type,
-            default_metric=None,
-            model_provider=run_data.evaluation_model_provider,
-            model_name=run_data.evaluation_model,
-            node_run_result_list=node_run_result_list,
-            judgment_config=run_data.judgment_config,
-            input_list=run_data.input_list,
-        )
-    )
+    results_by_index: dict[int, EvaluationItemResult] = {}
+    runner = RetrievalEvaluationRunner(evaluation_instance)
+
+    for default_metric in run_data.default_metrics:
+        try:
+            evaluated = runner.evaluate_metrics(
+                node_run_result_list=node_run_result_list,
+                default_metric=default_metric,
+                model_provider=run_data.evaluation_model_provider,
+                model_name=run_data.evaluation_model,
+                tenant_id=run_data.tenant_id,
+            )
+            item_indices = list(range(len(node_run_result_list)))
+            _stamp_and_merge(evaluated, item_indices, None, results_by_index)
+        except Exception:
+            logger.exception("Failed retrieval metrics for run %s", run_data.evaluation_run_id)
+
+    results = list(results_by_index.values())
+
+    if run_data.judgment_config:
+        results = _apply_judgment(results, run_data.judgment_config)
+
+    _persist_results(session, run_data.evaluation_run_id, results, run_data.input_list)
+
     return results
 
 
-def _backfill_workflow_run_ids(
+# ---------------------------------------------------------------------------
+# Helpers — merge, judgment, persist
+# ---------------------------------------------------------------------------
+
+
+def _stamp_and_merge(
+    evaluated: list[EvaluationItemResult],
+    item_indices: list[int],
+    node_info: NodeInfo | None,
+    results_by_index: dict[int, EvaluationItemResult],
+) -> None:
+    """Attach node_info to each metric and merge into results_by_index."""
+    for result in evaluated:
+        original_index = item_indices[result.index]
+        if node_info is not None:
+            for metric in result.metrics:
+                metric.node_info = node_info
+        _merge_result(results_by_index, original_index, result)
+
+
+def _merge_result(
+    results_by_index: dict[int, EvaluationItemResult],
+    index: int,
+    new_result: EvaluationItemResult,
+) -> None:
+    """Merge new metrics into an existing result for the same index."""
+    existing = results_by_index.get(index)
+    if existing:
+        merged_metrics = existing.metrics + new_result.metrics
+        actual = existing.actual_output or new_result.actual_output
+        results_by_index[index] = existing.model_copy(
+            update={"metrics": merged_metrics, "actual_output": actual}
+        )
+    else:
+        results_by_index[index] = new_result.model_copy(update={"index": index})
+
+
+def _apply_judgment(
+    results: list[EvaluationItemResult],
+    judgment_config: JudgmentConfig,
+) -> list[EvaluationItemResult]:
+    """Evaluate pass/fail judgment conditions on each result's metrics."""
+    judged: list[EvaluationItemResult] = []
+    for result in results:
+        if result.error is not None or not result.metrics:
+            judged.append(result)
+            continue
+        metric_values: dict[tuple[str, str], object] = {
+            (m.node_info.node_id, m.name): m.value for m in result.metrics if m.node_info
+        }
+        judgment_result = JudgmentProcessor.evaluate(metric_values, judgment_config)
+        judged.append(result.model_copy(update={"judgment": judgment_result}))
+    return judged
+
+
+def _persist_results(
     session: Any,
     evaluation_run_id: str,
+    results: list[EvaluationItemResult],
     input_list: list[EvaluationDatasetInput],
-    workflow_run_ids: list[str | None],
+    workflow_run_id_map: dict[int, str] | None = None,
 ) -> None:
-    """Set ``workflow_run_id`` on items that were created by the runner."""
-    from models.evaluation import EvaluationRunItem
+    """Persist evaluation results — one EvaluationRunItem per test-data row."""
+    dataset_map = {item.index: item for item in input_list}
+    wf_map = workflow_run_id_map or {}
 
-    for item, wf_run_id in zip(input_list, workflow_run_ids):
-        if not wf_run_id:
-            continue
-        run_item = (
-            session.query(EvaluationRunItem)
-            .filter_by(evaluation_run_id=evaluation_run_id, item_index=item.index)
-            .first()
+    for result in results:
+        item_input = dataset_map.get(result.index)
+        run_item = EvaluationRunItem(
+            evaluation_run_id=evaluation_run_id,
+            workflow_run_id=wf_map.get(result.index),
+            item_index=result.index,
+            inputs=json.dumps(item_input.inputs) if item_input else None,
+            expected_output=item_input.expected_output if item_input else None,
+            actual_output=result.actual_output,
+            metrics=json.dumps([m.model_dump() for m in result.metrics]) if result.metrics else None,
+            judgment=json.dumps(result.judgment.model_dump()) if result.judgment else None,
+            metadata_json=json.dumps(result.metadata) if result.metadata else None,
+            error=result.error,
+            overall_score=getattr(result, "overall_score", None),
         )
-        if run_item:
-            run_item.workflow_run_id = wf_run_id
+        session.add(run_item)
+
     session.commit()
+
+
+def _create_runner(
+    category: EvaluationCategory,
+    evaluation_instance: BaseEvaluationInstance,
+) -> BaseEvaluationRunner:
+    """Create the appropriate runner for the evaluation category."""
+    match category:
+        case EvaluationCategory.LLM:
+            return LLMEvaluationRunner(evaluation_instance)
+        case EvaluationCategory.RETRIEVAL | EvaluationCategory.KNOWLEDGE_BASE:
+            return RetrievalEvaluationRunner(evaluation_instance)
+        case EvaluationCategory.AGENT:
+            return AgentEvaluationRunner(evaluation_instance)
+        case EvaluationCategory.WORKFLOW:
+            return WorkflowEvaluationRunner(evaluation_instance)
+        case EvaluationCategory.SNIPPET:
+            return SnippetEvaluationRunner(evaluation_instance)
+        case _:
+            raise ValueError(f"Unknown evaluation category: {category}")
+
+
+# ---------------------------------------------------------------------------
+# Status / summary / XLSX / storage helpers (unchanged logic)
+# ---------------------------------------------------------------------------
 
 
 def _mark_run_failed(session: Any, run_id: str, error: str) -> None:
@@ -270,7 +376,7 @@ def _mark_run_failed(session: Any, run_id: str, error: str) -> None:
         evaluation_run = session.query(EvaluationRun).filter_by(id=run_id).first()
         if evaluation_run:
             evaluation_run.status = EvaluationRunStatus.FAILED
-            evaluation_run.error = error[:2000]  # Truncate error
+            evaluation_run.error = error[:2000]
             evaluation_run.completed_at = naive_utc_now()
             session.commit()
     except Exception:
@@ -281,13 +387,7 @@ def _compute_metrics_summary(
     results: list[EvaluationItemResult],
     judgment_config: JudgmentConfig | None,
 ) -> dict[str, Any]:
-    """Compute aggregate metric and judgment summaries for an evaluation run.
-
-    Metric statistics are calculated from successful item results only. When a
-    judgment config is present, the summary also reports how many successful
-    items passed or failed the configured judgment rules.
-    """
-
+    """Compute aggregate metric and judgment summaries for an evaluation run."""
     summary: dict[str, Any] = {}
 
     if judgment_config is not None and judgment_config.conditions:
@@ -344,16 +444,13 @@ def _generate_result_xlsx(
             if key not in input_keys:
                 input_keys.append(key)
 
-    # Include judgment column only when at least one result has judgment conditions evaluated
     has_judgment = any(bool(r.judgment.condition_results) for r in results)
 
-    # Build headers
     judgment_headers = ["judgment"] if has_judgment else []
     headers = (
         ["index"] + input_keys + ["expected_output", "actual_output"] + all_metric_names + judgment_headers + ["error"]
     )
 
-    # Write header row
     for col_idx, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col_idx, value=header)
         cell.font = header_font
@@ -361,45 +458,36 @@ def _generate_result_xlsx(
         cell.alignment = header_alignment
         cell.border = thin_border
 
-    # Set column widths
     ws.column_dimensions["A"].width = 10
     for col_idx in range(2, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col_idx)].width = 25
 
-    # Build result lookup
     result_by_index = {r.index: r for r in results}
 
-    # Write data rows
     for row_idx, item in enumerate(input_list, start=2):
         result = result_by_index.get(item.index)
 
         col = 1
-        # Index
         ws.cell(row=row_idx, column=col, value=item.index).border = thin_border
         col += 1
 
-        # Input values
         for key in input_keys:
             val = item.inputs.get(key, "")
             ws.cell(row=row_idx, column=col, value=str(val)).border = thin_border
             col += 1
 
-        # Expected output
         ws.cell(row=row_idx, column=col, value=item.expected_output or "").border = thin_border
         col += 1
 
-        # Actual output
         ws.cell(row=row_idx, column=col, value=result.actual_output if result else "").border = thin_border
         col += 1
 
-        # Metric scores
         metric_scores = {m.name: m.value for m in result.metrics} if result else {}
         for metric_name in all_metric_names:
             score = metric_scores.get(metric_name)
             ws.cell(row=row_idx, column=col, value=score if score is not None else "").border = thin_border
             col += 1
 
-        # Judgment result
         if has_judgment:
             if result and result.judgment.condition_results:
                 judgment_value = "Pass" if result.judgment.passed else "Fail"
@@ -408,7 +496,6 @@ def _generate_result_xlsx(
             ws.cell(row=row_idx, column=col, value=judgment_value).border = thin_border
             col += 1
 
-        # Error
         ws.cell(row=row_idx, column=col, value=result.error if result else "").border = thin_border
 
     output = io.BytesIO()

@@ -1,11 +1,8 @@
 import logging
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
-    CustomizedMetrics,
     DefaultMetric,
     EvaluationItemInput,
     EvaluationItemResult,
@@ -19,15 +16,13 @@ logger = logging.getLogger(__name__)
 class RetrievalEvaluationRunner(BaseEvaluationRunner):
     """Runner for retrieval evaluation: performs knowledge base retrieval, then evaluates."""
 
-    def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
-        super().__init__(evaluation_instance, session)
+    def __init__(self, evaluation_instance: BaseEvaluationInstance):
+        super().__init__(evaluation_instance)
 
     def evaluate_metrics(
         self,
-        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None,
-        node_run_result_list: list[NodeRunResult] | None,
-        default_metric: DefaultMetric | None,
-        customized_metrics: CustomizedMetrics | None,
+        node_run_result_list: list[NodeRunResult],
+        default_metric: DefaultMetric,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -38,10 +33,8 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
 
         merged_items = []
         for i, node_result in enumerate(node_run_result_list):
-            # Extract retrieved contexts from outputs
             outputs = node_result.outputs
             query = self._extract_query(dict(node_result.inputs))
-            # Extract retrieved content from result list
             result_list = outputs.get("result", [])
             contexts = [item.get("content", "") for item in result_list if item.get("content")]
             output = "\n---\n".join(contexts)
@@ -56,7 +49,7 @@ class RetrievalEvaluationRunner(BaseEvaluationRunner):
             )
 
         return self.evaluation_instance.evaluate_retrieval(
-            merged_items, [default_metric.metric]if default_metric else [], model_provider, model_name, tenant_id
+            merged_items, [default_metric.metric], model_provider, model_name, tenant_id
         )
 
     @staticmethod

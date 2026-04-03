@@ -1,80 +1,78 @@
-"""Tests for judgment application in the base evaluation runner."""
+"""Tests for judgment application logic (moved from BaseEvaluationRunner to evaluation_task)."""
 
-from unittest.mock import Mock
-
-from core.evaluation.entities.evaluation_entity import DefaultMetric, EvaluationItemResult, EvaluationMetric
+from core.evaluation.entities.evaluation_entity import EvaluationItemResult, EvaluationMetric, NodeInfo
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig
-from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
+from tasks.evaluation_task import _apply_judgment
+
+_NODE_INFO = NodeInfo(node_id="llm_1", type="llm", title="LLM Node")
 
 
-class _FakeItemInput:
-    def __init__(self, index: int) -> None:
-        self.index = index
-        self.inputs = {"query": "hello"}
-        self.expected_output = "world"
-        self.context = None
-
-
-class _FakeEvaluationRun:
-    def __init__(self) -> None:
-        self.status = None
-        self.started_at = None
-        self.input_list = [_FakeItemInput(index=0)]
-
-
-class _FakeRunner(BaseEvaluationRunner):
-    def evaluate_metrics(
-        self,
-        node_run_result_mapping_list,
-        node_run_result_list,
-        default_metric,
-        customized_metrics,
-        model_provider,
-        model_name,
-        tenant_id,
-    ) -> list[EvaluationItemResult]:
-        return [
-            EvaluationItemResult(
-                index=0,
-                actual_output="result",
-                metrics=[EvaluationMetric(name="faithfulness", value=0.91)],
-            )
-        ]
-
-
-def test_run_applies_judgment_before_persisting_results() -> None:
-    """Runner should evaluate judgment rules before persisting item rows."""
-    # Arrange
-    session = Mock()
-    evaluation_run = _FakeEvaluationRun()
-    session.query.return_value.filter_by.return_value.first.return_value = evaluation_run
-
-    runner = _FakeRunner(evaluation_instance=Mock(), session=session)
+def test_apply_judgment_marks_passing_result() -> None:
+    """Items whose metrics satisfy the judgment conditions should be marked as passed."""
+    results = [
+        EvaluationItemResult(
+            index=0,
+            actual_output="result",
+            metrics=[EvaluationMetric(name="faithfulness", value=0.91, node_info=_NODE_INFO)],
+        )
+    ]
     judgment_config = JudgmentConfig(
         logical_operator="and",
         conditions=[
             JudgmentCondition(
-                metric_name="faithfulness",
+                variable_selector=["llm_1", "faithfulness"],
                 comparison_operator=">",
-                condition_value="0.8",
-                condition_type="number",
+                value="0.8",
             )
         ],
     )
 
-    # Act
-    results = runner.run(
-        evaluation_run_id="run-id",
-        tenant_id="tenant-id",
-        target_id="target-id",
-        target_type="app",
-        node_run_result_list=[Mock()],
-        default_metric=DefaultMetric(metric="faithfulness", node_info_list=[]),
-        judgment_config=judgment_config,
+    judged = _apply_judgment(results, judgment_config)
+
+    assert judged[0].judgment.passed is True
+
+
+def test_apply_judgment_marks_failing_result() -> None:
+    """Items whose metrics do NOT satisfy the conditions should be marked as failed."""
+    results = [
+        EvaluationItemResult(
+            index=0,
+            metrics=[EvaluationMetric(name="faithfulness", value=0.5, node_info=_NODE_INFO)],
+        )
+    ]
+    judgment_config = JudgmentConfig(
+        logical_operator="and",
+        conditions=[
+            JudgmentCondition(
+                variable_selector=["llm_1", "faithfulness"],
+                comparison_operator=">",
+                value="0.8",
+            )
+        ],
     )
 
-    # Assert
-    assert results[0].judgment.passed is True
-    persisted_item = session.add.call_args.args[0]
-    assert persisted_item.judgment is not None
-    assert '"passed": true' in persisted_item.judgment
+    judged = _apply_judgment(results, judgment_config)
+
+    assert judged[0].judgment.passed is False
+
+
+def test_apply_judgment_skips_errored_items() -> None:
+    """Items with errors should be passed through without judgment evaluation."""
+    results = [
+        EvaluationItemResult(index=0, error="timeout"),
+    ]
+    judgment_config = JudgmentConfig(
+        logical_operator="and",
+        conditions=[
+            JudgmentCondition(
+                variable_selector=["llm_1", "faithfulness"],
+                comparison_operator=">",
+                value="0.8",
+            )
+        ],
+    )
+
+    judged = _apply_judgment(results, judgment_config)
+
+    assert judged[0].error == "timeout"
+    assert judged[0].judgment.passed is False

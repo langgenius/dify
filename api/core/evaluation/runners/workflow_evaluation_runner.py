@@ -2,11 +2,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
-    CustomizedMetrics,
     DefaultMetric,
     EvaluationItemInput,
     EvaluationItemResult,
@@ -20,15 +17,13 @@ logger = logging.getLogger(__name__)
 class WorkflowEvaluationRunner(BaseEvaluationRunner):
     """Runner for workflow evaluation: executes workflow App in non-streaming mode."""
 
-    def __init__(self, evaluation_instance: BaseEvaluationInstance, session: Session):
-        super().__init__(evaluation_instance, session)
+    def __init__(self, evaluation_instance: BaseEvaluationInstance):
+        super().__init__(evaluation_instance)
 
     def evaluate_metrics(
         self,
-        node_run_result_mapping_list: list[dict[str, NodeRunResult]] | None,
-        node_run_result_list: list[NodeRunResult] | None,
-        default_metric: DefaultMetric | None,
-        customized_metrics: CustomizedMetrics | None,
+        node_run_result_list: list[NodeRunResult],
+        default_metric: DefaultMetric,
         model_provider: str,
         model_name: str,
         tenant_id: str,
@@ -36,8 +31,6 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
         """Compute workflow evaluation metrics (end-to-end)."""
         if not node_run_result_list:
             return []
-        if not default_metric:
-            raise ValueError("Default metric is required for workflow evaluation")
         merged_items = self._merge_results_into_items(node_run_result_list)
         return self.evaluation_instance.evaluate_workflow(
             merged_items, [default_metric.metric], model_provider, model_name, tenant_id
@@ -57,25 +50,6 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
                 )
             )
         return merged
-
-    @staticmethod
-    def _extract_output(response: Mapping[str, Any]) -> str:
-        """Extract text output from workflow response."""
-        if "data" in response and isinstance(response["data"], Mapping):
-            outputs = response["data"].get("outputs", {})
-            if isinstance(outputs, Mapping):
-                values = list(outputs.values())
-                return str(values[0]) if values else ""
-            return str(outputs)
-        return str(response)
-
-    @staticmethod
-    def _extract_node_executions(response: Mapping[str, Any]) -> list[dict]:
-        """Extract node execution trace from workflow response."""
-        data = response.get("data", {})
-        if isinstance(data, Mapping):
-            return data.get("node_executions", [])
-        return []
 
 
 def _extract_workflow_output(outputs: Mapping[str, Any]) -> str:

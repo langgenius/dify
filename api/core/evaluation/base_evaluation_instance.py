@@ -9,6 +9,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemInput,
     EvaluationItemResult,
     EvaluationMetric,
+    NodeInfo,
 )
 from graphon.node_events.base import NodeRunResult
 
@@ -128,7 +129,7 @@ class BaseEvaluationInstance(ABC):
                     call_depth=0,
                 )
 
-                metrics = self._extract_workflow_metrics(response)
+                metrics = self._extract_workflow_metrics(response, workflow_id)
                 eval_results.append(
                     EvaluationItemResult(
                         index=idx,
@@ -194,9 +195,16 @@ class BaseEvaluationInstance(ABC):
     @staticmethod
     def _extract_workflow_metrics(
         response: Mapping[str, object],
+        evaluation_workflow_id: str,
     ) -> list[EvaluationMetric]:
-        """Extract evaluation metrics from workflow output variables."""
+        """Extract evaluation metrics from workflow output variables.
+
+        Each metric's ``node_info`` is set with *evaluation_workflow_id* as
+        the ``node_id``, so that judgment conditions can reference customized
+        metrics via ``variable_selector: [evaluation_workflow_id, metric_name]``.
+        """
         metrics: list[EvaluationMetric] = []
+        node_info = NodeInfo(node_id=evaluation_workflow_id, type="customized", title="customized")
 
         data = response.get("data")
         if not isinstance(data, Mapping):
@@ -211,7 +219,7 @@ class BaseEvaluationInstance(ABC):
         for key, raw_value in outputs.items():
             if not isinstance(key, str):
                 continue
-            metrics.append(EvaluationMetric(name=key, value=raw_value))
+            metrics.append(EvaluationMetric(name=key, value=raw_value, node_info=node_info))
 
         return metrics
 

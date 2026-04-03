@@ -129,11 +129,30 @@ METRIC_NODE_TYPE_MAPPING: dict[str, str] = {
     **{m.value: "agent" for m in AGENT_METRIC_NAMES},
 }
 
+METRIC_VALUE_TYPE_MAPPING: dict[str, str] = {
+    EvaluationMetricName.FAITHFULNESS: "number",
+    EvaluationMetricName.ANSWER_RELEVANCY: "number",
+    EvaluationMetricName.ANSWER_CORRECTNESS: "number",
+    EvaluationMetricName.SEMANTIC_SIMILARITY: "number",
+    EvaluationMetricName.CONTEXT_PRECISION: "number",
+    EvaluationMetricName.CONTEXT_RECALL: "number",
+    EvaluationMetricName.CONTEXT_RELEVANCE: "number",
+    EvaluationMetricName.TOOL_CORRECTNESS: "number",
+    EvaluationMetricName.TASK_COMPLETION: "number",
+}
+
+
+class NodeInfo(BaseModel):
+    node_id: str
+    type: str
+    title: str
+
 
 class EvaluationMetric(BaseModel):
     name: str
     value: Any
     details: dict[str, Any] = Field(default_factory=dict)
+    node_info: NodeInfo | None = None
 
 
 class EvaluationItemInput(BaseModel):
@@ -159,14 +178,9 @@ class EvaluationItemResult(BaseModel):
     error: str | None = None
 
 
-class NodeInfo(BaseModel):
-    node_id: str
-    type: str
-    title: str
-
-
 class DefaultMetric(BaseModel):
     metric: str
+    value_type: str = ""
     node_info_list: list[NodeInfo]
 
 

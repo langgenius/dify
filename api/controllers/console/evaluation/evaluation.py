@@ -155,6 +155,29 @@ available_evaluation_workflow_pagination_model = console_ns.model(
     available_evaluation_workflow_pagination_fields,
 )
 
+evaluation_default_metric_node_info_fields = {
+    "node_id": fields.String,
+    "type": fields.String,
+    "title": fields.String,
+}
+evaluation_default_metric_item_fields = {
+    "metric": fields.String,
+    "value_type": fields.String,
+    "node_info_list": fields.List(
+        fields.Nested(
+            console_ns.model("EvaluationDefaultMetricNodeInfo", evaluation_default_metric_node_info_fields),
+        ),
+    ),
+}
+evaluation_default_metrics_response_model = console_ns.model(
+    "EvaluationDefaultMetricsResponse",
+    {
+        "default_metrics": fields.List(
+            fields.Nested(console_ns.model("EvaluationDefaultMetricItem", evaluation_default_metric_item_fields)),
+        ),
+    },
+)
+
 
 def get_evaluation_target(view_func: Callable[P, R]):
     """
@@ -517,6 +540,32 @@ class EvaluationMetricsApi(Resource):
         return {"metrics": result}
 
 
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/default-metrics")
+class EvaluationDefaultMetricsApi(Resource):
+    @console_ns.doc(
+        "get_evaluation_default_metrics_with_nodes",
+        description=(
+            "List default metrics supported by the current evaluation framework with matching nodes "
+            "from the target's published workflow only (draft is ignored)."
+        ),
+    )
+    @console_ns.response(
+        200,
+        "Default metrics and node candidates for the published workflow",
+        evaluation_default_metrics_response_model,
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    def get(self, target: Union[App, CustomizedSnippet], target_type: str):
+        default_metrics = EvaluationService.get_default_metrics_with_nodes_for_published_target(
+            target=target,
+            target_type=target_type,
+        )
+        return {"default_metrics": [m.model_dump() for m in default_metrics]}
+
+
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/node-info")
 class EvaluationNodeInfoApi(Resource):
     @console_ns.doc("get_evaluation_node_info")
@@ -704,6 +753,71 @@ class AvailableEvaluationWorkflowsApi(Resource):
             ),
             200,
         )
+
+
+@console_ns.route("/workspaces/current/evaluation-workflows/<string:workflow_id>/associated-targets")
+class EvaluationWorkflowAssociatedTargetsApi(Resource):
+    @console_ns.doc("list_evaluation_workflow_associated_targets")
+    @console_ns.doc(
+        description="List targets (apps / snippets / knowledge bases) that use the given workflow as customized metrics"
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def get(self, workflow_id: str):
+        """Return all evaluation targets that reference this workflow as customized metrics."""
+        _, current_tenant_id = current_account_with_tenant()
+
+        with Session(db.engine) as session:
+            configs = EvaluationService.list_targets_by_customized_workflow(
+                session=session,
+                tenant_id=current_tenant_id,
+                customized_workflow_id=workflow_id,
+            )
+
+            target_ids_by_type: dict[str, list[str]] = {}
+            for cfg in configs:
+                target_ids_by_type.setdefault(cfg.target_type, []).append(cfg.target_id)
+
+            app_names: dict[str, str] = {}
+            if "app" in target_ids_by_type:
+                apps = session.scalars(select(App).where(App.id.in_(target_ids_by_type["app"]))).all()
+                app_names = {a.id: a.name for a in apps}
+
+            snippet_names: dict[str, str] = {}
+            if "snippets" in target_ids_by_type:
+                snippets = session.scalars(
+                    select(CustomizedSnippet).where(CustomizedSnippet.id.in_(target_ids_by_type["snippets"]))
+                ).all()
+                snippet_names = {s.id: s.name for s in snippets}
+
+            dataset_names: dict[str, str] = {}
+            if "knowledge_base" in target_ids_by_type:
+                datasets = session.scalars(
+                    select(Dataset).where(Dataset.id.in_(target_ids_by_type["knowledge_base"]))
+                ).all()
+                dataset_names = {d.id: d.name for d in datasets}
+
+        items = []
+        for cfg in configs:
+            name = ""
+            if cfg.target_type == "app":
+                name = app_names.get(cfg.target_id, "")
+            elif cfg.target_type == "snippets":
+                name = snippet_names.get(cfg.target_id, "")
+            elif cfg.target_type == "knowledge_base":
+                name = dataset_names.get(cfg.target_id, "")
+
+            items.append(
+                {
+                    "target_type": cfg.target_type,
+                    "target_id": cfg.target_id,
+                    "target_name": name,
+                }
+            )
+
+        return {"items": items}, 200
 
 
 # ---- Serialization Helpers ----
