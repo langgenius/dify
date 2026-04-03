@@ -514,8 +514,8 @@ catalogs:
       specifier: 13.0.0
       version: 13.0.0
     vinext:
-      specifier: 0.0.39
-      version: 0.0.39
+      specifier: https://pkg.pr.new/vinext@12c747f
+      version: 0.0.5
     vite-plugin-inspect:
       specifier: 12.0.0-beta.1
       version: 12.0.0-beta.1
@@ -1172,7 +1172,7 @@ importers:
         version: 3.19.3
       vinext:
         specifier: 'catalog:'
-        version: 0.0.39(bf3f106951d7257e1336e695c204ec32)
+        version: https://pkg.pr.new/vinext@12c747f(bf3f106951d7257e1336e695c204ec32)
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.1.15
         version: '@voidzero-dev/vite-plus-core@0.1.15(@types/node@25.5.0)(esbuild@0.27.2)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3)'
@@ -8445,8 +8445,9 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vinext@0.0.39:
-    resolution: {integrity: sha512-2WCW5wKy4YkCGFtoUGDmfxMBPULGOXEqd7Rczwi4cMEx2SG8UnY5/56XXGAnjf8aIIrx8ggOVWJSebH96QdjZg==}
+  vinext@https://pkg.pr.new/vinext@12c747f:
+    resolution: {integrity: sha512-BCvP3dpnV0yQPcHaDM1tvqWzJ19txMGWLDlCWCh8iovlpAbLC1sLJFvjAR40yzJTHgWs9AdfbDDEzirKDa+LAA==, tarball: https://pkg.pr.new/vinext@12c747f}
+    version: 0.0.5
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -16834,7 +16835,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@0.0.39(bf3f106951d7257e1336e695c204ec32):
+  vinext@https://pkg.pr.new/vinext@12c747f(bf3f106951d7257e1336e695c204ec32):
     dependencies:
       '@unpic/react': 1.0.2(next@16.2.2(@babel/core@7.29.0)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@vercel/og': 0.8.6

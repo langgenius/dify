@@ -43,4 +43,17 @@ export NEXT_PUBLIC_MAX_PARALLEL_LIMIT=${MAX_PARALLEL_LIMIT}
 export NEXT_PUBLIC_MAX_ITERATIONS_NUM=${MAX_ITERATIONS_NUM}
 export NEXT_PUBLIC_MAX_TREE_DEPTH=${MAX_TREE_DEPTH}
 
-exec node /app/web/server.js
+build_target=${WEB_BUILD_TARGET:-next}
+
+case "${build_target}" in
+  next)
+    exec node /app/targets/next/web/server.js
+    ;;
+  vinext)
+    exec node /app/targets/vinext/server.js
+    ;;
+  *)
+    echo "Unsupported WEB_BUILD_TARGET: ${build_target}. Falling back to next." >&2
+    exec node /app/targets/next/web/server.js
+    ;;
+esac
