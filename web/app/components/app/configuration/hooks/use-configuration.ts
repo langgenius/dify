@@ -62,7 +62,7 @@ import {
   loadConfigurationState,
 } from './use-configuration-utils'
 
-export type PublishConfig = {
+type PublishConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
 }

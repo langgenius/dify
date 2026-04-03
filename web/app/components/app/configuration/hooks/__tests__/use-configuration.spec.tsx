@@ -18,6 +18,8 @@ const mockSetConversationHistoriesRole = vi.fn()
 const mockSetChatPromptConfig = vi.fn()
 const mockSetCompletionPromptConfig = vi.fn()
 const mockSetCurrentAdvancedPrompt = vi.fn()
+let latestAdvancedPromptConfigOptions: Record<string, unknown> | undefined
+let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
 
@@ -26,6 +28,21 @@ vi.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
 }))
+
+vi.mock('ahooks', async () => {
+  const actual = await vi.importActual<any>('ahooks')
+
+  return {
+    ...actual,
+    useGetState: () => [
+      mockTempStopState,
+      (value: string[]) => {
+        mockTempStopState = value
+      },
+      () => mockTempStopState,
+    ],
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -89,12 +106,14 @@ vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
 }))
 
 vi.mock('../use-advanced-prompt-config', () => ({
-  default: () => ({
-    chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
-    setChatPromptConfig: mockSetChatPromptConfig,
-    completionPromptConfig: {
-      prompt: { text: 'completion' },
-      conversation_histories_role: {
+  default: (options: Record<string, unknown>) => {
+    latestAdvancedPromptConfigOptions = options
+    return {
+      chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
+      setChatPromptConfig: mockSetChatPromptConfig,
+      completionPromptConfig: {
+        prompt: { text: 'completion' },
+        conversation_histories_role: {
         assistant_prefix: 'assistant',
         user_prefix: 'user',
       },
@@ -106,10 +125,11 @@ vi.mock('../use-advanced-prompt-config', () => ({
       context: false,
       history: true,
       query: true,
-    },
-    setConversationHistoriesRole: mockSetConversationHistoriesRole,
-    migrateToDefaultPrompt: mockMigrateToDefaultPrompt,
-  }),
+      },
+      setConversationHistoriesRole: mockSetConversationHistoriesRole,
+      migrateToDefaultPrompt: mockMigrateToDefaultPrompt,
+    }
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -147,6 +167,8 @@ vi.mock('@/utils/completion-params', () => ({
 describe('useConfiguration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    latestAdvancedPromptConfigOptions = undefined
+    mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
     mockCurrentModelMode = ModelModeType.chat
     mockFetchCollectionList.mockResolvedValue([])
@@ -355,5 +377,111 @@ describe('useConfiguration', () => {
     act(() => {
       result.current.appPublisherProps.resetAppConfig?.()
     })
+  })
+
+  it('should preserve temporary stops, dataset selections, and manual formatting changes', async () => {
+    mockCurrentModelFeatures = ['vision']
+    mockCurrentModelMode = ModelModeType.completion
+    mockFetchDatasets.mockResolvedValueOnce({
+      data: [{ id: 'dataset-1', name: 'Dataset One' }],
+    })
+    mockFetchAppDetailDirect.mockResolvedValueOnce({
+      deleted_tools: [],
+      mode: AppModeEnum.CHAT,
+      model_config: {
+        prompt_type: 'simple',
+        chat_prompt_config: { prompt: [] },
+        completion_prompt_config: {
+          prompt: { text: 'completion' },
+          conversation_histories_role: {
+            assistant_prefix: 'assistant',
+            user_prefix: 'user',
+          },
+        },
+        dataset_configs: {
+          datasets: {
+            datasets: [{ id: 'dataset-1' }],
+          },
+        },
+        dataset_query_variable: 'context',
+        model: {
+          provider: 'langgenius/openai/openai',
+          name: 'gpt-4o',
+          mode: ModelModeType.completion,
+          completion_params: { temperature: 0.7 },
+        },
+        user_input_form: [
+          {
+            text_input: {
+              variable: 'context',
+              label: 'Context',
+              required: false,
+            },
+          },
+        ],
+        pre_prompt: '',
+        opening_statement: 'intro',
+        suggested_questions: [],
+        more_like_this: { enabled: false },
+        speech_to_text: { enabled: false },
+        text_to_speech: { enabled: false, voice: '', language: '' },
+        retriever_resource: { enabled: false },
+        annotation_reply: null,
+        sensitive_word_avoidance: { enabled: false },
+        external_data_tools: [],
+        file_upload: null,
+        system_parameters: {
+          audio_file_size_limit: 1,
+          file_size_limit: 1,
+          image_file_size_limit: 1,
+          video_file_size_limit: 1,
+          workflow_file_upload_limit: 1,
+        },
+      },
+    })
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.selectedIds).toEqual(['dataset-1'])
+    expect(result.current.contextValue.canReturnToSimpleMode).toBe(true)
+
+    act(() => {
+      latestAdvancedPromptConfigOptions?.onUserChangedPrompt?.()
+      latestAdvancedPromptConfigOptions?.setStop?.(['END'])
+      result.current.contextValue.setAnnotationConfig({
+        id: 'annotation-1',
+        enabled: true,
+        score_threshold: 0.6,
+        embedding_model: {
+          embedding_provider_name: 'langgenius/openai/openai',
+          embedding_model_name: 'text-embedding-3-small',
+        },
+      })
+      result.current.contextValue.setVisionConfig({
+        enabled: true,
+        number_limits: 2,
+        detail: 'high',
+        transfer_methods: ['local_file'],
+      } as any)
+      result.current.contextValue.setCompletionParams({ temperature: 0.2 })
+      result.current.onCloseFeaturePanel()
+    })
+
+    await waitFor(() => {
+      expect(result.current.contextValue.completionParams).toEqual({
+        stop: ['END'],
+        temperature: 0.2,
+      })
+    })
+
+    expect(result.current.contextValue.annotationConfig.id).toBe('annotation-1')
+    expect(result.current.contextValue.visionConfig.enabled).toBe(true)
+    expect(result.current.contextValue.canReturnToSimpleMode).toBe(false)
+    expect(mockFormattingChangedDispatcher).toHaveBeenCalledTimes(2)
+    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(false)
   })
 })

@@ -14,7 +14,7 @@ type AppDetailLike = {
   mode?: AppModeEnum
 }
 
-export type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
+type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
 
 export const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: string }> = {
   [AccessMode.ORGANIZATION]: {

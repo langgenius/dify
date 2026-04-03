@@ -91,6 +91,33 @@ describe('external-data-tool-modal-utils', () => {
     })
   })
 
+  it('should preserve api extension identifiers for api-based tools', () => {
+    const providers = buildProviders({
+      codeBasedExtensionList,
+      locale: 'en-US',
+      t,
+    })
+
+    const formatted = formatExternalDataTool({
+      type: 'api',
+      label: 'Search',
+      variable: 'search_api',
+      config: {
+        api_based_extension_id: 'ext-1',
+      },
+    }, providers[0], true)
+
+    expect(formatted).toEqual({
+      type: 'api',
+      label: 'Search',
+      variable: 'search_api',
+      enabled: undefined,
+      config: {
+        api_based_extension_id: 'ext-1',
+      },
+    })
+  })
+
   it('should report validation errors for invalid variables and missing provider fields', () => {
     const providers = buildProviders({
       codeBasedExtensionList,
@@ -123,5 +150,81 @@ describe('external-data-tool-modal-utils', () => {
       },
       t,
     })).toBe('errorMessage.valueOfVarRequired:API Key')
+  })
+
+  it('should validate missing names, missing variables, api extensions, and accept valid configs', () => {
+    const providers = buildProviders({
+      codeBasedExtensionList,
+      locale: 'en-US',
+      t,
+    })
+
+    expect(getValidationError({
+      currentProvider: providers[0],
+      locale: 'en-US',
+      localeData: {
+        type: '',
+        label: 'Search',
+        variable: 'search_api',
+        config: {
+          api_based_extension_id: 'ext-1',
+        },
+      },
+      t,
+    })).toBe('errorMessage.valueOfVarRequired:feature.tools.modal.toolType.title')
+
+    expect(getValidationError({
+      currentProvider: providers[0],
+      locale: 'en-US',
+      localeData: {
+        type: 'api',
+        label: '',
+        variable: 'search_api',
+        config: {
+          api_based_extension_id: 'ext-1',
+        },
+      },
+      t,
+    })).toBe('errorMessage.valueOfVarRequired:feature.tools.modal.name.title')
+
+    expect(getValidationError({
+      currentProvider: providers[0],
+      locale: 'en-US',
+      localeData: {
+        type: 'api',
+        label: 'Search',
+        variable: '',
+        config: {
+          api_based_extension_id: 'ext-1',
+        },
+      },
+      t,
+    })).toBe('errorMessage.valueOfVarRequired:feature.tools.modal.variableName.title')
+
+    expect(getValidationError({
+      currentProvider: providers[0],
+      locale: 'en-US',
+      localeData: {
+        type: 'api',
+        label: 'Search',
+        variable: 'search_api',
+        config: {},
+      },
+      t,
+    })).toBe('errorMessage.valueOfVarRequired:API Extension')
+
+    expect(getValidationError({
+      currentProvider: providers[0],
+      locale: 'en-US',
+      localeData: {
+        type: 'api',
+        label: 'Search',
+        variable: 'search_api',
+        config: {
+          api_based_extension_id: 'ext-1',
+        },
+      },
+      t,
+    })).toBeNull()
   })
 })

@@ -6,7 +6,7 @@ import { formatNumber } from '@/utils/format'
 
 type ColorType = 'green' | 'orange' | 'blue'
 
-export type ChartType = 'messages' | 'conversations' | 'endUsers' | 'costs' | 'workflowCosts'
+type ChartType = 'messages' | 'conversations' | 'endUsers' | 'costs' | 'workflowCosts'
 
 export type ChartRow = {
   date: string
@@ -46,7 +46,7 @@ const COMMON_COLOR_MAP = {
   splitLineDark: '#E5E7EB',
 }
 
-export const commonDateFormat = 'MMM D, YYYY'
+const commonDateFormat = 'MMM D, YYYY'
 
 export const defaultPeriod = {
   start: dayjs().subtract(7, 'day').format(commonDateFormat),

@@ -671,7 +671,7 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
 /**
  * Conversation list component including basic information
  */
-export const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
+const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()

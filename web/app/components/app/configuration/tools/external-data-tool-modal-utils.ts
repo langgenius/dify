@@ -4,9 +4,9 @@ import type {
 } from '@/models/common'
 import { LanguagesSupported } from '@/i18n-config/language'
 
-export const systemTypes = ['api'] as const
+const systemTypes = ['api'] as const
 
-export type Provider = {
+type Provider = {
   key: string
   name: string
   form_schema?: CodeBasedExtensionItem['form_schema']

@@ -42,7 +42,7 @@ type AccessModeLabelKey
     | 'accessControlDialog.accessItems.anyone'
     | 'accessControlDialog.accessItems.external'
 
-export type AppCardOperation = {
+type AppCardOperation = {
   key: OverviewOperationKey
   label: string
   Icon: OperationIcon

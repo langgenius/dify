@@ -5,7 +5,7 @@ import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
-export type OverviewCardType = 'api' | 'webapp'
+type OverviewCardType = 'api' | 'webapp'
 
 export type OverviewOperationKey = 'launch' | 'embedded' | 'customize' | 'settings' | 'develop'
 
@@ -26,7 +26,7 @@ type AccessSubjectsLike = {
   members?: unknown[]
 } | null | undefined
 
-export type AppCardDisplayState = {
+type AppCardDisplayState = {
   isApp: boolean
   appMode: AppModeEnum
   appUnpublished: boolean
@@ -38,7 +38,7 @@ export type AppCardDisplayState = {
   accessibleUrl: string
 }
 
-export const getCardAppMode = (mode: AppModeEnum) => {
+const getCardAppMode = (mode: AppModeEnum) => {
   return (mode !== AppModeEnum.COMPLETION && mode !== AppModeEnum.WORKFLOW) ? AppModeEnum.CHAT : mode
 }
 

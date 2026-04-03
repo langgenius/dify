@@ -271,4 +271,13 @@ describe('ConfigurationView', () => {
 
     expect(onOpenDebugPanel).toHaveBeenCalledTimes(1)
   })
+
+  it('should close the GPT-4 confirmation dialog when cancel is clicked', () => {
+    const setShowUseGPT4Confirm = vi.fn()
+    render(<ConfigurationView {...createViewModel({ showUseGPT4Confirm: true, setShowUseGPT4Confirm })} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /operation.cancel/i }))
+
+    expect(setShowUseGPT4Confirm).toHaveBeenCalledWith(false)
+  })
 })

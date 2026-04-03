@@ -15,6 +15,7 @@ const mockFetchAppDetailDirect = vi.fn()
 const mockFetchDatasets = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAndMergeValidCompletionParams = vi.fn()
+const mockGetSelectedDatasetsMode = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastWarning = vi.fn()
@@ -42,6 +43,15 @@ vi.mock('@/utils/completion-params', () => ({
   fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
 }))
 
+vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', async () => {
+  const actual = await vi.importActual<any>('@/app/components/workflow/nodes/knowledge-retrieval/utils')
+
+  return {
+    ...actual,
+    getSelectedDatasetsMode: (...args: unknown[]) => mockGetSelectedDatasetsMode(...args),
+  }
+})
+
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -53,6 +63,13 @@ vi.mock('@/app/components/base/ui/toast', () => ({
 describe('useConfiguration utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetSelectedDatasetsMode.mockReturnValue({
+      allExternal: false,
+      allInternal: false,
+      inconsistentEmbeddingModel: false,
+      mixtureHighQualityAndEconomic: false,
+      mixtureInternalAndExternal: false,
+    })
   })
 
   it('should build the published config with external tools and agent metadata', () => {
@@ -413,6 +430,48 @@ describe('useConfiguration utils', () => {
     expect(state.chatPromptConfig).toEqual(expect.any(Object))
   })
 
+  it('should keep annotation config undefined when app detail does not include annotation settings', async () => {
+    mockFetchCollectionList.mockResolvedValue([])
+    mockFetchAppDetailDirect.mockResolvedValue({
+      deleted_tools: [],
+      mode: AppModeEnum.CHAT,
+      model_config: {
+        prompt_type: 'simple',
+        chat_prompt_config: { prompt: [] },
+        completion_prompt_config: undefined,
+        dataset_configs: {
+          datasets: { datasets: [] },
+        },
+        model: {
+          provider: 'langgenius/openai/openai',
+          name: 'gpt-4o',
+          mode: ModelModeType.chat,
+          completion_params: {},
+        },
+        more_like_this: undefined,
+        speech_to_text: undefined,
+        text_to_speech: undefined,
+        retriever_resource: undefined,
+        suggested_questions: undefined,
+        suggested_questions_after_answer: undefined,
+        external_data_tools: undefined,
+        user_input_form: [],
+        pre_prompt: '',
+        system_parameters: {
+          audio_file_size_limit: 1,
+          file_size_limit: 1,
+          image_file_size_limit: 1,
+          video_file_size_limit: 1,
+          workflow_file_upload_limit: 1,
+        },
+      },
+    })
+
+    const state = await loadConfigurationState({ appId: 'app-3' })
+
+    expect(state.annotationConfig).toBeUndefined()
+  })
+
   it('should hydrate selected datasets and open the rerank modal when selection changes', () => {
     const setDataSets = vi.fn()
     const setDatasetConfigs = vi.fn()
@@ -462,6 +521,44 @@ describe('useConfiguration utils', () => {
     expect(setDatasetConfigs).toHaveBeenCalledTimes(1)
   })
 
+  it('should reuse the current dataset metadata when a renamed selection omits names', () => {
+    const setDataSets = vi.fn()
+    const setDatasetConfigs = vi.fn()
+
+    const handleSelect = createDatasetSelectHandler({
+      currentRerankModel: 'rerank-1',
+      currentRerankProvider: 'langgenius/cohere/cohere',
+      dataSets: [{ id: 'dataset-1', name: 'Dataset One' }] as any,
+      datasetConfigs: {
+        datasets: { datasets: [] },
+        retrieval_model: RETRIEVE_TYPE.multiWay,
+        score_threshold_enabled: false,
+      } as any,
+      datasetConfigsRef: {
+        current: {
+          datasets: { datasets: [] },
+          retrieval_model: RETRIEVE_TYPE.multiWay,
+          score_threshold_enabled: false,
+        } as any,
+      },
+      formattingChangedDispatcher: vi.fn(),
+      hideSelectDataSet: vi.fn(),
+      setDataSets,
+      setDatasetConfigs,
+      setRerankSettingModalOpen: vi.fn(),
+    })
+
+    handleSelect([
+      { id: 'dataset-1' },
+      { id: 'dataset-2', name: 'Dataset Two' },
+    ] as any)
+
+    expect(setDataSets).toHaveBeenCalledWith([
+      { id: 'dataset-1', name: 'Dataset One' },
+      { id: 'dataset-2', name: 'Dataset Two' },
+    ])
+  })
+
   it('should only hide the selector when dataset selections do not change', () => {
     const formattingChangedDispatcher = vi.fn()
     const hideSelectDataSet = vi.fn()
@@ -490,6 +587,47 @@ describe('useConfiguration utils', () => {
     expect(formattingChangedDispatcher).not.toHaveBeenCalled()
     expect(setDataSets).not.toHaveBeenCalled()
     expect(setDatasetConfigs).not.toHaveBeenCalled()
+  })
+
+  it('should keep named datasets and open rerank settings when the selection mode requires it', () => {
+    const setDataSets = vi.fn()
+    const setRerankSettingModalOpen = vi.fn()
+    const nextDataSets = [{ id: 'dataset-2', name: 'Dataset Two' }]
+    mockGetSelectedDatasetsMode.mockReturnValue({
+      allExternal: true,
+      allInternal: false,
+      inconsistentEmbeddingModel: false,
+      mixtureHighQualityAndEconomic: false,
+      mixtureInternalAndExternal: false,
+    })
+
+    const handleSelect = createDatasetSelectHandler({
+      currentRerankModel: 'rerank-1',
+      currentRerankProvider: 'langgenius/cohere/cohere',
+      dataSets: [] as any,
+      datasetConfigs: {
+        datasets: { datasets: [] },
+        retrieval_model: RETRIEVE_TYPE.multiWay,
+        score_threshold_enabled: false,
+      } as any,
+      datasetConfigsRef: {
+        current: {
+          datasets: { datasets: [] },
+          retrieval_model: RETRIEVE_TYPE.multiWay,
+          score_threshold_enabled: false,
+        } as any,
+      },
+      formattingChangedDispatcher: vi.fn(),
+      hideSelectDataSet: vi.fn(),
+      setDataSets,
+      setDatasetConfigs: vi.fn(),
+      setRerankSettingModalOpen,
+    })
+
+    handleSelect(nextDataSets as any)
+
+    expect(setDataSets).toHaveBeenCalledWith(nextDataSets)
+    expect(setRerankSettingModalOpen).toHaveBeenCalledWith(true)
   })
 
   it('should validate and publish configuration changes', async () => {

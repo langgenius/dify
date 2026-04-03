@@ -39,7 +39,7 @@ type DeletedTool = {
   tool_name: string
 }
 
-export const buildPublishedModelConfig = ({
+const buildPublishedModelConfig = ({
   backendModelConfig,
   collectionList,
   deletedTools,

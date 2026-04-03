@@ -1,6 +1,6 @@
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
-export type GenerationTab = 'DETAIL' | 'RESULT'
+type GenerationTab = 'DETAIL' | 'RESULT'
 
 type PromptLogSource = {
   answer: string
