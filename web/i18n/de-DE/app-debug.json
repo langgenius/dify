@@ -177,6 +177,8 @@
   "feature.tools.tips": "Werkzeuge bieten eine standardisierte API-Aufrufmethode, die Benutzereingaben oder Variablen als Anfrageparameter für die Abfrage externer Daten als Kontext verwendet.",
   "feature.tools.title": "Werkzeuge",
   "feature.tools.toolsInUse": "{{count}} Werkzeuge in Verwendung",
+  "feature.videoUpload.description": "Aktivieren Sie Video, damit das Modell Videodateien zur Transkription und Analyse verarbeiten kann.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Die Änderung der Formatierung wird den Debug-Bereich zurücksetzen, sind Sie sicher?",
   "formattingChangedTitle": "Formatierung geändert",
   "generate.apply": "Anwenden",
