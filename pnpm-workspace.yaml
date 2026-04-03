@@ -1,3 +1,4 @@
+catalogMode: prefer
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 strictDepBuilds: true
