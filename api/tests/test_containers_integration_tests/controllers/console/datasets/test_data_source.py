@@ -195,12 +195,12 @@ class TestDataSourceApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.data_source.Session") as mock_session_class,
+            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
             patch("controllers.console.datasets.data_source.db.session.add"),
             patch("controllers.console.datasets.data_source.db.session.commit"),
         ):
             mock_session = MagicMock()
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.execute.return_value.scalar_one_or_none.return_value = binding
 
             method(api, "b1", "enable")
