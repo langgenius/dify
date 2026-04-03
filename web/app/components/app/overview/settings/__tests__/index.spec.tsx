@@ -110,11 +110,11 @@ const mockAppInfo = {
   enable_sso: false,
 } as unknown as AppDetailResponse & Partial<AppSSO>
 
-const renderSettingsModal = () => render(
+const renderSettingsModal = (appInfo = mockAppInfo) => render(
   <SettingsModal
     isChat
     isShow
-    appInfo={mockAppInfo}
+    appInfo={appInfo}
     onClose={mockOnClose}
     onSave={mockOnSave}
   />,
@@ -272,5 +272,80 @@ describe('SettingsModal', () => {
 
     setTimeoutSpy.mockRestore()
     clearTimeoutSpy.mockRestore()
+  })
+
+  it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
+    renderSettingsModal()
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    fireEvent.click(await screen.findByText('billing.upgradeBtn.encourageShort'))
+
+    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+  })
+
+  it('should hide the upgrade badge for non-sandbox plans', async () => {
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: true,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.professional,
+      },
+      webappCopyrightEnabled: true,
+    })
+
+    renderSettingsModal()
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    await waitFor(() => {
+      expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should preserve image icons and apply textarea or switch changes when saving image-based settings', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined)
+    const imageAppInfo = {
+      ...mockAppInfo,
+      site: {
+        ...mockAppInfo.site,
+        icon_type: 'image',
+        icon: 'file-1',
+        icon_background: null,
+        icon_url: 'https://example.com/uploaded.png',
+      },
+    } as typeof mockAppInfo
+
+    renderSettingsModal(imageAppInfo)
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+
+    fireEvent.change(screen.getByDisplayValue('A description'), {
+      target: { value: 'Updated description' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('E.g #A020F0'), {
+      target: { value: '' },
+    })
+
+    const switches = screen.getAllByRole('switch')
+    switches.forEach((toggle) => {
+      fireEvent.click(toggle)
+    })
+
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        description: 'Updated description',
+        chat_color_theme: '',
+        chat_color_theme_inverted: false,
+        copyright: '',
+        icon_type: 'image',
+        icon: 'file-1',
+        icon_background: undefined,
+        show_workflow_steps: false,
+        use_icon_as_answer_icon: false,
+      }))
+    })
   })
 })

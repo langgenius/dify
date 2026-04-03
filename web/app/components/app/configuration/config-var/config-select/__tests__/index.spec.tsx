@@ -2,7 +2,20 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ConfigSelect from '../index'
 
 vi.mock('react-sortablejs', () => ({
-  ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ReactSortable: ({
+    children,
+    list,
+    setList,
+  }: {
+    children: React.ReactNode
+    list: Array<{ id: number, name: string }>
+    setList: (list: Array<{ id: number, name: string }>) => void
+  }) => (
+    <div>
+      <button onClick={() => setList([...list].reverse())}>reorder-options</button>
+      {children}
+    </div>
+  ),
 }))
 
 describe('ConfigSelect Component', () => {
@@ -58,6 +71,18 @@ describe('ConfigSelect Component', () => {
     expect(firstInput.closest('div')).toHaveClass('border-components-input-border-active')
   })
 
+  it('updates option values and clears focus styles on blur', () => {
+    render(<ConfigSelect {...defaultProps} />)
+    const firstInput = screen.getByDisplayValue('Option 1')
+
+    fireEvent.change(firstInput, { target: { value: 'Updated option' } })
+    expect(defaultProps.onChange).toHaveBeenCalledWith(['Updated option', 'Option 2'])
+
+    fireEvent.focus(firstInput)
+    fireEvent.blur(firstInput)
+    expect(firstInput.closest('div')).not.toHaveClass('border-components-input-border-active')
+  })
+
   it('applies delete hover styles', () => {
     render(<ConfigSelect {...defaultProps} />)
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
@@ -67,6 +92,8 @@ describe('ConfigSelect Component', () => {
       return
     fireEvent.mouseEnter(deleteButton)
     expect(optionContainer).toHaveClass('border-components-input-border-destructive')
+    fireEvent.mouseLeave(deleteButton)
+    expect(optionContainer).not.toHaveClass('border-components-input-border-destructive')
   })
 
   it('renders empty state correctly', () => {
@@ -74,5 +101,13 @@ describe('ConfigSelect Component', () => {
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.getByText('appDebug.variableConfig.addOption')).toBeInTheDocument()
+  })
+
+  it('reorders options through the sortable callback', () => {
+    render(<ConfigSelect {...defaultProps} />)
+
+    fireEvent.click(screen.getByText('reorder-options'))
+
+    expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2', 'Option 1'])
   })
 })

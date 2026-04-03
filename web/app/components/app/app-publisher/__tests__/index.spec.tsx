@@ -13,11 +13,15 @@ const mockRefetch = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
+const mockToastError = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
   access: null as null | Record<string, any>,
   actions: null as null | Record<string, any>,
+}))
+const ahooksMocks = vi.hoisted(() => ({
+  keyPressHandlers: [] as Array<(event: { preventDefault: () => void }) => void>,
 }))
 
 let mockAppDetail: Record<string, any> | null = null
@@ -30,7 +34,9 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('ahooks', async () => {
   return {
-    useKeyPress: vi.fn(),
+    useKeyPress: (_keys: unknown, handler: (event: { preventDefault: () => void }) => void) => {
+      ahooksMocks.keyPressHandlers.push(handler)
+    },
   }
 })
 
@@ -81,12 +87,25 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
 }))
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (...args: unknown[]) => mockToastError(...args),
+  },
+}))
+
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow }: { isShow: boolean }) => (isShow ? <div data-testid="embedded-modal">embedded modal</div> : null),
+  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (isShow
+    ? (
+        <div data-testid="embedded-modal">
+          embedded modal
+          <button onClick={onClose}>close-embedded-modal</button>
+        </div>
+      )
+    : null),
 }))
 
 vi.mock('../../app-access-control', () => ({
@@ -121,7 +140,12 @@ vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
 vi.mock('../sections', () => ({
   PublisherSummarySection: (props: Record<string, any>) => {
     sectionProps.summary = props
-    return <button onClick={() => void props.handlePublish()}>publisher-summary-publish</button>
+    return (
+      <div>
+        <button onClick={() => void props.handlePublish()}>publisher-summary-publish</button>
+        <button onClick={() => void props.handleRestore()}>publisher-summary-restore</button>
+      </div>
+    )
   },
   PublisherAccessSection: (props: Record<string, any>) => {
     sectionProps.access = props
@@ -141,6 +165,7 @@ vi.mock('../sections', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    ahooksMocks.keyPressHandlers.length = 0
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
@@ -220,6 +245,25 @@ describe('AppPublisher', () => {
     expect(screen.getByTestId('embedded-modal')).toBeInTheDocument()
   })
 
+  it('should close embedded and access control panels through child callbacks', async () => {
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-embed'))
+    fireEvent.click(screen.getByText('close-embedded-modal'))
+    expect(screen.queryByTestId('embedded-modal')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-access-control'))
+    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('close-access-control'))
+    expect(screen.queryByTestId('access-control')).not.toBeInTheDocument()
+  })
+
   it('should refresh app detail after access control confirmation', async () => {
     render(
       <AppPublisher
@@ -259,4 +303,153 @@ describe('AppPublisher', () => {
       expect(sectionProps.actions?.appURL).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
+
+  it('should ignore the trigger when the publish button is disabled', () => {
+    render(
+      <AppPublisher
+        disabled
+        publishedAt={Date.now()}
+        onToggle={mockOnToggle}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish').parentElement?.parentElement as HTMLElement)
+
+    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
+    expect(mockOnToggle).not.toHaveBeenCalled()
+  })
+
+  it('should publish from the keyboard shortcut and restore the popover state', async () => {
+    const preventDefault = vi.fn()
+    const onRestore = vi.fn().mockResolvedValue(undefined)
+    mockOnPublish.mockResolvedValue(undefined)
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+        onRestore={onRestore}
+      />,
+    )
+
+    ahooksMocks.keyPressHandlers[0]({ preventDefault })
+
+    await waitFor(() => {
+      expect(preventDefault).toHaveBeenCalled()
+      expect(mockOnPublish).toHaveBeenCalledTimes(1)
+    })
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-summary-restore'))
+
+    await waitFor(() => {
+      expect(onRestore).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
+  })
+
+  it('should keep the popover open when restore fails and reset published state after publish failures', async () => {
+    const preventDefault = vi.fn()
+    const onRestore = vi.fn().mockRejectedValue(new Error('restore failed'))
+    mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+        onRestore={onRestore}
+      />,
+    )
+
+    ahooksMocks.keyPressHandlers[0]({ preventDefault })
+
+    await waitFor(() => {
+      expect(preventDefault).toHaveBeenCalled()
+      expect(mockOnPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(mockTrackEvent).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-summary-restore'))
+
+    await waitFor(() => {
+      expect(onRestore).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByText('publisher-summary-publish')).toBeInTheDocument()
+  })
+
+  it('should report missing explore installations', async () => {
+    mockFetchInstalledAppList.mockResolvedValueOnce({
+      installed_apps: [],
+    })
+    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>, options: { onError: (error: Error) => void }) => {
+      try {
+        await resolver()
+      }
+      catch (error) {
+        options.onError(error as Error)
+      }
+    })
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-open-in-explore'))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
+    })
+  })
+
+  it('should report explore errors when the app cannot be opened', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      id: undefined,
+    }
+    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>, options: { onError: (error: Error) => void }) => {
+      try {
+        await resolver()
+      }
+      catch (error) {
+        options.onError(error as Error)
+      }
+    })
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-open-in-explore'))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('App not found')
+    })
+  })
+
+  it('should keep access control open when app detail is unavailable during confirmation', async () => {
+    mockAppDetail = null
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-access-control'))
+    fireEvent.click(screen.getByText('confirm-access-control'))
+
+    await waitFor(() => {
+      expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
+    })
+    expect(screen.getByTestId('access-control')).toBeInTheDocument()
+  })
+
 })

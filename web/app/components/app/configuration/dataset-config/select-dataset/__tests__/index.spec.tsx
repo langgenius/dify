@@ -1,5 +1,5 @@
 import type { DataSet } from '@/models/datasets'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 
 import { describe, expect, it, vi } from 'vitest'
@@ -163,5 +163,88 @@ describe('SelectDataSet', () => {
     })
 
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
+  })
+
+  it('should deselect existing selections and ignore unavailable dataset clicks', async () => {
+    const datasetOne = makeDataset({
+      id: 'set-1',
+      name: 'Dataset One',
+    })
+    const datasetTwo = makeDataset({
+      id: 'set-2',
+      name: 'Unavailable Dataset',
+      embedding_available: false,
+    })
+    const onSelect = vi.fn()
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [datasetOne, datasetTwo] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Dataset One').parentElement?.parentElement as HTMLElement)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('1 appDebug.feature.dataSet.selected')).not.toBeInTheDocument()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Unavailable Dataset').parentElement?.parentElement as HTMLElement)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    })
+
+    expect(onSelect).toHaveBeenCalledWith([])
+  })
+
+  it('should fetch the next page when infinite scroll can continue', async () => {
+    const fetchNextPage = vi.fn()
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [makeDataset({ id: 'set-1' })] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage,
+      hasNextPage: true,
+    })
+
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
+    })
+
+    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as (() => Promise<{ list: never[] }>)
+    await act(async () => {
+      await loadMore()
+    })
+
+    expect(fetchNextPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('should skip infinite scroll fetches when a next page is unavailable or already loading', async () => {
+    const fetchNextPage = vi.fn()
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [makeDataset({ id: 'set-1' })] }] },
+      isLoading: false,
+      isFetchingNextPage: true,
+      fetchNextPage,
+      hasNextPage: false,
+    })
+
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
+    })
+
+    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as (() => Promise<{ list: never[] }>)
+    await act(async () => {
+      await loadMore()
+    })
+
+    expect(fetchNextPage).not.toHaveBeenCalled()
   })
 })

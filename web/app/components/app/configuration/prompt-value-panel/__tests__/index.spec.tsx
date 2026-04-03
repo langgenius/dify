@@ -6,11 +6,45 @@ import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from '../index'
 
+const mockSetShowAppConfigureFeaturesModal = vi.fn()
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => selector({
+    setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
+  }),
+}))
+
 // Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
   default: ({ onFeatureBarClick }: { onFeatureBarClick: () => void }) => (
     <button type="button" onClick={onFeatureBarClick}>
       feature bar
+    </button>
+  ),
+}))
+
+vi.mock('@/app/components/base/select', () => ({
+  default: ({ onSelect }: { onSelect: (item: { value: string }) => void }) => (
+    <button type="button" onClick={() => onSelect({ value: 'selected-option' })}>select-input</button>
+  ),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
+  default: ({ onChange }: { onChange: (value: boolean) => void }) => (
+    <button type="button" onClick={() => onChange(true)}>bool-input</button>
+  ),
+}))
+
+vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => ({
+  default: ({ onFilesChange }: { onFilesChange: (files: Array<Record<string, unknown>>) => void }) => (
+    <button
+      type="button"
+      onClick={() => onFilesChange([
+        { progress: 100, type: 'local_file', url: 'https://example.com/a.png', fileId: 'file-1' },
+        { progress: -1, type: 'remote_url', url: 'https://example.com/b.png', fileId: 'file-2' },
+      ])}
+    >
+      image-uploader
     </button>
   ),
 }))
@@ -67,6 +101,7 @@ describe('PromptValuePanel', () => {
     vi.clearAllMocks()
     mockSetInputs.mockClear()
     mockOnSend.mockClear()
+    mockSetShowAppConfigureFeaturesModal.mockClear()
   })
 
   it('updates inputs, clears values, and triggers run when ready', async () => {
@@ -104,5 +139,94 @@ describe('PromptValuePanel', () => {
     expect(runButton).toBeDisabled()
     fireEvent.click(runButton)
     expect(mockOnSend).not.toHaveBeenCalled()
+  })
+
+  it('hydrates default values, supports advanced prompt gating, and toggles the feature panel', () => {
+    renderPanel({
+      context: {
+        isAdvancedMode: true,
+        modelModeType: ModelModeType.chat,
+        chatPromptConfig: { prompt: [{ text: '' }] },
+        modelConfig: {
+          configs: {
+            prompt_template: '',
+            prompt_variables: [
+              { key: 'textVar', name: 'Text Var', type: 'string', default: 'default text', required: true },
+            ],
+          },
+        },
+      },
+      props: {
+        inputs: { textVar: '' },
+      },
+    })
+
+    expect(mockSetInputs).toHaveBeenCalledWith({ textVar: 'default text' })
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toBeDisabled()
+
+    fireEvent.click(screen.getByText('feature bar'))
+    expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalled()
+  })
+
+  it('renders paragraph, select, number, checkbox, and vision inputs', () => {
+    const onVisionFilesChange = vi.fn()
+    renderPanel({
+      context: {
+        modelConfig: {
+          configs: {
+            prompt_template: 'prompt template',
+            prompt_variables: [
+              { key: 'paragraphVar', name: 'Paragraph Var', type: 'paragraph', required: false },
+              { key: 'selectVar', name: 'Select Var', type: 'select', options: ['a', 'b'], required: false },
+              { key: 'numberVar', name: 'Number Var', type: 'number', required: true },
+              { key: 'boolVar', name: 'Boolean Var', type: 'checkbox', required: false },
+            ],
+          },
+        },
+      },
+      props: {
+        inputs: {
+          paragraphVar: 'paragraph',
+          selectVar: 'a',
+          numberVar: '1',
+          boolVar: false,
+        },
+        onVisionFilesChange,
+        visionConfig: {
+          enabled: true,
+          number_limits: 2,
+          detail: Resolution.high,
+          transfer_methods: [],
+        },
+      },
+    })
+
+    fireEvent.change(screen.getByPlaceholderText('Paragraph Var'), { target: { value: 'updated paragraph' } })
+    fireEvent.click(screen.getByText('select-input'))
+    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
+    fireEvent.click(screen.getByText('bool-input'))
+    fireEvent.click(screen.getByText('image-uploader'))
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ paragraphVar: 'updated paragraph' }))
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ selectVar: 'selected-option' }))
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ numberVar: '2' }))
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ boolVar: true }))
+    expect(onVisionFilesChange).toHaveBeenCalledWith([
+      {
+        type: 'image',
+        transfer_method: 'local_file',
+        url: 'https://example.com/a.png',
+        upload_file_id: 'file-1',
+      },
+    ])
+  })
+
+  it('collapses the user input panel and hides the clear and run actions', () => {
+    renderPanel()
+
+    fireEvent.click(screen.getByText('appDebug.inputs.userInputField'))
+
+    expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'appDebug.inputs.run' })).not.toBeInTheDocument()
   })
 })

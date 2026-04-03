@@ -85,4 +85,43 @@ describe('VersionInfoModal', () => {
     })
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
+
+  it('should validate release note length and clear previous errors before publishing', () => {
+    const handlePublish = vi.fn()
+    const handleClose = vi.fn()
+
+    render(
+      <VersionInfoModal
+        isOpen
+        versionInfo={{
+          id: 'version-3',
+          marked_name: 'Old title',
+          marked_comment: 'Old notes',
+        } as any}
+        onClose={handleClose}
+        onPublish={handlePublish}
+      />,
+    )
+
+    const [titleInput, notesInput] = screen.getAllByRole('textbox')
+
+    fireEvent.change(titleInput, { target: { value: 'a'.repeat(16) } })
+    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
+    expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.titleLengthLimit')
+
+    fireEvent.change(titleInput, { target: { value: 'Release 3' } })
+    fireEvent.change(notesInput, { target: { value: 'b'.repeat(101) } })
+    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
+    expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.releaseNotesLengthLimit')
+
+    fireEvent.change(notesInput, { target: { value: 'Stable release notes' } })
+    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
+
+    expect(handlePublish).toHaveBeenCalledWith({
+      title: 'Release 3',
+      releaseNotes: 'Stable release notes',
+      id: 'version-3',
+    })
+    expect(handleClose).toHaveBeenCalledTimes(1)
+  })
 })

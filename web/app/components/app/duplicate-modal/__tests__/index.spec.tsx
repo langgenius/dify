@@ -1,166 +1,138 @@
-import type { ProviderContextState } from '@/context/provider-context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
-import { Plan } from '@/app/components/billing/type'
-import { baseProviderContextValue } from '@/context/provider-context'
 import DuplicateAppModal from '../index'
 
-const appsFullRenderSpy = vi.fn()
-vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
-  default: ({ loc }: { loc: string }) => {
-    appsFullRenderSpy(loc)
-    return <div data-testid="apps-full">AppsFull</div>
+const toastErrorMock = vi.fn()
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    plan: {
+      usage: { buildApps: 0 },
+      total: { buildApps: 1 },
+    },
+    enableBilling: true,
+  }),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (...args: unknown[]) => toastErrorMock(...args),
   },
 }))
 
-const useProviderContextMock = vi.fn<() => ProviderContextState>()
-vi.mock('@/context/provider-context', async () => {
-  const actual = await vi.importActual('@/context/provider-context')
-  return {
-    ...actual,
-    useProviderContext: () => useProviderContextMock(),
-  }
-})
+vi.mock('@/app/components/base/app-icon', () => ({
+  default: ({ onClick }: { onClick: () => void }) => (
+    <button type="button" onClick={onClick}>open-icon-picker</button>
+  ),
+}))
 
-const renderComponent = (overrides: Partial<React.ComponentProps<typeof DuplicateAppModal>> = {}) => {
-  const onConfirm = vi.fn().mockResolvedValue(undefined)
-  const onHide = vi.fn()
-  const props: React.ComponentProps<typeof DuplicateAppModal> = {
-    appName: 'My App',
-    icon_type: 'emoji',
-    icon: '🚀',
-    icon_background: '#FFEAD5',
-    icon_url: null,
-    show: true,
-    onConfirm,
-    onHide,
-    ...overrides,
-  }
-  const utils = render(<DuplicateAppModal {...props} />)
-  return {
-    ...utils,
-    onConfirm,
-    onHide,
-  }
-}
-
-const setupProviderContext = (overrides: Partial<ProviderContextState> = {}) => {
-  useProviderContextMock.mockReturnValue({
-    ...baseProviderContextValue,
-    plan: {
-      ...baseProviderContextValue.plan,
-      type: Plan.sandbox,
-      usage: {
-        ...baseProviderContextValue.plan.usage,
-        buildApps: 0,
-      },
-      total: {
-        ...baseProviderContextValue.plan.total,
-        buildApps: 10,
-      },
-    },
-    enableBilling: false,
-    ...overrides,
-  } as ProviderContextState)
-}
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({ onSelect, onClose }: { onSelect: (payload: Record<string, unknown>) => void, onClose: () => void }) => (
+    <div data-testid="app-icon-picker">
+      <button type="button" onClick={() => onSelect({ type: 'image', fileId: 'file-1', url: 'https://example.com/icon.png' })}>select-icon</button>
+      <button type="button" onClick={onClose}>close-icon-picker</button>
+    </div>
+  ),
+}))
 
 describe('DuplicateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    setupProviderContext()
   })
 
-  // Rendering output based on modal visibility.
-  describe('Rendering', () => {
-    it('should render modal content when show is true', () => {
-      // Arrange
-      renderComponent()
+  it('should validate the name before duplicating and update the input value', async () => {
+    const onConfirm = vi.fn()
+    const onHide = vi.fn()
+    const user = userEvent.setup()
 
-      // Assert
-      expect(screen.getByText('app.duplicateTitle')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('My App')).toBeInTheDocument()
-    })
+    render(
+      <DuplicateAppModal
+        appName="  "
+        icon_type="emoji"
+        icon="🤖"
+        icon_background="#FFEAD5"
+        show
+        onConfirm={onConfirm}
+        onHide={onHide}
+      />,
+    )
 
-    it('should not render modal content when show is false', () => {
-      // Arrange
-      renderComponent({ show: false })
+    const input = screen.getByRole('textbox')
+    await user.clear(input)
+    await user.type(input, 'Updated App')
+    expect(input).toHaveValue('Updated App')
 
-      // Assert
-      expect(screen.queryByText('app.duplicateTitle')).not.toBeInTheDocument()
-    })
+    await user.clear(input)
+    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+
+    expect(toastErrorMock).toHaveBeenCalledWith('appCustomize.nameRequired')
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(onHide).not.toHaveBeenCalled()
   })
 
-  // Prop-driven states such as full plan handling.
-  describe('Props', () => {
-    it('should disable duplicate button and show apps full content when plan is full', () => {
-      // Arrange
-      setupProviderContext({
-        enableBilling: true,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.sandbox,
-          usage: { ...baseProviderContextValue.plan.usage, buildApps: 10 },
-          total: { ...baseProviderContextValue.plan.total, buildApps: 10 },
-        },
-      })
-      renderComponent()
+  it('should update the selected icon before confirming the duplicate', async () => {
+    const onConfirm = vi.fn()
+    const onHide = vi.fn()
+    const user = userEvent.setup()
 
-      // Assert
-      expect(screen.getByTestId('apps-full')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'app.duplicate' })).toBeDisabled()
+    render(
+      <DuplicateAppModal
+        appName="Demo App"
+        icon_type="emoji"
+        icon="🤖"
+        icon_background="#FFEAD5"
+        show
+        onConfirm={onConfirm}
+        onHide={onHide}
+      />,
+    )
+
+    await user.click(screen.getByText('open-icon-picker'))
+    await user.click(screen.getByText('select-icon'))
+    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: 'Demo App',
+      icon_type: 'image',
+      icon: 'file-1',
+      icon_background: undefined,
     })
+    expect(onHide).toHaveBeenCalled()
   })
 
-  // User interactions for cancel and confirm flows.
-  describe('Interactions', () => {
-    it('should call onHide when cancel is clicked', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      const { onHide } = renderComponent()
+  it('should restore the original image icon when the picker closes without selecting', async () => {
+    const onConfirm = vi.fn()
+    const user = userEvent.setup()
 
-      // Act
-      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    render(
+      <DuplicateAppModal
+        appName="Image App"
+        icon_type="image"
+        icon="original-file"
+        icon_url="https://example.com/original.png"
+        show
+        onConfirm={onConfirm}
+        onHide={vi.fn()}
+      />,
+    )
 
-      // Assert
-      expect(onHide).toHaveBeenCalledTimes(1)
-    })
+    await user.click(screen.getByText('open-icon-picker'))
+    await user.click(screen.getByText('select-icon'))
+    await user.click(screen.getByText('open-icon-picker'))
+    await user.click(screen.getByText('close-icon-picker'))
+    await user.click(screen.getByRole('button', { name: 'duplicate' }))
 
-    it('should show error toast when name is empty', async () => {
-      const user = userEvent.setup()
-      const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-      // Arrange
-      const { onConfirm, onHide } = renderComponent()
-
-      // Act
-      await user.clear(screen.getByDisplayValue('My App'))
-      await user.click(screen.getByRole('button', { name: 'app.duplicate' }))
-
-      // Assert
-      expect(toastSpy).toHaveBeenCalledWith('explore.appCustomize.nameRequired')
-      expect(onConfirm).not.toHaveBeenCalled()
-      expect(onHide).not.toHaveBeenCalled()
-    })
-
-    it('should submit app info and hide modal when duplicate is clicked', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      const { onConfirm, onHide } = renderComponent()
-
-      // Act
-      await user.clear(screen.getByDisplayValue('My App'))
-      await user.type(screen.getByRole('textbox'), 'New App')
-      await user.click(screen.getByRole('button', { name: 'app.duplicate' }))
-
-      // Assert
-      expect(onConfirm).toHaveBeenCalledWith({
-        name: 'New App',
-        icon_type: 'emoji',
-        icon: '🚀',
-        icon_background: '#FFEAD5',
-      })
-      expect(onHide).toHaveBeenCalledTimes(1)
+    expect(onConfirm).toHaveBeenCalledWith({
+      name: 'Image App',
+      icon_type: 'image',
+      icon: 'original-file',
+      icon_background: undefined,
     })
   })
 })

@@ -393,5 +393,94 @@ describe('ConfigVar', () => {
         }),
       ])
     })
+
+    it('should update an api variable with the modal save callback', () => {
+      const onPromptVariablesChange = vi.fn()
+      const apiVar = createPromptVariable({
+        key: 'api_var',
+        name: 'API Var',
+        type: 'api',
+      })
+
+      renderConfigVar({
+        promptVariables: [apiVar],
+        onPromptVariablesChange,
+      })
+
+      const item = screen.getByTitle('api_var · API Var')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      fireEvent.click(actionButtons[0])
+
+      const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
+
+      act(() => {
+        modalState.onSaveCallback?.({
+          variable: 'next_api_var',
+          label: 'Next API Var',
+          enabled: true,
+          type: 'api',
+          config: { endpoint: '/search' },
+          icon: 'tool-icon',
+          icon_background: '#fff',
+        })
+      })
+
+      expect(onPromptVariablesChange).toHaveBeenCalledWith([
+        expect.objectContaining({
+          key: 'next_api_var',
+          name: 'Next API Var',
+          type: 'api',
+          icon: 'tool-icon',
+        }),
+      ])
+    })
+
+    it('should ignore empty external tool saves and reject duplicate variable names during validation', () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({
+        key: 'api_var',
+        name: 'API Var',
+        type: 'api',
+      })
+      const secondVar = createPromptVariable({
+        key: 'existing_var',
+        name: 'Existing Var',
+        type: 'string',
+      })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      const item = screen.getByTitle('api_var · API Var')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      fireEvent.click(actionButtons[0])
+
+      const modalState = setShowExternalDataToolModal.mock.calls.at(-1)?.[0]
+
+      act(() => {
+        modalState.onSaveCallback?.(undefined)
+      })
+
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+
+      const isValid = modalState.onValidateBeforeSaveCallback?.({
+        variable: 'existing_var',
+        label: 'Duplicated',
+        enabled: true,
+        type: 'api',
+        config: {},
+      })
+
+      expect(isValid).toBe(false)
+      expect(toastErrorSpy).toHaveBeenCalled()
+    })
   })
 })

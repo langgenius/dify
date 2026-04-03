@@ -20,10 +20,9 @@ import type {
   PromptVariable,
   TextToSpeechConfig,
 } from '@/models/debug'
-import type { ModelConfig as BackendModelConfig, UserInputFormItem, VisionSettings } from '@/types/app'
+import type { VisionSettings } from '@/types/app'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
-import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,17 +33,12 @@ import {
 } from '@/app/components/app/configuration/debug/hooks'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
-  getMultipleRetrievalConfig,
-  getSelectedDatasetsMode,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
@@ -52,23 +46,20 @@ import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { usePathname } from '@/next/navigation'
-import { fetchAppDetailDirect, updateAppModelConfig } from '@/service/apps'
-import { fetchDatasets } from '@/service/datasets'
-import { fetchCollectionList } from '@/service/tools'
+import { updateAppModelConfig } from '@/service/apps'
 import { useFileUploadConfig } from '@/service/use-common'
-import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
-import {
-  correctModelProvider,
-  correctToolProvider,
-} from '@/utils'
-import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
-import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
+import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { basePath } from '@/utils/var'
 import {
+  createDatasetSelectHandler,
+  createModelChangeHandler,
+  createPublishHandler,
+  loadConfigurationState,
+} from './use-configuration-utils'
+import {
   buildConfigurationFeaturesData,
   getConfigurationPublishingState,
-  withCollectionIconBasePath,
 } from '../utils'
 
 export type PublishConfig = {
@@ -349,154 +340,48 @@ export const useConfiguration = (): ConfigurationViewModel => {
     doSetPromptMode(nextMode)
   }, [migrateToDefaultPrompt])
 
-  const handleSelect = useCallback((nextDataSets: DataSet[]) => {
-    if (isEqual(nextDataSets.map(item => item.id), dataSets.map(item => item.id))) {
-      hideSelectDataSet()
-      return
-    }
-
-    formattingChangedDispatcher()
-    let mergedDataSets = nextDataSets
-
-    if (nextDataSets.find(item => !item.name)) {
-      const hydrated = produce(nextDataSets, (draft) => {
-        nextDataSets.forEach((item, index) => {
-          if (!item.name) {
-            const originalItem = dataSets.find(existing => existing.id === item.id)
-            if (originalItem)
-              draft[index] = originalItem
-          }
-        })
-      })
-      setDataSets(hydrated)
-      mergedDataSets = hydrated
-    }
-    else {
-      setDataSets(nextDataSets)
-    }
-
-    hideSelectDataSet()
-    const {
-      allExternal,
-      allInternal,
-      mixtureInternalAndExternal,
-      mixtureHighQualityAndEconomic,
-      inconsistentEmbeddingModel,
-    } = getSelectedDatasetsMode(mergedDataSets)
-
-    if (
-      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
-      || mixtureInternalAndExternal
-      || allExternal
-    ) {
-      setRerankSettingModalOpen(true)
-    }
-
-    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
-    const {
-      top_k,
-      score_threshold,
-      reranking_model,
-      reranking_mode,
-      weights,
-      reranking_enable,
-    } = restConfigs
-
-    const oldRetrievalConfig = {
-      top_k,
-      score_threshold,
-      reranking_model: (reranking_model?.reranking_provider_name && reranking_model?.reranking_model_name)
-        ? {
-            provider: reranking_model.reranking_provider_name,
-            model: reranking_model.reranking_model_name,
-          }
-        : undefined,
-      reranking_mode,
-      weights,
-      reranking_enable,
-    }
-
-    const retrievalConfig = getMultipleRetrievalConfig(oldRetrievalConfig, mergedDataSets, dataSets, {
-      provider: currentRerankProvider?.provider,
-      model: currentRerankModel?.model,
-    })
-
-    setDatasetConfigs({
-      ...datasetConfigsRef.current,
-      ...retrievalConfig,
-      reranking_model: {
-        reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
-        reranking_model_name: retrievalConfig?.reranking_model?.model || '',
-      },
-      retrieval_model,
-      score_threshold_enabled,
-      datasets,
-    })
-  }, [
+  const handleSelect = useCallback(createDatasetSelectHandler({
+    currentRerankModel: currentRerankModel?.model,
+    currentRerankProvider: currentRerankProvider?.provider,
+    dataSets,
+    datasetConfigs,
+    datasetConfigsRef,
+    formattingChangedDispatcher,
+    hideSelectDataSet,
+    setDataSets,
+    setDatasetConfigs,
+    setRerankSettingModalOpen,
+  }), [
     currentRerankModel?.model,
     currentRerankProvider?.provider,
     dataSets,
     datasetConfigs,
+    datasetConfigsRef,
     formattingChangedDispatcher,
     hideSelectDataSet,
+    setDataSets,
     setDatasetConfigs,
+    setRerankSettingModalOpen,
   ])
 
-  const setModel = useCallback(async ({
-    modelId,
-    provider,
-    mode: nextModelMode = resolvedModelModeType,
-    features = [],
-  }: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
-    if (isAdvancedMode) {
-      if (nextModelMode === ModelModeType.completion) {
-        if (mode !== AppModeEnum.COMPLETION) {
-          if (!completionPromptConfig.prompt?.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
-            await migrateToDefaultPrompt(true, ModelModeType.completion)
-        }
-        else if (!completionPromptConfig.prompt?.text) {
-          await migrateToDefaultPrompt(true, ModelModeType.completion)
-        }
-      }
-
-      if (nextModelMode === ModelModeType.chat && chatPromptConfig.prompt.length === 0)
-        await migrateToDefaultPrompt(true, ModelModeType.chat)
-    }
-
-    setModelConfig(produce(modelConfig, (draft: ModelConfig) => {
-      draft.provider = provider
-      draft.model_id = modelId
-      draft.mode = nextModelMode as ModelModeType
-    }))
-
-    handleSetVisionConfig({
-      ...visionConfig,
-      enabled: !!features?.includes(ModelFeatureEnum.vision),
-    }, true)
-
-    try {
-      const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
-        provider,
-        modelId,
-        completionParamsState,
-        isAdvancedMode,
-      )
-
-      if (Object.keys(removedDetails).length)
-        toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${Object.entries(removedDetails).map(([key, reason]) => `${key} (${reason})`).join(', ')}`)
-
-      setCompletionParams(filtered)
-    }
-    catch {
-      toast.error(t('error', { ns: 'common' }))
-      setCompletionParams({})
-    }
-  }, [
+  const setModel = useCallback(createModelChangeHandler({
+    chatPromptLength: chatPromptConfig.prompt.length,
+    completionParamsState,
+    completionPromptConfig,
+    handleSetVisionConfig,
+    isAdvancedMode,
+    migrateToDefaultPrompt,
+    mode,
+    modelConfig,
+    resolvedModelModeType,
+    setCompletionParams,
+    setModelConfig,
+    t,
+    visionConfig,
+  }), [
     chatPromptConfig.prompt.length,
     completionParamsState,
-    completionPromptConfig.conversation_histories_role.assistant_prefix,
-    completionPromptConfig.conversation_histories_role.user_prefix,
-    completionPromptConfig.prompt?.text,
+    completionPromptConfig,
     handleSetVisionConfig,
     isAdvancedMode,
     migrateToDefaultPrompt,
@@ -530,197 +415,45 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   useEffect(() => {
     void (async () => {
-      const nextCollectionList = withCollectionIconBasePath(await fetchCollectionList(), basePath)
-      setCollectionList(nextCollectionList)
-
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appId })
-      setMode(res.mode as AppModeEnum)
-
-      const backendModelConfig = res.model_config as BackendModelConfig
-      const nextPromptMode = backendModelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
-      doSetPromptMode(nextPromptMode)
-
-      if (nextPromptMode === PromptMode.advanced) {
-        if (backendModelConfig.chat_prompt_config && backendModelConfig.chat_prompt_config.prompt.length > 0)
-          setChatPromptConfig(backendModelConfig.chat_prompt_config)
-        else
-          setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG))
-
-        setCompletionPromptConfig(backendModelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as never)
-        setCanReturnToSimpleMode(false)
-      }
-
-      const model = backendModelConfig.model
-      type BackendAgentTool = ModelConfig['agentConfig']['tools'][number] & {
-        dataset?: {
-          enabled: boolean
-          id: string
-        }
-        provider_id: string
-        provider_name: string
-        provider_type: string
-        tool_name: string
-      }
-      type DeletedTool = {
-        id?: string
-        provider_id?: string
-        tool_name: string
-      }
-      let nextDataSets: DataSet[] | null = null
-      const agentModeTools = (backendModelConfig.agent_mode?.tools ?? []) as BackendAgentTool[]
-
-      if (agentModeTools.find(tool => tool.dataset?.enabled))
-        nextDataSets = agentModeTools as unknown as DataSet[]
-      else if (backendModelConfig.dataset_configs.datasets?.datasets?.length > 0)
-        nextDataSets = backendModelConfig.dataset_configs.datasets.datasets as unknown as DataSet[]
-
-      if (dataSets && nextDataSets?.length) {
-        const datasetIds = (nextDataSets as Array<DataSet & { dataset?: { id: string } }>)
-          .map(item => item.dataset?.id || item.id)
-          .filter((id): id is string => Boolean(id))
-        const { data: dataSetsWithDetail } = await fetchDatasets({
-          url: '/datasets',
-          params: {
-            page: 1,
-            ids: datasetIds,
-          },
-        })
-        nextDataSets = dataSetsWithDetail
-        setDataSets(nextDataSets)
-      }
-
-      setIntroduction(backendModelConfig.opening_statement)
-      setSuggestedQuestions(backendModelConfig.suggested_questions || [])
-
-      if (backendModelConfig.more_like_this)
-        setMoreLikeThisConfig(backendModelConfig.more_like_this)
-      if (backendModelConfig.suggested_questions_after_answer)
-        setSuggestedQuestionsAfterAnswerConfig(backendModelConfig.suggested_questions_after_answer)
-      if (backendModelConfig.speech_to_text)
-        setSpeechToTextConfig(backendModelConfig.speech_to_text)
-      if (backendModelConfig.text_to_speech)
-        setTextToSpeechConfig(backendModelConfig.text_to_speech)
-      if (backendModelConfig.retriever_resource)
-        setCitationConfig(backendModelConfig.retriever_resource)
-      if (backendModelConfig.annotation_reply) {
-        let nextAnnotationConfig = backendModelConfig.annotation_reply
-        if (backendModelConfig.annotation_reply.enabled) {
-          nextAnnotationConfig = {
-            ...backendModelConfig.annotation_reply,
-            embedding_model: {
-              ...backendModelConfig.annotation_reply.embedding_model,
-              embedding_provider_name: correctModelProvider(backendModelConfig.annotation_reply.embedding_model.embedding_provider_name),
-            },
-          }
-        }
-        setAnnotationConfig(nextAnnotationConfig, true)
-      }
-      if (backendModelConfig.sensitive_word_avoidance)
-        setModerationConfig(backendModelConfig.sensitive_word_avoidance)
-      if (backendModelConfig.external_data_tools)
-        setExternalDataToolsConfig(backendModelConfig.external_data_tools)
-
-      const nextPublishedConfig: PublishConfig = {
-        modelConfig: {
-          provider: correctModelProvider(model.provider),
-          model_id: model.name,
-          mode: model.mode,
-          configs: {
-            prompt_template: backendModelConfig.pre_prompt || '',
-            prompt_variables: userInputsFormToPromptVariables(
-              ([
-                ...backendModelConfig.user_input_form,
-                ...(
-                  backendModelConfig.external_data_tools?.length
-                    ? backendModelConfig.external_data_tools.map(item => ({
-                        external_data_tool: {
-                          variable: item.variable as string,
-                          label: item.label as string,
-                          enabled: !!item.enabled,
-                          type: item.type as string,
-                          config: item.config,
-                          required: true,
-                          icon: item.icon,
-                          icon_background: item.icon_background,
-                        },
-                      }))
-                    : []
-                ),
-              ]) as unknown as UserInputFormItem[],
-              backendModelConfig.dataset_query_variable,
-            ),
-          },
-          more_like_this: backendModelConfig.more_like_this ?? { enabled: false },
-          opening_statement: backendModelConfig.opening_statement,
-          suggested_questions: backendModelConfig.suggested_questions ?? [],
-          sensitive_word_avoidance: backendModelConfig.sensitive_word_avoidance,
-          speech_to_text: backendModelConfig.speech_to_text,
-          text_to_speech: backendModelConfig.text_to_speech,
-          file_upload: backendModelConfig.file_upload ?? null,
-          suggested_questions_after_answer: backendModelConfig.suggested_questions_after_answer ?? { enabled: false },
-          retriever_resource: backendModelConfig.retriever_resource,
-          annotation_reply: backendModelConfig.annotation_reply ?? null,
-          external_data_tools: backendModelConfig.external_data_tools ?? [],
-          system_parameters: backendModelConfig.system_parameters,
-          dataSets: nextDataSets || [],
-          agentConfig: res.mode === AppModeEnum.AGENT_CHAT
-            ? {
-                max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
-                ...backendModelConfig.agent_mode,
-                enabled: true,
-                tools: agentModeTools.filter(tool => !tool.dataset).map((tool) => {
-                  const toolInCollectionList = nextCollectionList.find(collection => collection.id === tool.provider_id)
-                  return {
-                    ...tool,
-                    isDeleted: res.deleted_tools?.some((deletedTool: DeletedTool) => (deletedTool.provider_id || deletedTool.id) === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
-                    notAuthor: toolInCollectionList?.is_team_authorization === false,
-                    ...(tool.provider_type === 'builtin'
-                      ? {
-                          provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                          provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                        }
-                      : {}),
-                  }
-                }) as ModelConfig['agentConfig']['tools'],
-                strategy: backendModelConfig.agent_mode?.strategy ?? AgentStrategy.react,
-              }
-            : DEFAULT_AGENT_SETTING,
-        },
-        completionParams: model.completion_params,
-      }
-
-      if (backendModelConfig.file_upload)
-        handleSetVisionConfig(backendModelConfig.file_upload.image, true)
-
-      syncToPublishedConfig(nextPublishedConfig)
-      setPublishedConfig(nextPublishedConfig)
-
-      const retrievalConfig = getMultipleRetrievalConfig({
-        ...backendModelConfig.dataset_configs,
-        reranking_model: backendModelConfig.dataset_configs.reranking_model && {
-          provider: backendModelConfig.dataset_configs.reranking_model.reranking_provider_name,
-          model: backendModelConfig.dataset_configs.reranking_model.reranking_model_name,
-        },
-      }, nextDataSets || [], nextDataSets || [], {
-        provider: currentRerankProvider?.provider,
-        model: currentRerankModel?.model,
+      const configurationState = await loadConfigurationState({
+        appId,
+        basePath,
+        currentRerankModel: currentRerankModel?.model,
+        currentRerankProvider: currentRerankProvider?.provider,
       })
 
-      const nextDatasetConfigs = {
-        ...backendModelConfig.dataset_configs,
-        ...retrievalConfig,
-        ...(retrievalConfig.reranking_model
-          ? {
-              reranking_model: {
-                reranking_model_name: retrievalConfig.reranking_model.model,
-                reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
-              },
-            }
-          : {}),
-      } as DatasetConfigs
+      setCollectionList(configurationState.collectionList)
+      setMode(configurationState.mode)
+      doSetPromptMode(configurationState.promptMode)
+      setDataSets(configurationState.nextDataSets)
+      setIntroduction(configurationState.introduction)
+      setSuggestedQuestions(configurationState.suggestedQuestions)
+      setMoreLikeThisConfig(configurationState.moreLikeThisConfig)
+      setSuggestedQuestionsAfterAnswerConfig(configurationState.suggestedQuestionsAfterAnswerConfig)
+      setSpeechToTextConfig(configurationState.speechToTextConfig)
+      setTextToSpeechConfig(configurationState.textToSpeechConfig)
+      setCitationConfig(configurationState.citationConfig)
+      setModerationConfig(configurationState.moderationConfig || { enabled: false })
+      setExternalDataToolsConfig(configurationState.externalDataToolsConfig)
+      setDatasetConfigs(configurationState.datasetConfigs)
 
-      nextDatasetConfigs.retrieval_model = nextDatasetConfigs.retrieval_model ?? RETRIEVE_TYPE.multiWay
-      setDatasetConfigs(nextDatasetConfigs)
+      if (configurationState.promptMode === PromptMode.advanced) {
+        setChatPromptConfig(configurationState.chatPromptConfig)
+        setCompletionPromptConfig(configurationState.completionPromptConfig as never)
+        setCanReturnToSimpleMode(false)
+      }
+      else {
+        setCanReturnToSimpleMode(configurationState.canReturnToSimpleMode)
+      }
+
+      if (configurationState.annotationConfig)
+        setAnnotationConfig(configurationState.annotationConfig, true)
+
+      if (configurationState.visionConfig)
+        handleSetVisionConfig(configurationState.visionConfig, true)
+
+      syncToPublishedConfig(configurationState.publishedConfig as PublishConfig)
+      setPublishedConfig(configurationState.publishedConfig as PublishConfig)
       setHasFetchedDetail(true)
     })()
   }, [appId])
@@ -747,99 +480,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     resolvedModelModeType,
   ])
 
-  const onPublish = useCallback(async (modelAndParameter?: ModelAndParameter, features?: FeaturesData) => {
-    const modelId = modelAndParameter?.model || modelConfig.model_id
-    const promptTemplate = modelConfig.configs.prompt_template
-    const promptVariables = modelConfig.configs.prompt_variables
-
-    if (promptEmpty) {
-      toast.error(t('otherError.promptNoBeEmpty', { ns: 'appDebug' }))
-      return
-    }
-
-    if (isAdvancedMode && mode !== AppModeEnum.COMPLETION && resolvedModelModeType === ModelModeType.completion) {
-      if (!hasSetBlockStatus.history) {
-        toast.error(t('otherError.historyNoBeEmpty', { ns: 'appDebug' }))
-        return
-      }
-
-      if (!hasSetBlockStatus.query) {
-        toast.error(t('otherError.queryNoBeEmpty', { ns: 'appDebug' }))
-        return
-      }
-    }
-
-    if (contextVarEmpty) {
-      toast.error(t('feature.dataSet.queryVariable.contextVarNotEmpty', { ns: 'appDebug' }))
-      return
-    }
-
-    const postDatasets = dataSets.map(({ id }) => ({
-      dataset: {
-        enabled: true,
-        id,
-      },
-    }))
-
-    const fileUpload = { ...features?.file }
-    delete fileUpload?.fileUploadConfig
-
-    const body: BackendModelConfig = {
-      pre_prompt: !isAdvancedMode ? promptTemplate : '',
-      prompt_type: promptMode,
-      chat_prompt_config: isAdvancedMode ? chatPromptConfig : clone(DEFAULT_CHAT_PROMPT_CONFIG),
-      completion_prompt_config: isAdvancedMode ? completionPromptConfig : clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
-      user_input_form: promptVariablesToUserInputsForm(promptVariables),
-      dataset_query_variable: contextVar || '',
-      more_like_this: features?.moreLikeThis as never,
-      opening_statement: features?.opening?.enabled ? (features.opening?.opening_statement || '') : '',
-      suggested_questions: features?.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
-      sensitive_word_avoidance: features?.moderation as never,
-      speech_to_text: features?.speech2text as never,
-      text_to_speech: features?.text2speech as never,
-      file_upload: fileUpload as never,
-      suggested_questions_after_answer: features?.suggested as never,
-      retriever_resource: features?.citation as never,
-      agent_mode: {
-        ...modelConfig.agentConfig,
-        strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
-      },
-      external_data_tools: externalDataToolsConfig,
-      model: {
-        provider: modelAndParameter?.provider || modelConfig.provider,
-        name: modelId,
-        mode: resolvedModelModeType,
-        completion_params: (modelAndParameter?.parameters || completionParamsState) as BackendModelConfig['model']['completion_params'],
-      },
-      dataset_configs: {
-        ...datasetConfigs,
-        datasets: {
-          datasets: [...postDatasets],
-        } as never,
-      },
-      system_parameters: modelConfig.system_parameters,
-    }
-
-    await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body })
-
-    const nextModelConfig = produce(modelConfig, (draft: ModelConfig) => {
-      draft.opening_statement = introduction
-      draft.more_like_this = moreLikeThisConfig
-      draft.suggested_questions_after_answer = suggestedQuestionsAfterAnswerConfig
-      draft.speech_to_text = speechToTextConfig
-      draft.text_to_speech = textToSpeechConfig
-      draft.retriever_resource = citationConfig
-      draft.dataSets = dataSets
-    })
-
-    setPublishedConfig({
-      modelConfig: nextModelConfig,
-      completionParams: completionParamsState,
-    })
-    toast.success(t('api.success', { ns: 'common' }))
-    setCanReturnToSimpleMode(false)
-    return true
-  }, [
+  const onPublish = useCallback(async (modelAndParameter?: ModelAndParameter, features?: FeaturesData) => createPublishHandler({
     appId,
     chatPromptConfig,
     citationConfig,
@@ -850,8 +491,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     dataSets,
     datasetConfigs,
     externalDataToolsConfig,
-    hasSetBlockStatus.history,
-    hasSetBlockStatus.query,
+    hasSetBlockStatus,
     introduction,
     isAdvancedMode,
     isFunctionCall,
@@ -862,6 +502,34 @@ export const useConfiguration = (): ConfigurationViewModel => {
     promptMode,
     resolvedModelModeType,
     setCanReturnToSimpleMode,
+    setPublishedConfig,
+    speechToTextConfig,
+    suggestedQuestionsAfterAnswerConfig,
+    t,
+    textToSpeechConfig,
+  })(updateAppModelConfig, modelAndParameter, features), [
+    appId,
+    chatPromptConfig,
+    citationConfig,
+    completionParamsState,
+    completionPromptConfig,
+    contextVar,
+    contextVarEmpty,
+    dataSets,
+    datasetConfigs,
+    externalDataToolsConfig,
+    hasSetBlockStatus,
+    introduction,
+    isAdvancedMode,
+    isFunctionCall,
+    mode,
+    modelConfig,
+    moreLikeThisConfig,
+    promptEmpty,
+    promptMode,
+    resolvedModelModeType,
+    setCanReturnToSimpleMode,
+    setPublishedConfig,
     speechToTextConfig,
     suggestedQuestionsAfterAnswerConfig,
     t,

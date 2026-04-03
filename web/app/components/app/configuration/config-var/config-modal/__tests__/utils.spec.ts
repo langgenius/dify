@@ -4,9 +4,12 @@ import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/componen
 import {
   buildSelectOptions,
   createPayloadForType,
+  getJsonSchemaEditorValue,
   getCheckboxDefaultSelectValue,
+  isStringInputType,
   isJsonSchemaEmpty,
   normalizeSelectDefaultValue,
+  parseCheckboxSelectValue,
   updatePayloadField,
   validateConfigModalPayload,
 } from '../utils'
@@ -56,6 +59,18 @@ describe('config-modal utils', () => {
       expect(nextPayload.default).toBe('hello')
     })
 
+    it('should clear the default value when switching to a select input type', () => {
+      const payload = createInputVar({
+        type: InputVarType.textInput,
+        default: 'hello',
+      })
+
+      const nextPayload = createPayloadForType(payload, InputVarType.select)
+
+      expect(nextPayload.type).toBe(InputVarType.select)
+      expect(nextPayload.default).toBeUndefined()
+    })
+
     it('should normalize empty select defaults to undefined', () => {
       const nextPayload = normalizeSelectDefaultValue(createInputVar({
         type: InputVarType.select,
@@ -63,6 +78,21 @@ describe('config-modal utils', () => {
       }))
 
       expect(nextPayload.default).toBeUndefined()
+    })
+
+    it('should parse checkbox default values and normalize json schema editor content', () => {
+      expect(parseCheckboxSelectValue('true')).toBe(true)
+      expect(parseCheckboxSelectValue('false')).toBe(false)
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(JSON.stringify({ type: 'object' }, null, 2))
+      expect(getJsonSchemaEditorValue(InputVarType.textInput, '{"type":"object"}')).toBe('')
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe('{"type":"object"}')
+    })
+
+    it('should fall back to an empty editor value when json schema serialization fails', () => {
+      const circular: Record<string, unknown> = {}
+      circular.self = circular
+
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, circular as never)).toBe('')
     })
   })
 
@@ -95,6 +125,10 @@ describe('config-modal utils', () => {
       expect(isJsonSchemaEmpty(undefined)).toBe(true)
       expect(isJsonSchemaEmpty('   ')).toBe(true)
       expect(isJsonSchemaEmpty('{}')).toBe(false)
+      expect(isJsonSchemaEmpty({ type: 'object' } as never)).toBe(false)
+      expect(isStringInputType(InputVarType.textInput)).toBe(true)
+      expect(isStringInputType(InputVarType.paragraph)).toBe(true)
+      expect(isStringInputType(InputVarType.number)).toBe(false)
     })
   })
 
@@ -137,6 +171,56 @@ describe('config-modal utils', () => {
       expect(result.errorMessage).toBe('errorMsg.fieldRequired')
     })
 
+    it('should require at least one select option and supported file types', () => {
+      const selectResult = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.select,
+          options: [],
+        }),
+        checkVariableName: () => true,
+        payload: createInputVar(),
+        t,
+      })
+
+      const fileResult = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.singleFile,
+          allowed_file_types: [],
+        }),
+        checkVariableName: () => true,
+        payload: createInputVar(),
+        t,
+      })
+
+      expect(selectResult.errorMessage).toBe('variableConfig.errorMsg.atLeastOneOption')
+      expect(fileResult.errorMessage).toBe('errorMsg.fieldRequired')
+    })
+
+    it('should reject invalid json schema definitions', () => {
+      const invalidResult = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.jsonObject,
+          json_schema: '{',
+        }),
+        payload: createInputVar(),
+        checkVariableName: () => true,
+        t,
+      })
+
+      const nonObjectResult = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.jsonObject,
+          json_schema: JSON.stringify({ type: 'string' }),
+        }),
+        payload: createInputVar(),
+        checkVariableName: () => true,
+        t,
+      })
+
+      expect(invalidResult.errorMessage).toBe('variableConfig.errorMsg.jsonSchemaInvalid')
+      expect(nonObjectResult.errorMessage).toBe('variableConfig.errorMsg.jsonSchemaMustBeObject')
+    })
+
     it('should normalize blank json schema and return rename metadata', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({
@@ -163,6 +247,21 @@ describe('config-modal utils', () => {
           afterKey: 'question_new',
         },
       })
+    })
+
+    it('should stop validation when the variable name checker rejects the payload', () => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          variable: 'invalid_name',
+        }),
+        payload: createInputVar({
+          variable: 'question',
+        }),
+        checkVariableName: () => false,
+        t,
+      })
+
+      expect(result).toEqual({})
     })
   })
 })

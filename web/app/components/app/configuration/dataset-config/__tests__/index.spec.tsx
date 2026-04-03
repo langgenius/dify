@@ -1,6 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useContext } from 'use-context-selector'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -119,6 +119,8 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata
     handleRemoveCondition,
     handleUpdateCondition,
     handleToggleConditionLogicalOperator,
+    handleMetadataModelChange,
+    handleMetadataCompletionParamsChange,
   }: any) => (
     <div data-testid="metadata-filter">
       <span data-testid="metadata-list-count">{metadataList.length}</span>
@@ -130,6 +132,9 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata
       <button onClick={() => handleAddCondition({ name: 'test', type: 'string' })}>
         Add Condition
       </button>
+      <button onClick={() => handleAddCondition({ id: 'priority', name: 'priority', type: 'number' })}>
+        Add Number Condition
+      </button>
       <button onClick={() => handleRemoveCondition('condition-id')}>
         Remove Condition
       </button>
@@ -138,6 +143,12 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata
       </button>
       <button onClick={handleToggleConditionLogicalOperator}>
         Toggle Operator
+      </button>
+      <button onClick={() => handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' })}>
+        Change Metadata Model
+      </button>
+      <button onClick={() => handleMetadataCompletionParamsChange({ temperature: 0.3 })}>
+        Change Metadata Params
       </button>
     </div>
   ),
@@ -566,6 +577,53 @@ describe('DatasetConfig', () => {
       )
     })
 
+    it('should append numeric metadata conditions with the equal operator when conditions already exist', async () => {
+      renderDatasetConfig({
+        dataSets: [createMockDataset()],
+        datasetConfigs: {
+          ...mockConfigContext.datasetConfigs,
+          metadata_filtering_conditions: {
+            logical_operator: LogicalOperator.and,
+            conditions: [{
+              id: 'condition-id',
+              metadata_id: 'category',
+              name: 'category',
+              comparison_operator: ComparisonOperator.is,
+            }],
+          },
+        },
+        datasetConfigsRef: {
+          current: {
+            ...mockConfigContext.datasetConfigsRef.current,
+            metadata_filtering_conditions: {
+              logical_operator: LogicalOperator.and,
+              conditions: [{
+                id: 'condition-id',
+                metadata_id: 'category',
+                name: 'category',
+                comparison_operator: ComparisonOperator.is,
+              }],
+            },
+          },
+        },
+      })
+
+      await userEvent.click(within(screen.getByTestId('metadata-filter')).getByText('Add Number Condition'))
+
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_filtering_conditions: expect.objectContaining({
+            conditions: expect.arrayContaining([
+              expect.objectContaining({
+                name: 'priority',
+                comparison_operator: ComparisonOperator.equal,
+              }),
+            ]),
+          }),
+        }),
+      )
+    })
+
     it('should handle removing metadata conditions', async () => {
       const user = userEvent.setup()
       const dataset = createMockDataset()
@@ -824,8 +882,19 @@ describe('DatasetConfig', () => {
         },
       })
 
-      // The component would need to expose this functionality through the metadata filter
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
+      const metadataFilter = screen.getByTestId('metadata-filter')
+      expect(metadataFilter).toBeInTheDocument()
+
+      fireEvent.click(within(metadataFilter).getByText('Change Metadata Model'))
+
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(expect.objectContaining({
+        metadata_model_config: {
+          provider: 'openai',
+          name: 'gpt-4o-mini',
+          mode: AppModeEnum.CHAT,
+          completion_params: { temperature: 0.7 },
+        },
+      }))
     })
 
     it('should handle metadata completion params change', () => {
@@ -844,7 +913,16 @@ describe('DatasetConfig', () => {
         },
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
+      const metadataFilter = screen.getByTestId('metadata-filter')
+      expect(metadataFilter).toBeInTheDocument()
+
+      fireEvent.click(within(metadataFilter).getByText('Change Metadata Params'))
+
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(expect.objectContaining({
+        metadata_model_config: {
+          completion_params: { temperature: 0.3 },
+        },
+      }))
     })
   })
 

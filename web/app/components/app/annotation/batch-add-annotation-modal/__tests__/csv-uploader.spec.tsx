@@ -75,6 +75,20 @@ describe('CSVUploader', () => {
     expect(dropZone.className).not.toContain('border-components-dropzone-border-accent')
   })
 
+  it('should handle drag over and clear dragging state when leaving through the overlay', () => {
+    renderComponent()
+    const { dropZone, dropContainer } = getDropElements()
+
+    fireEvent.dragEnter(dropContainer)
+    const dragLayer = dropContainer.querySelector('.absolute') as HTMLDivElement
+
+    fireEvent.dragOver(dropContainer)
+    fireEvent.dragLeave(dragLayer)
+
+    expect(dropZone.className).not.toContain('border-components-dropzone-border-accent')
+    expect(dropZone.className).not.toContain('bg-components-dropzone-bg-accent')
+  })
+
   it('should ignore drop events without dataTransfer', () => {
     renderComponent()
     const { dropContainer } = getDropElements()

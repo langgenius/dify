@@ -15,6 +15,7 @@ vi.mock('@/next/navigation', () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+  useParams: () => ({}),
 }))
 
 // Use real store - global zustand mock will auto-reset between tests
@@ -73,6 +74,24 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
     <div data-testid="apps-full">
       AppsFull
       {loc}
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/base/app-icon', () => ({
+  default: ({ onClick }: { onClick: () => void }) => (
+    <button onClick={onClick}>open-icon-picker</button>
+  ),
+}))
+
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({ onSelect, onClose }: {
+    onSelect: (payload: { type: 'image', url: string, fileId: string }) => void
+    onClose: () => void
+  }) => (
+    <div data-testid="app-icon-picker">
+      <button onClick={() => onSelect({ type: 'image', url: 'https://example.com/icon.png', fileId: 'file-id-1' })}>select-app-icon</button>
+      <button onClick={onClose}>close-app-icon-picker</button>
     </div>
   ),
 }))
@@ -156,6 +175,8 @@ const setAppDetailSpy = vi.fn()
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSwitchApp.mockReset()
+    mockDeleteApp.mockReset()
     // Spy on setAppDetail
     const originalSetAppDetail = useAppStore.getState().setAppDetail
     setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
@@ -277,6 +298,52 @@ describe('SwitchAppModal', () => {
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })
+    })
+
+    it('should update the icon through the picker before switching apps', async () => {
+      const user = userEvent.setup()
+      const { appDetail } = renderComponent()
+      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-003' })
+
+      await user.click(screen.getByText('open-icon-picker'))
+      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+
+      await user.click(screen.getByText('select-app-icon'))
+      await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
+
+      await waitFor(() => {
+        expect(mockSwitchApp).toHaveBeenCalledWith(expect.objectContaining({
+          appID: appDetail.id,
+          icon_type: 'image',
+          icon: 'file-id-1',
+          icon_background: undefined,
+        }))
+      })
+    })
+
+    it('should close the icon picker and reset remove-original confirmation when cancelled', async () => {
+      const user = userEvent.setup()
+      renderComponent()
+
+      await user.click(screen.getByText('open-icon-picker'))
+      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      await user.click(screen.getByText('close-app-icon-picker'))
+      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+
+      await user.click(screen.getByText('app.removeOriginal'))
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+    })
+
+    it('should toggle remove-original from the checkbox control itself', async () => {
+      const user = userEvent.setup()
+      renderComponent()
+
+      await user.click(screen.getByRole('checkbox'))
+
+      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument()
     })
 
     it('should delete the original app and use replace when remove original is confirmed', async () => {

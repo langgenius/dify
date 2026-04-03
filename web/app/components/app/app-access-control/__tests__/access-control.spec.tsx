@@ -18,6 +18,9 @@ const mockUseUpdateAccessMode = vi.fn(() => ({
   isPending: false,
   mutateAsync: mockMutateAsync,
 }))
+const intersectionObserverMocks = vi.hoisted(() => ({
+  callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
+}))
 
 vi.mock('@/context/app-context', () => ({
   useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean } }) => T) => selector({
@@ -105,6 +108,9 @@ const memberSubject: Subject = {
 
 beforeAll(() => {
   class MockIntersectionObserver {
+    constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
+      intersectionObserverMocks.callback = callback
+    }
     observe = vi.fn(() => undefined)
     disconnect = vi.fn(() => undefined)
     unobserve = vi.fn(() => undefined)
@@ -279,6 +285,39 @@ describe('AddMemberOrGroupDialog', () => {
     fireEvent.click(memberCheckbox)
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
+  })
+
+  it('should update the keyword, fetch the next page, and support deselection and breadcrumb reset', async () => {
+    const fetchNextPage = vi.fn()
+    mockUseSearchForWhiteListCandidates.mockReturnValue({
+      isLoading: false,
+      isFetchingNextPage: true,
+      fetchNextPage,
+      data: { pages: [{ currPage: 1, subjects: [groupSubject, memberSubject], hasMore: true }] },
+    })
+
+    const user = userEvent.setup()
+    render(<AddMemberOrGroupDialog />)
+
+    await user.click(screen.getByText('common.operation.add'))
+    await user.type(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder'), 'Group')
+    expect(document.querySelector('.spin-animation')).toBeInTheDocument()
+
+    const groupCheckbox = screen.getByText(baseGroup.name).closest('div')?.previousElementSibling as HTMLElement
+    fireEvent.click(groupCheckbox)
+    fireEvent.click(groupCheckbox)
+
+    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
+    fireEvent.click(memberCheckbox)
+    fireEvent.click(memberCheckbox)
+
+    fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
+    fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.allMembers'))
+
+    expect(useAccessControlStore.getState().specificGroups).toEqual([])
+    expect(useAccessControlStore.getState().specificMembers).toEqual([])
+    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([])
+    expect(fetchNextPage).not.toHaveBeenCalled()
   })
 
   it('should show empty state when no candidates are returned', async () => {

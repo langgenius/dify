@@ -9,13 +9,16 @@ import {
   addAnnotation,
   delAnnotation,
   delAnnotations,
+  editAnnotation,
   fetchAnnotationConfig,
   fetchAnnotationList,
   queryAnnotationJobStatus,
+  updateAnnotationScore,
+  updateAnnotationStatus,
 } from '@/service/annotation'
 import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
-import { JobStatus } from '../type'
+import { AnnotationEnableStatus, JobStatus } from '../type'
 
 vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
@@ -53,6 +56,9 @@ vi.mock('../header-opts', () => ({
       <button data-testid="trigger-add" onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}>
         add
       </button>
+      <button data-testid="trigger-added" onClick={() => props.onAdded()}>
+        added
+      </button>
     </div>
   ),
 }))
@@ -82,14 +88,40 @@ vi.mock('../view-annotation-modal', () => ({
       <div data-testid="view-modal">
         <div>{props.item.question}</div>
         <button data-testid="view-modal-remove" onClick={props.onRemove}>remove</button>
+        <button data-testid="view-modal-save" onClick={() => props.onSave('Edited question', 'Edited answer')}>save</button>
         <button data-testid="view-modal-close" onClick={props.onHide}>close</button>
       </div>
     )
   },
 }))
 
-vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({ default: (props: any) => props.isShow ? <div data-testid="config-modal" /> : null }))
-vi.mock('@/app/components/billing/annotation-full/modal', () => ({ default: (props: any) => props.show ? <div data-testid="annotation-full-modal" /> : null }))
+vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({
+  default: (props: any) => props.isShow
+    ? (
+        <div data-testid="config-modal">
+          <button
+            data-testid="config-save"
+            onClick={() => props.onSave({
+              embedding_model_name: 'next-model',
+              embedding_provider_name: 'next-provider',
+            }, 0.7)}
+          >
+            save-config
+          </button>
+          <button data-testid="config-hide" onClick={props.onHide}>hide-config</button>
+        </div>
+      )
+    : null,
+}))
+vi.mock('@/app/components/billing/annotation-full/modal', () => ({
+  default: (props: any) => props.show
+    ? (
+        <div data-testid="annotation-full-modal">
+          <button data-testid="hide-annotation-full-modal" onClick={props.onHide}>hide-full</button>
+        </div>
+      )
+    : null,
+}))
 
 const mockNotify = vi.fn()
 vi.spyOn(toast, 'success').mockImplementation((message, options) => {
@@ -111,9 +143,12 @@ vi.spyOn(toast, 'info').mockImplementation((message, options) => {
 const addAnnotationMock = addAnnotation as Mock
 const delAnnotationMock = delAnnotation as Mock
 const delAnnotationsMock = delAnnotations as Mock
+const editAnnotationMock = editAnnotation as Mock
 const fetchAnnotationConfigMock = fetchAnnotationConfig as Mock
 const fetchAnnotationListMock = fetchAnnotationList as Mock
 const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
+const updateAnnotationScoreMock = updateAnnotationScore as Mock
+const updateAnnotationStatusMock = updateAnnotationStatus as Mock
 const useProviderContextMock = useProviderContext as Mock
 
 const appDetail = {
@@ -146,6 +181,9 @@ describe('Annotation', () => {
     })
     fetchAnnotationListMock.mockResolvedValue({ data: [], total: 0 })
     queryAnnotationJobStatusMock.mockResolvedValue({ job_status: JobStatus.completed })
+    updateAnnotationStatusMock.mockResolvedValue({ job_id: 'job-1' })
+    updateAnnotationScoreMock.mockResolvedValue(undefined)
+    editAnnotationMock.mockResolvedValue(undefined)
     useProviderContextMock.mockReturnValue({
       plan: {
         usage: { annotatedResponse: 0 },
@@ -250,5 +288,167 @@ describe('Annotation', () => {
       })
       expect(latestListProps.selectedIds).toEqual([annotation.id])
     })
+  })
+
+  it('should show the annotation-full modal when enabling annotations exceeds the plan quota', async () => {
+    useProviderContextMock.mockReturnValue({
+      plan: {
+        usage: { annotatedResponse: 10 },
+        total: { annotatedResponse: 10 },
+      },
+      enableBilling: true,
+    })
+
+    renderComponent()
+
+    const toggle = await screen.findByRole('switch')
+    fireEvent.click(toggle)
+
+    expect(screen.getByTestId('annotation-full-modal')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('hide-annotation-full-modal'))
+    expect(screen.queryByTestId('annotation-full-modal')).not.toBeInTheDocument()
+  })
+
+  it('should disable annotations and refetch config after the async job completes', async () => {
+    fetchAnnotationConfigMock.mockResolvedValueOnce({
+      id: 'config-id',
+      enabled: true,
+      embedding_model: {
+        embedding_model_name: 'model',
+        embedding_provider_name: 'provider',
+      },
+      score_threshold: 0.5,
+    }).mockResolvedValueOnce({
+      id: 'config-id',
+      enabled: false,
+      embedding_model: {
+        embedding_model_name: 'model',
+        embedding_provider_name: 'provider',
+      },
+      score_threshold: 0.5,
+    })
+
+    renderComponent()
+
+    const toggle = await screen.findByRole('switch')
+    await waitFor(() => {
+      expect(toggle).toHaveAttribute('aria-checked', 'true')
+    })
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(updateAnnotationStatusMock).toHaveBeenCalledWith(
+        appDetail.id,
+        AnnotationEnableStatus.disable,
+        expect.objectContaining({
+          embedding_model_name: 'model',
+          embedding_provider_name: 'provider',
+        }),
+        0.5,
+      )
+      expect(queryAnnotationJobStatusMock).toHaveBeenCalledWith(appDetail.id, AnnotationEnableStatus.disable, 'job-1')
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        message: 'common.api.actionSuccess',
+        type: 'success',
+      }))
+    })
+  })
+
+  it('should save annotation config changes and update the score when the modal confirms', async () => {
+    fetchAnnotationConfigMock.mockResolvedValue({
+      id: 'config-id',
+      enabled: false,
+      embedding_model: {
+        embedding_model_name: 'model',
+        embedding_provider_name: 'provider',
+      },
+      score_threshold: 0.5,
+    })
+
+    renderComponent()
+
+    const toggle = await screen.findByRole('switch')
+    fireEvent.click(toggle)
+
+    expect(screen.getByTestId('config-modal')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('config-save'))
+
+    await waitFor(() => {
+      expect(updateAnnotationStatusMock).toHaveBeenCalledWith(
+        appDetail.id,
+        AnnotationEnableStatus.enable,
+        {
+          embedding_model_name: 'next-model',
+          embedding_provider_name: 'next-provider',
+        },
+        0.7,
+      )
+      expect(updateAnnotationScoreMock).toHaveBeenCalledWith(appDetail.id, 'config-id', 0.7)
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        message: 'common.api.actionSuccess',
+        type: 'success',
+      }))
+    })
+  })
+
+  it('should refresh the list from the header shortcut and allow saving or closing the view modal', async () => {
+    const annotation = createAnnotation()
+    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
+
+    renderComponent()
+
+    await screen.findByTestId('list')
+    fireEvent.click(screen.getByTestId('list-view'))
+
+    fireEvent.click(screen.getByTestId('view-modal-save'))
+
+    await waitFor(() => {
+      expect(editAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id, {
+        question: 'Edited question',
+        answer: 'Edited answer',
+      })
+    })
+
+    fireEvent.click(screen.getByTestId('view-modal-close'))
+    expect(screen.queryByTestId('view-modal')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('trigger-added'))
+
+    expect(fetchAnnotationListMock).toHaveBeenCalled()
+  })
+
+  it('should clear selections on cancel and hide the config modal when requested', async () => {
+    const annotation = createAnnotation()
+    fetchAnnotationConfigMock.mockResolvedValue({
+      id: 'config-id',
+      enabled: true,
+      embedding_model: {
+        embedding_model_name: 'model',
+        embedding_provider_name: 'provider',
+      },
+      score_threshold: 0.5,
+    })
+    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
+
+    renderComponent()
+
+    await screen.findByTestId('list')
+
+    await act(async () => {
+      latestListProps.onSelectedIdsChange([annotation.id])
+    })
+    await act(async () => {
+      latestListProps.onCancel()
+    })
+
+    expect(latestListProps.selectedIds).toEqual([])
+
+    const configButton = document.querySelector('.action-btn') as HTMLButtonElement
+    fireEvent.click(configButton)
+    expect(await screen.findByTestId('config-modal')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('config-hide'))
+    expect(screen.queryByTestId('config-modal')).not.toBeInTheDocument()
   })
 })

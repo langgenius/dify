@@ -164,5 +164,63 @@ describe('configuration utils', () => {
       expect(result.cannotPublish).toBe(false)
       expect(result.contextVarEmpty).toBe(true)
     })
+
+    it('should treat advanced completion chat prompts as empty when every segment is blank', () => {
+      const result = getConfigurationPublishingState({
+        chatPromptConfig: {
+          prompt: [{ text: '' }, { text: '' }],
+        } as never,
+        completionPromptConfig: {
+          prompt: { text: 'ignored' },
+          conversation_histories_role: {
+            user_prefix: 'user',
+            assistant_prefix: 'assistant',
+          },
+        } as never,
+        hasSetBlockStatus: {
+          context: true,
+          history: true,
+          query: true,
+        },
+        hasSetContextVar: true,
+        hasSelectedDataSets: false,
+        isAdvancedMode: true,
+        mode: AppModeEnum.COMPLETION,
+        modelModeType: ModelModeType.chat,
+        promptTemplate: 'ignored',
+      })
+
+      expect(result.promptEmpty).toBe(true)
+      expect(result.cannotPublish).toBe(true)
+    })
+
+    it('should treat advanced completion text prompts as empty when the completion prompt is missing', () => {
+      const result = getConfigurationPublishingState({
+        chatPromptConfig: {
+          prompt: [{ text: 'ignored' }],
+        } as never,
+        completionPromptConfig: {
+          prompt: { text: '' },
+          conversation_histories_role: {
+            user_prefix: 'user',
+            assistant_prefix: 'assistant',
+          },
+        } as never,
+        hasSetBlockStatus: {
+          context: true,
+          history: true,
+          query: true,
+        },
+        hasSetContextVar: true,
+        hasSelectedDataSets: false,
+        isAdvancedMode: true,
+        mode: AppModeEnum.COMPLETION,
+        modelModeType: ModelModeType.completion,
+        promptTemplate: 'ignored',
+      })
+
+      expect(result.promptEmpty).toBe(true)
+      expect(result.cannotPublish).toBe(true)
+    })
   })
 })
