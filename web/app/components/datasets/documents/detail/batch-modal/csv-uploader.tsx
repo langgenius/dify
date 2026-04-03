@@ -16,7 +16,7 @@ import { useFileUploadConfig } from '@/service/use-common'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
-export type Props = {
+type Props = {
   file: FileItem | undefined
   updateFile: (file?: FileItem) => void
 }

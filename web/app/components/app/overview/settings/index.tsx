@@ -29,7 +29,7 @@ import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
-export type ISettingsModalProps = {
+type ISettingsModalProps = {
   isChat: boolean
   appInfo: AppDetailResponse & Partial<AppSSO>
   isShow: boolean

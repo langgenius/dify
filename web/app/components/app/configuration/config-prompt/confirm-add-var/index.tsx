@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VarHighlight from '../../base/var-highlight'
 
-export type IConfirmAddVarProps = {
+type IConfirmAddVarProps = {
   varNameArr: string[]
   onConfirm: () => void
   onCancel: () => void

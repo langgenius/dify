@@ -24,11 +24,11 @@ export type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-export type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
+type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
   size?: AvatarSize
 }
 
-export function AvatarRoot({
+function AvatarRoot({
   size = 'md',
   className,
   ...props
@@ -45,9 +45,9 @@ export function AvatarRoot({
   )
 }
 
-export type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
+type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
 
-export function AvatarImage({
+function AvatarImage({
   className,
   ...props
 }: AvatarImageProps) {
@@ -59,11 +59,11 @@ export function AvatarImage({
   )
 }
 
-export type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
+type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
   size?: AvatarSize
 }
 
-export function AvatarFallback({
+function AvatarFallback({
   size = 'md',
   className,
   ...props

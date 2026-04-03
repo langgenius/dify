@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import type { SearchResult } from '../actions/types'
 import { Command } from 'cmdk'
 
-export type ResultItemProps = {
+type ResultItemProps = {
   result: SearchResult
   onSelect: () => void
 }

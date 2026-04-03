@@ -8,7 +8,7 @@ import { cn } from '@/utils/classnames'
 
 type TooltipContentVariant = 'default' | 'plain'
 
-export type TooltipContentProps = {
+type TooltipContentProps = {
   children: React.ReactNode
   placement?: Placement
   sideOffset?: number

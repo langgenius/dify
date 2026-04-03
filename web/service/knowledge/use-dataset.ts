@@ -188,15 +188,6 @@ export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => 
   })
 }
 
-export const useInvalidateExternalKnowledgeApiList = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'external-knowledge-api'],
-    })
-  }
-}
-
 export const useDatasetTestingRecords = (
   datasetId?: string,
   params?: { page: number, limit: number },

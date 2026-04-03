@@ -4,7 +4,7 @@ import { cn } from '@/utils/classnames'
 const menuLabelClassName = 'min-w-0 grow truncate px-1 text-text-secondary system-md-regular'
 const menuLeadingIconClassName = 'size-4 shrink-0 text-text-tertiary'
 
-export const menuTrailingIconClassName = 'size-[14px] shrink-0 text-text-tertiary'
+const menuTrailingIconClassName = 'size-[14px] shrink-0 text-text-tertiary'
 
 type MenuItemContentProps = {
   iconClassName: string
