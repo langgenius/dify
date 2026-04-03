@@ -65,6 +65,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             web:
               - 'web/**'
+              - 'packages/iconify-collections/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -77,6 +78,7 @@ jobs:
               - 'api/uv.lock'
               - 'e2e/**'
               - 'web/**'
+              - 'packages/iconify-collections/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
