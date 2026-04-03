@@ -7,7 +7,7 @@ from faker import Faker
 
 from models.model import App, AppModelConfig
 from services.account_service import AccountService, TenantService
-from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
+from services.app_dsl_service import CURRENT_DSL_VERSION, AppDslService, ImportMode, ImportStatus
 from services.app_service import AppService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -118,7 +118,7 @@ class TestAppDslService:
         Helper method to create simple YAML content for testing.
         """
         yaml_data = {
-            "version": "0.3.0",
+            "version": CURRENT_DSL_VERSION,
             "kind": "app",
             "app": {
                 "name": app_name,
@@ -406,6 +406,64 @@ class TestAppDslService:
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
             app, "invalid-workflow-id"
         )
+
+    def test_import_chat_app_with_engine_session(
+        self, flask_app_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test that importing a chat app via Session(db.engine) succeeds.
+
+        This verifies the fix that replaced ``sessionmaker(db.engine).begin()``
+        with ``Session(db.engine)`` in AppImportApi.post().  The previous
+        approach returned a ``SessionTransaction`` instead of a ``Session``,
+        which broke AppDslService operations such as ``session.scalar()`` and
+        ``session.add()``.
+        """
+        from sqlalchemy.orm import Session as SASession
+
+        from extensions.ext_database import db
+
+        fake = Faker()
+        yaml_content = self._create_simple_yaml_content(fake.company(), "chat")
+
+        with flask_app_with_containers.app_context():
+            # Create account / tenant via the global scoped session so that the
+            # data is visible to the new engine-bound session below.
+            with patch("services.account_service.FeatureService") as mock_fs:
+                mock_fs.get_system_features.return_value.is_allow_register = True
+                account = AccountService.create_account(
+                    email=fake.email(),
+                    name=fake.name(),
+                    interface_language="en-US",
+                    password=generate_valid_password(fake),
+                )
+                TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+
+            # Open a standalone Session(db.engine) – the same way the
+            # controller does after the fix.
+            with SASession(db.engine) as session:
+                dsl_service = AppDslService(session)
+                result = dsl_service.import_app(
+                    account=account,
+                    import_mode=ImportMode.YAML_CONTENT,
+                    yaml_content=yaml_content,
+                    name="Engine-session import",
+                )
+                session.commit()
+
+            assert result.status == ImportStatus.COMPLETED
+            assert result.app_id is not None
+
+            # Verify the app was persisted.
+            with SASession(db.engine) as verify_session:
+                app = verify_session.get(App, result.app_id)
+                assert app is not None
+                assert app.name == "Engine-session import"
+                assert app.mode == "chat"
+
+                # Verify the model config was persisted.
+                model_cfg = verify_session.get(AppModelConfig, app.app_model_config_id)
+                assert model_cfg is not None
 
     def test_check_dependencies_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
