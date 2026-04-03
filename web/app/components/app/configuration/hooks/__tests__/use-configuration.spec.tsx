@@ -114,17 +114,17 @@ vi.mock('../use-advanced-prompt-config', () => ({
       completionPromptConfig: {
         prompt: { text: 'completion' },
         conversation_histories_role: {
-        assistant_prefix: 'assistant',
-        user_prefix: 'user',
+          assistant_prefix: 'assistant',
+          user_prefix: 'user',
+        },
       },
-    },
-    setCompletionPromptConfig: mockSetCompletionPromptConfig,
-    currentAdvancedPrompt: [],
-    setCurrentAdvancedPrompt: mockSetCurrentAdvancedPrompt,
-    hasSetBlockStatus: {
-      context: false,
-      history: true,
-      query: true,
+      setCompletionPromptConfig: mockSetCompletionPromptConfig,
+      currentAdvancedPrompt: [],
+      setCurrentAdvancedPrompt: mockSetCurrentAdvancedPrompt,
+      hasSetBlockStatus: {
+        context: false,
+        history: true,
+        query: true,
       },
       setConversationHistoriesRole: mockSetConversationHistoriesRole,
       migrateToDefaultPrompt: mockMigrateToDefaultPrompt,
