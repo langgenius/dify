@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 /**
  * WorkflowAppLogList Component Tests
  *

@@ -38,7 +38,6 @@ import {
 } from './sections'
 import {
   getDisabledFunctionTooltip,
-  getPublisherAppMode,
   getPublisherAppUrl,
   isPublisherAccessConfigured,
 } from './utils'
@@ -104,7 +103,6 @@ const AppPublisher = ({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
 
-  const appMode = getPublisherAppMode(appDetail?.mode)
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
 

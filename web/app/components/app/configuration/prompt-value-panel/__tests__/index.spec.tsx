@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { IPromptValuePanelProps } from '../index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'

@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import type { AnnotationItemBasic } from '../../type'

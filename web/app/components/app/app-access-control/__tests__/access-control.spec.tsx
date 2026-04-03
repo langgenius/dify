@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -111,6 +112,7 @@ beforeAll(() => {
     constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
       intersectionObserverMocks.callback = callback
     }
+
     observe = vi.fn(() => undefined)
     disconnect = vi.fn(() => undefined)
     unobserve = vi.fn(() => undefined)

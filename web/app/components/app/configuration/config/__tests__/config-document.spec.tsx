@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

@@ -1,3 +1,4 @@
+/* eslint-disable react/no-create-ref, ts/no-explicit-any */
 import type { ReactNode, RefObject } from 'react'
 import type { DebugWithSingleModelRefType } from '../index'
 import type { ChatItem } from '@/app/components/base/chat/types'

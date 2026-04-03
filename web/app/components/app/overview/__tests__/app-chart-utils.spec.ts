@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import { buildChartOptions, getChartValueField, getDefaultChartData, getSummaryValue, getTokenSummary } from '../app-chart-utils'
 
 describe('app-chart-utils', () => {

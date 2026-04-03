@@ -22,11 +22,11 @@ import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
 import {
-  createAppCardOperations,
   AppCardAccessControlSection,
   AppCardDialogs,
   AppCardOperations,
   AppCardUrlSection,
+  createAppCardOperations,
 } from './app-card-sections'
 import {
   getAppCardDisplayState,

@@ -1,24 +1,18 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Collection } from '@/app/components/tools/types'
-import type { AnnotationReplyConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
-import type {
-  DatasetConfigs,
-  ModelConfig,
-  PromptVariable,
-} from '@/models/debug'
+import type { AnnotationReplyConfig, DatasetConfigs, ModelConfig, PromptVariable } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, UserInputFormItem } from '@/types/app'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
-import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { toast } from '@/app/components/base/ui/toast'
+import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchDatasets } from '@/service/datasets'
 import { fetchCollectionList } from '@/service/tools'
-import { toast } from '@/app/components/base/ui/toast'
-import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { AgentStrategy, AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 import {
   correctModelProvider,
@@ -112,7 +106,7 @@ export const buildPublishedModelConfig = ({
             const toolInCollectionList = collectionList.find(collection => collection.id === tool.provider_id)
             return {
               ...tool,
-              isDeleted: deletedTools?.some((deletedTool) => (deletedTool.provider_id || deletedTool.id) === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
+              isDeleted: deletedTools?.some(deletedTool => (deletedTool.provider_id || deletedTool.id) === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
               notAuthor: toolInCollectionList?.is_team_authorization === false,
               ...(tool.provider_type === 'builtin'
                 ? {
@@ -632,7 +626,7 @@ export const createModelChangeHandler = ({
       text?: string
     }
   }
-  handleSetVisionConfig: (config: any, notNoticeFormattingChanged?: boolean) => void
+  handleSetVisionConfig: (config: Record<string, unknown>, notNoticeFormattingChanged?: boolean) => void
   isAdvancedMode: boolean
   migrateToDefaultPrompt: (force?: boolean, modelModeType?: ModelModeType) => Promise<void>
   mode: AppModeEnum
@@ -641,7 +635,7 @@ export const createModelChangeHandler = ({
   setCompletionParams: (value: FormValue) => void
   setModelConfig: (config: ModelConfig) => void
   t: (key: string, options?: Record<string, unknown>) => string
-  visionConfig: Record<string, any>
+  visionConfig: Record<string, unknown>
 }) => async ({
   features = [],
   mode: nextModelMode = resolvedModelModeType,

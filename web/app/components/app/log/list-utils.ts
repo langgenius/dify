@@ -12,6 +12,32 @@ import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
+type LogDetailMessage = {
+  answer?: string | number | null
+  inputs?: Record<string, string>
+  message_files?: Array<{ url?: string }>
+  query?: string
+}
+
+type UserInputFormItem = Record<string, { variable?: string }>
+
+type ConversationLogDetail = {
+  from_account_name?: string
+  from_end_user_session_id?: string
+  message?: LogDetailMessage
+  message_count?: number
+  model_config?: {
+    user_input_form?: UserInputFormItem[]
+  }
+  name?: string
+}
+
+const getUserInputVariable = (item: UserInputFormItem) => {
+  const variable = Object.values(item)[0]?.variable
+
+  return typeof variable === 'string' ? variable : undefined
+}
+
 export const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
 
@@ -248,7 +274,7 @@ export const getConversationRowValues = ({
   noOutputLabel,
 }: {
   isChatMode: boolean
-  log: Record<string, any>
+  log: ConversationLogDetail
   noChatLabel: string
   noOutputLabel: string
 }) => {
@@ -267,19 +293,24 @@ export const getConversationRowValues = ({
   }
 }
 
-export const getDetailVarList = (detail: Record<string, any>, varValues: Record<string, string>) => (detail.model_config as any).user_input_form?.map((item: any) => {
-  const itemContent = item[Object.keys(item)[0]]
-  return {
-    label: itemContent.variable,
-    value: varValues[itemContent.variable] || detail.message?.inputs?.[itemContent.variable],
-  }
-}) || []
+export const getDetailVarList = (detail: ConversationLogDetail, varValues: Record<string, string>) =>
+  detail.model_config?.user_input_form?.flatMap((item) => {
+    const variable = getUserInputVariable(item)
 
-export const getCompletionMessageFiles = (detail: Record<string, any>, isChatMode: boolean) => {
+    if (!variable)
+      return []
+
+    return [{
+      label: variable,
+      value: varValues[variable] || detail.message?.inputs?.[variable],
+    }]
+  }) || []
+
+export const getCompletionMessageFiles = (detail: ConversationLogDetail, isChatMode: boolean) => {
   if (isChatMode || !detail.message.message_files?.length)
     return []
 
-  return detail.message.message_files.map((item: any) => item.url)
+  return detail.message.message_files.map(item => item.url)
 }
 
 export const hasConversationFeedback = (stats: LogAnnotation | { like?: number, dislike?: number }) =>

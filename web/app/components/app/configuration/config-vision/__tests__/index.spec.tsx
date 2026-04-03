@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { Mock } from 'vitest'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import type { FileUpload } from '@/app/components/base/features/types'

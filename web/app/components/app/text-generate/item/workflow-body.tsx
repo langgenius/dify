@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { SiteInfo } from '@/models/share'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { SiteInfo } from '@/models/share'
 import { RiPlayList2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import HumanInputFilledFormList from '@/app/components/base/chat/chat/answer/human-input-filled-form-list'
@@ -52,7 +52,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
         )}
       >
         {taskId && (
-          <div className={cn('system-2xs-medium-uppercase mb-2 flex items-center text-text-accent-secondary', isError && 'text-text-destructive')}>
+          <div className={cn('mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
             <RiPlayList2Line className="mr-1 h-3 w-3" />
             <span>{t('generation.execution', { ns: 'share' })}</span>
             <span className="px-1">·</span>
@@ -72,7 +72,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
           <div className="flex items-center space-x-6 px-1">
             <div
               className={cn(
-                'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+                'cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
                 currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
               )}
               onClick={() => onSwitchTab('RESULT')}
@@ -81,7 +81,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
             </div>
             <div
               className={cn(
-                'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+                'cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
                 currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
               )}
               onClick={() => onSwitchTab('DETAIL')}

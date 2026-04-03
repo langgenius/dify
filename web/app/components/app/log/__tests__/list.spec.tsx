@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+/* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
 

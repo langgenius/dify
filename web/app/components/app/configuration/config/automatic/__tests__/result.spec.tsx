@@ -50,7 +50,8 @@ vi.mock('../prompt-toast', () => ({
 vi.mock('../version-selector', () => ({
   default: ({ value, versionLen, onChange }: { value: number, versionLen: number, onChange: (index: number) => void }) => (
     <button data-testid="version-selector" onClick={() => onChange(versionLen - 1)}>
-      version-{value}
+      version-
+      {value}
     </button>
   ),
 }))

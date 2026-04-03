@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import type { AppSourceType } from '@/service/share'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { AppSourceType } from '@/service/share'
 import {
   RiBookmark3Line,
   RiClipboardLine,

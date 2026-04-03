@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
@@ -13,7 +13,7 @@ const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
 
 let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string } }> } } | null = null
-let mockAccessSubjects: { groups?: unknown[]; members?: unknown[] } = { groups: [], members: [] }
+let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
 let mockAppDetail: AppDetailResponse | undefined
 
 vi.mock('react-i18next', () => ({

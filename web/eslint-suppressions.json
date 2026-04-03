@@ -1307,9 +1307,6 @@
     }
   },
   "app/components/app/text-generate/item/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 3
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     },

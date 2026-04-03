@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'

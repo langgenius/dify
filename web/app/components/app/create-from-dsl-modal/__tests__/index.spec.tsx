@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'

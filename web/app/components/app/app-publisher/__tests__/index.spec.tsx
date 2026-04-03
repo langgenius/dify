@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { AccessMode } from '@/models/access-control'
@@ -451,5 +452,4 @@ describe('AppPublisher', () => {
     })
     expect(screen.getByTestId('access-control')).toBeInTheDocument()
   })
-
 })

@@ -1,15 +1,29 @@
-import type { ComponentType } from 'react'
+/* eslint-disable react-refresh/only-export-components */
 import type { TFunction } from 'i18next'
+import type { ComponentType, ReactNode } from 'react'
+import type { OverviewOperationKey } from './app-card-utils'
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { RiArrowRightSLine, RiBookOpenLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine, RiBuildingLine } from '@remixicon/react'
+import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
-import Tooltip from '@/app/components/base/tooltip'
-import Button from '@/app/components/base/button'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
@@ -17,17 +31,16 @@ import CustomizeModal from './customize'
 import EmbeddedModal from './embedded'
 import SettingsModal from './settings'
 import style from './style.module.css'
-import type { OverviewOperationKey } from './app-card-utils'
 
 type AppInfo = AppDetailResponse & Partial<AppSSO>
 
 type OperationIcon = ComponentType<{ className?: string }>
 
-type AccessModeLabelKey =
-  | 'accessControlDialog.accessItems.organization'
-  | 'accessControlDialog.accessItems.specific'
-  | 'accessControlDialog.accessItems.anyone'
-  | 'accessControlDialog.accessItems.external'
+type AccessModeLabelKey
+  = | 'accessControlDialog.accessItems.organization'
+    | 'accessControlDialog.accessItems.specific'
+    | 'accessControlDialog.accessItems.anyone'
+    | 'accessControlDialog.accessItems.external'
 
 export type AppCardOperation = {
   key: OverviewOperationKey
@@ -57,6 +70,30 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, AccessModeLabelKey> = {
   [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'accessControlDialog.accessItems.specific',
   [AccessMode.PUBLIC]: 'accessControlDialog.accessItems.anyone',
   [AccessMode.EXTERNAL_MEMBERS]: 'accessControlDialog.accessItems.external',
+}
+
+const MaybeTooltip = ({
+  children,
+  content,
+  popupClassName,
+  show = true,
+}: {
+  children: ReactNode
+  content?: ReactNode
+  popupClassName?: string
+  show?: boolean
+}) => {
+  if (!show || !content)
+    return <>{children}</>
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<div>{children}</div>} />
+      <TooltipContent popupClassName={popupClassName}>
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export const createAppCardOperations = ({
@@ -129,14 +166,14 @@ export const AppCardUrlSection = ({
   onHideRegenerateConfirm: () => void
 }) => (
   <div className="flex flex-col items-start justify-center self-stretch">
-    <div className="system-xs-medium pb-1 text-text-tertiary">
+    <div className="pb-1 system-xs-medium text-text-tertiary">
       {isApp
         ? t('overview.appInfo.accessibleAddress', { ns: 'appOverview' })
         : t('overview.apiInfo.accessibleAddress', { ns: 'appOverview' })}
     </div>
     <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
       <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-        <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
+        <div className="overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-text-secondary">
           {accessibleUrl}
         </div>
       </div>
@@ -144,24 +181,36 @@ export const AppCardUrlSection = ({
       {isApp && <ShareQRCode content={accessibleUrl} />}
       {isApp && <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />}
       {showConfirmDelete && (
-        <Confirm
-          type="warning"
-          title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-          content={t('overview.appInfo.regenerateNotice', { ns: 'appOverview' })}
-          isShow={showConfirmDelete}
-          onConfirm={onRegenerate}
-          onCancel={onHideRegenerateConfirm}
-        />
+        <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && onHideRegenerateConfirm()}>
+          <AlertDialogContent>
+            <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
+              <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+                {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('overview.appInfo.regenerateNotice', { ns: 'appOverview' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton onClick={onHideRegenerateConfirm}>
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={onRegenerate}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {isApp && isCurrentWorkspaceManager && (
-        <Tooltip popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
+        <MaybeTooltip content={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
           <div
             className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
             onClick={onShowRegenerateConfirm}
           >
             <div className={`h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`} />
           </div>
-        </Tooltip>
+        </MaybeTooltip>
       )}
     </div>
   </div>
@@ -183,16 +232,16 @@ export const AppCardAccessControlSection = ({
 
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="system-xs-medium pb-1 text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
+      <div className="pb-1 system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
       <div
-        className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
+        className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5"
         onClick={onClick}
       >
         <div className="flex grow items-center gap-x-1.5 pr-1">
           <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
           <p className="system-sm-medium text-text-secondary">{t(labelKey, { ns: 'app' })}</p>
         </div>
-        {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+        {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
         <div className="flex h-4 w-4 shrink-0 items-center justify-center">
           <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
         </div>
@@ -218,15 +267,16 @@ export const AppCardOperations = ({
         onClick={onClick}
         disabled={disabled}
       >
-        <Tooltip
-          popupContent={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
-          popupClassName={disabled ? 'mt-[-8px]' : 'hidden!'}
+        <MaybeTooltip
+          content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+          popupClassName="mt-[-8px]"
+          show={disabled}
         >
           <div className="flex items-center justify-center gap-px">
             <Icon className="h-3.5 w-3.5" />
-            <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} system-xs-medium px-[3px]`}>{label}</div>
+            <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}>{label}</div>
           </div>
-        </Tooltip>
+        </MaybeTooltip>
       </Button>
     ))}
   </>

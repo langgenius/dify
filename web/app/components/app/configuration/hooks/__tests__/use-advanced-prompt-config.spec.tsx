@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
 import { PromptMode } from '@/models/debug'

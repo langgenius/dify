@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { AgentStrategy } from '@/types/app'
 import {

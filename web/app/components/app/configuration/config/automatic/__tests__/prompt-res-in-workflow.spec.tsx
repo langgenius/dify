@@ -62,7 +62,7 @@ describe('PromptResInWorkflow', () => {
             title: 'Retriever',
             type: BlockEnum.KnowledgeRetrieval,
           }),
-          sys: expect.objectContaining({
+          'sys': expect.objectContaining({
             title: 'blocks.start',
             type: BlockEnum.Start,
           }),

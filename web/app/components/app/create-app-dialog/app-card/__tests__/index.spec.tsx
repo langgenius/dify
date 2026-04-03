@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
 import { render, screen, within } from '@testing-library/react'

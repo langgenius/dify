@@ -1,16 +1,32 @@
+/* eslint-disable ts/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import ResultTab from '../result-tab'
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>markdown:{content}</div>,
+  Markdown: ({ content }: { content: string }) => (
+    <div>
+      markdown:
+      {content}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileList: ({ files }: { files: Array<{ id: string }> }) => <div>files:{files.length}</div>,
+  FileList: ({ files }: { files: Array<{ id: string }> }) => (
+    <div>
+      files:
+      {files.length}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value }: { value: string }) => <div>code-editor:{value}</div>,
+  default: ({ value }: { value: string }) => (
+    <div>
+      code-editor:
+      {value}
+    </div>
+  ),
 }))
 
 describe('ResultTab', () => {

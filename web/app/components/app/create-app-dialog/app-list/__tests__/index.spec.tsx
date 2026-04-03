@@ -56,13 +56,17 @@ vi.mock('../../app-card', () => ({
   ),
 }))
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({ onConfirm, onHide, show }: { onConfirm: (payload: {
-    name: string
-    icon_type: string
-    icon: string
-    icon_background: string
-    description: string
-  }) => Promise<void>, onHide: () => void, show: boolean }) => show
+  default: ({ onConfirm, onHide, show }: {
+    onConfirm: (payload: {
+      name: string
+      icon_type: string
+      icon: string
+      icon_background: string
+      description: string
+    }) => Promise<void>
+    onHide: () => void
+    show: boolean
+  }) => show
     ? (
         <div data-testid="create-from-template-modal">
           <button

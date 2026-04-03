@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -5,10 +6,12 @@ import ConfigModalFormFields from '../form-fields'
 
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: Array<Record<string, unknown>>) => void }) => (
-    <button type="button" onClick={() => onChange([
-      { fileId: 'file-1', type: 'local_file', url: 'https://example.com/file.png' },
-      { fileId: 'file-2', type: 'remote_url', url: 'https://example.com/file-2.png' },
-    ])}
+    <button
+      type="button"
+      onClick={() => onChange([
+        { fileId: 'file-1', type: 'local_file', url: 'https://example.com/file.png' },
+        { fileId: 'file-2', type: 'remote_url', url: 'https://example.com/file-2.png' },
+      ])}
     >
       upload-file
     </button>

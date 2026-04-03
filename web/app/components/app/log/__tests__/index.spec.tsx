@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { APP_PAGE_LIMIT } from '@/config'
 import { AppModeEnum } from '@/types/app'
@@ -39,8 +40,8 @@ vi.mock('@/service/use-log', () => ({
 
 vi.mock('../filter', () => ({
   TIME_PERIOD_MAPPING: {
-    '2': { value: 7 },
-    '9': { value: 0 },
+    2: { value: 7 },
+    9: { value: 0 },
   },
   default: ({ setQueryParams }: { setQueryParams: (next: Record<string, string>) => void }) => (
     <button onClick={() => setQueryParams({ period: '9', annotation_status: 'all', sort_by: '-created_at', keyword: 'hello' })}>
@@ -50,7 +51,12 @@ vi.mock('../filter', () => ({
 }))
 
 vi.mock('../list', () => ({
-  default: ({ logs }: { logs: { total?: number } }) => <div>list-total-{logs?.total}</div>,
+  default: ({ logs }: { logs: { total?: number } }) => (
+    <div>
+      list-total-
+      {logs?.total}
+    </div>
+  ),
 }))
 
 vi.mock('../empty-element', () => ({

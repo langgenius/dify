@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import type { PromptRole } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'

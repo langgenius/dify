@@ -1,39 +1,40 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { TFunction } from 'i18next'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
+import Loading from '@/app/components/base/loading'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/app/components/base/ui/tooltip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { appDefaultIconBackground } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import ShortcutsName from '../../workflow/shortcuts-name'
-import SuggestedAction from './suggested-action'
 import PublishWithMultipleModel from './publish-with-multiple-model'
+import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
 
-type SummarySectionProps = Pick<AppPublisherProps,
-  | 'debugWithMultipleModel'
+type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
   | 'draftUpdatedAt'
   | 'multipleModelConfigs'
   | 'publishDisabled'
   | 'publishedAt'
-  | 'startNodeLimitExceeded'
-> & {
-  formatTimeFromNow: (value: number) => string
-  handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
-  handleRestore: () => Promise<void>
-  isChatApp: boolean
-  published: boolean
-  publishShortcut: string[]
-  upgradeHighlightStyle: CSSProperties
-}
+  | 'startNodeLimitExceeded'> & {
+    formatTimeFromNow: (value: number) => string
+    handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
+    handleRestore: () => Promise<void>
+    isChatApp: boolean
+    published: boolean
+    publishShortcut: string[]
+    upgradeHighlightStyle: CSSProperties
+  }
 
 type AccessSectionProps = {
   enabled: boolean
@@ -43,8 +44,7 @@ type AccessSectionProps = {
   onClick: () => void
 }
 
-type ActionsSectionProps = Pick<AppPublisherProps,
-  | 'hasHumanInputNode'
+type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
   | 'hasTriggerNode'
   | 'inputs'
   | 'missingStartNode'
@@ -52,26 +52,25 @@ type ActionsSectionProps = Pick<AppPublisherProps,
   | 'toolPublished'
   | 'outputs'
   | 'publishedAt'
-  | 'workflowToolAvailable'
-> & {
-  appDetail: {
-    id?: string
-    icon?: string
-    icon_type?: string | null
-    icon_background?: string | null
-    description?: string
-    mode?: AppModeEnum
-    name?: string
-  } | null | undefined
-  appURL: string
-  disabledFunctionButton: boolean
-  disabledFunctionTooltip?: string
-  handleEmbed: () => void
-  handleOpenInExplore: () => void
-  handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
-  published: boolean
-  workflowToolMessage?: string
-}
+  | 'workflowToolAvailable'> & {
+    appDetail: {
+      id?: string
+      icon?: string
+      icon_type?: string | null
+      icon_background?: string | null
+      description?: string
+      mode?: AppModeEnum
+      name?: string
+    } | null | undefined
+    appURL: string
+    disabledFunctionButton: boolean
+    disabledFunctionTooltip?: string
+    handleEmbed: () => void
+    handleOpenInExplore: () => void
+    handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
+    published: boolean
+    workflowToolMessage?: string
+  }
 
 export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
   const { t } = useTranslation()
@@ -85,7 +84,7 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
     <>
       <span className={`${icon} h-4 w-4 shrink-0 text-text-secondary`} />
       <div className="grow truncate">
-        <span className="text-text-secondary system-sm-medium">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
+        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
     </>
   )
@@ -110,13 +109,13 @@ export const PublisherSummarySection = ({
 
   return (
     <div className="p-4 pt-3">
-      <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
+      <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
         {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
       </div>
       {publishedAt
         ? (
             <div className="flex items-center justify-between">
-              <div className="flex items-center text-text-secondary system-sm-medium">
+              <div className="flex items-center system-sm-medium text-text-secondary">
                 {t('common.publishedAt', { ns: 'workflow' })}
                 {' '}
                 {formatTimeFromNow(publishedAt)}
@@ -134,7 +133,7 @@ export const PublisherSummarySection = ({
             </div>
           )
         : (
-            <div className="flex items-center text-text-secondary system-sm-medium">
+            <div className="flex items-center system-sm-medium text-text-secondary">
               {t('common.autoSaved', { ns: 'workflow' })}
               {' '}
               ·
@@ -168,7 +167,7 @@ export const PublisherSummarySection = ({
               {startNodeLimitExceeded && (
                 <div className="mt-3 flex flex-col items-stretch">
                   <p
-                    className="text-sm font-semibold leading-5 text-transparent"
+                    className="text-sm leading-5 font-semibold text-transparent"
                     style={upgradeHighlightStyle}
                   >
                     <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
@@ -179,7 +178,7 @@ export const PublisherSummarySection = ({
                   </p>
                   <UpgradeBtn
                     isShort
-                    className="mb-[12px] mt-[9px] h-[32px] w-[93px] self-start"
+                    className="mt-[9px] mb-[12px] h-[32px] w-[93px] self-start"
                   />
                 </div>
               )}
@@ -207,21 +206,21 @@ export const PublisherAccessSection = ({
       {enabled && (
         <div className="p-4 pt-3">
           <div className="flex h-6 items-center">
-            <p className="text-text-tertiary system-xs-medium">{t('publishApp.title', { ns: 'app' })}</p>
+            <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
           </div>
           <div
-            className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
+            className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 hover:bg-primary-50 hover:text-text-accent"
             onClick={onClick}
           >
             <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
               <AccessModeDisplay mode={accessMode} />
             </div>
-            {!isAppAccessSet && <p className="shrink-0 text-text-tertiary system-xs-regular">{t('publishApp.notSet', { ns: 'app' })}</p>}
+            {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
             <div className="flex h-4 w-4 shrink-0 items-center justify-center">
               <span className="i-ri-arrow-right-s-line h-4 w-4 text-text-quaternary" />
             </div>
           </div>
-          {!isAppAccessSet && <p className="mt-1 text-text-warning system-xs-regular">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
+          {!isAppAccessSet && <p className="mt-1 system-xs-regular text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
         </div>
       )}
     </>
@@ -236,11 +235,19 @@ const ActionTooltip = ({
   disabled: boolean
   tooltip?: ReactNode
   children: ReactNode
-}) => (
-  <Tooltip triggerClassName="flex" disabled={!disabled} popupContent={tooltip} asChild={false}>
-    {children}
-  </Tooltip>
-)
+}) => {
+  if (!disabled || !tooltip)
+    return <>{children}</>
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<div className="flex">{children}</div>} />
+      <TooltipContent>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 export const PublisherActionsSection = ({
   appDetail,
@@ -316,7 +323,10 @@ export const PublisherActionsSection = ({
           {t('common.openInExplore', { ns: 'workflow' })}
         </SuggestedAction>
       </ActionTooltip>
-      <Tooltip triggerClassName="flex" disabled={!!publishedAt && !missingStartNode} popupContent={!publishedAt ? t('notPublishedYet', { ns: 'app' }) : t('noUserInputNode', { ns: 'app' })} asChild={false}>
+      <ActionTooltip
+        disabled={!publishedAt || missingStartNode}
+        tooltip={!publishedAt ? t('notPublishedYet', { ns: 'app' }) : t('noUserInputNode', { ns: 'app' })}
+      >
         <SuggestedAction
           className="flex-1"
           disabled={!publishedAt || missingStartNode}
@@ -325,7 +335,7 @@ export const PublisherActionsSection = ({
         >
           {t('common.accessAPIReference', { ns: 'workflow' })}
         </SuggestedAction>
-      </Tooltip>
+      </ActionTooltip>
       {appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && (
         <WorkflowToolConfigureButton
           disabled={workflowToolDisabled}

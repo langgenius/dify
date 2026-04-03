@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { AppModeEnum } from '@/types/app'
 import GetCodeGeneratorResModal from '../get-code-generator-res'
 
 const mockGenerateRule = vi.fn()

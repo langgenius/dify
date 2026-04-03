@@ -1,5 +1,5 @@
-import type { AppSSO } from '@/types/app'
 import type { AppDetailResponse } from '@/models/app'
+import type { AppSSO } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'

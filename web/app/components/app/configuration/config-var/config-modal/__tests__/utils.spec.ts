@@ -4,10 +4,10 @@ import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/componen
 import {
   buildSelectOptions,
   createPayloadForType,
-  getJsonSchemaEditorValue,
   getCheckboxDefaultSelectValue,
-  isStringInputType,
+  getJsonSchemaEditorValue,
   isJsonSchemaEmpty,
+  isStringInputType,
   normalizeSelectDefaultValue,
   parseCheckboxSelectValue,
   updatePayloadField,

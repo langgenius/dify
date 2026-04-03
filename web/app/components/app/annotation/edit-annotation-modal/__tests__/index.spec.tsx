@@ -51,11 +51,6 @@ describe('EditAnnotationModal', () => {
     onRemove: vi.fn(),
   }
 
-  afterAll(() => {
-    toastSuccessSpy.mockRestore()
-    toastErrorSpy.mockRestore()
-  })
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockAddAnnotation.mockResolvedValue({
@@ -63,6 +58,11 @@ describe('EditAnnotationModal', () => {
       account: { name: 'Test User' },
     })
     mockEditAnnotation.mockResolvedValue({})
+  })
+
+  afterAll(() => {
+    toastSuccessSpy.mockRestore()
+    toastErrorSpy.mockRestore()
   })
 
   // Rendering tests (REQUIRED)
