@@ -11,6 +11,12 @@ from uuid import uuid4
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from packaging import version
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
@@ -27,12 +33,6 @@ from core.trigger.constants import (
 )
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.nodes.tool.entities import ToolNodeData
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
@@ -304,7 +304,7 @@ class AppDslService:
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
-            draft_var_srv.delete_workflow_variables(app_id=app.id)
+            draft_var_srv.delete_app_workflow_variables(app_id=app.id)
             return Import(
                 id=import_id,
                 status=status,

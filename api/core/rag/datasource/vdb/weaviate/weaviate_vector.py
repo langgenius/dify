@@ -5,9 +5,11 @@ This module provides integration with Weaviate vector database for storing and r
 document embeddings used in retrieval-augmented generation workflows.
 """
 
+import atexit
 import datetime
 import json
 import logging
+import threading
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
@@ -31,6 +33,35 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+_weaviate_client: weaviate.WeaviateClient | None = None
+_weaviate_client_lock = threading.Lock()
+
+
+def _shutdown_weaviate_client() -> None:
+    """
+    Best-effort shutdown hook to close the module-level Weaviate client.
+
+    This is registered with atexit so that HTTP/gRPC resources are released
+    when the Python interpreter exits.
+    """
+    global _weaviate_client
+
+    # Ensure thread-safety when accessing the shared client instance
+    with _weaviate_client_lock:
+        client = _weaviate_client
+        _weaviate_client = None
+
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            # Best-effort cleanup; log at debug level and ignore errors.
+            logger.debug("Failed to close Weaviate client during shutdown", exc_info=True)
+
+
+# Register the shutdown hook once per process.
+atexit.register(_shutdown_weaviate_client)
 
 
 class WeaviateConfig(BaseModel):
@@ -81,61 +112,58 @@ class WeaviateVector(BaseVector):
         self._client = self._init_client(config)
         self._attributes = attributes
 
-    def __del__(self):
-        """
-        Destructor to properly close the Weaviate client connection.
-        Prevents connection leaks and resource warnings.
-        """
-        if hasattr(self, "_client") and self._client is not None:
-            try:
-                self._client.close()
-            except Exception as e:
-                # Ignore errors during cleanup as object is being destroyed
-                logger.warning("Error closing Weaviate client %s", e, exc_info=True)
-
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
         Initializes and returns a connected Weaviate client.
 
         Configures both HTTP and gRPC connections with proper authentication.
         """
-        p = urlparse(config.endpoint)
-        host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
-        http_secure = p.scheme == "https"
-        http_port = p.port or (443 if http_secure else 80)
+        global _weaviate_client
+        if _weaviate_client and _weaviate_client.is_ready():
+            return _weaviate_client
 
-        # Parse gRPC configuration
-        if config.grpc_endpoint:
-            # Urls without scheme won't be parsed correctly in some python versions,
-            # see https://bugs.python.org/issue27657
-            grpc_endpoint_with_scheme = (
-                config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+        with _weaviate_client_lock:
+            if _weaviate_client and _weaviate_client.is_ready():
+                return _weaviate_client
+
+            p = urlparse(config.endpoint)
+            host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
+            http_secure = p.scheme == "https"
+            http_port = p.port or (443 if http_secure else 80)
+
+            # Parse gRPC configuration
+            if config.grpc_endpoint:
+                # Urls without scheme won't be parsed correctly in some python versions,
+                # see https://bugs.python.org/issue27657
+                grpc_endpoint_with_scheme = (
+                    config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+                )
+                grpc_p = urlparse(grpc_endpoint_with_scheme)
+                grpc_host = grpc_p.hostname or "localhost"
+                grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
+                grpc_secure = grpc_p.scheme == "grpcs"
+            else:
+                # Infer from HTTP endpoint as fallback
+                grpc_host = host
+                grpc_secure = http_secure
+                grpc_port = 443 if grpc_secure else 50051
+
+            client = weaviate.connect_to_custom(
+                http_host=host,
+                http_port=http_port,
+                http_secure=http_secure,
+                grpc_host=grpc_host,
+                grpc_port=grpc_port,
+                grpc_secure=grpc_secure,
+                auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
+                skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
             )
-            grpc_p = urlparse(grpc_endpoint_with_scheme)
-            grpc_host = grpc_p.hostname or "localhost"
-            grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
-            grpc_secure = grpc_p.scheme == "grpcs"
-        else:
-            # Infer from HTTP endpoint as fallback
-            grpc_host = host
-            grpc_secure = http_secure
-            grpc_port = 443 if grpc_secure else 50051
 
-        client = weaviate.connect_to_custom(
-            http_host=host,
-            http_port=http_port,
-            http_secure=http_secure,
-            grpc_host=grpc_host,
-            grpc_port=grpc_port,
-            grpc_secure=grpc_secure,
-            auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
-            skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
-        )
+            if not client.is_ready():
+                raise ConnectionError("Vector database is not ready")
 
-        if not client.is_ready():
-            raise ConnectionError("Vector database is not ready")
-
-        return client
+            _weaviate_client = client
+            return client
 
     def get_type(self) -> str:
         """Returns the vector database type identifier."""

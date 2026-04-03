@@ -7,25 +7,33 @@ import * as ReactI18next from 'react-i18next'
 import TagManagementModal from '../index'
 import { useStore as useTagStore } from '../store'
 
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
+
 // Hoisted mocks
 const { fetchTagList, createTag } = vi.hoisted(() => ({
   fetchTagList: vi.fn(),
   createTag: vi.fn(),
 }))
 
-const mockNotify = vi.fn()
-
 vi.mock('@/service/tag', () => ({
   fetchTagList,
   createTag,
-}))
-
-// Mock use-context-selector for ToastContext
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: mockNotify,
-  }),
 }))
 
 const mockTags: Tag[] = [
@@ -215,7 +223,7 @@ describe('TagManagementModal', () => {
       })
     })
 
-    it('should create a tag on input blur', async () => {
+    it('should create a tag on input blur-sm', async () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 

@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import qdrant_client
@@ -33,14 +33,15 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
     from qdrant_client.http import models as rest
 
-    DictFilter = dict[str, Union[str, int, bool, dict, list]]
-    MetadataFilter = Union[DictFilter, common_types.Filter]
+    type DictFilter = dict[str, str | int | bool | dict | list]
+    type MetadataFilter = DictFilter | common_types.Filter
 
 
 class TidbOnQdrantConfig(BaseModel):
@@ -284,27 +285,29 @@ class TidbOnQdrantVector(BaseVector):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
-        for node_id in ids:
-            try:
-                filter = models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="metadata.doc_id",
-                            match=models.MatchValue(value=node_id),
-                        ),
-                    ],
-                )
-                self._client.delete(
-                    collection_name=self._collection_name,
-                    points_selector=FilterSelector(filter=filter),
-                )
-            except UnexpectedResponse as e:
-                # Collection does not exist, so return
-                if e.status_code == 404:
-                    return
-                # Some other error occurred, so re-raise the exception
-                else:
-                    raise e
+        if not ids:
+            return
+
+        try:
+            filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.doc_id",
+                        match=models.MatchAny(any=ids),
+                    ),
+                ],
+            )
+            self._client.delete(
+                collection_name=self._collection_name,
+                points_selector=FilterSelector(filter=filter),
+            )
+        except UnexpectedResponse as e:
+            # Collection does not exist, so return
+            if e.status_code == 404:
+                return
+            # Some other error occurred, so re-raise the exception
+            else:
+                raise e
 
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
@@ -423,11 +426,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                     TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                 else:
-                    idle_tidb_auth_binding = (
-                        db.session.query(TidbAuthBinding)
+                    idle_tidb_auth_binding = db.session.scalar(
+                        select(TidbAuthBinding)
                         .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
-                        .one_or_none()
                     )
                     if idle_tidb_auth_binding:
                         idle_tidb_auth_binding.active = True
@@ -450,7 +452,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                             password=new_cluster["password"],
                             tenant_id=dataset.tenant_id,
                             active=True,
-                            status="ACTIVE",
+                            status=TidbAuthBindingStatus.ACTIVE,
                         )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import s from './style.module.css'
 
-export type IContrlBtnGroupProps = {
+type IContrlBtnGroupProps = {
   onSave: () => void
   onReset: () => void
 }

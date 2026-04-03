@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import WeightedScore from './weighted-score'
 
 describe('WeightedScore', () => {
+  const getSliderInput = () => screen.getByLabelText('dataset.weightedScore.semantic')
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -48,8 +50,8 @@ describe('WeightedScore', () => {
       render(<WeightedScore value={value} onChange={onChange} />)
 
       // Act
-      await user.tab()
-      const slider = screen.getByRole('slider')
+      const slider = getSliderInput()
+      slider.focus()
       expect(slider).toHaveFocus()
       const callsBefore = onChange.mock.calls.length
       await user.keyboard('{ArrowRight}')
@@ -69,9 +71,8 @@ describe('WeightedScore', () => {
       render(<WeightedScore value={value} onChange={onChange} readonly />)
 
       // Act
-      await user.tab()
-      const slider = screen.getByRole('slider')
-      expect(slider).toHaveFocus()
+      const slider = getSliderInput()
+      expect(slider).toBeDisabled()
       await user.keyboard('{ArrowRight}')
 
       // Assert

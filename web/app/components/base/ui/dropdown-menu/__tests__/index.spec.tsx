@@ -1,7 +1,7 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import Link from 'next/link'
 import { describe, expect, it, vi } from 'vitest'
+import Link from '@/next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '../index'
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({
     href,
     children,

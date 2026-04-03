@@ -2,19 +2,19 @@
 
 import type { FC } from 'react'
 import { useDebounceFn } from 'ahooks'
-import dynamic from 'next/dynamic'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
+import dynamic from '@/next/dynamic'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -205,12 +205,12 @@ const List: FC<Props> = ({
             options={options}
           />
           <div className="flex items-center gap-2">
-            <CheckboxWithLabel
-              className="mr-2"
-              label={t('showMyCreatedAppsOnly', { ns: 'app' })}
-              isChecked={isCreatedByMe}
-              onChange={handleCreatedByMeChange}
-            />
+            <label className="mr-2 flex h-7 items-center space-x-2">
+              <Checkbox checked={isCreatedByMe} onCheck={handleCreatedByMeChange} />
+              <div className="text-sm font-normal text-text-secondary">
+                {t('showMyCreatedAppsOnly', { ns: 'app' })}
+              </div>
+            </label>
             <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
             <Input
               showLeftIcon

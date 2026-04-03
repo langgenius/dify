@@ -80,7 +80,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 

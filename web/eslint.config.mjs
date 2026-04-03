@@ -1,11 +1,21 @@
 // @ts-check
-import antfu, { GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
+
+import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
+import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import { OVERLAY_MIGRATION_LEGACY_BASE_FILES } from './eslint.constants.mjs'
+import {
+  HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
+  OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+} from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
@@ -17,26 +27,24 @@ const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 export default antfu(
   {
     react: {
-      // This react compiler rules are pretty slow
-      // We can wait for https://github.com/Rel1cx/eslint-react/issues/1237
-      reactCompiler: false,
       overrides: {
-        'react/no-context-provider': 'off',
-        'react/no-forward-ref': 'off',
-        'react/no-use-context': 'off',
-
-        // prefer react-hooks-extra/no-direct-set-state-in-use-effect
-        'react-hooks/set-state-in-effect': 'off',
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
+        'react/set-state-in-effect': 'error',
+        'react/no-unnecessary-use-prefix': 'error',
       },
     },
-    nextjs: true,
+    nextjs: {
+      overrides: {
+        'next/no-img-element': 'off',
+      },
+    },
     ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'error',
+        'ts/no-redeclare': 'off',
       },
+      erasableOnly: true,
     },
     test: {
       overrides: {
@@ -49,6 +57,43 @@ export default antfu(
       },
     },
     e18e: false,
+    pnpm: false,
+  },
+  {
+    files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
+    rules: {
+      'react/component-hook-factories': 'off',
+      'react/no-unnecessary-use-prefix': 'off',
+    },
+  },
+  {
+    plugins: {
+      'no-barrel-files': noBarrelFiles,
+    },
+    ignores: ['next/**'],
+    rules: {
+      'no-barrel-files/no-barrel-files': 'error',
+    },
+  },
+  markdownPreferences.configs.standard,
+  {
+    files: [GLOB_MARKDOWN],
+    plugins: { md },
+    rules: {
+      'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/prefer-link-reference-definitions': [
+        'error',
+        {
+          minLinks: 1,
+        },
+      ],
+      'markdown-preferences/ordered-list-marker-sequence': [
+        'error',
+        { increment: 'never' },
+      ],
+      'markdown-preferences/definitions-last': 'error',
+      'markdown-preferences/sort-definitions': 'error',
+    },
   },
   {
     rules: {
@@ -87,6 +132,11 @@ export default antfu(
       'tailwindcss/no-unnecessary-whitespace': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
+    settings: {
+      'better-tailwindcss': {
+        entryPoint: 'app/styles/globals.css',
+      },
+    },
   },
   {
     name: 'dify/custom/setup',
@@ -98,37 +148,7 @@ export default antfu(
   {
     files: ['**/*.tsx'],
     rules: {
-      'hyoban/prefer-tailwind-icons': ['warn', {
-        prefix: 'i-',
-        propMappings: {
-          size: 'size',
-          width: 'w',
-          height: 'h',
-        },
-        libraries: [
-          {
-            prefix: 'i-custom-',
-            source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-            name: '^(?<name>.*)$',
-          },
-          {
-            source: '^@remixicon/react$',
-            name: '^(?<set>Ri)(?<name>.+)$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/outline$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/24/(?<variant>solid)$',
-            name: '^(?<name>.*)Icon$',
-          },
-          {
-            source: '^@(?<set>heroicons)/react/(?<variant>\\d+/(?:solid|outline))$',
-            name: '^(?<name>.*)Icon$',
-          },
-        ],
-      }],
+      'hyoban/prefer-tailwind-icons': ['warn', HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS],
     },
   },
   {
@@ -144,7 +164,7 @@ export default antfu(
     },
   },
   {
-    files: ['**/package.json'],
+    files: ['package.json'],
     rules: {
       'hyoban/no-dependency-version-prefix': 'error',
     },
@@ -157,66 +177,31 @@ export default antfu(
     },
   },
   {
+    name: 'dify/no-direct-next-imports',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: ['next/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+      }],
+    },
+  },
+  {
     name: 'dify/overlay-migration',
     files: [GLOB_TS, GLOB_TSX],
     ignores: [
+      'next/**',
       ...GLOB_TESTS,
       ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [{
-          group: [
-            '**/portal-to-follow-elem',
-            '**/portal-to-follow-elem/index',
-          ],
-          message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/tooltip',
-            '**/base/tooltip/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/tooltip instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/modal',
-            '**/base/modal/index',
-            '**/base/modal/modal',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/select',
-            '**/base/select/index',
-            '**/base/select/custom',
-            '**/base/select/pure',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/select instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/confirm',
-            '**/base/confirm/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/alert-dialog instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/popover',
-            '**/base/popover/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/dropdown',
-            '**/base/dropdown/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/dropdown-menu instead. See issue #32767.',
-        }, {
-          group: [
-            '**/base/dialog',
-            '**/base/dialog/index',
-          ],
-          message: 'Deprecated: use @/app/components/base/ui/dialog instead. See issue #32767.',
-        }],
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+        ],
       }],
     },
   },

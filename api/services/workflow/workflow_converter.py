@@ -1,6 +1,13 @@
 import json
 from typing import Any, TypedDict
 
+from graphon.file import FileUploadConfig
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes import BuiltinNodeTypes
+from graphon.variables.input_entities import VariableEntity
+from sqlalchemy import select
+
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -15,11 +22,6 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dify_graph.file.models import FileUploadConfig
-from dify_graph.model_runtime.entities.llm_entities import LLMMode
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.variables.input_entities import VariableEntity
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account
@@ -32,6 +34,17 @@ class _NodeType(TypedDict):
     id: str
     position: None
     data: dict[str, Any]
+
+
+class _EdgeType(TypedDict):
+    id: str
+    source: str
+    target: str
+
+
+class WorkflowGraph(TypedDict):
+    nodes: list[_NodeType]
+    edges: list[_EdgeType]
 
 
 class WorkflowConverter:
@@ -107,7 +120,7 @@ class WorkflowConverter:
         app_config = self._convert_to_app_config(app_model=app_model, app_model_config=app_model_config)
 
         # init workflow graph
-        graph: dict[str, Any] = {"nodes": [], "edges": []}
+        graph: WorkflowGraph = {"nodes": [], "edges": []}
 
         # Convert list:
         # - variables -> start
@@ -385,7 +398,7 @@ class WorkflowConverter:
         self,
         original_app_mode: AppMode,
         new_app_mode: AppMode,
-        graph: dict,
+        graph: WorkflowGraph,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
         file_upload: FileUploadConfig | None = None,
@@ -595,7 +608,7 @@ class WorkflowConverter:
             "data": {"title": "ANSWER", "type": BuiltinNodeTypes.ANSWER, "answer": "{{#llm.text#}}"},
         }
 
-    def _create_edge(self, source: str, target: str):
+    def _create_edge(self, source: str, target: str) -> _EdgeType:
         """
         Create Edge
         :param source: source node id
@@ -604,7 +617,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict[str, Any], node: _NodeType):
+    def _append_node(self, graph: WorkflowGraph, node: _NodeType):
         """
         Append Node to Graph
 
@@ -635,10 +648,10 @@ class WorkflowConverter:
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = (
-            db.session.query(APIBasedExtension)
+        api_based_extension = db.session.scalar(
+            select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .first()
+            .limit(1)
         )
 
         if not api_based_extension:

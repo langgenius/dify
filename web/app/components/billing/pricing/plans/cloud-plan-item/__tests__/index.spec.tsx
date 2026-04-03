@@ -1,21 +1,15 @@
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { toast, ToastHost } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import Toast from '../../../../../base/toast'
 import { ALL_PLANS } from '../../../../config'
 import { Plan } from '../../../../type'
 import { PlanRange } from '../../../plan-switcher/plan-range-switcher'
 import CloudPlanItem from '../index'
-
-vi.mock('../../../../../base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -47,10 +41,18 @@ const mockUseAppContext = useAppContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
 const mockBillingInvoices = consoleClient.billing.invoices as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
-const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
+
+const renderWithToastHost = (ui: React.ReactNode) => {
+  return render(
+    <>
+      <ToastHost timeout={0} />
+      {ui}
+    </>,
+  )
+}
 
 beforeAll(() => {
   Object.defineProperty(window, 'location', {
@@ -68,6 +70,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  toast.dismiss()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
   mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })
@@ -163,7 +166,7 @@ describe('CloudPlanItem', () => {
     it('should show toast when non-manager tries to buy a plan', () => {
       mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
 
-      render(
+      renderWithToastHost(
         <CloudPlanItem
           plan={Plan.professional}
           currentPlan={Plan.sandbox}
@@ -173,10 +176,7 @@ describe('CloudPlanItem', () => {
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
-      expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'billing.buyPermissionDeniedTip',
-      }))
+      expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       expect(mockBillingInvoices).not.toHaveBeenCalled()
     })
 

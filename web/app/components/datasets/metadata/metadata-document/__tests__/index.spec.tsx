@@ -45,7 +45,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
   }),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
@@ -184,7 +184,7 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      const divider = container.querySelector('[class*="bg-gradient"]')
+      const divider = container.querySelector('.bg-linear-to-r')
       expect(divider).toBeInTheDocument()
     })
 

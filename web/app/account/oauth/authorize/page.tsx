@@ -7,16 +7,16 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { useIsLogin, useUserProfile } from '@/service/use-common'
 import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 
@@ -91,10 +91,7 @@ export default function OAuthAuthorize() {
       globalThis.location.href = url.toString()
     }
     catch (err: any) {
-      Toast.notify({
-        type: 'error',
-        message: `${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`,
-      })
+      toast.error(`${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`)
     }
   }
 
@@ -102,11 +99,10 @@ export default function OAuthAuthorize() {
     const invalidParams = !client_id || !redirect_uri
     if ((invalidParams || isError) && !hasNotifiedRef.current) {
       hasNotifiedRef.current = true
-      Toast.notify({
-        type: 'error',
-        message: invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
-        duration: 0,
-      })
+      toast.error(
+        invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        { timeout: 0 },
+      )
     }
   }, [client_id, redirect_uri, isError])
 
@@ -122,14 +118,14 @@ export default function OAuthAuthorize() {
     <div className="bg-background-default-subtle">
       {authAppInfo?.app_icon && (
         <div className="w-max rounded-2xl border-[0.5px] border-components-panel-border bg-text-primary-on-surface p-3 shadow-lg">
-          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded" />
+          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded-sm" />
         </div>
       )}
 
       <div className={`mb-4 mt-5 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
           {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
-          <div className="text-[var(--color-saas-dify-blue-inverted)]">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
+          <div className="text-(--color-saas-dify-blue-inverted)">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
           {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
         </div>
         <div className="text-text-secondary body-md-regular">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>

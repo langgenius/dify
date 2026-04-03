@@ -155,7 +155,7 @@ vi.mock('@/service/debug', () => ({
   stopChatMessageResponding: mockStopChatMessageResponding,
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
   useParams: () => ({}),
@@ -383,13 +383,6 @@ vi.mock('../hooks', () => ({
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: vi.fn(() => ({
     eventEmitter: null,
-  })),
-}))
-
-// Mock toast context
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: vi.fn(() => ({
-    notify: vi.fn(),
   })),
 }))
 

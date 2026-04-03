@@ -12,8 +12,9 @@ from unittest.mock import MagicMock, patch
 
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
+from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
 logger = logging.getLogger(__name__)
@@ -106,8 +107,8 @@ class TestDeleteSegmentFromIndexTask:
         dataset.description = fake.text(max_nb_chars=200)
         dataset.provider = "vendor"
         dataset.permission = "only_me"
-        dataset.data_source_type = "upload_file"
-        dataset.indexing_technique = "high_quality"
+        dataset.data_source_type = DataSourceType.UPLOAD_FILE
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.index_struct = '{"type": "paragraph"}'
         dataset.created_by = account.id
         dataset.created_at = fake.date_time_this_year()
@@ -145,7 +146,7 @@ class TestDeleteSegmentFromIndexTask:
         document.data_source_info = kwargs.get("data_source_info", "{}")
         document.batch = kwargs.get("batch", fake.uuid4())
         document.name = kwargs.get("name", f"Test Document {fake.word()}")
-        document.created_from = kwargs.get("created_from", "api")
+        document.created_from = kwargs.get("created_from", DocumentCreatedFrom.API)
         document.created_by = account.id
         document.created_at = fake.date_time_this_year()
         document.processing_started_at = kwargs.get("processing_started_at", fake.date_time_this_year())
@@ -162,7 +163,7 @@ class TestDeleteSegmentFromIndexTask:
         document.enabled = kwargs.get("enabled", True)
         document.archived = kwargs.get("archived", False)
         document.updated_at = fake.date_time_this_year()
-        document.doc_type = kwargs.get("doc_type", "text")
+        document.doc_type = kwargs.get("doc_type", DocumentDocType.PERSONAL_DOCUMENT)
         document.doc_metadata = kwargs.get("doc_metadata", {})
         document.doc_form = kwargs.get("doc_form", IndexStructureType.PARAGRAPH_INDEX)
         document.doc_language = kwargs.get("doc_language", "en")
@@ -204,7 +205,7 @@ class TestDeleteSegmentFromIndexTask:
             segment.index_node_hash = fake.sha256()
             segment.hit_count = 0
             segment.enabled = True
-            segment.status = "completed"
+            segment.status = SegmentStatus.COMPLETED
             segment.created_by = account.id
             segment.created_at = fake.date_time_this_year()
             segment.updated_by = account.id
@@ -386,7 +387,7 @@ class TestDeleteSegmentFromIndexTask:
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
         document = self._create_test_document(
-            db_session_with_containers, dataset, account, fake, indexing_status="indexing"
+            db_session_with_containers, dataset, account, fake, indexing_status=IndexingStatus.INDEXING
         )
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 

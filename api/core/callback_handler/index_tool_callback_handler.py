@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -12,7 +12,7 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DatasetQuerySource
 
 _logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class DatasetIndexToolCallbackHandler:
         dataset_query = DatasetQuery(
             dataset_id=dataset_id,
             content=query,
-            source="app",
+            source=DatasetQuerySource.APP,
             source_app_id=self._app_id,
             created_by_role=(
                 CreatorUserRole.ACCOUNT
@@ -70,23 +70,21 @@ class DatasetIndexToolCallbackHandler:
                     )
                     child_chunk = db.session.scalar(child_chunk_stmt)
                     if child_chunk:
-                        _ = (
-                            db.session.query(DocumentSegment)
+                        db.session.execute(
+                            update(DocumentSegment)
                             .where(DocumentSegment.id == child_chunk.segment_id)
-                            .update(
-                                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
-                            )
+                            .values(hit_count=DocumentSegment.hit_count + 1)
                         )
                 else:
-                    query = db.session.query(DocumentSegment).where(
-                        DocumentSegment.index_node_id == document.metadata["doc_id"]
-                    )
+                    conditions = [DocumentSegment.index_node_id == document.metadata["doc_id"]]
 
                     if "dataset_id" in document.metadata:
-                        query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                        conditions.append(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
                     # add hit count to document segment
-                    query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+                    db.session.execute(
+                        update(DocumentSegment).where(*conditions).values(hit_count=DocumentSegment.hit_count + 1)
+                    )
 
                 db.session.commit()
 

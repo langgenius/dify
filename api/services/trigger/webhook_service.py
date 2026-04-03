@@ -3,10 +3,13 @@ import logging
 import mimetypes
 import secrets
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
 import orjson
 from flask import request
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,6 +18,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -23,9 +27,6 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.file.models import FileTransferMethod
-from dify_graph.variables.types import ArrayValidation, SegmentType
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -46,6 +47,15 @@ except ImportError:
     magic = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
+
+
+class RawWebhookDataDict(TypedDict):
+    method: str
+    headers: dict[str, str]
+    query_params: dict[str, str]
+    body: dict[str, Any]
+    files: dict[str, Any]
 
 
 class WebhookService:
@@ -143,7 +153,7 @@ class WebhookService:
     @classmethod
     def extract_and_validate_webhook_data(
         cls, webhook_trigger: WorkflowWebhookTrigger, node_config: NodeConfigDict
-    ) -> dict[str, Any]:
+    ) -> RawWebhookDataDict:
         """Extract and validate webhook data in a single unified process.
 
         Args:
@@ -171,7 +181,7 @@ class WebhookService:
         return processed_data
 
     @classmethod
-    def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> dict[str, Any]:
+    def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> RawWebhookDataDict:
         """Extract raw data from incoming webhook request without type conversion.
 
         Args:
@@ -187,7 +197,7 @@ class WebhookService:
         """
         cls._validate_content_length()
 
-        data = {
+        data: RawWebhookDataDict = {
             "method": request.method,
             "headers": dict(request.headers),
             "query_params": dict(request.args),
@@ -221,7 +231,7 @@ class WebhookService:
         return data
 
     @classmethod
-    def _process_and_validate_data(cls, raw_data: dict[str, Any], node_data: WebhookData) -> dict[str, Any]:
+    def _process_and_validate_data(cls, raw_data: RawWebhookDataDict, node_data: WebhookData) -> RawWebhookDataDict:
         """Process and validate webhook data according to node configuration.
 
         Args:
@@ -422,6 +432,7 @@ class WebhookService:
         return file_factory.build_from_mapping(
             mapping=mapping,
             tenant_id=webhook_trigger.tenant_id,
+            access_controller=_file_access_controller,
         )
 
     @classmethod
@@ -661,7 +672,7 @@ class WebhookService:
                     raise ValueError(f"Required header missing: {header_name}")
 
     @classmethod
-    def _validate_http_metadata(cls, webhook_data: dict[str, Any], node_data: WebhookData) -> dict[str, Any]:
+    def _validate_http_metadata(cls, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> dict[str, Any]:
         """Validate HTTP method and content-type.
 
         Args:
@@ -726,7 +737,7 @@ class WebhookService:
             return False
 
     @classmethod
-    def build_workflow_inputs(cls, webhook_data: dict[str, Any]) -> dict[str, Any]:
+    def build_workflow_inputs(cls, webhook_data: RawWebhookDataDict) -> dict[str, Any]:
         """Construct workflow inputs payload from webhook data.
 
         Args:
@@ -744,7 +755,7 @@ class WebhookService:
 
     @classmethod
     def trigger_workflow_execution(
-        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
+        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: RawWebhookDataDict, workflow: Workflow
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 

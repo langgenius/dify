@@ -37,7 +37,7 @@ const MobileOperationDropdown = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-40">
         <div
-          className="min-w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm"
+          className="min-w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
         >
           <div className="flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover" onClick={handleResetChat}>
             <span className="grow">{t('chat.resetChat', { ns: 'share' })}</span>

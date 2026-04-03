@@ -5,11 +5,20 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+
+class InvitationData(TypedDict):
+    account_id: str
+    email: str
+    workspace_id: str
+
+
+_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -135,22 +144,26 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = db.session.query(Account).filter_by(id=user_id).first()
+        account = db.session.get(Account, user_id)
         if not account:
             return None
 
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
+        current_tenant = db.session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.current == True)
+            .limit(1)
+        )
         if current_tenant:
             account.set_tenant_id(current_tenant.tenant_id)
         else:
-            available_ta = (
-                db.session.query(TenantAccountJoin)
-                .filter_by(account_id=account.id)
+            available_ta = db.session.scalar(
+                select(TenantAccountJoin)
+                .where(TenantAccountJoin.account_id == account.id)
                 .order_by(TenantAccountJoin.id.asc())
-                .first()
+                .limit(1)
             )
             if not available_ta:
                 return None
@@ -186,7 +199,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: str | None = None) -> Account:
         """authenticate account with email and password"""
 
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
         if not account:
             raise AccountPasswordError("Invalid email or password.")
 
@@ -362,8 +375,10 @@ class AccountService:
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
-            account_integrate: AccountIntegrate | None = (
-                db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
+            account_integrate: AccountIntegrate | None = db.session.scalar(
+                select(AccountIntegrate)
+                .where(AccountIntegrate.account_id == account.id, AccountIntegrate.provider == provider)
+                .limit(1)
             )
 
             if account_integrate:
@@ -407,7 +422,9 @@ class AccountService:
     def update_account_email(account: Account, email: str) -> Account:
         """Update account email"""
         account.email = email
-        account_integrate = db.session.query(AccountIntegrate).filter_by(account_id=account.id).first()
+        account_integrate = db.session.scalar(
+            select(AccountIntegrate).where(AccountIntegrate.account_id == account.id).limit(1)
+        )
         if account_integrate:
             db.session.delete(account_integrate)
         db.session.add(account)
@@ -809,7 +826,7 @@ class AccountService:
                 )
             )
 
-        account = db.session.query(Account).where(Account.email == email).first()
+        account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
         if not account:
             return None
 
@@ -1009,7 +1026,7 @@ class AccountService:
 
     @staticmethod
     def check_email_unique(email: str) -> bool:
-        return db.session.query(Account).filter_by(email=email).first() is None
+        return db.session.scalar(select(Account).where(Account.email == email).limit(1)) is None
 
 
 class TenantService:
@@ -1571,7 +1588,7 @@ class RegisterService:
     @classmethod
     def get_invitation_by_token(
         cls, token: str, workspace_id: str | None = None, email: str | None = None
-    ) -> dict[str, str] | None:
+    ) -> InvitationData | None:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
@@ -1590,7 +1607,7 @@ class RegisterService:
             if not data:
                 return None
 
-            invitation: dict = json.loads(data)
+            invitation = _invitation_adapter.validate_json(data)
             return invitation
 
     @classmethod

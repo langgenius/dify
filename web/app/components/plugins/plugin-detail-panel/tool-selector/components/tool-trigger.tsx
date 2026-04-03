@@ -37,7 +37,7 @@ const ToolTrigger = ({
       {value?.provider_name && provider && (
         <div className="mr-1 shrink-0 rounded-lg border border-components-panel-border bg-components-panel-bg p-px">
           <BlockIcon
-            className="!h-4 !w-4"
+            className="h-4! w-4!"
             type={BlockEnum.Tool}
             toolIcon={provider.icon}
           />

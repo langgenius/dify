@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
@@ -46,7 +46,6 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
-  const notify = Toast.notify
   const checkProcess = async (jobID: string) => {
     try {
       const res = await checkAnnotationBatchImportProgress({ jobID, appId })
@@ -54,15 +53,15 @@ const BatchModal: FC<IBatchModalProps> = ({
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
-        notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}` })
+        toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}`)
       if (res.job_status === ProcessStatus.COMPLETED) {
-        notify({ type: 'success', message: `${t('batchModal.completed', { ns: 'appAnnotation' })}` })
+        toast.success(`${t('batchModal.completed', { ns: 'appAnnotation' })}`)
         onAdded()
         onCancel()
       }
     }
     catch (e: any) {
-      notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}` })
+      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
     }
   }
 
@@ -78,7 +77,7 @@ const BatchModal: FC<IBatchModalProps> = ({
       checkProcess(res.job_id)
     }
     catch (e: any) {
-      notify({ type: 'error', message: `${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}` })
+      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
     }
   }
 
@@ -89,7 +88,7 @@ const BatchModal: FC<IBatchModalProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
+    <Modal isShow={isShow} onClose={noop} className="max-w-[520px]! rounded-xl! px-8 py-6">
       <div className="system-xl-medium relative pb-1 text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />

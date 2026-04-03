@@ -10,10 +10,12 @@ from configs import dify_config
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import DatasetMetadataType, IndexingStatus, SegmentStatus
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 
 
@@ -40,14 +42,13 @@ def migrate_annotation_vector_database():
             # get apps info
             per_page = 50
             with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-                apps = (
-                    session.query(App)
+                apps = session.scalars(
+                    select(App)
                     .where(App.status == "normal")
                     .order_by(App.created_at.desc())
                     .limit(per_page)
                     .offset((page - 1) * per_page)
-                    .all()
-                )
+                ).all()
             if not apps:
                 break
         except SQLAlchemyError:
@@ -62,8 +63,8 @@ def migrate_annotation_vector_database():
             try:
                 click.echo(f"Creating app annotation index: {app.id}")
                 with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-                    app_annotation_setting = (
-                        session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
+                    app_annotation_setting = session.scalar(
+                        select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).limit(1)
                     )
 
                     if not app_annotation_setting:
@@ -71,10 +72,10 @@ def migrate_annotation_vector_database():
                         click.echo(f"App annotation setting disabled: {app.id}")
                         continue
                     # get dataset_collection_binding info
-                    dataset_collection_binding = (
-                        session.query(DatasetCollectionBinding)
-                        .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
-                        .first()
+                    dataset_collection_binding = session.scalar(
+                        select(DatasetCollectionBinding).where(
+                            DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id
+                        )
                     )
                     if not dataset_collection_binding:
                         click.echo(f"App annotation collection binding not found: {app.id}")
@@ -85,7 +86,7 @@ def migrate_annotation_vector_database():
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
-                    indexing_technique="high_quality",
+                    indexing_technique=IndexTechniqueType.HIGH_QUALITY,
                     embedding_model_provider=dataset_collection_binding.provider_name,
                     embedding_model=dataset_collection_binding.model_name,
                     collection_binding_id=dataset_collection_binding.id,
@@ -177,7 +178,9 @@ def migrate_knowledge_vector_database():
     while True:
         try:
             stmt = (
-                select(Dataset).where(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
+                select(Dataset)
+                .where(Dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY)
+                .order_by(Dataset.created_at.desc())
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
@@ -204,11 +207,11 @@ def migrate_knowledge_vector_database():
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
-                        dataset_collection_binding = (
-                            db.session.query(DatasetCollectionBinding)
-                            .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
-                            .one_or_none()
-                        )
+                        dataset_collection_binding = db.session.execute(
+                            select(DatasetCollectionBinding).where(
+                                DatasetCollectionBinding.id == dataset.collection_binding_id
+                            )
+                        ).scalar_one_or_none()
                         if dataset_collection_binding:
                             collection_name = dataset_collection_binding.collection_name
                         else:
@@ -242,7 +245,7 @@ def migrate_knowledge_vector_database():
                 dataset_documents = db.session.scalars(
                     select(DatasetDocument).where(
                         DatasetDocument.dataset_id == dataset.id,
-                        DatasetDocument.indexing_status == "completed",
+                        DatasetDocument.indexing_status == IndexingStatus.COMPLETED,
                         DatasetDocument.enabled == True,
                         DatasetDocument.archived == False,
                     )
@@ -254,7 +257,7 @@ def migrate_knowledge_vector_database():
                     segments = db.session.scalars(
                         select(DocumentSegment).where(
                             DocumentSegment.document_id == dataset_document.id,
-                            DocumentSegment.status == "completed",
+                            DocumentSegment.status == SegmentStatus.COMPLETED,
                             DocumentSegment.enabled == True,
                         )
                     ).all()
@@ -269,7 +272,7 @@ def migrate_knowledge_vector_database():
                                 "dataset_id": segment.dataset_id,
                             },
                         )
-                        if dataset_document.doc_form == "hierarchical_model":
+                        if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                             child_chunks = segment.get_child_chunks()
                             if child_chunks:
                                 child_documents = []
@@ -333,7 +336,7 @@ def add_qdrant_index(field: str):
     create_count = 0
 
     try:
-        bindings = db.session.query(DatasetCollectionBinding).all()
+        bindings = db.session.scalars(select(DatasetCollectionBinding)).all()
         if not bindings:
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
@@ -420,22 +423,22 @@ def old_metadata_migration():
                         if field.value == key:
                             break
                     else:
-                        dataset_metadata = (
-                            db.session.query(DatasetMetadata)
+                        dataset_metadata = db.session.scalar(
+                            select(DatasetMetadata)
                             .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
-                            .first()
+                            .limit(1)
                         )
                         if not dataset_metadata:
                             dataset_metadata = DatasetMetadata(
                                 tenant_id=document.tenant_id,
                                 dataset_id=document.dataset_id,
                                 name=key,
-                                type="string",
+                                type=DatasetMetadataType.STRING,
                                 created_by=document.created_by,
                             )
                             db.session.add(dataset_metadata)
                             db.session.flush()
-                            dataset_metadata_binding = DatasetMetadataBinding(
+                            dataset_metadata_binding: DatasetMetadataBinding | None = DatasetMetadataBinding(
                                 tenant_id=document.tenant_id,
                                 dataset_id=document.dataset_id,
                                 metadata_id=dataset_metadata.id,
@@ -444,14 +447,14 @@ def old_metadata_migration():
                             )
                             db.session.add(dataset_metadata_binding)
                         else:
-                            dataset_metadata_binding = (
-                                db.session.query(DatasetMetadataBinding)  # type: ignore
+                            dataset_metadata_binding = db.session.scalar(
+                                select(DatasetMetadataBinding)
                                 .where(
                                     DatasetMetadataBinding.dataset_id == document.dataset_id,
                                     DatasetMetadataBinding.document_id == document.id,
                                     DatasetMetadataBinding.metadata_id == dataset_metadata.id,
                                 )
-                                .first()
+                                .limit(1)
                             )
                             if not dataset_metadata_binding:
                                 dataset_metadata_binding = DatasetMetadataBinding(

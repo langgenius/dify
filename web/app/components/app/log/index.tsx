@@ -4,20 +4,20 @@ import type { App } from '@/types/app'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import { omit } from 'es-toolkit/object'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
-export type ILogsProps = {
+type ILogsProps = {
   appDetail: App
 }
 

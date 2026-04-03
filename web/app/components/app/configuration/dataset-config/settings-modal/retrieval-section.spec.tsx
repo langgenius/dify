@@ -212,7 +212,7 @@ describe('RetrievalSection', () => {
         currentDataset={dataset}
       />,
     )
-    const [topKIncrement] = screen.getAllByLabelText('increment')
+    const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
     await userEvent.click(topKIncrement)
 
     // Assert
@@ -267,7 +267,7 @@ describe('RetrievalSection', () => {
         docLink={path => path || ''}
       />,
     )
-    const [topKIncrement] = screen.getAllByLabelText('increment')
+    const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
     await userEvent.click(topKIncrement)
 
     // Assert

@@ -12,7 +12,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
-export type AppCardProps = {
+type AppCardProps = {
   app: App
   canCreate: boolean
   onCreate: () => void
@@ -45,7 +45,7 @@ const AppCard = ({
             imageUrl={appBasicInfo.icon_url}
           />
           <AppTypeIcon
-            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-[4px] border border-divider-regular outline outline-components-panel-on-panel-item-bg"
+            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 radius-xs border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
             className="h-3 w-3"
             type={appBasicInfo.mode}
           />
@@ -63,7 +63,7 @@ const AppCard = ({
         </div>
       </div>
       {(canCreate || isTrialApp) && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
+        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
           <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', canCreate && 'grid-cols-2')}>
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>

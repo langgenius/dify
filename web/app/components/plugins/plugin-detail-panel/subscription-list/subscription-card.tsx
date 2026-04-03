@@ -37,7 +37,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
           'group relative cursor-pointer rounded-lg border-[0.5px] px-4 py-3 shadow-xs transition-all',
           'border-components-panel-border-subtle bg-components-panel-on-panel-item-bg',
           'hover:bg-components-panel-on-panel-item-bg-hover',
-          'has-[.subscription-delete-btn:hover]:!border-state-destructive-border has-[.subscription-delete-btn:hover]:!bg-state-destructive-hover',
+          'has-[.subscription-delete-btn:hover]:border-state-destructive-border! has-[.subscription-delete-btn:hover]:bg-state-destructive-hover!',
         )}
       >
         <div className="flex items-center justify-between">

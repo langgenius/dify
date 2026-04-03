@@ -2,6 +2,7 @@ import json
 
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -47,7 +48,7 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_model)
     def get(self, app_model):
-        server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
+        server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
         return server
 
     @console_ns.doc("create_app_mcp_server")
@@ -98,17 +99,17 @@ class AppMCPServerController(Resource):
     @edit_permission_required
     def put(self, app_model):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
-        server = db.session.query(AppMCPServer).where(AppMCPServer.id == payload.id).first()
+        server = db.session.get(AppMCPServer, payload.id)
         if not server:
             raise NotFound()
 
         description = payload.description
-        if description is None:
-            pass
-        elif not description:
+        if description is None or not description:
             server.description = app_model.description or ""
         else:
             server.description = description
+
+        server.name = app_model.name
 
         server.parameters = json.dumps(payload.parameters, ensure_ascii=False)
         if payload.status:
@@ -135,11 +136,10 @@ class AppMCPServerRefreshController(Resource):
     @edit_permission_required
     def get(self, server_id):
         _, current_tenant_id = current_account_with_tenant()
-        server = (
-            db.session.query(AppMCPServer)
-            .where(AppMCPServer.id == server_id)
-            .where(AppMCPServer.tenant_id == current_tenant_id)
-            .first()
+        server = db.session.scalar(
+            select(AppMCPServer)
+            .where(AppMCPServer.id == server_id, AppMCPServer.tenant_id == current_tenant_id)
+            .limit(1)
         )
         if not server:
             raise NotFound()

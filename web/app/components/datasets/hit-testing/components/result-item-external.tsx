@@ -40,14 +40,14 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
       {isShowDetailModal && (
         <Modal
           title={t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
-          className="!min-w-[800px]"
+          className="min-w-[800px]!"
           closable
           onClose={hideDetailModal}
           isShow={isShowDetailModal}
         >
           <div className="mt-4 flex-1">
             <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
-            <div className={cn('body-md-regular mt-2 break-all text-text-secondary', 'h-[min(539px,_80vh)] overflow-y-auto')}>
+            <div className={cn('body-md-regular mt-2 break-all text-text-secondary', 'h-[min(539px,80vh)] overflow-y-auto')}>
               {content}
             </div>
           </div>
