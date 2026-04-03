@@ -3,11 +3,17 @@
 import logging
 import traceback
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypedDict
 
 import orjson
 
 from configs import dify_config
+
+
+class IdentityDict(TypedDict, total=False):
+    tenant_id: str
+    user_id: str
+    user_type: str
 
 
 class StructuredJSONFormatter(logging.Formatter):
@@ -84,7 +90,7 @@ class StructuredJSONFormatter(logging.Formatter):
 
         return log_dict
 
-    def _extract_identity(self, record: logging.LogRecord) -> dict[str, str] | None:
+    def _extract_identity(self, record: logging.LogRecord) -> IdentityDict | None:
         tenant_id = getattr(record, "tenant_id", None)
         user_id = getattr(record, "user_id", None)
         user_type = getattr(record, "user_type", None)
@@ -92,7 +98,7 @@ class StructuredJSONFormatter(logging.Formatter):
         if not any([tenant_id, user_id, user_type]):
             return None
 
-        identity: dict[str, str] = {}
+        identity: IdentityDict = {}
         if tenant_id:
             identity["tenant_id"] = tenant_id
         if user_id:
