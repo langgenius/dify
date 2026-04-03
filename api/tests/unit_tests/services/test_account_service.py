@@ -988,7 +988,7 @@ class TestRegisterService:
             )
 
             # Verify rollback operations were called
-            mock_db_dependencies["db"].session.query.assert_called()
+            mock_db_dependencies["db"].session.execute.assert_called()
 
     # ==================== Registration Tests ====================
 
@@ -1553,10 +1553,8 @@ class TestRegisterService:
             mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = mock_existing_account
 
-            # Mock the db.session.query for TenantAccountJoin
-            mock_db_query = MagicMock()
-            mock_db_query.filter_by.return_value.first.return_value = None  # No existing member
-            mock_db_dependencies["db"].session.query.return_value = mock_db_query
+            # Mock scalar for TenantAccountJoin lookup - no existing member
+            mock_db_dependencies["db"].session.scalar.return_value = None
 
             # Mock TenantService methods
             with (
@@ -1731,14 +1729,9 @@ class TestRegisterService:
             }
             mock_get_invitation_by_token.return_value = invitation_data
 
-            # Mock database queries - complex query mocking
-            mock_query1 = MagicMock()
-            mock_query1.where.return_value.first.return_value = mock_tenant
-
-            mock_query2 = MagicMock()
-            mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
-
-            mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+            # Mock scalar for tenant lookup, execute for account+role lookup
+            mock_db_dependencies["db"].session.scalar.return_value = mock_tenant
+            mock_db_dependencies["db"].session.execute.return_value.first.return_value = (mock_account, "normal")
 
             # Execute test
             result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
@@ -1770,10 +1763,8 @@ class TestRegisterService:
         }
         mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
 
-        # Mock database queries - no tenant found
-        mock_query = MagicMock()
-        mock_query.filter.return_value.first.return_value = None
-        mock_db_dependencies["db"].session.query.return_value = mock_query
+        # Mock scalar for tenant lookup - not found
+        mock_db_dependencies["db"].session.scalar.return_value = None
 
         # Execute test
         result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
@@ -1796,14 +1787,9 @@ class TestRegisterService:
         }
         mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
 
-        # Mock database queries
-        mock_query1 = MagicMock()
-        mock_query1.filter.return_value.first.return_value = mock_tenant
-
-        mock_query2 = MagicMock()
-        mock_query2.join.return_value.where.return_value.first.return_value = None  # No account found
-
-        mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+        # Mock scalar for tenant, execute for account+role
+        mock_db_dependencies["db"].session.scalar.return_value = mock_tenant
+        mock_db_dependencies["db"].session.execute.return_value.first.return_value = None  # No account found
 
         # Execute test
         result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
@@ -1829,14 +1815,9 @@ class TestRegisterService:
         }
         mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
 
-        # Mock database queries
-        mock_query1 = MagicMock()
-        mock_query1.filter.return_value.first.return_value = mock_tenant
-
-        mock_query2 = MagicMock()
-        mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
-
-        mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+        # Mock scalar for tenant, execute for account+role
+        mock_db_dependencies["db"].session.scalar.return_value = mock_tenant
+        mock_db_dependencies["db"].session.execute.return_value.first.return_value = (mock_account, "normal")
 
         # Execute test
         result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
