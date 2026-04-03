@@ -8,7 +8,7 @@ from hashlib import sha256
 from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 
@@ -144,22 +144,26 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = db.session.query(Account).filter_by(id=user_id).first()
+        account = db.session.get(Account, user_id)
         if not account:
             return None
 
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
+        current_tenant = db.session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.current == True)
+            .limit(1)
+        )
         if current_tenant:
             account.set_tenant_id(current_tenant.tenant_id)
         else:
-            available_ta = (
-                db.session.query(TenantAccountJoin)
-                .filter_by(account_id=account.id)
+            available_ta = db.session.scalar(
+                select(TenantAccountJoin)
+                .where(TenantAccountJoin.account_id == account.id)
                 .order_by(TenantAccountJoin.id.asc())
-                .first()
+                .limit(1)
             )
             if not available_ta:
                 return None
@@ -195,7 +199,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: str | None = None) -> Account:
         """authenticate account with email and password"""
 
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
         if not account:
             raise AccountPasswordError("Invalid email or password.")
 
@@ -371,8 +375,10 @@ class AccountService:
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
-            account_integrate: AccountIntegrate | None = (
-                db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
+            account_integrate: AccountIntegrate | None = db.session.scalar(
+                select(AccountIntegrate)
+                .where(AccountIntegrate.account_id == account.id, AccountIntegrate.provider == provider)
+                .limit(1)
             )
 
             if account_integrate:
@@ -416,7 +422,9 @@ class AccountService:
     def update_account_email(account: Account, email: str) -> Account:
         """Update account email"""
         account.email = email
-        account_integrate = db.session.query(AccountIntegrate).filter_by(account_id=account.id).first()
+        account_integrate = db.session.scalar(
+            select(AccountIntegrate).where(AccountIntegrate.account_id == account.id).limit(1)
+        )
         if account_integrate:
             db.session.delete(account_integrate)
         db.session.add(account)
@@ -818,7 +826,7 @@ class AccountService:
                 )
             )
 
-        account = db.session.query(Account).where(Account.email == email).first()
+        account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
         if not account:
             return None
 
@@ -1018,7 +1026,7 @@ class AccountService:
 
     @staticmethod
     def check_email_unique(email: str) -> bool:
-        return db.session.query(Account).filter_by(email=email).first() is None
+        return db.session.scalar(select(Account).where(Account.email == email).limit(1)) is None
 
 
 class TenantService:
@@ -1384,10 +1392,10 @@ class RegisterService:
             db.session.add(dify_setup)
             db.session.commit()
         except Exception as e:
-            db.session.query(DifySetup).delete()
-            db.session.query(TenantAccountJoin).delete()
-            db.session.query(Account).delete()
-            db.session.query(Tenant).delete()
+            db.session.execute(delete(DifySetup))
+            db.session.execute(delete(TenantAccountJoin))
+            db.session.execute(delete(Account))
+            db.session.execute(delete(Tenant))
             db.session.commit()
 
             logger.exception("Setup account failed, email: %s, name: %s", email, name)
@@ -1488,7 +1496,11 @@ class RegisterService:
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
-            ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+            ta = db.session.scalar(
+                select(TenantAccountJoin)
+                .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+                .limit(1)
+            )
 
             if not ta:
                 TenantService.create_tenant_member(tenant, account, role)
@@ -1545,21 +1557,18 @@ class RegisterService:
         if not invitation_data:
             return None
 
-        tenant = (
-            db.session.query(Tenant)
-            .where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
-            .first()
+        tenant = db.session.scalar(
+            select(Tenant).where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal").limit(1)
         )
 
         if not tenant:
             return None
 
-        tenant_account = (
-            db.session.query(Account, TenantAccountJoin.role)
+        tenant_account = db.session.execute(
+            select(Account, TenantAccountJoin.role)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
             .where(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
-            .first()
-        )
+        ).first()
 
         if not tenant_account:
             return None
