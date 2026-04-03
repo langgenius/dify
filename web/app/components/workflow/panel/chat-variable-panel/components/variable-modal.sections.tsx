@@ -16,7 +16,7 @@ type SectionTitleProps = {
   children: ReactNode
 }
 
-export const SectionTitle = ({ children }: SectionTitleProps) => (
+const SectionTitle = ({ children }: SectionTitleProps) => (
   <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{children}</div>
 )
 

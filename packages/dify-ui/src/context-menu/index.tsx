@@ -18,8 +18,6 @@ import { parsePlacement } from '../internal/placement.js'
 
 export const ContextMenu = BaseContextMenu.Root
 export const ContextMenuTrigger = BaseContextMenu.Trigger
-export const ContextMenuPortal = BaseContextMenu.Portal
-export const ContextMenuBackdrop = BaseContextMenu.Backdrop
 export const ContextMenuSub = BaseContextMenu.SubmenuRoot
 export const ContextMenuGroup = BaseContextMenu.Group
 export const ContextMenuRadioGroup = BaseContextMenu.RadioGroup
@@ -195,7 +193,6 @@ export function ContextMenuItemIndicator({
     </span>
   )
 }
-
 export function ContextMenuCheckboxItemIndicator({
   className,
   ...props

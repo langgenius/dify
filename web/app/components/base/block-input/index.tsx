@@ -29,7 +29,7 @@ export const getInputKeys = (value: string) => {
   return res
 }
 
-export type IBlockInputProps = {
+type IBlockInputProps = {
   value: string
   className?: string // wrapper class
   highLightClassName?: string // class for the highlighted text default is text-blue-500

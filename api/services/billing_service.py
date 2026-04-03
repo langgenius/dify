@@ -32,6 +32,11 @@ class SubscriptionPlan(TypedDict):
     expiration_date: int
 
 
+class KnowledgeRateLimitDict(TypedDict):
+    limit: int
+    subscription_plan: str
+
+
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
@@ -58,7 +63,7 @@ class BillingService:
         return usage_info
 
     @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
+    def get_knowledge_rate_limit(cls, tenant_id: str) -> KnowledgeRateLimitDict:
         params = {"tenant_id": tenant_id}
 
         knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)

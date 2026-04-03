@@ -173,9 +173,7 @@ class TestAccountService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Setup smart database query mock
-        query_results = {("Account", "email", "test@example.com"): mock_account}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
         mock_password_dependencies["compare_password"].return_value = True
 
@@ -188,9 +186,7 @@ class TestAccountService:
 
     def test_authenticate_account_not_found(self, mock_db_dependencies):
         """Test authentication when account does not exist."""
-        # Setup smart database query mock - no matching results
-        query_results = {("Account", "email", "notfound@example.com"): None}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.scalar.return_value = None
 
         # Execute test and verify exception
         self._assert_exception_raised(
@@ -202,9 +198,7 @@ class TestAccountService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(status="banned")
 
-        # Setup smart database query mock
-        query_results = {("Account", "email", "banned@example.com"): mock_account}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
         # Execute test and verify exception
         self._assert_exception_raised(AccountLoginError, AccountService.authenticate, "banned@example.com", "password")
@@ -214,9 +208,7 @@ class TestAccountService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Setup smart database query mock
-        query_results = {("Account", "email", "test@example.com"): mock_account}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
         mock_password_dependencies["compare_password"].return_value = False
 
@@ -230,9 +222,7 @@ class TestAccountService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(status="pending")
 
-        # Setup smart database query mock
-        query_results = {("Account", "email", "pending@example.com"): mock_account}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
         mock_password_dependencies["compare_password"].return_value = True
 
@@ -422,12 +412,8 @@ class TestAccountService:
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
         mock_tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock()
 
-        # Setup smart database query mock
-        query_results = {
-            ("Account", "id", "user-123"): mock_account,
-            ("TenantAccountJoin", "account_id", "user-123"): mock_tenant_join,
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.get.return_value = mock_account
+        mock_db_dependencies["db"].session.scalar.return_value = mock_tenant_join
 
         # Mock datetime
         with patch("services.account_service.datetime") as mock_datetime:
@@ -444,9 +430,7 @@ class TestAccountService:
 
     def test_load_user_not_found(self, mock_db_dependencies):
         """Test user loading when user does not exist."""
-        # Setup smart database query mock - no matching results
-        query_results = {("Account", "id", "non-existent-user"): None}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.get.return_value = None
 
         # Execute test
         result = AccountService.load_user("non-existent-user")
@@ -459,9 +443,7 @@ class TestAccountService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(status="banned")
 
-        # Setup smart database query mock
-        query_results = {("Account", "id", "user-123"): mock_account}
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.get.return_value = mock_account
 
         # Execute test and verify exception
         self._assert_exception_raised(
@@ -476,13 +458,9 @@ class TestAccountService:
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
         mock_available_tenant = TestAccountAssociatedDataFactory.create_tenant_join_mock(current=False)
 
-        # Setup smart database query mock for complex scenario
-        query_results = {
-            ("Account", "id", "user-123"): mock_account,
-            ("TenantAccountJoin", "account_id", "user-123"): None,  # No current tenant
-            ("TenantAccountJoin", "order_by", "first_available"): mock_available_tenant,  # First available tenant
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.get.return_value = mock_account
+        # First scalar: current tenant (None), second scalar: available tenant
+        mock_db_dependencies["db"].session.scalar.side_effect = [None, mock_available_tenant]
 
         # Mock datetime
         with patch("services.account_service.datetime") as mock_datetime:
@@ -503,13 +481,9 @@ class TestAccountService:
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Setup smart database query mock for no tenants scenario
-        query_results = {
-            ("Account", "id", "user-123"): mock_account,
-            ("TenantAccountJoin", "account_id", "user-123"): None,  # No current tenant
-            ("TenantAccountJoin", "order_by", "first_available"): None,  # No available tenants
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies["db"].session.get.return_value = mock_account
+        # First scalar: current tenant (None), second scalar: available tenant (None)
+        mock_db_dependencies["db"].session.scalar.side_effect = [None, None]
 
         # Mock datetime
         with patch("services.account_service.datetime") as mock_datetime:

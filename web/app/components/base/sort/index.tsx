@@ -9,7 +9,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 
-export type Item = {
+type Item = {
   value: number | string
   name: string
 } & Record<string, any>

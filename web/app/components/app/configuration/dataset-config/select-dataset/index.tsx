@@ -17,7 +17,7 @@ import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
 
-export type ISelectDataSetProps = {
+type ISelectDataSetProps = {
   isShow: boolean
   onClose: () => void
   selectedIds: string[]

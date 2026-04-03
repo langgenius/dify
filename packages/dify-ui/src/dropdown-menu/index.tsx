@@ -16,7 +16,6 @@ import {
 import { parsePlacement } from '../internal/placement.js'
 
 export const DropdownMenu = Menu.Root
-export const DropdownMenuPortal = Menu.Portal
 export const DropdownMenuTrigger = Menu.Trigger
 export const DropdownMenuSub = Menu.SubmenuRoot
 export const DropdownMenuGroup = Menu.Group

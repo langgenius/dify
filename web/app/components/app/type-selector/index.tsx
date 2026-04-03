@@ -11,7 +11,7 @@ import {
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
-export type AppSelectorProps = {
+type AppSelectorProps = {
   value: Array<AppModeEnum>
   onChange: (value: AppSelectorProps['value']) => void
 }

@@ -8,7 +8,7 @@ import { useChildSegmentList, useChildSegmentListKey, useDeleteChildSegment, use
 import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../../context'
 
-export type UseChildSegmentDataOptions = {
+type UseChildSegmentDataOptions = {
   searchValue: string
   currentPage: number
   limit: number
@@ -19,7 +19,7 @@ export type UseChildSegmentDataOptions = {
   refreshChunkListDataWithDetailChanged: () => void
   updateSegmentInCache: (segmentId: string, updater: (seg: SegmentDetailModel) => SegmentDetailModel) => void
 }
-export type UseChildSegmentDataReturn = {
+type UseChildSegmentDataReturn = {
   childSegments: ChildChunkDetail[]
   isLoadingChildSegmentList: boolean
   childChunkListData: ReturnType<typeof useChildSegmentList>['data']
