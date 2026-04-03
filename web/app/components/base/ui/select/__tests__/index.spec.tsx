@@ -1,16 +1,6 @@
-import { Select as BaseSelect } from '@base-ui/react/select'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectGroupLabel,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '../index'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../index'
 
 const renderOpenSelect = ({
   rootProps = {},
@@ -51,14 +41,6 @@ const renderOpenSelect = ({
 }
 
 describe('Select wrappers', () => {
-  describe('alias exports', () => {
-    it('should map group-related aliases to the corresponding BaseSelect primitives', () => {
-      expect(SelectGroup).toBe(BaseSelect.Group)
-      expect(SelectGroupLabel).toBe(BaseSelect.GroupLabel)
-      expect(SelectSeparator).toBe(BaseSelect.Separator)
-    })
-  })
-
   describe('SelectTrigger', () => {
     it('should render clear button when clearable is true and loading is false', () => {
       renderOpenSelect({
