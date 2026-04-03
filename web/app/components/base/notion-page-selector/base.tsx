@@ -1,7 +1,8 @@
 import type { DataSourceCredential } from '../../header/account-setting/data-source-page-new/types'
 import type { NotionCredential } from './credential-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
@@ -33,6 +34,7 @@ const NotionPageSelector = ({
   credentialList,
   onSelectCredential,
 }: NotionPageSelectorProps) => {
+  const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
 
@@ -101,7 +103,9 @@ const NotionPageSelector = ({
   }, [defaultSelectedPagesId])
 
   const handleSearchValueChange = useCallback((value: string) => {
-    setSearchValue(value)
+    startTransition(() => {
+      setSearchValue(value)
+    })
   }, [])
 
   const handleSelectCredential = useCallback((credentialId: string) => {
@@ -140,9 +144,9 @@ const NotionPageSelector = ({
     <div className="flex flex-col gap-y-2" data-testid="notion-page-selector-base">
       <Header
         onClickConfiguration={handleConfigureNotion}
-        title="Choose notion pages"
-        buttonText="Configure Notion"
-        docTitle="Notion docs"
+        title={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
+        buttonText={t('dataSource.notion.selector.configure', { ns: 'common' })}
+        docTitle={t('dataSource.notion.selector.docs', { ns: 'common' })}
         docLink="https://www.notion.so/docs"
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
