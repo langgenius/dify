@@ -8,8 +8,7 @@ from hashlib import sha256
 from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter
-from sqlalchemy import func, select, update
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 
