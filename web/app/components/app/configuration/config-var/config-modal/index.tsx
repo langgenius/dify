@@ -25,7 +25,7 @@ import {
   validateConfigModalPayload,
 } from './utils'
 
-export type IConfigModalProps = {
+type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
   isShow: boolean

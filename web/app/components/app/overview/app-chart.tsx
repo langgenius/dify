@@ -50,12 +50,12 @@ export type PeriodParamsWithTimeRange = {
   query?: TimeRange
 }
 
-export type IBizChartProps = {
+type IBizChartProps = {
   period: PeriodParams
   id: string
 }
 
-export type IChartProps = {
+type IChartProps = {
   className?: string
   basicInfo: { title: string, explanation: string, timePeriod: string }
   valueKey?: string

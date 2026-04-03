@@ -31,7 +31,7 @@ import {
 } from './utils'
 import WorkflowBody from './workflow-body'
 
-export type IGenerationItemProps = {
+type IGenerationItemProps = {
   isWorkflow?: boolean
   workflowProcessData?: WorkflowProcess
   className?: string
