@@ -259,8 +259,8 @@ catalogs:
       specifier: 1.1.1
       version: 1.1.1
     code-inspector-plugin:
-      specifier: 1.5.0
-      version: 1.5.0
+      specifier: 1.5.1
+      version: 1.5.1
     copy-to-clipboard:
       specifier: 3.3.3
       version: 3.3.3
@@ -1130,7 +1130,7 @@ importers:
         version: 3.0.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       code-inspector-plugin:
         specifier: 'catalog:'
-        version: 1.5.0
+        version: 1.5.1
       eslint:
         specifier: 'catalog:'
         version: 10.1.0(jiti@2.6.1)
@@ -1497,23 +1497,23 @@ packages:
   '@clack/prompts@1.2.0':
     resolution: {integrity: sha512-4jmztR9fMqPMjz6H/UZXj0zEmE43ha1euENwkckKKel4XpSfokExPo5AiVStdHSAlHekz4d0CA/r45Ok1E4D3w==}
 
-  '@code-inspector/core@1.5.0':
-    resolution: {integrity: sha512-wyBiJ2YTONkS3yn+uNx4VEoTJT5muKbri/kN7XZXQa/Kzl60OM7KS3gTyZ/gGjM6IN6QjYwKMs4++ErI0AgLdw==}
+  '@code-inspector/core@1.5.1':
+    resolution: {integrity: sha512-Y9JdgoxVh93xRMupTa1lT/v+UlcBEpM7Y1BTxQy924wSe6VVEXsJ1nPJ/Ob2HPMUAA6F568aHALi2KDUhA2kzg==}
 
-  '@code-inspector/esbuild@1.5.0':
-    resolution: {integrity: sha512-7ekO9zp6ikjORwFkP1BwDPzkyAofGQqkPyBETb/8nrNuDBvW0zAbHNWt3M1lsxqFZwFX/nPvpSgvlEUn+qI3CQ==}
+  '@code-inspector/esbuild@1.5.1':
+    resolution: {integrity: sha512-Z/WZVCG6WaB9HTcDC8l15RpgEsfFj/WKLLr6cKNX/JzAYBroadLPw1N0sbUJUIQnow5cCo7KYpHrC1T27WVMnw==}
 
-  '@code-inspector/mako@1.5.0':
-    resolution: {integrity: sha512-6spNArsYGJpVwZsbRBfa43W6fB9vsUdZPN3McyERrs4mKzVnz4lo4Wqc2aodk42OTRIahSibwzYqQSJvtMiGgw==}
+  '@code-inspector/mako@1.5.1':
+    resolution: {integrity: sha512-EQmqQnnyW8tf3EBRlYyRYv1n3W1PUcfaYuuXXAfBdfJIGMwJjj0PcrDsdiI5MNyFmIx3QdMREhWmPMx1LoAANg==}
 
-  '@code-inspector/turbopack@1.5.0':
-    resolution: {integrity: sha512-Y18/vFcElEwSb4r0keJNzgsnu+Gw6PAF313/MbM6eKmTToHYJjI4In9xGn4vyEJaTf08gXAFe8OBTmoGC+sUsg==}
+  '@code-inspector/turbopack@1.5.1':
+    resolution: {integrity: sha512-PeLbcDtKDoSrKPsWnwQc+Yj9KgCa3xbHxEwXa/aGVykilvfvYP9AH1z5BRyZLDgB21diSV75BPNpF+o/FQRYug==}
 
-  '@code-inspector/vite@1.5.0':
-    resolution: {integrity: sha512-Iu+fPvUDf0xel4szhxst3BCZSfVEfWE+diOizL3CozDeSvm+VV/Fp0D7X7qMwjFEnVCUBWMCvqQTZ71pmd/EQw==}
+  '@code-inspector/vite@1.5.1':
+    resolution: {integrity: sha512-gkfmSmawYb1yDDuCft4DESXCAD3JxPt59dGiRoD78GhQzSYHk3tnLPZMH/GLBpdeFNbKHi1FtEMbAAECIJG9xg==}
 
-  '@code-inspector/webpack@1.5.0':
-    resolution: {integrity: sha512-L7PAuHJOYPBK38zhql5qGP0tK2L0TJffYFfUGD+z82l0DCG9R/JJlKp38nDz0nureKgNGaQdKVrlE/EiHRp5RQ==}
+  '@code-inspector/webpack@1.5.1':
+    resolution: {integrity: sha512-8i3QI/bSirORDF/0P16T6NhNy1RxO7soip8sWeV/2btLbYCwyiaDnqT4Bw3JaM8MNz0N8NaA2qItUrrKE7TtCg==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -5165,8 +5165,8 @@ packages:
       react: ^18 || ^19 || ^19.0.0-rc
       react-dom: ^18 || ^19 || ^19.0.0-rc
 
-  code-inspector-plugin@1.5.0:
-    resolution: {integrity: sha512-l9MB8MJy/ZRCYZWcJFvPPBWVjQw/3F9d3/S8pPIzdikY8NXfeA8LCw9vNr+maO7/CQZxaJtExH/LDDXUNCWhig==}
+  code-inspector-plugin@1.5.1:
+    resolution: {integrity: sha512-7gOqqBurKCucnls1ZHw0KWb7Z5u7gg3Q2pFSY9rrttFmwRaFJfJiscKEbm7X9IKmeEvkFRtNvNrHbSVQ67L8pQ==}
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -9297,7 +9297,7 @@ snapshots:
       fast-wrap-ansi: 0.1.6
       sisteransi: 1.0.5
 
-  '@code-inspector/core@1.5.0':
+  '@code-inspector/core@1.5.1':
     dependencies:
       '@vue/compiler-dom': 3.5.31
       chalk: 4.1.2
@@ -9307,35 +9307,35 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/esbuild@1.5.0':
+  '@code-inspector/esbuild@1.5.1':
     dependencies:
-      '@code-inspector/core': 1.5.0
+      '@code-inspector/core': 1.5.1
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/mako@1.5.0':
+  '@code-inspector/mako@1.5.1':
     dependencies:
-      '@code-inspector/core': 1.5.0
+      '@code-inspector/core': 1.5.1
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/turbopack@1.5.0':
+  '@code-inspector/turbopack@1.5.1':
     dependencies:
-      '@code-inspector/core': 1.5.0
-      '@code-inspector/webpack': 1.5.0
+      '@code-inspector/core': 1.5.1
+      '@code-inspector/webpack': 1.5.1
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/vite@1.5.0':
+  '@code-inspector/vite@1.5.1':
     dependencies:
-      '@code-inspector/core': 1.5.0
+      '@code-inspector/core': 1.5.1
       chalk: 4.1.1
     transitivePeerDependencies:
       - supports-color
 
-  '@code-inspector/webpack@1.5.0':
+  '@code-inspector/webpack@1.5.1':
     dependencies:
-      '@code-inspector/core': 1.5.0
+      '@code-inspector/core': 1.5.1
     transitivePeerDependencies:
       - supports-color
 
@@ -12890,14 +12890,14 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  code-inspector-plugin@1.5.0:
+  code-inspector-plugin@1.5.1:
     dependencies:
-      '@code-inspector/core': 1.5.0
-      '@code-inspector/esbuild': 1.5.0
-      '@code-inspector/mako': 1.5.0
-      '@code-inspector/turbopack': 1.5.0
-      '@code-inspector/vite': 1.5.0
-      '@code-inspector/webpack': 1.5.0
+      '@code-inspector/core': 1.5.1
+      '@code-inspector/esbuild': 1.5.1
+      '@code-inspector/mako': 1.5.1
+      '@code-inspector/turbopack': 1.5.1
+      '@code-inspector/vite': 1.5.1
+      '@code-inspector/webpack': 1.5.1
       chalk: 4.1.1
     transitivePeerDependencies:
       - supports-color
