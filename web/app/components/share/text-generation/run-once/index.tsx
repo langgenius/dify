@@ -24,7 +24,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { cn } from '@/utils/classnames'
 
-export type IRunOnceProps = {
+type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, InputValueTypes>

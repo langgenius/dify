@@ -1,7 +1,7 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
 import { cn } from '@/utils/classnames'
 
-export type PreviewContainerProps = ComponentProps<'div'> & {
+type PreviewContainerProps = ComponentProps<'div'> & {
   header: ReactNode
   mainClassName?: string
   ref?: React.Ref<HTMLDivElement>

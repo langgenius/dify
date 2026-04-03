@@ -70,7 +70,7 @@ const resolveMultipleListeningDescription = (
   return t('debug.variableInspect.listening.tipFallback', { ns: 'workflow' })
 }
 
-export type ListeningProps = {
+type ListeningProps = {
   onStop: () => void
   message?: string
 }

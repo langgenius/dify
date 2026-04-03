@@ -33,7 +33,7 @@ import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
-export type ISimplePromptInput = {
+type ISimplePromptInput = {
   mode: AppModeEnum
   promptTemplate: string
   promptVariables: PromptVariable[]

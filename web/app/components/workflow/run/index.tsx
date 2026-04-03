@@ -15,7 +15,7 @@ import ResultPanel from './result-panel'
 import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
 
-export type RunProps = {
+type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void

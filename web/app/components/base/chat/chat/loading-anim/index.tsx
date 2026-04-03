@@ -4,7 +4,7 @@ import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
-export type ILoadingAnimProps = {
+type ILoadingAnimProps = {
   type: 'text' | 'avatar'
 }
 

@@ -40,7 +40,7 @@ export const isValidUrl = (string: string) => {
 export const isValidServerID = (str: string) => {
   return /^[a-z0-9_-]{1,24}$/.test(str)
 }
-export type MCPModalFormState = {
+type MCPModalFormState = {
   url: string
   name: string
   appIcon: AppIconSelection
@@ -55,7 +55,7 @@ export type MCPModalFormState = {
   clientID: string
   credentials: string
 }
-export type MCPModalFormActions = {
+type MCPModalFormActions = {
   setUrl: (url: string) => void
   setName: (name: string) => void
   setAppIcon: (icon: AppIconSelection) => void

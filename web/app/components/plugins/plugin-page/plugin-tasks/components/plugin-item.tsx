@@ -3,7 +3,7 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
 
-export type PluginItemProps = {
+type PluginItemProps = {
   plugin: PluginStatus
   getIconUrl: (icon: string) => string
   language: Locale

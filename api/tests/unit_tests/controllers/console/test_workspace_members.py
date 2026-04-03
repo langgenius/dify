@@ -12,7 +12,7 @@ from models.account import Account, TenantAccountRole
 def app():
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
-    flask_app.login_manager = SimpleNamespace(_load_user=lambda: None)
+    flask_app.login_manager = SimpleNamespace(load_user_from_request_context=lambda: None)
     return flask_app
 
 
