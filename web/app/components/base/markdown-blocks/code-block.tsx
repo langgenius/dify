@@ -106,7 +106,7 @@ const ShikiCodeBlock = memo(({ code, language, theme }: { code: string, language
         borderBottomRightRadius: '10px',
         overflow: 'auto',
       }}
-      className="shiki-line-numbers [&_pre]:!m-0 [&_pre]:!rounded-b-[10px] [&_pre]:!rounded-t-none [&_pre]:!bg-components-input-bg-normal [&_pre]:!p-3"
+      className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:p-3!"
     />
   )
 })
@@ -479,7 +479,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   return (
     <div className="relative">
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
-        <div className="text-text-secondary system-xs-semibold-uppercase">{languageShowName}</div>
+        <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>
