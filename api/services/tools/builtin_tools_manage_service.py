@@ -411,7 +411,7 @@ class BuiltinToolManageService:
         """
         with Session(db.engine) as session:
             # get provider
-            target_provider = session.query(BuiltinToolProvider).filter_by(id=id).first()
+            target_provider = session.query(BuiltinToolProvider).filter_by(id=id, tenant_id=tenant_id).first()
             if target_provider is None:
                 raise ValueError("provider not found")
 

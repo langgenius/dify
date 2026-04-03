@@ -10,17 +10,21 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-  },
-}))
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
 
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 // Mock document service hooks
@@ -490,10 +494,7 @@ describe('Operations', () => {
         fireEvent.click(archiveButton)
       })
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
     })
 
@@ -511,10 +512,7 @@ describe('Operations', () => {
         fireEvent.click(downloadButton)
       })
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.downloadUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
       })
     })
 
@@ -532,10 +530,7 @@ describe('Operations', () => {
         fireEvent.click(downloadButton)
       })
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.downloadUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
       })
     })
   })

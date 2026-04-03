@@ -112,7 +112,7 @@ export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
           />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <div className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg">
           <SubscriptionList
             mode={SubscriptionListMode.SELECTOR}

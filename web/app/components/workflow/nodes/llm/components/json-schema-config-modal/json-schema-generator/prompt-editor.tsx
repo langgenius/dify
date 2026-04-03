@@ -10,7 +10,7 @@ import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
-export type ModelInfo = {
+type ModelInfo = {
   modelId: string
   provider: string
   mode?: string
@@ -62,7 +62,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           {t('modelProvider.model', { ns: 'common' })}
         </div>
         <ModelParameterModal
-          popupClassName="!w-[448px]"
+          popupClassName="w-[448px]!"
           isAdvancedMode={true}
           provider={model.provider}
           completionParams={model.completion_params}

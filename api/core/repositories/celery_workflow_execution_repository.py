@@ -6,7 +6,6 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
-from typing import Union
 
 from graphon.entities import WorkflowExecution
 from sqlalchemy.engine import Engine
@@ -47,7 +46,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
     ):

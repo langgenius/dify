@@ -31,7 +31,7 @@ const Alert: React.FC<Props> = ({
       <div
         className="relative flex space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg"
       >
-        <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-r opacity-[0.4]', bgVariants({ type }))} data-testid="alert-gradient">
+        <div className={cn('pointer-events-none absolute inset-0 bg-linear-to-r opacity-[0.4]', bgVariants({ type }))} data-testid="alert-gradient">
         </div>
         <div className="flex h-6 w-6 items-center justify-center">
           <span className="i-ri-information-2-fill text-text-accent" data-testid="info-icon" />

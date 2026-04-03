@@ -89,7 +89,7 @@ const HeaderInRestoring = ({
           variant="primary"
           className={cn(
             'rounded-lg border border-transparent',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
         >
           {t('common.restore', { ns: 'workflow' })}
@@ -98,7 +98,7 @@ const HeaderInRestoring = ({
           onClick={handleCancelRestore}
           className={cn(
             'rounded-lg border border-transparent text-components-button-secondary-accent-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
         >
           <div className="flex items-center gap-x-0.5">

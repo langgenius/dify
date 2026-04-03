@@ -10,14 +10,11 @@ import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLi
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
-import Toast from '@/app/components/base/toast'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
@@ -28,6 +25,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -64,14 +62,13 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
   ssr: false,
 })
 
-export type AppCardProps = {
+type AppCardProps = {
   app: App
   onRefresh?: () => void
 }
 
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
@@ -90,20 +87,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const onConfirmDelete = useCallback(async () => {
     try {
       await mutateDeleteApp(app.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      toast.success(t('appDeleted', { ns: 'app' }))
       onPlanInfoChanged()
     }
     catch (e: any) {
-      notify({
-        type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
-      })
+      toast.error(`${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`)
     }
     finally {
       setShowConfirmDelete(false)
       setConfirmDeleteInput('')
     }
-  }, [app.id, mutateDeleteApp, notify, onPlanInfoChanged, t])
+  }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
 
   const onDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (isDeleting)
@@ -135,20 +129,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         max_active_requests,
       })
       setShowEditModal(false)
-      notify({
-        type: 'success',
-        message: t('editDone', { ns: 'app' }),
-      })
+      toast.success(t('editDone', { ns: 'app' }))
       if (onRefresh)
         onRefresh()
     }
     catch (e: any) {
-      notify({
-        type: 'error',
-        message: e.message || t('editFailed', { ns: 'app' }),
-      })
+      toast.error(e.message || t('editFailed', { ns: 'app' }))
     }
-  }, [app.id, notify, onRefresh, t])
+  }, [app.id, onRefresh, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
@@ -161,10 +149,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         mode: app.mode,
       })
       setShowDuplicateModal(false)
-      notify({
-        type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
-      })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (onRefresh)
         onRefresh()
@@ -172,7 +157,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 
@@ -186,7 +171,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       downloadBlob({ data: file, fileName: `${app.name}.yml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
 
@@ -205,7 +190,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
 
@@ -274,13 +259,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           throw new Error('No app found in Explore')
         }, {
           onError: (err) => {
-            Toast.notify({ type: 'error', message: `${err.message || err}` })
+            toast.error(`${err.message || err}`)
           },
         })
       }
       catch (e: unknown) {
         const message = e instanceof Error ? e.message : `${e}`
-        Toast.notify({ type: 'error', message })
+        toast.error(message)
       }
     }
     return (
@@ -372,7 +357,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border-[1px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
       >
         <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]">
           <div className="relative shrink-0">
@@ -385,7 +370,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             />
             <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="h-3 w-3" />
           </div>
-          <div className="w-0 grow py-[1px]">
+          <div className="w-0 grow py-px">
             <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
               <div className="truncate" title={app.name}>{app.name}</div>
             </div>
@@ -436,7 +421,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   e.preventDefault()
                 }}
               >
-                <div className="mr-[41px] w-full grow group-hover:!mr-0">
+                <div className="mr-[41px] w-full grow group-hover:mr-0!">
                   <TagSelector
                     position="bl"
                     type="app"
@@ -448,8 +433,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className="mx-1 !hidden h-[14px] w-[1px] shrink-0 bg-divider-regular group-hover:!flex" />
-              <div className="!hidden shrink-0 group-hover:!flex">
+              <div className="mx-1 hidden! h-[14px] w-px shrink-0 bg-divider-regular group-hover:flex!" />
+              <div className="hidden! shrink-0 group-hover:flex!">
                 <CustomPopover
                   htmlContent={<Operations />}
                   position="br"
@@ -464,15 +449,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   )}
                   btnClassName={open =>
                     cn(
-                      open ? '!bg-state-base-hover !shadow-none' : '!bg-transparent',
-                      'h-8 w-8 rounded-md border-none !p-2 hover:!bg-state-base-hover',
+                      open ? 'bg-state-base-hover! shadow-none!' : 'bg-transparent!',
+                      'h-8 w-8 rounded-md border-none p-2! hover:bg-state-base-hover!',
                     )}
                   popupClassName={
                     (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
-                      ? '!w-[256px] translate-x-[-224px]'
-                      : '!w-[216px] translate-x-[-128px]'
+                      ? 'w-[256px]! translate-x-[-224px]'
+                      : 'w-[216px]! translate-x-[-128px]'
                   }
-                  className="!z-20 h-fit"
+                  className="z-20! h-fit"
                 />
               </div>
             </>
@@ -522,7 +507,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AlertDialogTitle className="text-text-primary title-2xl-semi-bold">
               {t('deleteAppConfirmTitle', { ns: 'app' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+            <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
               {t('deleteAppConfirmContent', { ns: 'app' })}
             </AlertDialogDescription>
             <div className="mt-2">
@@ -531,7 +516,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               </label>
               <input
                 type="text"
-                className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-none focus:ring-1"
+                className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-hidden focus:ring-1"
                 placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
                 value={confirmDeleteInput}
                 onChange={e => setConfirmDeleteInput(e.target.value)}

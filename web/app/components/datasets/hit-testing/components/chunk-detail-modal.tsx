@@ -33,7 +33,7 @@ const ChunkDetailModal = ({
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
-  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
+  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,80vh)] overflow-y-auto' : 'h-[min(539px,80vh)] overflow-y-auto'
   const labelPrefix = isParentChildRetrieval ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
 
   const images = useMemo(() => {
@@ -57,7 +57,7 @@ const ChunkDetailModal = ({
       isShow
       closable
       onClose={onHide}
-      className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[800px]')}
+      className={cn(isParentChildRetrieval ? 'min-w-[1200px]!' : 'min-w-[800px]!')}
     >
       <div className="mt-4 flex">
         <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
@@ -81,7 +81,7 @@ const ChunkDetailModal = ({
           <div className="relative">
             {!answer && (
               <Markdown
-                className={cn('!mt-2 !text-text-secondary', heighClassName)}
+                className={cn('mt-2! text-text-secondary!', heighClassName)}
                 content={sign_content || content}
                 customDisallowedElements={['input']}
               />

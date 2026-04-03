@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, cast
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -19,7 +19,6 @@ from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS

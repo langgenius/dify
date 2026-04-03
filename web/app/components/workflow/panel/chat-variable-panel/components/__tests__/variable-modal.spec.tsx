@@ -156,7 +156,7 @@ describe('variable-modal', () => {
     expect(screen.getByDisplayValue('enabled')).toBeInTheDocument()
   })
 
-  it('should validate variable names on blur and preserve underscore replacement', () => {
+  it('should validate variable names on blur-sm and preserve underscore replacement', () => {
     renderVariableModal()
     const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')
 

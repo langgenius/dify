@@ -13,8 +13,9 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 from tests.workflow_test_utils import build_test_graph_init_params
+
+pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
 
 CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 

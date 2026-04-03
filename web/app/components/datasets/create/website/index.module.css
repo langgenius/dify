@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .jinaLogo {
   @apply w-4 h-4 bg-center bg-no-repeat inline-block;
   background-color: #F5FAFF;

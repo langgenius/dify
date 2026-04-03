@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -28,7 +28,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       await logout()
       // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
-      Toast.notify({ type: 'info', message: t('account.deleteSuccessTip', { ns: 'common' }) })
+      toast.info(t('account.deleteSuccessTip', { ns: 'common' }))
     }
     catch (error) { console.error(error) }
   }, [router, t])

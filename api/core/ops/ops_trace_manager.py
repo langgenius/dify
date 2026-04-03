@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, TypedDict
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -14,11 +14,11 @@ from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import TypedDict
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
+    BaseTracingConfig,
     TracingProviderEnum,
 )
 from core.ops.entities.trace_entity import (
@@ -195,8 +195,15 @@ def _lookup_llm_credential_info(
         return None, ""
 
 
-class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
-    def __getitem__(self, provider: str) -> dict[str, Any]:
+class TracingProviderConfigEntry(TypedDict):
+    config_class: type[BaseTracingConfig]
+    secret_keys: list[str]
+    other_keys: list[str]
+    trace_instance: type[Any]
+
+
+class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
+    def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
         match provider:
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
@@ -456,7 +463,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Union[UUID, str] | None = None,
+        app_id: UUID | str | None = None,
     ):
         """
         Get ops trace through model config
@@ -585,8 +592,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).api_check()
+        config = config_type(**tracing_config)
+        return trace_instance(config).api_check()
 
     @staticmethod
     def get_trace_config_project_key(tracing_config: dict, tracing_provider: str):
@@ -600,8 +607,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).get_project_key()
+        config = config_type(**tracing_config)
+        return trace_instance(config).get_project_key()
 
     @staticmethod
     def get_trace_config_project_url(tracing_config: dict, tracing_provider: str):
@@ -615,8 +622,8 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["trace_instance"],
         )
-        tracing_config = config_type(**tracing_config)
-        return trace_instance(tracing_config).get_project_url()
+        config = config_type(**tracing_config)
+        return trace_instance(config).get_project_url()
 
 
 class TraceTask:
@@ -709,7 +716,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: str | None = None,
-        workflow_execution: Optional["WorkflowExecution"] = None,
+        workflow_execution: "WorkflowExecution | None" = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,
