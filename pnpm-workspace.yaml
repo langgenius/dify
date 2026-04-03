@@ -132,6 +132,7 @@ catalog:
   "@tanstack/react-form-devtools": 0.2.20
   "@tanstack/react-query": 5.96.1
   "@tanstack/react-query-devtools": 5.96.1
+  "@tanstack/react-virtual": 3.13.23
   "@testing-library/dom": 10.4.1
   "@testing-library/jest-dom": 6.9.1
   "@testing-library/react": 16.3.2
@@ -147,7 +148,6 @@ catalog:
   "@types/qs": 6.15.0
   "@types/react": 19.2.14
   "@types/react-dom": 19.2.3
-  "@types/react-window": 1.8.8
   "@types/sortablejs": 1.15.9
   "@typescript-eslint/eslint-plugin": 8.58.0
   "@typescript-eslint/parser": 8.58.0
@@ -230,7 +230,6 @@ catalog:
   react-server-dom-webpack: 19.2.4
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
-  react-window: 1.8.11
   reactflow: 11.11.4
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
@@ -244,7 +243,6 @@ catalog:
   string-ts: 2.3.1
   tailwind-merge: 3.5.0
   tailwindcss: 4.2.2
-  taze: 19.11.0
   tldts: 7.0.27
   tsdown: 0.21.7
   tsx: 4.21.0

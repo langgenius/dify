@@ -1,26 +1,11 @@
-import type { NotionPageTreeItem, NotionPageTreeMap } from '../index'
+import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { recursivePushInParentDescendants } from '@/app/components/base/notion-page-selector/page-selector/utils'
 import PageSelector from '../index'
-import { recursivePushInParentDescendants } from '../utils'
 
-// Mock react-window FixedSizeList - renders items directly for testing
-vi.mock('react-window', () => ({
-  FixedSizeList: ({ children: ItemComponent, itemCount, itemData, itemKey }: { children: React.ComponentType<{ index: number, style: React.CSSProperties, data: unknown }>, itemCount: number, itemData: unknown, itemKey?: (index: number, data: unknown) => string | number }) => (
-    <div data-testid="virtual-list">
-      {Array.from({ length: itemCount }).map((_, index) => (
-        <ItemComponent
-          key={itemKey?.(index, itemData) || index}
-          index={index}
-          style={{ top: index * 28, left: 0, right: 0, width: '100%', position: 'absolute' as const }}
-          data={itemData}
-        />
-      ))}
-    </div>
-  ),
-  areEqual: (prevProps: Record<string, unknown>, nextProps: Record<string, unknown>) => prevProps === nextProps,
-}))
+vi.mock('@tanstack/react-virtual')
 
 // Note: NotionIcon from @/app/components/base/ is NOT mocked - using real component per testing guidelines
 
@@ -70,7 +55,6 @@ const createDefaultProps = (overrides?: Partial<PageSelectorProps>): PageSelecto
     canPreview: true,
     onPreview: vi.fn(),
     isMultipleChoice: true,
-    currentCredentialId: 'cred-1',
     ...overrides,
   }
 }
@@ -114,7 +98,7 @@ describe('PageSelector', () => {
       expect(screen.queryByTestId('virtual-list')).not.toBeInTheDocument()
     })
 
-    it('should render items using FixedSizeList', () => {
+    it('should render items using VirtualList', () => {
       const pages = [
         createMockPage({ page_id: 'page-1', page_name: 'Page 1' }),
         createMockPage({ page_id: 'page-2', page_name: 'Page 2' }),
