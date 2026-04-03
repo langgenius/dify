@@ -1558,9 +1558,7 @@ class RegisterService:
             return None
 
         tenant = db.session.scalar(
-            select(Tenant)
-            .where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
-            .limit(1)
+            select(Tenant).where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal").limit(1)
         )
 
         if not tenant:
