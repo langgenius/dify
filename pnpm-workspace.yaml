@@ -242,7 +242,6 @@ catalog:
   string-ts: 2.3.1
   tailwind-merge: 3.5.0
   tailwindcss: 4.2.2
-  taze: 19.11.0
   tldts: 7.0.27
   tsdown: 0.21.7
   tsx: 4.21.0
