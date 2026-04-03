@@ -1,6 +1,6 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import type { I18nKeysByPrefix } from '@/types/i18n'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
 import { useKeyPress } from 'ahooks'
 import {
@@ -20,14 +20,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  Tooltip as UITooltip,
-  TooltipContent as UITooltipContent,
-  TooltipTrigger as UITooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
-import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -78,20 +70,31 @@ export type AppPublisherProps = {
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
-const WORKFLOW_TYPE_SWITCH_CONFIG = {
-  [AppTypeEnum.WORKFLOW]: {
-    targetType: AppTypeEnum.EVALUATION,
+type WorkflowTypeSwitchLabelKey = I18nKeysWithPrefix<'workflow', 'common.'>
+
+const WORKFLOW_TYPE_SWITCH_CONFIG: Record<WorkflowTypeConversionTarget, {
+  targetType: WorkflowTypeConversionTarget
+  publishLabelKey: WorkflowTypeSwitchLabelKey
+  switchLabelKey: WorkflowTypeSwitchLabelKey
+  tipKey: WorkflowTypeSwitchLabelKey
+}> = {
+  workflow: {
+    targetType: 'evaluation',
     publishLabelKey: 'common.publishAsEvaluationWorkflow',
     switchLabelKey: 'common.switchToEvaluationWorkflow',
     tipKey: 'common.switchToEvaluationWorkflowTip',
   },
-  [AppTypeEnum.EVALUATION]: {
-    targetType: AppTypeEnum.WORKFLOW,
+  evaluation: {
+    targetType: 'workflow',
     publishLabelKey: 'common.publishAsStandardWorkflow',
     switchLabelKey: 'common.switchToStandardWorkflow',
     tipKey: 'common.switchToStandardWorkflowTip',
   },
 } as const
+
+const isWorkflowTypeConversionTarget = (type?: AppTypeEnum): type is WorkflowTypeConversionTarget => {
+  return type === 'workflow' || type === 'evaluation'
+}
 
 const AppPublisher = ({
   disabled = false,
@@ -131,7 +134,9 @@ const AppPublisher = ({
 
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
-  const workflowTypeSwitchConfig = appDetail?.type ? WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type as keyof typeof WORKFLOW_TYPE_SWITCH_CONFIG] : undefined
+  const workflowTypeSwitchConfig = isWorkflowTypeConversionTarget(appDetail?.type)
+    ? WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
+    : undefined
   const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
@@ -230,7 +235,7 @@ const AppPublisher = ({
           appId: appDetail.id,
         },
         query: {
-          target_type: workflowTypeSwitchConfig.targetType as WorkflowTypeConversionTarget,
+          target_type: workflowTypeSwitchConfig.targetType,
         },
       })
 
@@ -304,37 +309,44 @@ const AppPublisher = ({
               publishShortcut={PUBLISH_SHORTCUT}
               startNodeLimitExceeded={startNodeLimitExceeded}
               upgradeHighlightStyle={upgradeHighlightStyle}
+              workflowTypeSwitchConfig={workflowTypeSwitchConfig}
+              workflowTypeSwitchDisabled={publishDisabled || published || isConvertingWorkflowType}
+              onWorkflowTypeSwitch={handleWorkflowTypeSwitch}
             />
-            <PublisherAccessSection
-              enabled={systemFeatures.webapp_auth.enabled}
-              isAppAccessSet={isAppAccessSet}
-              isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
-              accessMode={appDetail?.access_mode}
-              onClick={() => setShowAppAccessControl(true)}
-            />
-            <PublisherActionsSection
-              appDetail={appDetail}
-              appURL={appURL}
-              disabledFunctionButton={disabledFunctionButton}
-              disabledFunctionTooltip={disabledFunctionTooltip}
-              handleEmbed={() => {
-                setEmbeddingModalOpen(true)
-                handleTrigger()
-              }}
-              handleOpenInExplore={handleOpenInExplore}
-              handlePublish={handlePublish}
-              hasHumanInputNode={hasHumanInputNode}
-              hasTriggerNode={hasTriggerNode}
-              inputs={inputs}
-              missingStartNode={missingStartNode}
-              onRefreshData={onRefreshData}
-              outputs={outputs}
-              published={published}
-              publishedAt={publishedAt}
-              toolPublished={toolPublished}
-              workflowToolAvailable={workflowToolAvailable}
-              workflowToolMessage={workflowToolMessage}
-            />
+            {!isEvaluationWorkflowType && (
+              <>
+                <PublisherAccessSection
+                  enabled={systemFeatures.webapp_auth.enabled}
+                  isAppAccessSet={isAppAccessSet}
+                  isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
+                  accessMode={appDetail?.access_mode}
+                  onClick={() => setShowAppAccessControl(true)}
+                />
+                <PublisherActionsSection
+                  appDetail={appDetail}
+                  appURL={appURL}
+                  disabledFunctionButton={disabledFunctionButton}
+                  disabledFunctionTooltip={disabledFunctionTooltip}
+                  handleEmbed={() => {
+                    setEmbeddingModalOpen(true)
+                    handleTrigger()
+                  }}
+                  handleOpenInExplore={handleOpenInExplore}
+                  handlePublish={handlePublish}
+                  hasHumanInputNode={hasHumanInputNode}
+                  hasTriggerNode={hasTriggerNode}
+                  inputs={inputs}
+                  missingStartNode={missingStartNode}
+                  onRefreshData={onRefreshData}
+                  outputs={outputs}
+                  published={published}
+                  publishedAt={publishedAt}
+                  toolPublished={toolPublished}
+                  workflowToolAvailable={workflowToolAvailable}
+                  workflowToolMessage={workflowToolMessage}
+                />
+              </>
+            )}
           </div>
         </PortalToFollowElemContent>
         <EmbeddedModal
