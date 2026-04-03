@@ -1,3 +1,4 @@
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
@@ -7,7 +8,6 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from extensions.ext_database import db
-from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
@@ -81,7 +81,7 @@ def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LL
                         # TODO: Use provider name with prefix after the data migration.
                         Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
                         Provider.provider_type == ProviderType.SYSTEM.value,
-                        Provider.quota_type == system_configuration.current_quota_type.value,
+                        Provider.quota_type == system_configuration.current_quota_type,
                         Provider.quota_limit > Provider.quota_used,
                     )
                     .values(

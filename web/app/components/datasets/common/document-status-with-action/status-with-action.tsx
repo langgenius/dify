@@ -60,7 +60,7 @@ const StatusAction: FC<Props> = ({
         <div className="text-[13px] font-normal text-text-secondary">{description}</div>
         {onAction && (
           <>
-            <Divider type="vertical" className="!h-4" />
+            <Divider type="vertical" className="h-4!" />
             <div onClick={onAction} className={cn('cursor-pointer text-[13px] font-semibold text-text-accent', disabled && 'cursor-not-allowed text-text-disabled')}>{actionText}</div>
           </>
         )}

@@ -3,6 +3,40 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from graphon.entities import GraphInitParams
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.graph import Graph
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import (
+    GraphEngineEvent,
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+    NodeRunAgentLogEvent,
+    NodeRunExceptionEvent,
+    NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
+    NodeRunIterationFailedEvent,
+    NodeRunIterationNextEvent,
+    NodeRunIterationStartedEvent,
+    NodeRunIterationSucceededEvent,
+    NodeRunLoopFailedEvent,
+    NodeRunLoopNextEvent,
+    NodeRunLoopStartedEvent,
+    NodeRunLoopSucceededEvent,
+    NodeRunRetrieverResourceEvent,
+    NodeRunRetryEvent,
+    NodeRunStartedEvent,
+    NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
+)
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from pydantic import ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -44,40 +78,6 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities import GraphInitParams
-from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.graph import Graph
-from graphon.graph_engine.layers.base import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
-    GraphRunFailedEvent,
-    GraphRunPartialSucceededEvent,
-    GraphRunPausedEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-    NodeRunAgentLogEvent,
-    NodeRunExceptionEvent,
-    NodeRunFailedEvent,
-    NodeRunHumanInputFormFilledEvent,
-    NodeRunHumanInputFormTimeoutEvent,
-    NodeRunIterationFailedEvent,
-    NodeRunIterationNextEvent,
-    NodeRunIterationStartedEvent,
-    NodeRunIterationSucceededEvent,
-    NodeRunLoopFailedEvent,
-    NodeRunLoopNextEvent,
-    NodeRunLoopStartedEvent,
-    NodeRunLoopSucceededEvent,
-    NodeRunRetrieverResourceEvent,
-    NodeRunRetryEvent,
-    NodeRunStartedEvent,
-    NodeRunStreamChunkEvent,
-    NodeRunSucceededEvent,
-)
-from graphon.graph_events.graph import GraphRunAbortedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
@@ -164,6 +164,8 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
+        *,
+        user_id: str,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -200,6 +202,7 @@ class WorkflowBasedAppRunner:
                 graph_runtime_state=graph_runtime_state,
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
+                user_id=user_id,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
@@ -209,6 +212,7 @@ class WorkflowBasedAppRunner:
                 graph_runtime_state=graph_runtime_state,
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
+                user_id=user_id,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -225,6 +229,8 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: GraphRuntimeState,
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
+        *,
+        user_id: str = "",
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -290,7 +296,7 @@ class WorkflowBasedAppRunner:
             run_context=build_dify_run_context(
                 tenant_id=workflow.tenant_id,
                 app_id=self._app_id,
-                user_id="",
+                user_id=user_id,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
             ),

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import BlockInput, { getInputKeys } from '../index'
 
 vi.mock('@/utils/var', () => ({
@@ -14,7 +14,7 @@ vi.mock('@/utils/var', () => ({
 describe('BlockInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(Toast, 'notify')
+    vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     cleanup()
   })
 
@@ -138,7 +138,7 @@ describe('BlockInput', () => {
       fireEvent.change(textarea, { target: { value: '{{invalid}}' } })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalled()
+        expect(toast.error).toHaveBeenCalled()
       })
       expect(onConfirm).not.toHaveBeenCalled()
     })
@@ -173,7 +173,7 @@ describe('BlockInput', () => {
       expect(textarea).toBeInTheDocument()
     })
 
-    it('should exit edit mode on blur', async () => {
+    it('should exit edit mode on blur-sm', async () => {
       render(<BlockInput value="Hello" />)
 
       const contentArea = screen.getByText('Hello')

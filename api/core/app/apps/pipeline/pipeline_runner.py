@@ -2,6 +2,15 @@ import logging
 import time
 from typing import cast
 
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -18,13 +27,6 @@ from core.workflow.system_variables import build_bootstrap_variables, build_syst
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
-from graphon.entities.graph_init_params import GraphInitParams
-from graphon.enums import WorkflowType
-from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import VariableLoader
-from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Document, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
@@ -83,13 +85,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         user_id = None
         if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            end_user = db.session.query(EndUser).where(EndUser.id == self.application_generate_entity.user_id).first()
+            end_user = db.session.get(EndUser, self.application_generate_entity.user_id)
             if end_user:
                 user_id = end_user.session_id
         else:
             user_id = self.application_generate_entity.user_id
 
-        pipeline = db.session.query(Pipeline).where(Pipeline.id == app_config.app_id).first()
+        pipeline = db.session.get(Pipeline, app_config.app_id)
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -106,6 +108,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                user_id=self.application_generate_entity.user_id,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -211,10 +214,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
         Get workflow
         """
         # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id)
-            .first()
+            .limit(1)
         )
 
         # return workflow
@@ -295,10 +298,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         if isinstance(event, GraphRunFailedEvent):
             if document_id and dataset_id:
-                document = (
-                    db.session.query(Document)
-                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                    .first()
+                document = db.session.scalar(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
                     document.indexing_status = "error"

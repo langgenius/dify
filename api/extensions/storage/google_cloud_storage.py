@@ -1,12 +1,15 @@
 import base64
 import io
-import json
 from collections.abc import Generator
+from typing import Any
 
 from google.cloud import storage as google_cloud_storage  # type: ignore
+from pydantic import TypeAdapter
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+
+_service_account_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class GoogleCloudStorage(BaseStorage):
@@ -21,7 +24,7 @@ class GoogleCloudStorage(BaseStorage):
         if service_account_json_str:
             service_account_json = base64.b64decode(service_account_json_str).decode("utf-8")
             # convert str to object
-            service_account_obj = json.loads(service_account_json)
+            service_account_obj = _service_account_adapter.validate_json(service_account_json)
             self.client = google_cloud_storage.Client.from_service_account_info(service_account_obj)
         else:
             self.client = google_cloud_storage.Client()

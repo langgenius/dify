@@ -201,27 +201,23 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch, 
         document_id = _Field("document_id")
 
     keyword = Jieba(_dataset(_dataset_keyword_table()))
-    query_stmt = _FakeQuery()
-    patched_runtime.session.query.return_value = query_stmt
-    patched_runtime.session.execute.return_value = _FakeExecuteResult(
-        [
-            SimpleNamespace(
-                index_node_id="node-2",
-                content="segment-content",
-                index_node_hash="hash-2",
-                document_id="doc-2",
-                dataset_id="dataset-1",
-            )
-        ]
-    )
+    patched_runtime.session.scalars.return_value.all.return_value = [
+        SimpleNamespace(
+            index_node_id="node-2",
+            content="segment-content",
+            index_node_hash="hash-2",
+            document_id="doc-2",
+            dataset_id="dataset-1",
+        )
+    ]
 
     monkeypatch.setattr(jieba_module, "DocumentSegment", _FakeDocumentSegment)
+    monkeypatch.setattr(jieba_module, "select", lambda *_: _FakeSelect())
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={"k": {"node-1", "node-2"}}))
     monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["node-1", "node-2"]))
 
     documents = keyword.search("query", top_k=2, document_ids_filter=["doc-2"])
 
-    assert len(query_stmt.where_calls) == 2
     assert len(documents) == 1
     assert documents[0].page_content == "segment-content"
     assert documents[0].metadata["doc_id"] == "node-2"

@@ -1,14 +1,15 @@
-import json
 import logging
 import os
 from datetime import datetime, timedelta
 from typing import Any, cast
 
 import mlflow
+from graphon.enums import BuiltinNodeTypes
 from mlflow.entities import Document, Span, SpanEvent, SpanStatusCode, SpanType
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
+from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import DatabricksConfig, MLflowConfig
@@ -23,8 +24,8 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import JSON_DICT_ADAPTER
 from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
 
@@ -152,7 +153,7 @@ class MLflowDataTrace(BaseTraceInstance):
                     inputs = node.process_data  # contains request URL
 
                 if not inputs:
-                    inputs = json.loads(node.inputs) if node.inputs else {}
+                    inputs = JSON_DICT_ADAPTER.validate_json(node.inputs) if node.inputs else {}
 
                 node_span = start_span_no_context(
                     name=node.title,
@@ -179,7 +180,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
                 # End node span
                 finished_at = node.created_at + timedelta(seconds=node.elapsed_time)
-                outputs = json.loads(node.outputs) if node.outputs else {}
+                outputs = JSON_DICT_ADAPTER.validate_json(node.outputs) if node.outputs else {}
                 if node.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                     outputs = self._parse_knowledge_retrieval_outputs(outputs)
                 elif node.node_type == BuiltinNodeTypes.LLM:
@@ -215,8 +216,8 @@ class MLflowDataTrace(BaseTraceInstance):
             return {}, {}
 
         try:
-            data = json.loads(node.process_data)
-        except (json.JSONDecodeError, TypeError):
+            data = JSON_DICT_ADAPTER.validate_json(node.process_data)
+        except (ValueError, TypeError):
             return {}, {}
 
         inputs = self._parse_prompts(data.get("prompts"))
@@ -320,7 +321,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def _get_message_user_id(self, metadata: dict) -> str | None:
         if (end_user_id := metadata.get("from_end_user_id")) and (
-            end_user_data := db.session.query(EndUser).where(EndUser.id == end_user_id).first()
+            end_user_data := db.session.get(EndUser, end_user_id)
         ):
             return end_user_data.session_id
 
@@ -447,25 +448,11 @@ class MLflowDataTrace(BaseTraceInstance):
 
     def _get_workflow_nodes(self, workflow_run_id: str):
         """Helper method to get workflow nodes"""
-        workflow_nodes = (
-            db.session.query(
-                WorkflowNodeExecutionModel.id,
-                WorkflowNodeExecutionModel.tenant_id,
-                WorkflowNodeExecutionModel.app_id,
-                WorkflowNodeExecutionModel.title,
-                WorkflowNodeExecutionModel.node_type,
-                WorkflowNodeExecutionModel.status,
-                WorkflowNodeExecutionModel.inputs,
-                WorkflowNodeExecutionModel.outputs,
-                WorkflowNodeExecutionModel.created_at,
-                WorkflowNodeExecutionModel.elapsed_time,
-                WorkflowNodeExecutionModel.process_data,
-                WorkflowNodeExecutionModel.execution_metadata,
-            )
-            .filter(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+        workflow_nodes = db.session.scalars(
+            select(WorkflowNodeExecutionModel)
+            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
             .order_by(WorkflowNodeExecutionModel.created_at)
-            .all()
-        )
+        ).all()
         return workflow_nodes
 
     def _get_node_span_type(self, node_type: str) -> str:

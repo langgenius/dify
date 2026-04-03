@@ -30,7 +30,3 @@ export const useStrategyProviderDetail = (agentProvider: string, options?: Query
     enabled: !!agentProvider,
   })
 }
-
-export const useInvalidateStrategyProviderDetail = (agentProvider: string) => {
-  return useInvalid([NAME_SPACE, 'detail', agentProvider])
-}

@@ -72,7 +72,6 @@
 }
 
 .markdown-body abbr[title]:hover::after {
-  @apply shadow-xl shadow-shadow-shadow-5 rounded-md;
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -83,8 +82,12 @@
   font-size: 12px;
   line-height: 1;
   color: var(--color-text-secondary);
+  border-radius: 0.375rem;
   border: 0.5px solid var(--color-components-panel-border);
   background-color: var(--color-components-tooltip-bg);
+  box-shadow:
+    0px 8px 8px -4px var(--color-shadow-shadow-5),
+    0px 20px 24px -4px var(--color-shadow-shadow-5);
 }
 
 .markdown-body b,
@@ -582,6 +585,44 @@
   background-color: var(--color-components-menu-item-bg-hover);
 }
 
+[data-streamdown="table-fullscreen"] {
+  background-color: var(--color-components-panel-bg);
+  color: var(--color-text-primary);
+}
+
+[data-streamdown="table-fullscreen"] button {
+  color: var(--color-text-tertiary);
+}
+
+[data-streamdown="table-fullscreen"] button:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-background-section-burn);
+}
+
+[data-streamdown="table-fullscreen"] table[data-streamdown="table"] {
+  border-color: var(--color-divider-regular);
+}
+
+[data-streamdown="table-fullscreen"] [data-streamdown="table-header"] {
+  background-color: var(--color-background-section-burn);
+}
+
+[data-streamdown="table-fullscreen"] [data-streamdown="table-header"] th {
+  color: var(--color-text-tertiary);
+}
+
+[data-streamdown="table-fullscreen"] [data-streamdown="table-body"] {
+  border-color: var(--color-divider-subtle);
+}
+
+[data-streamdown="table-fullscreen"] [data-streamdown="table-body"] > tr {
+  border-color: var(--color-divider-subtle);
+}
+
+[data-streamdown="table-fullscreen"] [data-streamdown="table-body"] td {
+  color: var(--color-text-secondary);
+}
+
 .markdown-body table img {
   background-color: transparent;
 }
@@ -1029,9 +1070,6 @@
   filter: invert(50%);
 }
 
-.markdown-body .react-syntax-highlighter-line-number {
-  color: var(--color-text-quaternary);
-}
 .markdown-body .abcjs-inline-audio .abcjs-btn {
   display: flex !important;
 }

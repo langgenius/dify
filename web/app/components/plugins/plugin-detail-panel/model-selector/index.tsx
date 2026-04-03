@@ -29,7 +29,7 @@ import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
 
-export type ModelParameterModalProps = {
+type ModelParameterModalProps = {
   popupClassName?: string
   isAdvancedMode: boolean
   value: any
@@ -186,7 +186,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       <div className="relative">
         <PopoverTrigger
           render={(
-            <button type="button" className="block w-full border-none bg-transparent p-0 text-left [color:inherit] [font:inherit]">
+            <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
               {
                 renderTrigger
                   ? renderTrigger({

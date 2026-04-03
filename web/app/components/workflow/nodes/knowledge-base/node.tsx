@@ -172,7 +172,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     return (
       <div className="mb-1 space-y-0.5 px-3 py-1">
         <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-          <span className="mr-1 size-[4px] shrink-0 rounded-[2px] bg-text-warning-secondary" />
+          <span className="mr-1 size-[4px] shrink-0 radius-2xs bg-text-warning-secondary" />
           <div className="grow truncate text-text-warning system-xs-medium" title={validationIssueMessage}>
             {validationIssueMessage}
           </div>

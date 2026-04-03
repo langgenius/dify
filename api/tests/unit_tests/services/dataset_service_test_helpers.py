@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from werkzeug.exceptions import Forbidden, NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError

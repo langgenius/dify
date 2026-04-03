@@ -1,8 +1,13 @@
 import json
 import logging
-from json import JSONDecodeError
-from typing import Union
+from typing import Any, Union
 
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
@@ -13,12 +18,6 @@ from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ModelCredentialSchema,
-    ProviderCredentialSchema,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
@@ -111,20 +110,21 @@ class ModelLoadBalancingService:
             credential_source_type = CredentialSourceType.CUSTOM_MODEL
 
         # Get load balancing configurations
-        load_balancing_configs = (
-            db.session.query(LoadBalancingModelConfig)
-            .where(
-                LoadBalancingModelConfig.tenant_id == tenant_id,
-                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
-                LoadBalancingModelConfig.model_name == model,
-                or_(
-                    LoadBalancingModelConfig.credential_source_type == credential_source_type,
-                    LoadBalancingModelConfig.credential_source_type.is_(None),
-                ),
-            )
-            .order_by(LoadBalancingModelConfig.created_at)
-            .all()
+        load_balancing_configs = list(
+            db.session.scalars(
+                select(LoadBalancingModelConfig)
+                .where(
+                    LoadBalancingModelConfig.tenant_id == tenant_id,
+                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                    LoadBalancingModelConfig.model_type == model_type_enum,
+                    LoadBalancingModelConfig.model_name == model,
+                    or_(
+                        LoadBalancingModelConfig.credential_source_type == credential_source_type,
+                        LoadBalancingModelConfig.credential_source_type.is_(None),
+                    ),
+                )
+                .order_by(LoadBalancingModelConfig.created_at)
+            ).all()
         )
 
         if provider_configuration.custom_configuration.provider:
@@ -144,7 +144,7 @@ class ModelLoadBalancingService:
                 load_balancing_configs.insert(0, inherit_config)
             else:
                 # move the inherit configuration to the first
-                for i, load_balancing_config in enumerate(load_balancing_configs[:]):
+                for i, load_balancing_config in enumerate(load_balancing_configs.copy()):
                     if load_balancing_config.name == "__inherit__":
                         inherit_config = load_balancing_configs.pop(i)
                         load_balancing_configs.insert(0, inherit_config)
@@ -168,10 +168,10 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials: dict[str, object] = json.loads(load_balancing_config.encrypted_config)
+                    credentials: dict[str, Any] = json.loads(load_balancing_config.encrypted_config)
                 else:
                     credentials = {}
-            except JSONDecodeError:
+            except (json.JSONDecodeError, ValueError):
                 credentials = {}
 
             # Get provider credential secret variables
@@ -236,16 +236,16 @@ class ModelLoadBalancingService:
         model_type_enum = ModelType.value_of(model_type)
 
         # Get load balancing configurations
-        load_balancing_model_config = (
-            db.session.query(LoadBalancingModelConfig)
+        load_balancing_model_config = db.session.scalar(
+            select(LoadBalancingModelConfig)
             .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
+                LoadBalancingModelConfig.model_type == model_type_enum,
                 LoadBalancingModelConfig.model_name == model,
                 LoadBalancingModelConfig.id == config_id,
             )
-            .first()
+            .limit(1)
         )
 
         if not load_balancing_model_config:
@@ -256,7 +256,7 @@ class ModelLoadBalancingService:
                 credentials = json.loads(load_balancing_model_config.encrypted_config)
             else:
                 credentials = {}
-        except JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             credentials = {}
 
         # Get credential form schemas from model credential schema or provider credential schema
@@ -289,7 +289,7 @@ class ModelLoadBalancingService:
         inherit_config = LoadBalancingModelConfig(
             tenant_id=tenant_id,
             provider_name=provider,
-            model_type=model_type.to_origin_model_type(),
+            model_type=model_type,
             model_name=model,
             name="__inherit__",
         )
@@ -329,7 +329,7 @@ class ModelLoadBalancingService:
             select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
+                LoadBalancingModelConfig.model_type == model_type_enum,
                 LoadBalancingModelConfig.model_name == model,
             )
         ).all()
@@ -352,26 +352,26 @@ class ModelLoadBalancingService:
 
             if credential_id:
                 if config_from == "predefined-model":
-                    credential_record = (
-                        db.session.query(ProviderCredential)
-                        .filter_by(
-                            id=credential_id,
-                            tenant_id=tenant_id,
-                            provider_name=provider_configuration.provider.provider,
+                    credential_record = db.session.scalar(
+                        select(ProviderCredential)
+                        .where(
+                            ProviderCredential.id == credential_id,
+                            ProviderCredential.tenant_id == tenant_id,
+                            ProviderCredential.provider_name == provider_configuration.provider.provider,
                         )
-                        .first()
+                        .limit(1)
                     )
                 else:
-                    credential_record = (
-                        db.session.query(ProviderModelCredential)
-                        .filter_by(
-                            id=credential_id,
-                            tenant_id=tenant_id,
-                            provider_name=provider_configuration.provider.provider,
-                            model_name=model,
-                            model_type=model_type_enum.to_origin_model_type(),
+                    credential_record = db.session.scalar(
+                        select(ProviderModelCredential)
+                        .where(
+                            ProviderModelCredential.id == credential_id,
+                            ProviderModelCredential.tenant_id == tenant_id,
+                            ProviderModelCredential.provider_name == provider_configuration.provider.provider,
+                            ProviderModelCredential.model_name == model,
+                            ProviderModelCredential.model_type == model_type_enum,
                         )
-                        .first()
+                        .limit(1)
                     )
                 if not credential_record:
                     raise ValueError(f"Provider credential with id {credential_id} not found")
@@ -433,7 +433,7 @@ class ModelLoadBalancingService:
                     load_balancing_model_config = LoadBalancingModelConfig(
                         tenant_id=tenant_id,
                         provider_name=provider_configuration.provider.provider,
-                        model_type=model_type_enum.to_origin_model_type(),
+                        model_type=model_type_enum,
                         model_name=model,
                         name=credential_record.credential_name,
                         encrypted_config=credential_record.encrypted_config,
@@ -461,7 +461,7 @@ class ModelLoadBalancingService:
                     load_balancing_model_config = LoadBalancingModelConfig(
                         tenant_id=tenant_id,
                         provider_name=provider_configuration.provider.provider,
-                        model_type=model_type_enum.to_origin_model_type(),
+                        model_type=model_type_enum,
                         model_name=model,
                         name=name,
                         encrypted_config=json.dumps(credentials),
@@ -511,16 +511,16 @@ class ModelLoadBalancingService:
         load_balancing_model_config = None
         if config_id:
             # Get load balancing config
-            load_balancing_model_config = (
-                db.session.query(LoadBalancingModelConfig)
+            load_balancing_model_config = db.session.scalar(
+                select(LoadBalancingModelConfig)
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider,
-                    LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
+                    LoadBalancingModelConfig.model_type == model_type_enum,
                     LoadBalancingModelConfig.model_name == model,
                     LoadBalancingModelConfig.id == config_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not load_balancing_model_config:
@@ -575,7 +575,7 @@ class ModelLoadBalancingService:
                     original_credentials = json.loads(load_balancing_model_config.encrypted_config)
                 else:
                     original_credentials = {}
-            except JSONDecodeError:
+            except (json.JSONDecodeError, ValueError):
                 original_credentials = {}
 
             # encrypt credentials

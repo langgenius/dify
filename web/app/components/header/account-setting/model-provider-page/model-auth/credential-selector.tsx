@@ -77,7 +77,7 @@ const CredentialSelector = ({
           <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1002]">
+      <PortalToFollowElemContent className="z-1002">
         <div className="border-ccomponents-panel-border rounded-xl border-[0.5px] bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-[320px] overflow-y-auto p-1">
             {

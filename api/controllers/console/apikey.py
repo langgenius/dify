@@ -2,7 +2,7 @@ import flask_restx
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -34,7 +34,7 @@ api_key_list_model = console_ns.model(
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
-    with Session(db.engine) as session:
+    with sessionmaker(db.engine).begin() as session:
         resource = session.execute(
             select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
         ).scalar_one_or_none()

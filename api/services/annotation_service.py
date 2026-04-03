@@ -4,6 +4,8 @@ import uuid
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+from typing import TypedDict
+
 from sqlalchemy import or_, select
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
@@ -21,6 +23,27 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+
+
+class AnnotationJobStatusDict(TypedDict):
+    job_id: str
+    job_status: str
+
+
+class EmbeddingModelDict(TypedDict):
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class AnnotationSettingDict(TypedDict):
+    id: str
+    enabled: bool
+    score_threshold: float
+    embedding_model: EmbeddingModelDict | dict
+
+
+class AnnotationSettingDisabledDict(TypedDict):
+    enabled: bool
 
 
 class AppAnnotationService:
@@ -85,7 +108,7 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def enable_app_annotation(cls, args: dict, app_id: str):
+    def enable_app_annotation(cls, args: dict, app_id: str) -> AnnotationJobStatusDict:
         enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
@@ -109,7 +132,7 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
-    def disable_app_annotation(cls, app_id: str):
+    def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
         _, current_tenant_id = current_account_with_tenant()
         disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
@@ -567,7 +590,7 @@ class AppAnnotationService:
         db.session.commit()
 
     @classmethod
-    def get_app_annotation_setting_by_app_id(cls, app_id: str):
+    def get_app_annotation_setting_by_app_id(cls, app_id: str) -> AnnotationSettingDict | AnnotationSettingDisabledDict:
         _, current_tenant_id = current_account_with_tenant()
         # get app info
         app = (
@@ -602,7 +625,9 @@ class AppAnnotationService:
         return {"enabled": False}
 
     @classmethod
-    def update_app_annotation_setting(cls, app_id: str, annotation_setting_id: str, args: dict):
+    def update_app_annotation_setting(
+        cls, app_id: str, annotation_setting_id: str, args: dict
+    ) -> AnnotationSettingDict:
         current_user, current_tenant_id = current_account_with_tenant()
         # get app info
         app = (

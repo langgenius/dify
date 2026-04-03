@@ -97,7 +97,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
           <span className="px-0.5">{t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}</span>
         </button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[100]">
+      <PortalToFollowElemContent className="z-100">
         <div className="flex w-[400px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
           {/* Title */}
           <div className="relative px-3 pb-1 pt-3.5">

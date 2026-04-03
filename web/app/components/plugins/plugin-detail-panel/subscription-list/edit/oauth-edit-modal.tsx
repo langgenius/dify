@@ -156,7 +156,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
       onConfirm={handleConfirm}
       disabled={isUpdating}
       clickOutsideNotClose
-      wrapperClassName="!z-[101]"
+      wrapperClassName="z-101!"
     >
       {pluginDetail && (
         <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />

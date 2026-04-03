@@ -275,7 +275,7 @@ class BuiltinToolManageService:
                         user_id=user_id,
                         provider=provider,
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
-                        credential_type=api_type.value,
+                        credential_type=api_type,
                         name=name,
                         expires_at=expires_at if expires_at is not None else -1,
                     )
@@ -314,7 +314,7 @@ class BuiltinToolManageService:
             .filter_by(
                 tenant_id=tenant_id,
                 provider=provider,
-                credential_type=credential_type.value,
+                credential_type=credential_type,
             )
             .order_by(BuiltinToolProvider.created_at.desc())
             .all()
@@ -332,12 +332,11 @@ class BuiltinToolManageService:
         get builtin tool provider credentials
         """
         with db.session.no_autoflush:
-            providers = (
-                db.session.query(BuiltinToolProvider)
-                .filter_by(tenant_id=tenant_id, provider=provider_name)
+            providers = db.session.scalars(
+                select(BuiltinToolProvider)
+                .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                .all()
-            )
+            ).all()
 
             if len(providers) == 0:
                 return []
@@ -412,7 +411,7 @@ class BuiltinToolManageService:
         """
         with Session(db.engine) as session:
             # get provider
-            target_provider = session.query(BuiltinToolProvider).filter_by(id=id).first()
+            target_provider = session.query(BuiltinToolProvider).filter_by(id=id, tenant_id=tenant_id).first()
             if target_provider is None:
                 raise ValueError("provider not found")
 

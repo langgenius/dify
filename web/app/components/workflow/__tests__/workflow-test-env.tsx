@@ -114,7 +114,7 @@ export function createTestWorkflowStore(initialState?: Partial<Shape>): Workflow
   return store
 }
 
-export function createTestHooksStore(props?: Partial<HooksStoreShape>): HooksStore {
+function createTestHooksStore(props?: Partial<HooksStoreShape>): HooksStore {
   const store = createHooksStore(props ?? {})
   if (props)
     store.setState(props)

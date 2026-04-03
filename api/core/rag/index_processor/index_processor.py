@@ -35,7 +35,10 @@ class IndexProcessor:
         if "parent_mode" in preview:
             data.parent_mode = preview["parent_mode"]
 
-        for item in preview["preview"]:
+        # Different index processors return different preview shapes:
+        # - paragraph/parent-child processors: {"preview": [...]}
+        # - QA processor: {"qa_preview": [...]} (no "preview" key)
+        for item in preview.get("preview", []):
             if "content" in item and "child_chunks" in item:
                 data.preview.append(
                     PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None)
@@ -44,6 +47,10 @@ class IndexProcessor:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
             elif "content" in item:
                 data.preview.append(PreviewItem(content=item["content"], child_chunks=None, summary=None))
+
+        for item in preview.get("qa_preview", []):
+            if "question" in item and "answer" in item:
+                data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
         return data
 
     def index_and_clean(
