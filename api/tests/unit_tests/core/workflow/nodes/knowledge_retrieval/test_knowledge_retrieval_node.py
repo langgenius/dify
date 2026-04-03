@@ -720,12 +720,15 @@ class TestResolveDynamicDatasetIds:
         """When no variable selector is set, only static dataset_ids are used."""
         static_id = str(uuid.uuid4())
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[static_id], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[static_id],
+            retrieval_mode="multiple",
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -739,13 +742,16 @@ class TestResolveDynamicDatasetIds:
         mock_graph_runtime_state.variable_pool.add(selector, StringSegment(value=dynamic_id))
 
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[],
+            retrieval_mode="multiple",
             dataset_id_variable_selector=selector,
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -759,13 +765,16 @@ class TestResolveDynamicDatasetIds:
         mock_graph_runtime_state.variable_pool.add(selector, ArrayStringSegment(value=[id1, id2]))
 
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[],
+            retrieval_mode="multiple",
             dataset_id_variable_selector=selector,
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -773,7 +782,10 @@ class TestResolveDynamicDatasetIds:
         assert node._resolve_dataset_ids(node_data) == [id1, id2]
 
     def test_merge_static_and_dynamic_deduplicated(
-        self, mock_graph_init_params, mock_graph_runtime_state, mock_rag_retrieval,
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
     ):
         """Static and dynamic IDs are merged with duplicates removed."""
         shared_id = str(uuid.uuid4())
@@ -781,17 +793,21 @@ class TestResolveDynamicDatasetIds:
         dynamic_only = str(uuid.uuid4())
         selector = ["code_node", "ids"]
         mock_graph_runtime_state.variable_pool.add(
-            selector, ArrayStringSegment(value=[shared_id, dynamic_only]),
+            selector,
+            ArrayStringSegment(value=[shared_id, dynamic_only]),
         )
 
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[static_only, shared_id], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[static_only, shared_id],
+            retrieval_mode="multiple",
             dataset_id_variable_selector=selector,
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -805,13 +821,16 @@ class TestResolveDynamicDatasetIds:
         mock_graph_runtime_state.variable_pool.add(selector, StringSegment(value=""))
 
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[],
+            retrieval_mode="multiple",
             dataset_id_variable_selector=selector,
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -819,18 +838,24 @@ class TestResolveDynamicDatasetIds:
         assert node._resolve_dataset_ids(node_data) == []
 
     def test_dynamic_variable_not_found_falls_back(
-        self, mock_graph_init_params, mock_graph_runtime_state, mock_rag_retrieval,
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
     ):
         """When the variable selector points to a missing variable, only static IDs are returned."""
         static_id = str(uuid.uuid4())
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[static_id], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[static_id],
+            retrieval_mode="multiple",
             dataset_id_variable_selector=["nonexistent", "var"],
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -839,7 +864,10 @@ class TestResolveDynamicDatasetIds:
         assert result == [static_id]
 
     def test_dynamic_ids_used_in_fetch(
-        self, mock_graph_init_params, mock_graph_runtime_state, mock_rag_retrieval,
+        self,
+        mock_graph_init_params,
+        mock_graph_runtime_state,
+        mock_rag_retrieval,
     ):
         """_fetch_dataset_retriever should pass dynamically resolved IDs into the retrieval request."""
         dynamic_id = str(uuid.uuid4())
@@ -848,19 +876,24 @@ class TestResolveDynamicDatasetIds:
         mock_graph_runtime_state.variable_pool.add(["start", "query"], StringSegment(value="hello"))
 
         node_data = KnowledgeRetrievalNodeData(
-            title="KR", type="knowledge-retrieval",
-            dataset_ids=[], retrieval_mode="multiple",
+            title="KR",
+            type="knowledge-retrieval",
+            dataset_ids=[],
+            retrieval_mode="multiple",
             query_variable_selector=["start", "query"],
             dataset_id_variable_selector=selector,
             multiple_retrieval_config=MultipleRetrievalConfig(
-                top_k=5, score_threshold=0.0,
-                reranking_mode="reranking_model", reranking_enable=True,
+                top_k=5,
+                score_threshold=0.0,
+                reranking_mode="reranking_model",
+                reranking_enable=True,
                 reranking_model=RerankingModelConfig(provider="cohere", model="rerank-v2"),
             ),
         )
         node_id = str(uuid.uuid4())
         node = KnowledgeRetrievalNode(
-            id=node_id, config={"id": node_id, "data": node_data.model_dump()},
+            id=node_id,
+            config={"id": node_id, "data": node_data.model_dump()},
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )

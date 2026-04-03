@@ -172,8 +172,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         dynamic_ids: list[str] = []
         if variable is None:
             logger.warning(
-                "dataset_id_variable_selector %s could not be resolved; "
-                "falling back to static dataset_ids only",
+                "dataset_id_variable_selector %s could not be resolved; falling back to static dataset_ids only",
                 node_data.dataset_id_variable_selector,
             )
         elif isinstance(variable, ArrayStringSegment):
