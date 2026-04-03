@@ -108,9 +108,7 @@ class TestDatasetServiceQueries:
         dataset_process_rule.rules_dict = {"delimiter": "\n"}
 
         with patch("services.dataset_service.db") as mock_db:
-            (
-                mock_db.session.execute.return_value.scalar_one_or_none.return_value
-            ) = dataset_process_rule
+            (mock_db.session.execute.return_value.scalar_one_or_none.return_value) = dataset_process_rule
 
             result = DatasetService.get_process_rules("dataset-1")
 
@@ -118,9 +116,7 @@ class TestDatasetServiceQueries:
 
     def test_get_process_rules_falls_back_to_default_rules_when_missing(self):
         with patch("services.dataset_service.db") as mock_db:
-            (
-                mock_db.session.execute.return_value.scalar_one_or_none.return_value
-            ) = None
+            (mock_db.session.execute.return_value.scalar_one_or_none.return_value) = None
 
             result = DatasetService.get_process_rules("dataset-1")
 
@@ -1449,9 +1445,7 @@ class TestDatasetServicePermissionsAndLifecycle:
     def test_get_related_apps_returns_ordered_query_results(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.desc.side_effect = lambda column: column
-            mock_db.session.scalars.return_value.all.return_value = [
-                "relation-1"
-            ]
+            mock_db.session.scalars.return_value.all.return_value = ["relation-1"]
 
             result = DatasetService.get_related_apps("dataset-1")
 
