@@ -149,11 +149,14 @@ class ExternalDatasetService:
 
     @staticmethod
     def external_knowledge_api_use_check(external_knowledge_api_id: str) -> tuple[bool, int]:
-        count = db.session.scalar(
-            select(func.count(ExternalKnowledgeBindings.id)).where(
-                ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id
+        count = (
+            db.session.scalar(
+                select(func.count(ExternalKnowledgeBindings.id)).where(
+                    ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id
+                )
             )
-        ) or 0
+            or 0
+        )
         if count > 0:
             return True, count
         return False, 0
@@ -249,9 +252,7 @@ class ExternalDatasetService:
     def create_external_dataset(tenant_id: str, user_id: str, args: dict) -> Dataset:
         # check if dataset name already exists
         if db.session.scalar(
-            select(Dataset)
-            .where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id)
-            .limit(1)
+            select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
         ):
             raise DatasetNameDuplicateError(f"Dataset with name {args.get('name')} already exists.")
         external_knowledge_api = db.session.scalar(
