@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 import type { MermaidConfig } from 'mermaid'
 import mermaid from 'mermaid'
 import * as React from 'react'
@@ -557,7 +558,7 @@ const Flowchart = (props: FlowchartProps) => {
 
           <div
             style={{ maxWidth: '100%' }}
-            dangerouslySetInnerHTML={{ __html: svgString }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svgString) }}
           />
         </div>
       )}
