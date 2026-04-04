@@ -1,7 +1,7 @@
 'use client'
-import { useClipboard } from '../copy-feedback/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useClipboard } from '../copy-feedback/use-clipboard'
 import Tooltip from '../tooltip'
 
 type Props = {

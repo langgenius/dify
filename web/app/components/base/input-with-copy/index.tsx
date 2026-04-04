@@ -1,10 +1,10 @@
 'use client'
 import type { InputProps } from '../input'
-import { useClipboard } from '../copy-feedback/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
+import { useClipboard } from '../copy-feedback/use-clipboard'
 import Tooltip from '../tooltip'
 
 type InputWithCopyProps = {
