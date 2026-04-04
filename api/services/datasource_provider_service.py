@@ -708,14 +708,15 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(
-            select(DatasourceProvider)
-            .where(
-                DatasourceProvider.tenant_id == tenant_id,
-                DatasourceProvider.provider == provider,
-                DatasourceProvider.plugin_id == plugin_id,
-            )
-        ).all())
+        datasource_providers: list[DatasourceProvider] = list(
+            db.session.scalars(
+                select(DatasourceProvider).where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.provider == provider,
+                    DatasourceProvider.plugin_id == plugin_id,
+                )
+            ).all()
+        )
         if not datasource_providers:
             return []
         copy_credentials_list = []
@@ -883,14 +884,15 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(
-            select(DatasourceProvider)
-            .where(
-                DatasourceProvider.tenant_id == tenant_id,
-                DatasourceProvider.provider == provider,
-                DatasourceProvider.plugin_id == plugin_id,
-            )
-        ).all())
+        datasource_providers: list[DatasourceProvider] = list(
+            db.session.scalars(
+                select(DatasourceProvider).where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.provider == provider,
+                    DatasourceProvider.plugin_id == plugin_id,
+                )
+            ).all()
+        )
         if not datasource_providers:
             return []
         copy_credentials_list = []
