@@ -3148,8 +3148,7 @@ class SegmentService:
         try:
             with redis_client.lock(lock_name, timeout=600):
                 max_position = db.session.scalar(
-                    select(func.max(DocumentSegment.position))
-                    .where(DocumentSegment.document_id == document.id)
+                    select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document.id)
                 )
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
@@ -3225,8 +3224,7 @@ class SegmentService:
                         model=dataset.embedding_model,
                     )
                 max_position = db.session.scalar(
-                    select(func.max(DocumentSegment.position))
-                    .where(DocumentSegment.document_id == document.id)
+                    select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document.id)
                 )
                 pre_segment_data_list = []
                 segment_data_list = []
@@ -3575,13 +3573,14 @@ class SegmentService:
             # Get child chunk IDs before parent segment is deleted
             child_node_ids = []
             if segment.index_node_id:
-                child_node_ids = list(db.session.scalars(
-                    select(ChildChunk.index_node_id)
-                    .where(
-                        ChildChunk.segment_id == segment.id,
-                        ChildChunk.dataset_id == dataset.id,
-                    )
-                ).all())
+                child_node_ids = list(
+                    db.session.scalars(
+                        select(ChildChunk.index_node_id).where(
+                            ChildChunk.segment_id == segment.id,
+                            ChildChunk.dataset_id == dataset.id,
+                        )
+                    ).all()
+                )
 
             delete_segment_from_index_task.delay(
                 [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
@@ -3601,8 +3600,7 @@ class SegmentService:
         if not segment_ids or len(segment_ids) == 0:
             return
         segments_info = db.session.execute(
-            select(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count)
-            .where(
+            select(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count).where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
@@ -3621,13 +3619,14 @@ class SegmentService:
         child_node_ids = []
         if index_node_ids:
             child_node_ids = [
-                nid for nid in db.session.scalars(
-                    select(ChildChunk.index_node_id)
-                    .where(
+                nid
+                for nid in db.session.scalars(
+                    select(ChildChunk.index_node_id).where(
                         ChildChunk.segment_id.in_(segment_db_ids),
                         ChildChunk.dataset_id == dataset.id,
                     )
-                ).all() if nid
+                ).all()
+                if nid
             ]
 
         # Start async cleanup with both parent and child node IDs
@@ -3719,8 +3718,7 @@ class SegmentService:
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
             max_position = db.session.scalar(
-                select(func.max(ChildChunk.position))
-                .where(
+                select(func.max(ChildChunk.position)).where(
                     ChildChunk.tenant_id == current_user.current_tenant_id,
                     ChildChunk.dataset_id == dataset.id,
                     ChildChunk.document_id == document.id,
@@ -3886,9 +3884,7 @@ class SegmentService:
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
         result = db.session.scalar(
-            select(ChildChunk)
-            .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
-            .limit(1)
+            select(ChildChunk).where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).limit(1)
         )
         return result if isinstance(result, ChildChunk) else None
 
