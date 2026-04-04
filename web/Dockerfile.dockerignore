@@ -10,6 +10,7 @@
 !packages/
 !packages/**/
 !packages/**/package.json
+!packages/iconify-collections/**
 !sdks/
 !sdks/nodejs-client/
 !sdks/nodejs-client/package.json
