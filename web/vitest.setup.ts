@@ -83,14 +83,6 @@ afterEach(async () => {
   })
 })
 
-// mock foxact/use-clipboard - not available in test environment
-vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copy: vi.fn(),
-    copied: false,
-  }),
-}))
-
 // mock zustand - auto-resets all stores after each test
 // Based on official Zustand testing guide: https://zustand.docs.pmnd.rs/guides/testing
 vi.mock('zustand')
