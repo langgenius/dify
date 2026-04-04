@@ -1,6 +1,6 @@
 'use client'
 import type { InputProps } from '../input'
-import { useClipboard } from 'foxact/use-clipboard'
+import { useClipboard } from '../copy-feedback/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'

@@ -1,5 +1,5 @@
 'use client'
-import { useClipboard } from 'foxact/use-clipboard'
+import { useClipboard } from '../copy-feedback/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '../tooltip'
