@@ -45,6 +45,7 @@ from core.llm_generator.output_parser.structured_output import invoke_llm_with_s
 from core.model_manager import ModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
+from core.tools.entities.common_entities import EmojiIconDict
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
     FormCreateParams,
@@ -418,9 +419,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         *,
         provider_name: str,
         default_icon: str | None = None,
-    ) -> tuple[str | Mapping[str, str] | None, str | Mapping[str, str] | None]:
-        icon: str | Mapping[str, str] | None = default_icon
-        icon_dark: str | Mapping[str, str] | None = None
+    ) -> tuple[str | Mapping[str, str] | EmojiIconDict | None, str | Mapping[str, str] | EmojiIconDict | None]:
+        icon: str | Mapping[str, str] | EmojiIconDict | None = default_icon
+        icon_dark: str | Mapping[str, str] | EmojiIconDict | None = None
 
         manager = PluginInstaller()
         plugins = manager.list_plugins(self._run_context.tenant_id)
