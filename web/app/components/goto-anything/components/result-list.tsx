@@ -6,7 +6,7 @@ import { Command } from 'cmdk'
 import { useTranslation } from 'react-i18next'
 import ResultItem from './result-item'
 
-export type ResultListProps = {
+type ResultListProps = {
   groupedResults: Record<string, SearchResult[]>
   onSelect: (result: SearchResult) => void
 }

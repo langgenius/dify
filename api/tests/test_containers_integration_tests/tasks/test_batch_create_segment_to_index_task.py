@@ -19,9 +19,11 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
@@ -52,7 +54,10 @@ class TestBatchCreateSegmentToIndexTask:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.batch_create_segment_to_index_task.storage", autospec=True) as mock_storage,
-            patch("tasks.batch_create_segment_to_index_task.ModelManager", autospec=True) as mock_model_manager,
+            patch(
+                "tasks.batch_create_segment_to_index_task.ModelManager.for_tenant",
+                autospec=True,
+            ) as mock_model_manager,
             patch("tasks.batch_create_segment_to_index_task.VectorService", autospec=True) as mock_vector_service,
         ):
             # Setup default mock returns
@@ -139,8 +144,8 @@ class TestBatchCreateSegmentToIndexTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(),
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
             created_by=account.id,
@@ -170,15 +175,15 @@ class TestBatchCreateSegmentToIndexTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name=fake.file_name(),
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             word_count=0,
         )
 
@@ -203,7 +208,7 @@ class TestBatchCreateSegmentToIndexTask:
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -220,17 +225,17 @@ class TestBatchCreateSegmentToIndexTask:
 
         return upload_file
 
-    def _create_test_csv_content(self, content_type="text_model"):
+    def _create_test_csv_content(self, content_type=IndexStructureType.PARAGRAPH_INDEX):
         """
         Helper method to create test CSV content.
 
         Args:
-            content_type: Type of content to create ("text_model" or "qa_model")
+            content_type: Type of content to create (IndexStructureType.PARAGRAPH_INDEX or IndexStructureType.QA_INDEX)
 
         Returns:
             str: CSV content as string
         """
-        if content_type == "qa_model":
+        if content_type == IndexStructureType.QA_INDEX:
             csv_content = "content,answer\n"
             csv_content += "This is the first segment content,This is the first answer\n"
             csv_content += "This is the second segment content,This is the second answer\n"
@@ -263,7 +268,7 @@ class TestBatchCreateSegmentToIndexTask:
         upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
 
         # Create CSV content
-        csv_content = self._create_test_csv_content("text_model")
+        csv_content = self._create_test_csv_content(IndexStructureType.PARAGRAPH_INDEX)
 
         # Mock storage to return our CSV content
         mock_storage = mock_external_service_dependencies["storage"]
@@ -301,7 +306,7 @@ class TestBatchCreateSegmentToIndexTask:
             assert segment.dataset_id == dataset.id
             assert segment.document_id == document.id
             assert segment.position == i + 1
-            assert segment.status == "completed"
+            assert segment.status == SegmentStatus.COMPLETED
             assert segment.indexing_at is not None
             assert segment.completed_at is not None
             assert segment.answer is None  # text_model doesn't have answers
@@ -442,15 +447,15 @@ class TestBatchCreateSegmentToIndexTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=1,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="disabled_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=False,  # Document is disabled
                 archived=False,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 word_count=0,
             ),
             # Archived document
@@ -458,15 +463,15 @@ class TestBatchCreateSegmentToIndexTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=2,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="archived_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="completed",
+                indexing_status=IndexingStatus.COMPLETED,
                 enabled=True,
                 archived=True,  # Document is archived
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 word_count=0,
             ),
             # Document with incomplete indexing
@@ -474,15 +479,15 @@ class TestBatchCreateSegmentToIndexTask:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=3,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name="incomplete_document",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="indexing",  # Not completed
+                indexing_status=IndexingStatus.INDEXING,  # Not completed
                 enabled=True,
                 archived=False,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 word_count=0,
             ),
         ]
@@ -643,7 +648,7 @@ class TestBatchCreateSegmentToIndexTask:
                 word_count=len(f"Existing segment {i + 1}"),
                 tokens=10,
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 index_node_id=str(uuid.uuid4()),
                 index_node_hash=f"hash_{i}",
             )
@@ -654,7 +659,7 @@ class TestBatchCreateSegmentToIndexTask:
         db_session_with_containers.commit()
 
         # Create CSV content
-        csv_content = self._create_test_csv_content("text_model")
+        csv_content = self._create_test_csv_content(IndexStructureType.PARAGRAPH_INDEX)
 
         # Mock storage to return our CSV content
         mock_storage = mock_external_service_dependencies["storage"]
@@ -694,7 +699,7 @@ class TestBatchCreateSegmentToIndexTask:
         for i, segment in enumerate(new_segments):
             expected_position = 4 + i  # Should start at position 4
             assert segment.position == expected_position
-            assert segment.status == "completed"
+            assert segment.status == SegmentStatus.COMPLETED
             assert segment.indexing_at is not None
             assert segment.completed_at is not None
 

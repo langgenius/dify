@@ -7,12 +7,12 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { cn } from '@/utils/classnames'
 import { InstallStepFromGitHub } from '../../types'
 import Installed from '../base/installed'
-import { useGitHubReleases } from '../hooks'
+import { fetchReleases } from '../hooks'
 import useHideLogic from '../hooks/use-hide-logic'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import { convertRepoToUrl, parseGitHubUrl } from '../utils'
@@ -31,7 +31,6 @@ type InstallFromGitHubProps = {
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
-  const { fetchReleases } = useGitHubReleases()
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -81,10 +80,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const handleUrlSubmit = async () => {
     const { isValid, owner, repo } = parseGitHubUrl(state.repoUrl)
     if (!isValid || !owner || !repo) {
-      Toast.notify({
-        type: 'error',
-        message: t('error.inValidGitHubUrl', { ns: 'plugin' }),
-      })
+      toast.error(t('error.inValidGitHubUrl', { ns: 'plugin' }))
       return
     }
     try {
@@ -97,17 +93,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         }))
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: t('error.noReleasesFound', { ns: 'plugin' }),
-        })
+        toast.error(t('error.noReleasesFound', { ns: 'plugin' }))
       }
     }
     catch {
-      Toast.notify({
-        type: 'error',
-        message: t('error.fetchReleasesError', { ns: 'plugin' }),
-      })
+      toast.error(t('error.fetchReleasesError', { ns: 'plugin' }))
     }
   }
 
@@ -175,10 +165,10 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     >
       <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
         <div className="flex grow flex-col items-start gap-1">
-          <div className="title-2xl-semi-bold self-stretch text-text-primary">
+          <div className="self-stretch text-text-primary title-2xl-semi-bold">
             {getTitle()}
           </div>
-          <div className="system-xs-regular self-stretch text-text-tertiary">
+          <div className="self-stretch text-text-tertiary system-xs-regular">
             {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('installFromGitHub.installNote', { ns: 'plugin' })}
           </div>
         </div>

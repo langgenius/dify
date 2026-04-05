@@ -46,7 +46,7 @@ export default function ThemeSelector() {
           {getCurrentIcon()}
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         <div className="flex w-[144px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           <button
             type="button"

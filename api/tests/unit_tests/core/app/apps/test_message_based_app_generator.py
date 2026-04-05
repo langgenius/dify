@@ -13,9 +13,11 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps import message_based_app_generator
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from models.model import AppMode, Conversation, Message
+from services.errors.app_model_config import AppModelConfigBrokenError
 
 
 class DummyModelConf:
@@ -125,3 +127,55 @@ def test_init_generate_records_sets_conversation_fields_for_chat_entity():
     assert entity.conversation_id == "generated-conversation-id"
     assert entity.is_new_conversation is True
     assert conversation.id == "generated-conversation-id"
+
+
+class TestMessageBasedAppGeneratorExtras:
+    def test_handle_response_closed_file_raises_stopped(self, monkeypatch):
+        generator = MessageBasedAppGenerator()
+
+        class _Pipeline:
+            def __init__(self, **kwargs) -> None:
+                _ = kwargs
+
+            def process(self):
+                raise ValueError("I/O operation on closed file.")
+
+        monkeypatch.setattr(
+            "core.app.apps.message_based_app_generator.EasyUIBasedGenerateTaskPipeline",
+            _Pipeline,
+        )
+
+        with pytest.raises(GenerateTaskStoppedError):
+            generator._handle_response(
+                application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
+                queue_manager=SimpleNamespace(),
+                conversation=SimpleNamespace(id="conv"),
+                message=SimpleNamespace(id="msg"),
+                user=SimpleNamespace(),
+                stream=False,
+            )
+
+    def test_get_app_model_config_requires_valid_config(self, monkeypatch):
+        generator = MessageBasedAppGenerator()
+        app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
+
+        with pytest.raises(AppModelConfigBrokenError):
+            generator._get_app_model_config(app_model, conversation=None)
+
+        conversation = SimpleNamespace(app_model_config_id="missing-id")
+        monkeypatch.setattr(
+            message_based_app_generator, "db", SimpleNamespace(session=SimpleNamespace(scalar=lambda _: None))
+        )
+
+        with pytest.raises(AppModelConfigBrokenError):
+            generator._get_app_model_config(app_model=SimpleNamespace(id="app"), conversation=conversation)
+
+    def test_get_conversation_introduction_handles_missing_inputs(self):
+        app_config = _make_app_config(AppMode.CHAT)
+        app_config.additional_features.opening_statement = "Hello {{name}}"
+        entity = _make_chat_generate_entity(app_config)
+        entity.inputs = {}
+
+        generator = MessageBasedAppGenerator()
+
+        assert generator._get_conversation_introduction(entity) == "Hello {name}"

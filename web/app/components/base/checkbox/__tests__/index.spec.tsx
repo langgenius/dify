@@ -64,4 +64,47 @@ describe('Checkbox Component', () => {
     expect(checkbox).toHaveClass('bg-components-checkbox-bg-disabled')
     expect(checkbox).toHaveClass('cursor-not-allowed')
   })
+
+  it('handles keyboard events (Space and Enter) when not disabled', () => {
+    const onCheck = vi.fn()
+    render(<Checkbox {...mockProps} onCheck={onCheck} />)
+    const checkbox = screen.getByTestId('checkbox-test')
+
+    fireEvent.keyDown(checkbox, { key: ' ' })
+    expect(onCheck).toHaveBeenCalledTimes(1)
+
+    fireEvent.keyDown(checkbox, { key: 'Enter' })
+    expect(onCheck).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not handle keyboard events when disabled', () => {
+    const onCheck = vi.fn()
+    render(<Checkbox {...mockProps} disabled onCheck={onCheck} />)
+    const checkbox = screen.getByTestId('checkbox-test')
+
+    fireEvent.keyDown(checkbox, { key: ' ' })
+    expect(onCheck).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(checkbox, { key: 'Enter' })
+    expect(onCheck).not.toHaveBeenCalled()
+  })
+
+  it('exposes aria-disabled attribute', () => {
+    const { rerender } = render(<Checkbox {...mockProps} />)
+    expect(screen.getByTestId('checkbox-test')).toHaveAttribute('aria-disabled', 'false')
+
+    rerender(<Checkbox {...mockProps} disabled />)
+    expect(screen.getByTestId('checkbox-test')).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('normalizes aria-checked attribute', () => {
+    const { rerender } = render(<Checkbox {...mockProps} />)
+    expect(screen.getByTestId('checkbox-test')).toHaveAttribute('aria-checked', 'false')
+
+    rerender(<Checkbox {...mockProps} checked />)
+    expect(screen.getByTestId('checkbox-test')).toHaveAttribute('aria-checked', 'true')
+
+    rerender(<Checkbox {...mockProps} indeterminate />)
+    expect(screen.getByTestId('checkbox-test')).toHaveAttribute('aria-checked', 'mixed')
+  })
 })

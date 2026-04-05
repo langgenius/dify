@@ -2,25 +2,24 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImagePreview from '../image-preview'
 
-type HotkeyHandler = () => void
+type _HotkeyHandler = () => void
 
 const mocks = vi.hoisted(() => ({
-  hotkeys: {} as Record<string, HotkeyHandler>,
   notify: vi.fn(),
   downloadUrl: vi.fn(),
   windowOpen: vi.fn<(...args: unknown[]) => Window | null>(),
   clipboardWrite: vi.fn<(items: ClipboardItem[]) => Promise<void>>(),
 }))
 
-vi.mock('react-hotkeys-hook', () => ({
-  useHotkeys: (keys: string, handler: HotkeyHandler) => {
-    mocks.hotkeys[keys] = handler
-  },
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: {
     notify: (...args: Parameters<typeof mocks.notify>) => mocks.notify(...args),
+  },
+  toast: {
+    success: (message: string) => mocks.notify({ type: 'success', message }),
+    error: (message: string) => mocks.notify({ type: 'error', message }),
+    warning: (message: string) => mocks.notify({ type: 'warning', message }),
+    info: (message: string) => mocks.notify({ type: 'info', message }),
   },
 }))
 
@@ -44,7 +43,6 @@ describe('ImagePreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.hotkeys = {}
 
     if (!navigator.clipboard) {
       Object.defineProperty(globalThis.navigator, 'clipboard', {
@@ -109,7 +107,8 @@ describe('ImagePreview', () => {
   })
 
   describe('Hotkeys', () => {
-    it('should register hotkeys and invoke esc/left/right handlers', () => {
+    it('should trigger esc/left/right handlers from keyboard', async () => {
+      const user = userEvent.setup()
       const onCancel = vi.fn()
       const onPrev = vi.fn()
       const onNext = vi.fn()
@@ -123,17 +122,33 @@ describe('ImagePreview', () => {
         />,
       )
 
-      expect(mocks.hotkeys.esc).toBeInstanceOf(Function)
-      expect(mocks.hotkeys.left).toBeInstanceOf(Function)
-      expect(mocks.hotkeys.right).toBeInstanceOf(Function)
-
-      mocks.hotkeys.esc?.()
-      mocks.hotkeys.left?.()
-      mocks.hotkeys.right?.()
+      await user.keyboard('{Escape}{ArrowLeft}{ArrowRight}')
 
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(onPrev).toHaveBeenCalledTimes(1)
       expect(onNext).toHaveBeenCalledTimes(1)
+    })
+
+    it('should zoom in and out from keyboard up/down hotkeys', async () => {
+      const user = userEvent.setup()
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+      const image = screen.getByRole('img', { name: 'Preview Image' })
+
+      await user.keyboard('{ArrowUp}')
+      await waitFor(() => {
+        expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
+      })
+
+      await user.keyboard('{ArrowDown}')
+      await waitFor(() => {
+        expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
+      })
     })
   })
 
@@ -225,13 +240,18 @@ describe('ImagePreview', () => {
 
       act(() => {
         overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }))
-        overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 40, clientY: 30 }))
       })
-
       await waitFor(() => {
         expect(image.style.transition).toBe('none')
       })
-      expect(image.style.transform).toContain('translate(')
+
+      act(() => {
+        overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 200, clientY: -100 }))
+      })
+
+      await waitFor(() => {
+        expect(image).toHaveStyle({ transform: 'scale(1.2) translate(70px, -22px)' })
+      })
 
       act(() => {
         document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
@@ -409,6 +429,51 @@ describe('ImagePreview', () => {
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })
+    })
+
+    it('should zoom out below 1 without resetting position', async () => {
+      const user = userEvent.setup()
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+      const image = screen.getByRole('img', { name: 'Preview Image' })
+
+      await user.click(getZoomOutButton())
+      await waitFor(() => {
+        expect(image).toHaveStyle({ transform: 'scale(0.8333333333333334) translate(0px, 0px)' })
+      })
+    })
+
+    it('should keep drag move stable when rect data is unavailable', async () => {
+      const user = userEvent.setup()
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={vi.fn()}
+        />,
+      )
+
+      const overlay = getOverlay()
+      const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
+      const imageParent = image.parentElement
+      if (!imageParent)
+        throw new Error('Image parent element not found')
+
+      vi.spyOn(image, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
+      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
+
+      await user.click(getZoomInButton())
+      act(() => {
+        overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }))
+        overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 60 }))
+      })
+
+      expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
     })
   })
 })

@@ -4,7 +4,7 @@ import type { Recipient } from '@/app/components/workflow/nodes/human-input/type
 import type { Member } from '@/models/common'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
 
@@ -40,7 +40,7 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
     return null
 
   return (
-    <div className="min-w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+    <div className="min-w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
       {!hideSearch && (
         <div className="p-2 pb-1">
           <Input
@@ -65,7 +65,7 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
                 onSelect(account.id)
               }}
             >
-              <Avatar className={cn(value.some(item => item.user_id === account.id) && 'opacity-50')} avatar={account.avatar_url} size={24} name={account.name} />
+              <Avatar className={cn(value.some(item => item.user_id === account.id) && 'opacity-50')} avatar={account.avatar_url} size="sm" name={account.name} />
               <div className={cn('grow', value.some(item => item.user_id === account.id) && 'opacity-50')}>
                 <div className="system-sm-medium text-text-secondary">
                   {account.name}

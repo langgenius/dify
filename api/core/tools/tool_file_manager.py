@@ -10,27 +10,34 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
-from sqlalchemy.orm import Session
+from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
-from extensions.ext_database import db as global_db
+from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
 from models.model import MessageFile
 from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy.engine import Engine
-
 
 class ToolFileManager:
-    _engine: Engine
-
-    def __init__(self, engine: Engine | None = None):
-        if engine is None:
-            engine = global_db.engine
-        self._engine = engine
+    @staticmethod
+    def _build_graph_file_reference(tool_file: ToolFile) -> File:
+        extension = guess_extension(tool_file.mimetype) or ".bin"
+        return File(
+            type=get_file_type_by_mime_type(tool_file.mimetype),
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            remote_url=tool_file.original_url,
+            reference=build_file_reference(record_id=str(tool_file.id)),
+            filename=tool_file.name,
+            extension=extension,
+            mime_type=tool_file.mimetype,
+            size=tool_file.size,
+            storage_key=tool_file.file_key,
+        )
 
     @staticmethod
     def sign_file(tool_file_id: str, extension: str) -> str:
@@ -89,7 +96,7 @@ class ToolFileManager:
         filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
 
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file = ToolFile(
                 user_id=user_id,
                 tenant_id=tenant_id,
@@ -132,7 +139,7 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file = ToolFile(
                 user_id=user_id,
                 tenant_id=tenant_id,
@@ -146,6 +153,7 @@ class ToolFileManager:
 
             session.add(tool_file)
             session.commit()
+            session.refresh(tool_file)
 
         return tool_file
 
@@ -157,7 +165,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
                 .where(
@@ -181,7 +189,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             message_file: MessageFile | None = (
                 session.query(MessageFile)
                 .where(
@@ -217,7 +225,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, ToolFile | None]:
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
         """
         get file binary
 
@@ -225,7 +233,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        with Session(self._engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
                 .where(
@@ -239,11 +247,11 @@ class ToolFileManager:
 
         stream = storage.load_stream(tool_file.file_key)
 
-        return stream, tool_file
+        return stream, self._build_graph_file_reference(tool_file)
 
 
 # init tool_file_parser
-from dify_graph.file.tool_file_parser import set_tool_file_manager_factory
+from graphon.file.tool_file_parser import set_tool_file_manager_factory
 
 
 def _factory() -> ToolFileManager:

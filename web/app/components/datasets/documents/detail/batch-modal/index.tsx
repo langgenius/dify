@@ -11,7 +11,7 @@ import Modal from '@/app/components/base/modal'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
-export type IBatchModalProps = {
+type IBatchModalProps = {
   isShow: boolean
   docForm: ChunkingMode
   onCancel: () => void
@@ -41,7 +41,7 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   return (
-    <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
+    <Modal isShow={isShow} onClose={noop} className="max-w-[520px]! rounded-xl! px-8 py-6">
       <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-secondary" />

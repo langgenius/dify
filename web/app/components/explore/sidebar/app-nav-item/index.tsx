@@ -2,14 +2,14 @@
 import type { AppIconType } from '@/types/app'
 
 import { useHover } from 'ahooks'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useRef } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import ItemOperation from '@/app/components/explore/item-operation'
+import { useRouter } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 
-export type IAppNavItemProps = {
+type IAppNavItemProps = {
   isMobile: boolean
   name: string
   id: string

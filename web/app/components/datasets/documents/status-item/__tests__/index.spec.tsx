@@ -3,13 +3,32 @@ import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StatusItem from '../index'
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  return {
+    record,
+    api: Object.assign(api, {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    }),
+  }
+})
 vi.mock('use-context-selector', () => ({
   createContext: (defaultValue: unknown) => React.createContext(defaultValue),
   useContext: () => ({
-    notify: mockNotify,
+    notify: toastMocks.api,
   }),
   useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: toastMocks.api,
 }))
 
 // Mock useIndexStatus hook
@@ -169,9 +188,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (queuing status)', () => {
@@ -187,9 +205,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (indexing status)', () => {
@@ -205,9 +222,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('should render switch as disabled when embedding (paused status)', () => {
@@ -223,9 +239,8 @@ describe('StatusItem', () => {
           datasetId="dataset-1"
         />,
       )
-      const switchElement = document.querySelector('[role="switch"]')
-      // Switch component uses opacity-50 and cursor-not-allowed when disabled
-      expect(switchElement).toHaveClass('!opacity-50')
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -350,7 +365,7 @@ describe('StatusItem', () => {
         // Flush promises
         await Promise.resolve()
       })
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
@@ -410,7 +425,7 @@ describe('StatusItem', () => {
         // Flush promises
         await Promise.resolve()
       })
-      expect(mockNotify).toHaveBeenCalledWith({
+      expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })

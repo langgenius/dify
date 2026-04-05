@@ -7,7 +7,7 @@ import VariableInspectPanel from '../variable-inspect'
 import VariableTrigger from '../variable-inspect/trigger'
 import ZoomInOut from './zoom-in-out'
 
-export type OperatorProps = {
+type OperatorProps = {
   handleUndo: () => void
   handleRedo: () => void
 }
@@ -74,8 +74,8 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
             maskColor="var(--color-workflow-minimap-bg)"
             nodeClassName={getMiniMapNodeClassName}
             nodeStrokeWidth={3}
-            className="!absolute !bottom-10 z-[9] !m-0 !h-[73px] !w-[103px] !rounded-lg !border-[0.5px]
-            !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5"
+            className="!absolute bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
+            border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
           />
           <ZoomInOut />
         </div>

@@ -1,7 +1,7 @@
-import type { NotionPageTreeItem, NotionPageTreeMap } from '../index'
+import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPageMap } from '@/models/common'
 import { describe, expect, it } from 'vitest'
-import { recursivePushInParentDescendants } from '../utils'
+import { recursivePushInParentDescendants } from '@/app/components/base/notion-page-selector/page-selector/utils'
 
 const makePageEntry = (overrides: Partial<NotionPageTreeItem>): NotionPageTreeItem => ({
   page_icon: null,

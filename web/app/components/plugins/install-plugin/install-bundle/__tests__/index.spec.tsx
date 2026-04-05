@@ -170,9 +170,13 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 // Mock config
-vi.mock('@/config', () => ({
-  MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
-}))
+vi.mock('@/config', async () => {
+  const actual = await vi.importActual<typeof import('@/config')>('@/config')
+  return {
+    ...actual,
+    MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
+  }
+})
 
 // Mock mitt context
 vi.mock('@/context/mitt-context', () => ({

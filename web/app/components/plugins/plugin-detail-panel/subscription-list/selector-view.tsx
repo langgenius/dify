@@ -47,7 +47,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             key={subscription.id}
             className={cn(
               'group flex w-full items-center justify-between rounded-lg p-1 text-left transition-colors',
-              'hover:bg-state-base-hover has-[.subscription-delete-btn:hover]:!bg-state-destructive-hover',
+              'hover:bg-state-base-hover has-[.subscription-delete-btn:hover]:bg-state-destructive-hover!',
               selectedId === subscription.id && 'bg-state-base-hover',
             )}
           >

@@ -1,38 +1,36 @@
 import sys
 import time
-from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
-API_DIR = str(Path(__file__).resolve().parents[5])
-if API_DIR not in sys.path:
-    sys.path.insert(0, API_DIR)
-
-import dify_graph.nodes.human_input.entities  # noqa: F401
-from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
-from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.entities.pause_reason import SchedulingPause
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import NodeType, WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.graph_engine import GraphEngine
-from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
-from dify_graph.graph_events import (
+import graphon.nodes.human_input.entities  # noqa: F401
+from graphon.entities import WorkflowStartReason
+from graphon.entities.base_node_data import BaseNodeData, RetryConfig
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from dify_graph.node_events import NodeRunResult, PauseRequestedEvent
-from dify_graph.nodes.base.entities import BaseNodeData, OutputVariableEntity, RetryConfig
-from dify_graph.nodes.base.node import Node
-from dify_graph.nodes.end.entities import EndNodeData
-from dify_graph.nodes.start.entities import StartNodeData
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from graphon.node_events import NodeRunResult, PauseRequestedEvent
+from graphon.nodes.base.entities import OutputVariableEntity
+from graphon.nodes.base.node import Node
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.start.entities import StartNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
+
+from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
+from core.app.apps.workflow import app_generator as wf_app_gen_module
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -47,11 +45,12 @@ if "core.ops.ops_trace_manager" not in sys.modules:
 
 
 class _StubToolNodeData(BaseNodeData):
+    type: NodeType = BuiltinNodeTypes.TOOL
     pause_on: bool = False
 
 
 class _StubToolNode(Node[_StubToolNodeData]):
-    node_type = NodeType.TOOL
+    node_type = BuiltinNodeTypes.TOOL
 
     @classmethod
     def version(cls) -> str:
@@ -93,23 +92,24 @@ class _StubToolNode(Node[_StubToolNodeData]):
 def _patch_tool_node(mocker):
     original_create_node = DifyNodeFactory.create_node
 
-    def _patched_create_node(self, node_config: dict[str, object]) -> Node:
-        node_data = node_config.get("data", {})
-        if isinstance(node_data, dict) and node_data.get("type") == NodeType.TOOL.value:
+    def _patched_create_node(self, node_config: dict[str, object] | NodeConfigDict) -> Node:
+        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        node_data = typed_node_config["data"]
+        if node_data.type == BuiltinNodeTypes.TOOL:
             return _StubToolNode(
-                id=str(node_config["id"]),
-                config=node_config,
+                id=str(typed_node_config["id"]),
+                config=typed_node_config,
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
             )
-        return original_create_node(self, node_config)
+        return original_create_node(self, typed_node_config)
 
     mocker.patch.object(DifyNodeFactory, "create_node", _patched_create_node)
 
 
 def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:
     node_data = data.model_dump()
-    node_data["type"] = node_type.value
+    node_data["type"] = str(node_type)
     return node_data
 
 
@@ -125,11 +125,11 @@ def _build_graph_config(*, pause_on: str | None) -> dict[str, object]:
     )
 
     nodes = [
-        {"id": "start", "data": _node_data(NodeType.START, start_data)},
-        {"id": "tool_a", "data": _node_data(NodeType.TOOL, tool_data_a)},
-        {"id": "tool_b", "data": _node_data(NodeType.TOOL, tool_data_b)},
-        {"id": "tool_c", "data": _node_data(NodeType.TOOL, tool_data_c)},
-        {"id": "end", "data": _node_data(NodeType.END, end_data)},
+        {"id": "start", "data": _node_data(BuiltinNodeTypes.START, start_data)},
+        {"id": "tool_a", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_a)},
+        {"id": "tool_b", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_b)},
+        {"id": "tool_c", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_c)},
+        {"id": "end", "data": _node_data(BuiltinNodeTypes.END, end_data)},
     ]
     edges = [
         {"source": "start", "target": "tool_a"},
@@ -158,16 +158,16 @@ def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> G
         graph_runtime_state=runtime_state,
     )
 
-    return Graph.init(graph_config=graph_config, node_factory=node_factory)
+    return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
 
 def _build_runtime_state(run_id: str) -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="user", app_id="app", workflow_id="workflow"),
+        system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
         user_inputs={},
         conversation_variables=[],
     )
-    variable_pool.system_variables.workflow_execution_id = run_id
+    variable_pool.add(("sys", "workflow_run_id"), run_id)
     return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 

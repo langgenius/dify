@@ -7,7 +7,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import (
     Message,
 )
@@ -15,6 +15,7 @@ from models.workflow import WorkflowRun
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.workflow_run_service import WorkflowRunService
+from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
 class TestWorkflowRunService:
@@ -26,7 +27,7 @@ class TestWorkflowRunService:
         with (
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
@@ -72,7 +73,7 @@ class TestWorkflowRunService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            password=fake.password(length=12),
+            password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
@@ -164,7 +165,7 @@ class TestWorkflowRunService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source=CreatorUserRole.ACCOUNT,
+            from_source=ConversationFromSource.CONSOLE,
             from_account_id=account.id,
         )
         db_session_with_containers.add(conversation)
@@ -185,7 +186,7 @@ class TestWorkflowRunService:
         message.answer_price_unit = 0.001
         message.currency = "USD"
         message.status = "normal"
-        message.from_source = CreatorUserRole.ACCOUNT
+        message.from_source = ConversationFromSource.CONSOLE
         message.from_account_id = account.id
         message.workflow_run_id = workflow_run.id
         message.inputs = {"input": "test input"}

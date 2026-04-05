@@ -41,7 +41,7 @@ export const WithCustomIcon: Story = {
       </p>
     ),
     icon: (
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-100 via-primary-200 to-primary-300 text-primary-700 shadow-sm">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-primary-100 via-primary-200 to-primary-300 text-primary-700 shadow-sm">
         {'\u{26A1}\u{FE0F}'}
       </div>
     ),

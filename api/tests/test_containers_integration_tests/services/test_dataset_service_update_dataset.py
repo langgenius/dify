@@ -2,11 +2,13 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
-from dify_graph.model_runtime.entities.model_entities import ModelType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, ExternalKnowledgeBindings
+from models.enums import DataSourceType
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
 
@@ -52,7 +54,7 @@ class DatasetUpdateTestDataFactory:
         provider: str = "vendor",
         name: str = "old_name",
         description: str = "old_description",
-        indexing_technique: str = "high_quality",
+        indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         retrieval_model: str = "old_model",
         permission: str = "only_me",
         embedding_model_provider: str | None = None,
@@ -64,7 +66,7 @@ class DatasetUpdateTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description=description,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             created_by=created_by,
             provider=provider,
@@ -240,7 +242,7 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=existing_binding_id,
@@ -249,7 +251,7 @@ class TestDatasetServiceUpdateDataset:
         update_data = {
             "name": "new_name",
             "description": "new_description",
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "retrieval_model": "new_model",
             "embedding_model_provider": "openai",
             "embedding_model": "text-embedding-ada-002",
@@ -260,7 +262,7 @@ class TestDatasetServiceUpdateDataset:
 
         assert dataset.name == "new_name"
         assert dataset.description == "new_description"
-        assert dataset.indexing_technique == "high_quality"
+        assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.retrieval_model == "new_model"
         assert dataset.embedding_model_provider == "openai"
         assert dataset.embedding_model == "text-embedding-ada-002"
@@ -275,7 +277,7 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=existing_binding_id,
@@ -284,7 +286,7 @@ class TestDatasetServiceUpdateDataset:
         update_data = {
             "name": "new_name",
             "description": None,
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "retrieval_model": "new_model",
             "embedding_model_provider": None,
             "embedding_model": None,
@@ -311,14 +313,14 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=existing_binding_id,
         )
 
         update_data = {
-            "indexing_technique": "economy",
+            "indexing_technique": IndexTechniqueType.ECONOMY,
             "retrieval_model": "new_model",
         }
 
@@ -327,7 +329,7 @@ class TestDatasetServiceUpdateDataset:
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
         db_session_with_containers.refresh(dataset)
-        assert dataset.indexing_technique == "economy"
+        assert dataset.indexing_technique == IndexTechniqueType.ECONOMY
         assert dataset.embedding_model is None
         assert dataset.embedding_model_provider is None
         assert dataset.collection_binding_id is None
@@ -342,7 +344,7 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="economy",
+            indexing_technique=IndexTechniqueType.ECONOMY,
         )
 
         embedding_model = Mock()
@@ -353,7 +355,7 @@ class TestDatasetServiceUpdateDataset:
         binding.id = str(uuid4())
 
         update_data = {
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "embedding_model_provider": "openai",
             "embedding_model": "text-embedding-ada-002",
             "retrieval_model": "new_model",
@@ -361,7 +363,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
@@ -382,7 +384,7 @@ class TestDatasetServiceUpdateDataset:
             mock_task.delay.assert_called_once_with(dataset.id, "add")
 
         db_session_with_containers.refresh(dataset)
-        assert dataset.indexing_technique == "high_quality"
+        assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.embedding_model_provider == "openai"
         assert dataset.collection_binding_id == binding.id
@@ -402,7 +404,7 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=existing_binding_id,
@@ -410,7 +412,7 @@ class TestDatasetServiceUpdateDataset:
 
         update_data = {
             "name": "new_name",
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "retrieval_model": "new_model",
         }
 
@@ -418,7 +420,7 @@ class TestDatasetServiceUpdateDataset:
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
-        assert dataset.indexing_technique == "high_quality"
+        assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.embedding_model_provider == "openai"
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.collection_binding_id == existing_binding_id
@@ -434,7 +436,7 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=existing_binding_id,
@@ -448,7 +450,7 @@ class TestDatasetServiceUpdateDataset:
         binding.id = str(uuid4())
 
         update_data = {
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "embedding_model_provider": "openai",
             "embedding_model": "text-embedding-3-small",
             "retrieval_model": "new_model",
@@ -456,7 +458,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
             ) as mock_get_binding,
@@ -530,11 +532,11 @@ class TestDatasetServiceUpdateDataset:
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
-            indexing_technique="economy",
+            indexing_technique=IndexTechniqueType.ECONOMY,
         )
 
         update_data = {
-            "indexing_technique": "high_quality",
+            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
             "embedding_model_provider": "invalid_provider",
             "embedding_model": "invalid_model",
             "retrieval_model": "new_model",
@@ -542,7 +544,7 @@ class TestDatasetServiceUpdateDataset:
 
         with (
             patch("services.dataset_service.current_user", user),
-            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
         ):
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 

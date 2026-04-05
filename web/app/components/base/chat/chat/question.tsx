@@ -19,7 +19,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
 import Button from '../../button'
-import Toast from '../../toast'
+import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -133,11 +133,13 @@ const Question: FC<QuestionProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const getContentWidth = () => {
+    /* v8 ignore next 2 -- @preserve */
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
+    /* v8 ignore next 2 -- @preserve */
     if (!contentRef.current)
       return
     const resizeObserver = new ResizeObserver(() => {
@@ -161,14 +163,14 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
+            className="absolute hidden gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton
               data-testid="copy-btn"
               onClick={() => {
                 copy(content)
-                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
               }}
             >
               <div className="i-ri-clipboard-line h-4 w-4" />
@@ -207,7 +209,7 @@ const Question: FC<QuestionProps> = ({
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
                     <Textarea
                       className={cn(
-                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular',
+                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-hidden body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}
@@ -219,8 +221,8 @@ const Question: FC<QuestionProps> = ({
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <Button className="min-w-24" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button className="min-w-24" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" onClick={handleCancelEditing} data-testid="cancel-edit-btn">{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" variant="primary" onClick={handleResend} data-testid="save-edit-btn">{t('operation.save', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}

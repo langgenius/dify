@@ -3,7 +3,10 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -41,8 +44,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.app_fields import (
@@ -476,7 +477,7 @@ class TrialSitApi(Resource):
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 
         if not site:
             raise Forbidden()
@@ -541,13 +542,7 @@ class AppWorkflowApi(Resource):
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
-        workflow = (
-            db.session.query(Workflow)
-            .where(
-                Workflow.id == app_model.workflow_id,
-            )
-            .first()
-        )
+        workflow = db.session.get(Workflow, app_model.workflow_id)
         return workflow
 
 

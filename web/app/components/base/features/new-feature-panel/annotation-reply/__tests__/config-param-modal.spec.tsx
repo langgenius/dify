@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {
@@ -31,12 +31,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: vi.fn() },
-}))
-
 vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
+}))
+
+vi.mock('../score-slider', () => ({
+  default: ({ value, onChange }: { value: number, onChange: (value: number) => void }) => (
+    <input
+      role="slider"
+      type="range"
+      min={80}
+      max={100}
+      value={value}
+      onChange={e => onChange(Number((e.target as HTMLInputElement).value))}
+    />
+  ),
 }))
 
 const defaultAnnotationConfig = {
@@ -50,8 +59,11 @@ const defaultAnnotationConfig = {
 }
 
 describe('ConfigParamModal', () => {
+  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+
   beforeEach(() => {
     vi.clearAllMocks()
+    toastErrorSpy.mockClear()
     mockHooksReturn = {
       modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
       defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
@@ -158,7 +170,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    expect(screen.getByText('0.90')).toBeInTheDocument()
+    expect(screen.getByRole('slider')).toHaveValue('90')
   })
 
   it('should render configConfirmBtn when isInit is false', () => {
@@ -228,9 +240,7 @@ describe('ConfigParamModal', () => {
     const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
-    expect(Toast.notify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    )
+    expect(toastErrorSpy).toHaveBeenCalledWith('common.modelProvider.embeddingModel.required')
   })
 
   it('should call onHide when cancel is clicked and not loading', () => {
@@ -262,9 +272,9 @@ describe('ConfigParamModal', () => {
     )
 
     const slider = screen.getByRole('slider')
-    expect(slider).toHaveAttribute('aria-valuemin', '80')
-    expect(slider).toHaveAttribute('aria-valuemax', '100')
-    expect(slider).toHaveAttribute('aria-valuenow', '90')
+    expect(slider).toHaveAttribute('min', '80')
+    expect(slider).toHaveAttribute('max', '100')
+    expect(slider).toHaveValue('90')
   })
 
   it('should update embedding model when model selector is used', () => {
@@ -377,7 +387,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '90')
+    expect(screen.getByRole('slider')).toHaveValue('90')
   })
 
   it('should set loading state while saving', async () => {
@@ -410,6 +420,32 @@ describe('ConfigParamModal', () => {
     resolveOnSave!()
     await waitFor(() => {
       expect(onSave).toHaveBeenCalled()
+    })
+  })
+
+  it('should save updated score after slider changes', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ConfigParamModal
+        appId="test-app"
+        isShow={true}
+        onHide={vi.fn()}
+        onSave={onSave}
+        annotationConfig={defaultAnnotationConfig}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '96' } })
+
+    const buttons = screen.getAllByRole('button')
+    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    fireEvent.click(saveBtn!)
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ embedding_provider_name: 'openai' }),
+        0.96,
+      )
     })
   })
 })

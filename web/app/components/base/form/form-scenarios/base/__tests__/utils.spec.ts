@@ -46,4 +46,54 @@ describe('base scenario schema generator', () => {
     expect(schema.safeParse({}).success).toBe(true)
     expect(schema.safeParse({ mode: null }).success).toBe(true)
   })
+
+  it('should validate required checkbox values as booleans', () => {
+    const schema = generateZodSchema([{
+      type: BaseFieldType.checkbox,
+      variable: 'accepted',
+      label: 'Accepted',
+      required: true,
+      showConditions: [],
+    }])
+
+    expect(schema.safeParse({ accepted: true }).success).toBe(true)
+    expect(schema.safeParse({ accepted: false }).success).toBe(true)
+    expect(schema.safeParse({ accepted: 'yes' }).success).toBe(false)
+    expect(schema.safeParse({}).success).toBe(false)
+  })
+
+  it('should fallback to any schema for unsupported field types', () => {
+    const schema = generateZodSchema([{
+      type: BaseFieldType.file,
+      variable: 'attachment',
+      label: 'Attachment',
+      required: false,
+      showConditions: [],
+      allowedFileTypes: [],
+      allowedFileExtensions: [],
+      allowedFileUploadMethods: [],
+    }])
+
+    expect(schema.safeParse({ attachment: { id: 'file-1' } }).success).toBe(true)
+    expect(schema.safeParse({ attachment: 'raw-string' }).success).toBe(true)
+    expect(schema.safeParse({}).success).toBe(true)
+    expect(schema.safeParse({ attachment: null }).success).toBe(true)
+  })
+
+  it('should ignore numeric and text constraints for non-applicable field types', () => {
+    const schema = generateZodSchema([{
+      type: BaseFieldType.checkbox,
+      variable: 'toggle',
+      label: 'Toggle',
+      required: true,
+      showConditions: [],
+      maxLength: 1,
+      min: 10,
+      max: 20,
+    }])
+
+    expect(schema.safeParse({ toggle: true }).success).toBe(true)
+    expect(schema.safeParse({ toggle: false }).success).toBe(true)
+    expect(schema.safeParse({ toggle: 1 }).success).toBe(false)
+  })
 })

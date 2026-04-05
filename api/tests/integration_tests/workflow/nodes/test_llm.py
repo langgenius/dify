@@ -4,15 +4,19 @@ import uuid
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.node import LLMNode
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.nodes.protocols import HttpClientProtocol
+from graphon.runtime import GraphRuntimeState, VariablePool
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import ModelInstance
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.node_events import StreamCompletedEvent
-from dify_graph.nodes.llm.node import LLMNode
-from dify_graph.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -50,7 +54,7 @@ def init_llm_node(config: dict) -> LLMNode:
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(
+        system_variables=build_system_variables(
             user_id="aaa",
             app_id=app_id,
             workflow_id=workflow_id,
@@ -65,6 +69,11 @@ def init_llm_node(config: dict) -> LLMNode:
     variable_pool.add(["abc", "output"], "sunny")
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    prompt_message_serializer = MagicMock(spec=PromptMessageSerializerProtocol)
+    prompt_message_serializer.serialize.side_effect = lambda *, model_mode, prompt_messages: [
+        message.model_dump(mode="json") for message in prompt_messages
+    ]
+    llm_file_saver = MagicMock(spec=LLMFileSaver)
 
     node = LLMNode(
         id=str(uuid.uuid4()),
@@ -74,6 +83,9 @@ def init_llm_node(config: dict) -> LLMNode:
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),
+        llm_file_saver=llm_file_saver,
+        prompt_message_serializer=prompt_message_serializer,
+        http_client=MagicMock(spec=HttpClientProtocol),
     )
 
     return node
@@ -112,8 +124,8 @@ def test_execute_llm():
         from decimal import Decimal
         from unittest.mock import MagicMock
 
-        from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
+        from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
         mock_model_instance = MagicMock(spec=ModelInstance)
@@ -157,7 +169,7 @@ def test_execute_llm():
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_1(**_kwargs):
-        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
             SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),
@@ -228,8 +240,8 @@ def test_execute_llm_with_jinja2():
         from decimal import Decimal
         from unittest.mock import MagicMock
 
-        from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-        from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage
+        from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
         # Create mock model instance
         mock_model_instance = MagicMock(spec=ModelInstance)
@@ -273,7 +285,7 @@ def test_execute_llm_with_jinja2():
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_2(**_kwargs):
-        from dify_graph.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
         return [
             SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),

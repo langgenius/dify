@@ -9,7 +9,6 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -21,6 +20,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
+import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
 import { cn } from '@/utils/classnames'
@@ -197,7 +197,7 @@ const PluginPage = ({
                       {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
-                  <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
+                  <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
                 </>
               )
             }

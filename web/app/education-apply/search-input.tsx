@@ -89,7 +89,7 @@ const SearchInput = ({
           onChange={handleValueChange}
         />
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[32]">
+      <PortalToFollowElemContent className="z-32">
         {
           !!schools.length && value && (
             <div

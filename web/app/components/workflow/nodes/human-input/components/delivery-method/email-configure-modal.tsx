@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
@@ -45,31 +45,22 @@ const EmailConfigureModal = ({
 
   const checkValidConfig = useCallback(() => {
     if (!subject.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: 'subject is required',
-      })
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`, { ns: 'workflow' }))
       return false
     }
     if (!body.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: 'body is required',
-      })
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`, { ns: 'workflow' }))
       return false
     }
     if (!/\{\{#url#\}\}/.test(body.trim())) {
-      Toast.notify({
-        type: 'error',
-        message: `body must contain one ${t('promptEditor.requestURL.item.title', { ns: 'common' })}`,
-      })
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`, {
+        ns: 'workflow',
+        field: t('promptEditor.requestURL.item.title', { ns: 'common' }),
+      }))
       return false
     }
     if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
-      Toast.notify({
-        type: 'error',
-        message: 'recipients is required',
-      })
+      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`, { ns: 'workflow' }))
       return false
     }
     return true
@@ -90,7 +81,7 @@ const EmailConfigureModal = ({
     <Modal
       isShow={isShow}
       onClose={noop}
-      className="relative !max-w-[720px] !p-0"
+      className="relative max-w-[720px]! p-0!"
     >
       <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
@@ -131,9 +122,9 @@ const EmailConfigureModal = ({
             onChange={setRecipients}
           />
         </div>
-        <Divider className="!my-0 !mt-5 !h-px" />
-        <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
-          <div className="rounded-[4px] border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
+        <Divider className="my-0! mt-5! h-px!" />
+        <div className="flex items-start justify-between gap-2 radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
+          <div className="radius-xs border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
             <RiBugLine className="h-3.5 w-3.5 text-text-primary-on-surface" />
           </div>
           <div className="grow space-y-1">

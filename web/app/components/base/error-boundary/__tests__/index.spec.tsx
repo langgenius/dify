@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import ErrorBoundary, { ErrorFallback, useAsyncError, useErrorHandler, withErrorBoundary } from '../index'
 
 const mockConfig = vi.hoisted(() => ({
@@ -11,6 +12,19 @@ vi.mock('@/config', () => ({
   get IS_DEV() {
     return mockConfig.isDev
   },
+}))
+
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'error': 'Error',
+  'errorBoundary.componentStack': 'Component Stack:',
+  'errorBoundary.details': 'Error Details (Development Only)',
+  'errorBoundary.errorCount': 'This error has occurred {{count}} times',
+  'errorBoundary.fallbackTitle': 'Oops! Something went wrong',
+  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+  'errorBoundary.reloadPage': 'Reload Page',
+  'errorBoundary.title': 'Something went wrong',
+  'errorBoundary.tryAgain': 'Try Again',
+  'errorBoundary.tryAgainCompact': 'Try again',
 }))
 
 type ThrowOnRenderProps = {
@@ -238,6 +252,32 @@ describe('ErrorBoundary', () => {
       })
     })
 
+    it('should not reset when resetKeys reference changes but values are identical', async () => {
+      const onReset = vi.fn()
+
+      const StableKeysHarness = () => {
+        const [keys, setKeys] = React.useState<Array<string | number>>([1, 2])
+        return (
+          <>
+            <button onClick={() => setKeys([1, 2])}>Update keys same values</button>
+            <ErrorBoundary resetKeys={keys} onReset={onReset}>
+              <ThrowOnRender shouldThrow={true} />
+            </ErrorBoundary>
+          </>
+        )
+      }
+
+      render(<StableKeysHarness />)
+      await screen.findByText('Something went wrong')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Update keys same values' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+      })
+      expect(onReset).not.toHaveBeenCalled()
+    })
+
     it('should reset after children change when resetOnPropsChange is true', async () => {
       const ResetOnPropsHarness = () => {
         const [shouldThrow, setShouldThrow] = React.useState(true)
@@ -268,6 +308,24 @@ describe('ErrorBoundary', () => {
       await waitFor(() => {
         expect(screen.getByText('second child')).toBeInTheDocument()
       })
+    })
+
+    it('should call window.location.reload when Reload Page is clicked', async () => {
+      const reloadSpy = vi.fn()
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, reload: reloadSpy },
+        writable: true,
+      })
+
+      render(
+        <ErrorBoundary>
+          <ThrowOnRender shouldThrow={true} />
+        </ErrorBoundary>,
+      )
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Reload Page' }))
+
+      expect(reloadSpy).toHaveBeenCalledTimes(1)
     })
   })
 })
@@ -357,6 +415,16 @@ describe('ErrorBoundary utility exports', () => {
       const Wrapped = withErrorBoundary(NamedComponent)
 
       expect(Wrapped.displayName).toBe('withErrorBoundary(NamedComponent)')
+    })
+
+    it('should fallback displayName to Component when wrapped component has no displayName and empty name', () => {
+      const Nameless = (() => <div>nameless</div>) as React.FC
+      Object.defineProperty(Nameless, 'displayName', { value: undefined, configurable: true })
+      Object.defineProperty(Nameless, 'name', { value: '', configurable: true })
+
+      const Wrapped = withErrorBoundary(Nameless)
+
+      expect(Wrapped.displayName).toBe('withErrorBoundary(Component)')
     })
   })
 

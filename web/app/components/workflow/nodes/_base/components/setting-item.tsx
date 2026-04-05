@@ -4,7 +4,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 
-export type SettingItemProps = PropsWithChildren<{
+type SettingItemProps = PropsWithChildren<{
   label: string
   status?: 'error' | 'warning'
   tooltip?: ReactNode

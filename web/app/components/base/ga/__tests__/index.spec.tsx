@@ -31,11 +31,11 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('next/headers', () => ({
+vi.mock('@/next/headers', () => ({
   headers: mockHeaders,
 }))
 
-vi.mock('next/script', () => ({
+vi.mock('@/next/script', () => ({
   default: ({
     id,
     strategy,

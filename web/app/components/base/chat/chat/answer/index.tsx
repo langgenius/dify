@@ -152,13 +152,13 @@ const Answer: FC<AnswerProps> = ({
           )}
         </div>
       )}
-      <div className="chat-answer-container group ml-4 w-0 grow pb-4" ref={containerRef}>
+      <div className="chat-answer-container group ml-4 w-0 grow pb-4" ref={containerRef} data-testid="chat-answer-container">
         {/* Block 1: Workflow Process + Human Input Forms */}
         {hasHumanInputs && (
-          <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
+          <div className={cn('group relative pr-10', chatAnswerContainerInner)} data-testid="chat-answer-container-humaninput">
             <div
               ref={humanInputFormContainerRef}
-              className={cn('body-lg-regular relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary')}
+              className={cn('relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular')}
             >
               {
                 !responding && contentIsEmpty && !hasAgentThoughts && (
@@ -227,7 +227,7 @@ const Answer: FC<AnswerProps> = ({
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
               ref={contentRef}
-              className="body-lg-regular relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary"
+              className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular"
             >
               {
                 !responding && (
@@ -319,10 +319,10 @@ const Answer: FC<AnswerProps> = ({
 
         {/* Original single block layout (when no human inputs) */}
         {!hasHumanInputs && (
-          <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
+          <div className={cn('group relative pr-10', chatAnswerContainerInner)} data-testid="chat-answer-container-inner">
             <div
               ref={contentRef}
-              className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+              className={cn('relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular', workflowProcess && 'w-full')}
             >
               {
                 !responding && (

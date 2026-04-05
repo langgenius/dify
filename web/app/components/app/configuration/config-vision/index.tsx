@@ -119,7 +119,7 @@ const ConfigVision: FC = () => {
           : (
               <>
                 <ParamConfig />
-                <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-regular"></div>
+                <div className="ml-1 mr-3 h-3.5 w-px bg-divider-regular"></div>
                 <Switch
                   value={isImageEnabled}
                   onChange={handleChange}

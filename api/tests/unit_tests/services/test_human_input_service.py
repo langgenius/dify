@@ -3,20 +3,27 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.nodes.human_input.entities import (
+    FormDefinition,
+    FormInput,
+    UserAction,
+)
+from graphon.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 
 import services.human_input_service as human_input_service_module
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from dify_graph.nodes.human_input.entities import (
-    FormDefinition,
-    FormInput,
-    UserAction,
-)
-from dify_graph.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
+from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
-from services.human_input_service import Form, FormExpiredError, HumanInputService, InvalidFormDataError
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 
 
 @pytest.fixture
@@ -45,11 +52,11 @@ def sample_form_record():
             inputs=[],
             user_actions=[UserAction(id="submit", title="Submit")],
             rendered_content="<p>hello</p>",
-            expiration_time=datetime.utcnow() + timedelta(hours=1),
+            expiration_time=naive_utc_now() + timedelta(hours=1),
         ),
         rendered_content="<p>hello</p>",
-        created_at=datetime.utcnow(),
-        expiration_time=datetime.utcnow() + timedelta(hours=1),
+        created_at=naive_utc_now(),
+        expiration_time=naive_utc_now() + timedelta(hours=1),
         status=HumanInputFormStatus.WAITING,
         selected_action_id=None,
         submitted_data=None,
@@ -95,8 +102,8 @@ def test_ensure_form_active_respects_global_timeout(monkeypatch, sample_form_rec
     service = HumanInputService(session_factory)
     expired_record = dataclasses.replace(
         sample_form_record,
-        created_at=datetime.utcnow() - timedelta(hours=2),
-        expiration_time=datetime.utcnow() + timedelta(hours=2),
+        created_at=naive_utc_now() - timedelta(hours=2),
+        expiration_time=naive_utc_now() + timedelta(hours=2),
     )
     monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
 
@@ -285,3 +292,172 @@ def test_submit_form_by_token_missing_inputs(sample_form_record, mock_session_fa
 
     assert "Missing required inputs" in str(exc_info.value)
     repo.mark_submitted.assert_not_called()
+
+
+def test_form_properties(sample_form_record):
+    form = Form(sample_form_record)
+    assert form.id == "form-id"
+    assert form.workflow_run_id == "workflow-run-id"
+    assert form.tenant_id == "tenant-id"
+    assert form.app_id == "app-id"
+    assert form.recipient_id == "recipient-id"
+    assert form.recipient_type == RecipientType.STANDALONE_WEB_APP
+    assert form.status == HumanInputFormStatus.WAITING
+    assert form.form_kind == HumanInputFormKind.RUNTIME
+    assert isinstance(form.created_at, datetime)
+    assert isinstance(form.expiration_time, datetime)
+
+
+def test_form_submitted_error_init():
+    error = FormSubmittedError(form_id="test-form")
+    assert "form_id=test-form" in error.description
+    assert error.code == 412
+
+
+def test_human_input_service_init_with_engine(mocker):
+    engine = MagicMock(spec=human_input_service_module.Engine)
+    sessionmaker_mock = mocker.patch("services.human_input_service.sessionmaker")
+
+    HumanInputService(session_factory=engine)
+    sessionmaker_mock.assert_called_once_with(bind=engine)
+
+
+def test_get_form_by_token_none(mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = None
+
+    service = HumanInputService(session_factory, form_repository=repo)
+    assert service.get_form_by_token("invalid") is None
+
+
+def test_get_form_definition_by_token_mismatch(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = sample_form_record
+
+    service = HumanInputService(session_factory, form_repository=repo)
+    # RecipientType mismatch
+    assert service.get_form_definition_by_token(RecipientType.CONSOLE, "token") is None
+
+
+def test_get_form_definition_by_token_success(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = sample_form_record
+
+    service = HumanInputService(session_factory, form_repository=repo)
+    form = service.get_form_definition_by_token(RecipientType.STANDALONE_WEB_APP, "token")
+    assert form is not None
+    assert form.id == sample_form_record.form_id
+
+
+def test_get_form_definition_by_token_for_console_mismatch(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = sample_form_record  # is STANDALONE_WEB_APP
+
+    service = HumanInputService(session_factory, form_repository=repo)
+    assert service.get_form_definition_by_token_for_console("token") is None
+
+
+def test_submit_form_by_token_delivery_not_enabled(mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = None
+
+    service = HumanInputService(session_factory, form_repository=repo)
+    with pytest.raises(human_input_service_module.WebAppDeliveryNotEnabledError):
+        service.submit_form_by_token(RecipientType.STANDALONE_WEB_APP, "token", "action", {})
+
+
+def test_submit_form_by_token_no_workflow_run_id(sample_form_record, mock_session_factory, mocker):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = sample_form_record
+
+    # Return record with no workflow_run_id
+    result_record = dataclasses.replace(sample_form_record, workflow_run_id=None)
+    repo.mark_submitted.return_value = result_record
+
+    service = HumanInputService(session_factory, form_repository=repo)
+    enqueue_spy = mocker.patch.object(service, "enqueue_resume")
+
+    service.submit_form_by_token(RecipientType.STANDALONE_WEB_APP, "token", "submit", {})
+    enqueue_spy.assert_not_called()
+
+
+def test_ensure_form_active_errors(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    service = HumanInputService(session_factory)
+
+    # Submitted
+    submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
+    with pytest.raises(human_input_service_module.FormSubmittedError):
+        service.ensure_form_active(Form(submitted_record))
+
+    # Timeout status
+    timeout_record = dataclasses.replace(sample_form_record, status=HumanInputFormStatus.TIMEOUT)
+    with pytest.raises(FormExpiredError):
+        service.ensure_form_active(Form(timeout_record))
+
+    # Expired time
+    expired_time_record = dataclasses.replace(
+        sample_form_record, expiration_time=naive_utc_now() - timedelta(minutes=1)
+    )
+    with pytest.raises(FormExpiredError):
+        service.ensure_form_active(Form(expired_time_record))
+
+
+def test_ensure_not_submitted_raises(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    service = HumanInputService(session_factory)
+    submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
+
+    with pytest.raises(human_input_service_module.FormSubmittedError):
+        service._ensure_not_submitted(Form(submitted_record))
+
+
+def test_enqueue_resume_workflow_not_found(mocker, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    service = HumanInputService(session_factory)
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = None
+    mocker.patch(
+        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        return_value=workflow_run_repo,
+    )
+
+    with pytest.raises(AssertionError) as excinfo:
+        service.enqueue_resume("workflow-run-id")
+    assert "WorkflowRun not found" in str(excinfo.value)
+
+
+def test_enqueue_resume_app_not_found(mocker, mock_session_factory):
+    session_factory, session = mock_session_factory
+    service = HumanInputService(session_factory)
+
+    workflow_run = MagicMock()
+    workflow_run.app_id = "app-id"
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
+    mocker.patch(
+        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        return_value=workflow_run_repo,
+    )
+
+    session.execute.return_value.scalar_one_or_none.return_value = None
+    logger_spy = mocker.patch("services.human_input_service.logger")
+
+    service.enqueue_resume("workflow-run-id")
+    logger_spy.error.assert_called_once()
+
+
+def test_is_globally_expired_zero_timeout(monkeypatch, sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    service = HumanInputService(session_factory)
+
+    monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    assert service._is_globally_expired(Form(sample_form_record)) is False

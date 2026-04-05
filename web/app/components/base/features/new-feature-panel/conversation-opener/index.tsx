@@ -34,6 +34,7 @@ const ConversationOpener = ({
   const featuresStore = useFeaturesStore()
   const [isHovering, setIsHovering] = useState(false)
   const handleOpenOpeningModal = useCallback(() => {
+    /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled)
       return
     const {
@@ -95,12 +96,12 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">
+              <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">
                 {opening.opening_statement || t('openingStatement.placeholder', { ns: 'appDebug' })}
               </div>
             )}

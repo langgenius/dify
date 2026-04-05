@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, TypeAlias
+from typing import Any
 
+from graphon.file import File
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from dify_graph.file import File
-
-JSONValue: TypeAlias = Any
+type JSONValue = Any
 
 
 class ResponseModel(BaseModel):
@@ -311,7 +310,9 @@ def to_timestamp(value: datetime | None) -> int | None:
 
 def format_files_contained(value: JSONValue) -> JSONValue:
     if isinstance(value, File):
-        return value.model_dump()
+        # Response payloads must preserve legacy file keys like `related_id`/`url`
+        # while still exposing the new graph-layer `reference` field.
+        return value.to_dict()
     if isinstance(value, dict):
         return {k: format_files_contained(v) for k, v in value.items()}
     if isinstance(value, list):
