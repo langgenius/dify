@@ -811,9 +811,9 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     healthcheck:
-      test: ["CMD-SHELL", "celery -A celery_entrypoint.celery inspect ping"]
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
       interval: 30s
-      timeout: 10s
+      timeout: 30s
       retries: 3
       start_period: 60s
     networks:
@@ -848,9 +848,9 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "celery -A app.celery inspect ping"]
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
       interval: 30s
-      timeout: 10s
+      timeout: 30s
       retries: 3
       start_period: 60s
     networks:
