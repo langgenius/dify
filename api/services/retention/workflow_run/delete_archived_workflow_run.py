@@ -23,10 +23,17 @@ class DeleteResult:
     run_id: str
     tenant_id: str
     success: bool
-    deleted_counts: RunsWithRelatedCountsDict = field(default_factory=lambda: {  # type: ignore[assignment]
-        "runs": 0, "node_executions": 0, "offloads": 0, "app_logs": 0,
-        "trigger_logs": 0, "pauses": 0, "pause_reasons": 0,
-    })
+    deleted_counts: RunsWithRelatedCountsDict = field(
+        default_factory=lambda: {  # type: ignore[assignment]
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
+    )
     error: str | None = None
     elapsed_time: float = 0.0
 
