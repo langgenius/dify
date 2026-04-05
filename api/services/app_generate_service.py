@@ -291,14 +291,24 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator().single_iteration_generate(
-                        app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+                        app_model=app_model,
+                        workflow=workflow,
+                        node_id=node_id,
+                        user=user,
+                        args=args,
+                        streaming=streaming,
                     )
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator().single_iteration_generate(
-                        app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+                        app_model=app_model,
+                        workflow=workflow,
+                        node_id=node_id,
+                        user=user,
+                        args=args,
+                        streaming=streaming,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
@@ -317,14 +327,24 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator().single_loop_generate(
-                        app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+                        app_model=app_model,
+                        workflow=workflow,
+                        node_id=node_id,
+                        user=user,
+                        args=args,
+                        streaming=streaming,
                     )
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator().single_loop_generate(
-                        app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+                        app_model=app_model,
+                        workflow=workflow,
+                        node_id=node_id,
+                        user=user,
+                        args=args,
+                        streaming=streaming,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
