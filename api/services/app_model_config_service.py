@@ -5,8 +5,21 @@ from models.model import AppMode, AppModelConfigDict
 
 
 class AppModelConfigService:
+    @staticmethod
+    def _coerce_app_mode(app_mode: AppMode | str) -> AppMode:
+        if isinstance(app_mode, AppMode):
+            return app_mode
+        if isinstance(app_mode, str):
+            try:
+                return AppMode.value_of(app_mode)
+            except ValueError as exc:
+                raise ValueError(f"Invalid app mode: {app_mode}") from exc
+        raise ValueError(f"Invalid app mode: {app_mode}")
+
     @classmethod
-    def validate_configuration(cls, tenant_id: str, config: dict, app_mode: AppMode) -> AppModelConfigDict:
+    def validate_configuration(cls, tenant_id: str, config: dict, app_mode: AppMode | str) -> AppModelConfigDict:
+        app_mode = cls._coerce_app_mode(app_mode)
+
         match app_mode:
             case AppMode.CHAT:
                 return ChatAppConfigManager.config_validate(tenant_id, config)
@@ -14,5 +27,5 @@ class AppModelConfigService:
                 return AgentChatAppConfigManager.config_validate(tenant_id, config)
             case AppMode.COMPLETION:
                 return CompletionAppConfigManager.config_validate(tenant_id, config)
-            case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
-                raise ValueError(f"Unsupported app mode for config validation: {app_mode}")
+            case _:
+                raise ValueError(f"Invalid app mode: {app_mode}")

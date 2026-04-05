@@ -86,3 +86,14 @@ class TestAppModelConfigService:
         mock_chat_validate.assert_not_called()
         mock_agent_validate.assert_not_called()
         mock_completion_validate.assert_not_called()
+
+    def test_should_raise_value_error_when_app_mode_string_is_not_supported(self, mock_config_managers):
+        tenant_id = "tenant-123"
+        config = {"temperature": 0.5}
+
+        with pytest.raises(ValueError, match="Invalid app mode: invalid"):
+            AppModelConfigService.validate_configuration(
+                tenant_id=tenant_id,
+                config=config,
+                app_mode="invalid",
+            )

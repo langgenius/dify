@@ -1417,7 +1417,14 @@ class WorkflowService:
                 self._validate_human_input_node_data(node_data)
 
     def validate_features_structure(self, app_model: App, features: dict):
-        match app_model.mode:
+        app_mode = app_model.mode if isinstance(app_model.mode, AppMode) else None
+        if app_mode is None:
+            try:
+                app_mode = AppMode.value_of(app_model.mode)
+            except ValueError as exc:
+                raise ValueError(f"Invalid app mode: {app_model.mode}") from exc
+
+        match app_mode:
             case AppMode.ADVANCED_CHAT:
                 return AdvancedChatAppConfigManager.config_validate(
                     tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
@@ -1427,7 +1434,9 @@ class WorkflowService:
                     tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
                 )
             case AppMode.CHAT | AppMode.COMPLETION | AppMode.AGENT_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
-                raise ValueError(f"Invalid app mode: {app_model.mode}")
+                raise ValueError(f"Invalid app mode: {app_mode}")
+            case _:
+                raise ValueError(f"Invalid app mode: {app_mode}")
 
     def _validate_human_input_node_data(self, node_data: dict) -> None:
         """
