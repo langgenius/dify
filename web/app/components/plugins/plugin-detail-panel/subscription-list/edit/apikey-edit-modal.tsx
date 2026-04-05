@@ -23,10 +23,11 @@ type Props = {
   pluginDetail?: PluginDetail
 }
 
-enum EditStep {
-  EditCredentials = 'edit_credentials',
-  EditConfiguration = 'edit_configuration',
-}
+const EditStep = {
+  EditCredentials: 'edit_credentials',
+  EditConfiguration: 'edit_configuration',
+} as const
+type EditStep = typeof EditStep[keyof typeof EditStep]
 
 const normalizeFormType = (type: string): FormTypeEnum => {
   switch (type) {
