@@ -7,11 +7,12 @@ from models.model import AppMode, AppModelConfigDict
 class AppModelConfigService:
     @classmethod
     def validate_configuration(cls, tenant_id: str, config: dict, app_mode: AppMode) -> AppModelConfigDict:
-        if app_mode == AppMode.CHAT:
-            return ChatAppConfigManager.config_validate(tenant_id, config)
-        elif app_mode == AppMode.AGENT_CHAT:
-            return AgentChatAppConfigManager.config_validate(tenant_id, config)
-        elif app_mode == AppMode.COMPLETION:
-            return CompletionAppConfigManager.config_validate(tenant_id, config)
-        else:
-            raise ValueError(f"Invalid app mode: {app_mode}")
+        match app_mode:
+            case AppMode.CHAT:
+                return ChatAppConfigManager.config_validate(tenant_id, config)
+            case AppMode.AGENT_CHAT:
+                return AgentChatAppConfigManager.config_validate(tenant_id, config)
+            case AppMode.COMPLETION:
+                return CompletionAppConfigManager.config_validate(tenant_id, config)
+            case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+                raise ValueError(f"Invalid app mode: {app_mode}")

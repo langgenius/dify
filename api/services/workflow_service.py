@@ -1417,16 +1417,17 @@ class WorkflowService:
                 self._validate_human_input_node_data(node_data)
 
     def validate_features_structure(self, app_model: App, features: dict):
-        if app_model.mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
-            )
-        elif app_model.mode == AppMode.WORKFLOW:
-            return WorkflowAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
-            )
-        else:
-            raise ValueError(f"Invalid app mode: {app_model.mode}")
+        match app_model.mode:
+            case AppMode.ADVANCED_CHAT:
+                return AdvancedChatAppConfigManager.config_validate(
+                    tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
+                )
+            case AppMode.WORKFLOW:
+                return WorkflowAppConfigManager.config_validate(
+                    tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
+                )
+            case _:
+                raise ValueError(f"Invalid app mode: {app_model.mode}")
 
     def _validate_human_input_node_data(self, node_data: dict) -> None:
         """
