@@ -599,7 +599,9 @@ class TestNotionExtractorTableParsing:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_response = Mock(json=lambda: mock_data)
+        mock_response.status_code = 200
+        mock_request.return_value = mock_response
 
         # Act
         result = extractor._read_table_rows("table-block-123")
@@ -631,7 +633,9 @@ class TestNotionExtractorTableParsing:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_response = Mock(json=lambda: mock_data)
+        mock_response.status_code = 200
+        mock_request.return_value = mock_response
 
         # Act
         result = extractor._read_table_rows("table-block-123")
@@ -670,7 +674,11 @@ class TestNotionExtractorTableParsing:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.side_effect = [Mock(json=lambda: first_page), Mock(json=lambda: second_page)]
+        first_mock = Mock(json=lambda: first_page)
+        first_mock.status_code = 200
+        second_mock = Mock(json=lambda: second_page)
+        second_mock.status_code = 200
+        mock_request.side_effect = [first_mock, second_mock]
 
         # Act
         result = extractor._read_table_rows("table-block-123")
