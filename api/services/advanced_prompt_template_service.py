@@ -57,6 +57,8 @@ class AdvancedPromptTemplateService:
                         )
                     case _:
                         pass
+            case _:
+                pass
         # default return empty dict
         return {}
 
@@ -113,5 +115,7 @@ class AdvancedPromptTemplateService:
                         )
                     case _:
                         pass
+            case _:
+                pass
         # default return empty dict
         return {}
