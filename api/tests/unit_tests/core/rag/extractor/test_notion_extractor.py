@@ -381,6 +381,58 @@ class TestNotionBlocks:
         assert "| H1 |  |" in markdown
         assert "| R2C1 | R2C2 |" in markdown
 
+    def test_read_table_rows_raises_on_http_error(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        mocker.patch("httpx.request", return_value=_mock_response({}, status_code=401, text="Unauthorized"))
+        with pytest.raises(ValueError, match="Error fetching Notion table rows"):
+            extractor._read_table_rows("tbl-1")
+
+    def test_read_table_rows_raises_on_network_error(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        mocker.patch("httpx.request", side_effect=httpx.HTTPError("connection failed"))
+        with pytest.raises(ValueError, match="Error fetching Notion table rows"):
+            extractor._read_table_rows("tbl-1")
+
+    def test_read_table_rows_returns_empty_on_missing_results(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        mocker.patch("httpx.request", return_value=_mock_response({"results": [], "next_cursor": None}))
+        assert extractor._read_table_rows("tbl-1") == ""
+
+    def test_read_table_rows_returns_empty_on_error_response_body(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        # Simulate Notion API error wrapped in 200 (some edge cases)
+        error_body = {"object": "error", "status": 400, "message": "Invalid block"}
+        mocker.patch("httpx.request", return_value=_mock_response(error_body))
+        assert extractor._read_table_rows("tbl-1") == ""
+
 
 class TestNotionMetadataAndCredentialMethods:
     def test_update_last_edited_time_no_document_model(self):

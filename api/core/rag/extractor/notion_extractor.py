@@ -291,17 +291,24 @@ class NotionExtractor(BaseExtractor):
         while not done:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
 
-            res = httpx.request(
-                "GET",
-                block_url,
-                headers={
-                    "Authorization": "Bearer " + self._notion_access_token,
-                    "Content-Type": "application/json",
-                    "Notion-Version": "2022-06-28",
-                },
-                params=query_dict,
-            )
-            data = res.json()
+            try:
+                res = httpx.request(
+                    "GET",
+                    block_url,
+                    headers={
+                        "Authorization": "Bearer " + self._notion_access_token,
+                        "Content-Type": "application/json",
+                        "Notion-Version": "2022-06-28",
+                    },
+                    params=query_dict,
+                )
+                if res.status_code != 200:
+                    raise ValueError(f"Error fetching Notion table rows: {res.text}")
+                data = res.json()
+            except httpx.HTTPError as e:
+                raise ValueError("Error fetching Notion table rows") from e
+            if "results" not in data or not isinstance(data["results"], list) or len(data["results"]) == 0:
+                break
             # get table headers text
             table_header_cell_texts = []
             table_header_cells = data["results"][0]["table_row"]["cells"]
