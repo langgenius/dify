@@ -21,14 +21,21 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from core.app.request_files import (
+    PREPARED_FILE_UPLOAD_CONFIG_ARG_KEY,
+    PREPARED_FILES_ARG_KEY,
+    deserialize_prepared_file_upload_config,
+    deserialize_prepared_files,
+)
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
-from factories import file_factory
+from factories import file_factory as _legacy_file_factory
 from models import Account, App, EndUser, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
+file_factory = _legacy_file_factory
 
 
 class CompletionAppGenerator(MessageBasedAppGenerator):
@@ -103,28 +110,27 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 tenant_id=app_model.tenant_id, config=args.get("model_config", {})
             )
 
-        # parse files
-        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
-        # for better separation of concerns.
-        #
-        # For implementation reference, see the `_parse_file` function and
-        # `DraftWorkflowNodeRunApi` class which handle this properly.
-        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
-            files = args["files"] if args.get("files") else []
+        if args.get(PREPARED_FILES_ARG_KEY):
+            file_objs = deserialize_prepared_files(args.get("files"))
+            file_extra_config = deserialize_prepared_file_upload_config(args.get(PREPARED_FILE_UPLOAD_CONFIG_ARG_KEY))
+        else:
             file_extra_config = FileUploadConfigManager.convert(
                 override_model_config_dict or app_model_config.to_dict()
             )
-            if file_extra_config:
-                file_objs = file_factory.build_from_mappings(
-                    mappings=files,
-                    tenant_id=app_model.tenant_id,
-                    config=file_extra_config,
-                    access_controller=self._file_access_controller,
-                )
-            else:
-                file_objs = []
+            with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+                files = args.get("files") or []
+                if file_extra_config:
+                    file_objs = file_factory.build_from_mappings(
+                        mappings=files,
+                        tenant_id=app_model.tenant_id,
+                        config=file_extra_config,
+                        access_controller=self._file_access_controller,
+                    )
+                else:
+                    file_objs = []
 
-            # convert to app config
+        # convert to app config
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             app_config = CompletionAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config, override_config_dict=override_model_config_dict
             )

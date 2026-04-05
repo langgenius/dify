@@ -31,13 +31,19 @@ from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTas
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
+from core.app.request_files import (
+    PREPARED_FILE_UPLOAD_CONFIG_ARG_KEY,
+    PREPARED_FILES_ARG_KEY,
+    deserialize_prepared_file_upload_config,
+    deserialize_prepared_files,
+)
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from factories import file_factory
+from factories import file_factory as _legacy_file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
@@ -51,6 +57,7 @@ if TYPE_CHECKING:
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 
 logger = logging.getLogger(__name__)
+file_factory = _legacy_file_factory
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
@@ -129,22 +136,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
-            files: Sequence[Mapping[str, Any]] = args.get("files") or []
-
-            # parse files
-            # TODO(QuantumGhost): Move file parsing logic to the API controller layer
-            # for better separation of concerns.
-            #
-            # For implementation reference, see the `_parse_file` function and
-            # `DraftWorkflowNodeRunApi` class which handle this properly.
-            file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-            system_files = file_factory.build_from_mappings(
-                mappings=files,
-                tenant_id=app_model.tenant_id,
-                config=file_extra_config,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
-                access_controller=self._file_access_controller,
-            )
+            if args.get(PREPARED_FILES_ARG_KEY):
+                system_files = deserialize_prepared_files(args.get("files"))
+                file_extra_config = deserialize_prepared_file_upload_config(
+                    args.get(PREPARED_FILE_UPLOAD_CONFIG_ARG_KEY)
+                )
+            else:
+                file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+                system_files = file_factory.build_from_mappings(
+                    mappings=args.get("files") or [],
+                    tenant_id=app_model.tenant_id,
+                    config=file_extra_config,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
+                    access_controller=self._file_access_controller,
+                )
 
             # convert to app config
             app_config = WorkflowAppConfigManager.get_app_config(

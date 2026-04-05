@@ -7,9 +7,13 @@ from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any, Union
 
 from configs import dify_config
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
+from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.chat.app_generator import ChatAppGenerator
+from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
@@ -17,11 +21,13 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.app.request_files import PREPARED_FILES_ARG_KEY, prepare_request_file_args
 from core.db import session_factory
 from enums.quota_type import QuotaType, unlimited
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
+from services.conversation_service import ConversationService
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
@@ -84,6 +90,115 @@ class AppGenerateService:
         return _on_subscribe
 
     @classmethod
+    def _prepare_message_based_args(
+        cls,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        config_manager: (
+            type[ChatAppConfigManager] | type[AgentChatAppConfigManager] | type[CompletionAppConfigManager]
+        ),
+        enable_retriever_resource: bool = False,
+    ) -> dict[str, Any]:
+        if args.get(PREPARED_FILES_ARG_KEY):
+            return dict(args)
+
+        prepared_args = dict(args)
+        conversation = None
+        conversation_id = prepared_args.get("conversation_id")
+        if conversation_id:
+            conversation = ConversationService.get_conversation(
+                app_model=app_model,
+                conversation_id=conversation_id,
+                user=user,
+            )
+
+        app_model_config = MessageBasedAppGenerator()._get_app_model_config(
+            app_model=app_model,
+            conversation=conversation,
+        )
+
+        override_model_config_dict = None
+        if prepared_args.get("model_config"):
+            if invoke_from != InvokeFrom.DEBUGGER:
+                raise ValueError("Only in App debug mode can override model config")
+
+            override_model_config_dict = config_manager.config_validate(
+                tenant_id=app_model.tenant_id,
+                config=prepared_args.get("model_config", {}),
+            )
+
+            if enable_retriever_resource:
+                override_model_config_dict["retriever_resource"] = {"enabled": True}
+
+        file_upload_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
+        return prepare_request_file_args(
+            args=prepared_args,
+            files=prepared_args.get("files") or [],
+            tenant_id=app_model.tenant_id,
+            user=user,
+            invoke_from=invoke_from,
+            file_upload_config=file_upload_config,
+        )
+
+    @classmethod
+    def _prepare_generate_args(
+        cls,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        workflow: Workflow | None = None,
+    ) -> dict[str, Any]:
+        app_mode = (
+            AppMode.AGENT_CHAT
+            if app_model.mode == AppMode.CHAT and app_model.is_agent
+            else AppMode.value_of(app_model.mode)
+        )
+        if app_mode == AppMode.COMPLETION:
+            return cls._prepare_message_based_args(
+                app_model=app_model,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                config_manager=CompletionAppConfigManager,
+            )
+        if app_mode == AppMode.AGENT_CHAT:
+            return cls._prepare_message_based_args(
+                app_model=app_model,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                config_manager=AgentChatAppConfigManager,
+                enable_retriever_resource=True,
+            )
+        if app_mode == AppMode.CHAT:
+            return cls._prepare_message_based_args(
+                app_model=app_model,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                config_manager=ChatAppConfigManager,
+                enable_retriever_resource=True,
+            )
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+            workflow = workflow or cls._get_workflow(app_model, invoke_from, args.get("workflow_id"))
+            return prepare_request_file_args(
+                args=args,
+                files=args.get("files") or [],
+                tenant_id=app_model.tenant_id,
+                user=user,
+                invoke_from=invoke_from,
+                file_upload_config=FileUploadConfigManager.convert(workflow.features_dict, is_vision=False),
+                strict_type_validation=app_mode == AppMode.WORKFLOW and invoke_from == InvokeFrom.SERVICE_API,
+            )
+
+        return dict(args)
+
+    @classmethod
     @trace_span(AppGenerateHandler)
     def generate(
         cls,
@@ -117,28 +232,61 @@ class AppGenerateService:
         try:
             request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION:
+                generator = CompletionAppGenerator()
+                prepared_args = cls._prepare_generate_args(
+                    app_model=app_model,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                )
                 return rate_limit.generate(
-                    CompletionAppGenerator.convert_to_event_stream(
-                        CompletionAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                    generator.convert_to_event_stream(
+                        generator.generate(
+                            app_model=app_model,
+                            user=user,
+                            args=prepared_args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id=request_id,
                 )
             elif app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
+                generator = AgentChatAppGenerator()
+                prepared_args = cls._prepare_generate_args(
+                    app_model=app_model,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                )
                 return rate_limit.generate(
-                    AgentChatAppGenerator.convert_to_event_stream(
-                        AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                    generator.convert_to_event_stream(
+                        generator.generate(
+                            app_model=app_model,
+                            user=user,
+                            args=prepared_args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
                 )
             elif app_model.mode == AppMode.CHAT:
+                generator = ChatAppGenerator()
+                prepared_args = cls._prepare_generate_args(
+                    app_model=app_model,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                )
                 return rate_limit.generate(
-                    ChatAppGenerator.convert_to_event_stream(
-                        ChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                    generator.convert_to_event_stream(
+                        generator.generate(
+                            app_model=app_model,
+                            user=user,
+                            args=prepared_args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id=request_id,
@@ -146,6 +294,13 @@ class AppGenerateService:
             elif app_model.mode == AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                prepared_args = cls._prepare_generate_args(
+                    app_model=app_model,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    workflow=workflow,
+                )
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -154,7 +309,7 @@ class AppGenerateService:
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
-                            args=args,
+                            args=prepared_args,
                             invoke_from=invoke_from,
                             streaming=True,
                             call_depth=0,
@@ -186,7 +341,7 @@ class AppGenerateService:
                                 app_model=app_model,
                                 workflow=workflow,
                                 user=user,
-                                args=args,
+                                args=prepared_args,
                                 invoke_from=invoke_from,
                                 workflow_run_id=str(uuid.uuid4()),
                                 streaming=False,
@@ -197,13 +352,20 @@ class AppGenerateService:
             elif app_model.mode == AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                prepared_args = cls._prepare_generate_args(
+                    app_model=app_model,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    workflow=workflow,
+                )
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
-                            args=args,
+                            args=prepared_args,
                             invoke_from=invoke_from,
                             streaming=True,
                             call_depth=0,
@@ -237,7 +399,7 @@ class AppGenerateService:
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
-                            args=args,
+                            args=prepared_args,
                             invoke_from=invoke_from,
                             streaming=False,
                             root_node_id=root_node_id,

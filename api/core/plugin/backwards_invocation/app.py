@@ -17,6 +17,7 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
 from models import Account
 from models.model import App, AppMode, EndUser
+from services.app_generate_service import AppGenerateService
 from services.end_user_service import EndUserService
 
 
@@ -102,6 +103,18 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             workflow = app.workflow
             if not workflow:
                 raise ValueError("unexpected app type")
+            prepared_args = AppGenerateService._prepare_generate_args(
+                app_model=app,
+                user=user,
+                args={
+                    "inputs": inputs,
+                    "query": query,
+                    "files": files,
+                    "conversation_id": conversation_id,
+                },
+                invoke_from=InvokeFrom.SERVICE_API,
+                workflow=workflow,
+            )
 
             pause_config = PauseStateLayerConfig(
                 session_factory=db.engine,
@@ -112,19 +125,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 app_model=app,
                 workflow=workflow,
                 user=user,
-                args={
-                    "inputs": inputs,
-                    "query": query,
-                    "files": files,
-                    "conversation_id": conversation_id,
-                },
+                args=prepared_args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 workflow_run_id=str(uuid.uuid4()),
                 streaming=stream,
                 pause_state_config=pause_config,
             )
         elif app.mode == AppMode.AGENT_CHAT:
-            return AgentChatAppGenerator().generate(
+            prepared_args = AppGenerateService._prepare_generate_args(
                 app_model=app,
                 user=user,
                 args={
@@ -134,10 +142,16 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
+            )
+            return AgentChatAppGenerator().generate(
+                app_model=app,
+                user=user,
+                args=prepared_args,
+                invoke_from=InvokeFrom.SERVICE_API,
                 streaming=stream,
             )
         elif app.mode == AppMode.CHAT:
-            return ChatAppGenerator().generate(
+            prepared_args = AppGenerateService._prepare_generate_args(
                 app_model=app,
                 user=user,
                 args={
@@ -146,6 +160,12 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "files": files,
                     "conversation_id": conversation_id,
                 },
+                invoke_from=InvokeFrom.SERVICE_API,
+            )
+            return ChatAppGenerator().generate(
+                app_model=app,
+                user=user,
+                args=prepared_args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=stream,
             )
@@ -167,6 +187,13 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         workflow = app.workflow
         if not workflow:
             raise ValueError("unexpected app type")
+        prepared_args = AppGenerateService._prepare_generate_args(
+            app_model=app,
+            user=user,
+            args={"inputs": inputs, "files": files},
+            invoke_from=InvokeFrom.SERVICE_API,
+            workflow=workflow,
+        )
 
         pause_config = PauseStateLayerConfig(
             session_factory=db.engine,
@@ -177,7 +204,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             app_model=app,
             workflow=workflow,
             user=user,
-            args={"inputs": inputs, "files": files},
+            args=prepared_args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
             call_depth=1,
@@ -196,10 +223,16 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke completion app
         """
-        return CompletionAppGenerator().generate(
+        prepared_args = AppGenerateService._prepare_generate_args(
             app_model=app,
             user=user,
             args={"inputs": inputs, "files": files},
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+        return CompletionAppGenerator().generate(
+            app_model=app,
+            user=user,
+            args=prepared_args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
         )
