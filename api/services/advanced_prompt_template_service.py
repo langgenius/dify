@@ -43,6 +43,8 @@ class AdvancedPromptTemplateService:
                         return cls.get_chat_prompt(
                             copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt
                         )
+                    case _:
+                        pass
             case AppMode.COMPLETION:
                 match model_mode:
                     case "completion":
@@ -53,6 +55,8 @@ class AdvancedPromptTemplateService:
                         return cls.get_chat_prompt(
                             copy.deepcopy(COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt
                         )
+                    case _:
+                        pass
         # default return empty dict
         return {}
 
@@ -91,6 +95,8 @@ class AdvancedPromptTemplateService:
                         return cls.get_chat_prompt(
                             copy.deepcopy(BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG), has_context, baichuan_context_prompt
                         )
+                    case _:
+                        pass
             case AppMode.COMPLETION:
                 match model_mode:
                     case "completion":
@@ -105,5 +111,7 @@ class AdvancedPromptTemplateService:
                             has_context,
                             baichuan_context_prompt,
                         )
+                    case _:
+                        pass
         # default return empty dict
         return {}
