@@ -178,16 +178,18 @@ class PGVector(BaseVector):
             raise ValueError("top_k must be a positive integer")
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
+        params: tuple = (json.dumps(query_vector),)
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'document_id' in ({document_ids}) "
+            placeholders = ", ".join("%s" for _ in document_ids_filter)
+            where_clause = f" WHERE meta->>'document_id' IN ({placeholders}) "
+            params = (json.dumps(query_vector),) + tuple(document_ids_filter)
 
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
                 f" {where_clause}"
                 f" ORDER BY distance LIMIT {top_k}",
-                (json.dumps(query_vector),),
+                params,
             )
             docs = []
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -206,9 +208,11 @@ class PGVector(BaseVector):
         with self._get_cursor() as cur:
             document_ids_filter = kwargs.get("document_ids_filter")
             where_clause = ""
+            extra_params: tuple = ()
             if document_ids_filter:
-                document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                where_clause = f" AND meta->>'document_id' in ({document_ids}) "
+                placeholders = ", ".join("%s" for _ in document_ids_filter)
+                where_clause = f" AND meta->>'document_id' IN ({placeholders}) "
+                extra_params = tuple(document_ids_filter)
             if self.pg_bigm:
                 cur.execute("SET pg_bigm.similarity_limit TO 0.000001")
                 cur.execute(
@@ -219,7 +223,7 @@ class PGVector(BaseVector):
                     ORDER BY score DESC
                     LIMIT {top_k}""",
                     # f"'{query}'" is required in order to account for whitespace in query
-                    (f"'{query}'", f"'{query}'"),
+                    (f"'{query}'", f"'{query}'") + extra_params,
                 )
             else:
                 cur.execute(
@@ -230,7 +234,7 @@ class PGVector(BaseVector):
                     ORDER BY score DESC
                     LIMIT {top_k}""",
                     # f"'{query}'" is required in order to account for whitespace in query
-                    (f"'{query}'", f"'{query}'"),
+                    (f"'{query}'", f"'{query}'") + extra_params,
                 )
 
             docs = []

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any
 
 from packaging import version
@@ -209,6 +210,14 @@ class MilvusVector(BaseVector):
         """
         return field in self._fields
 
+    @staticmethod
+    def _sanitize_document_id(doc_id: str) -> str:
+        """Sanitize a document ID to prevent expression injection in Milvus filters."""
+        sanitized = re.sub(r"[^a-zA-Z0-9\-_]", "", str(doc_id))
+        if sanitized != doc_id:
+            logger.warning("Document ID sanitized: original contained unsafe characters")
+        return sanitized
+
     def _process_search_results(
         self, results: list[Any], output_fields: list[str], score_threshold: float = 0.0
     ) -> list[Document]:
@@ -238,7 +247,8 @@ class MilvusVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = ""
         if document_ids_filter:
-            document_ids = ", ".join(f'"{id}"' for id in document_ids_filter)
+            sanitized_ids = [self._sanitize_document_id(id) for id in document_ids_filter]
+            document_ids = ", ".join(f'"{id}"' for id in sanitized_ids)
             filter = f'metadata["document_id"] in [{document_ids}]'
         results = self._client.search(
             collection_name=self._collection_name,
@@ -273,7 +283,8 @@ class MilvusVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = ""
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            sanitized_ids = [self._sanitize_document_id(id) for id in document_ids_filter]
+            document_ids = ", ".join(f'"{id}"' for id in sanitized_ids)
             filter = f'metadata["document_id"] in [{document_ids}]'
 
         results = self._client.search(
