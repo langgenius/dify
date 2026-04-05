@@ -173,6 +173,9 @@ class WorkflowRunCleanupMetrics:
         self._record(self._job_duration_seconds, job_duration_seconds, attributes)
 
 
+_RELATED_RECORD_KEYS = ("node_executions", "offloads", "app_logs", "trigger_logs", "pauses", "pause_reasons")
+
+
 class WorkflowRunCleanup:
     def __init__(
         self,
@@ -312,8 +315,8 @@ class WorkflowRunCleanup:
                         int((time.monotonic() - count_start) * 1000),
                     )
                     if related_totals is not None:
-                        for key in related_totals:
-                            related_totals[key] += batch_counts.get(key, 0)
+                        for k in _RELATED_RECORD_KEYS:
+                            related_totals[k] += batch_counts.get(k, 0)  # type: ignore[literal-required,operator]
                     sample_ids = ", ".join(run.id for run in free_runs[:5])
                     click.echo(
                         click.style(
@@ -332,7 +335,10 @@ class WorkflowRunCleanup:
                         targeted_runs=len(free_runs),
                         skipped_runs=paid_or_skipped,
                         deleted_runs=0,
-                        related_counts={key: batch_counts.get(key, 0) for key in self._empty_related_counts()},
+                        related_counts={
+                            k: batch_counts[k]  # type: ignore[literal-required]
+                            for k in _RELATED_RECORD_KEYS
+                        },
                         related_action="would_delete",
                         batch_duration_seconds=time.monotonic() - batch_start,
                     )
@@ -372,7 +378,10 @@ class WorkflowRunCleanup:
                     targeted_runs=len(free_runs),
                     skipped_runs=paid_or_skipped,
                     deleted_runs=counts["runs"],
-                    related_counts={key: counts.get(key, 0) for key in self._empty_related_counts()},
+                    related_counts={
+                        k: counts[k]  # type: ignore[literal-required]
+                        for k in _RELATED_RECORD_KEYS
+                    },
                     related_action="deleted",
                     batch_duration_seconds=time.monotonic() - batch_start,
                 )
