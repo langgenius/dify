@@ -48,10 +48,9 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProviderTypeApiLiteral
-from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.common_entities import EmojiIconDict, I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    EmojiIconDict,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -77,6 +76,7 @@ class ApiProviderControllerItem(TypedDict):
 
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
 
 
 class WorkflowToolRuntimeSpec(Protocol):
