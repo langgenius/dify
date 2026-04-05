@@ -1,7 +1,9 @@
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, TypedDict
+
+from graphon.model_runtime.entities import LLMMode
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -9,13 +11,22 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from dify_graph.model_runtime.entities import LLMMode
 from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource
 
 logger = logging.getLogger(__name__)
+
+
+class QueryDict(TypedDict):
+    content: str
+
+
+class RetrieveResponseDict(TypedDict):
+    query: QueryDict
+    records: list[dict[str, Any]]
+
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -149,7 +160,7 @@ class HitTestingService:
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
+    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> RetrieveResponseDict:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {
@@ -160,7 +171,7 @@ class HitTestingService:
         }
 
     @classmethod
-    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> dict[Any, Any]:
+    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> RetrieveResponseDict:
         records = []
         if dataset.provider == "external":
             for document in documents:

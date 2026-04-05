@@ -1,10 +1,10 @@
 import json
 import logging
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -20,7 +20,6 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -124,13 +123,13 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is not None:
@@ -215,13 +214,13 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -259,13 +258,13 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == original_provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -328,13 +327,13 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -378,13 +377,13 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider = (
-            db.session.query(ApiToolProvider)
+        db_provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if not db_provider:

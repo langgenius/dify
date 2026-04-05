@@ -12,7 +12,7 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -121,7 +121,7 @@ class TestCreateSegmentToIndexTask:
             description=fake.text(max_nb_chars=100),
             tenant_id=tenant_id,
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             created_by=account_id,

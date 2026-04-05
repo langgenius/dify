@@ -5,12 +5,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from dify_graph.file.enums import FileTransferMethod, FileType
-from dify_graph.file.models import File
 
 
 def _unwrap(func):

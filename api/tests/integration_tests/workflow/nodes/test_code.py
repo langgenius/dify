@@ -2,19 +2,20 @@ import time
 import uuid
 
 import pytest
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import NodeRunResult
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.node_events import NodeRunResult
-from dify_graph.nodes.code.code_node import CodeNode
-from dify_graph.nodes.code.limits import CodeNodeLimits
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
+from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
+
+pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
 
 CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 
@@ -44,7 +45,7 @@ def init_code_node(code_config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -172,7 +173,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     result = node._run()
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert result.error == "Output result must be a string, got int instead"
+    assert result.error == "Output result must be a string, got int instead."
 
 
 def test_execute_code_output_validator_depth():

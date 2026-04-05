@@ -1,4 +1,4 @@
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { AppSourceType, textToAudioStream } from '@/service/share'
 
 declare global {
@@ -7,7 +7,6 @@ declare global {
     ManagedMediaSource: any
   }
 }
-
 export default class AudioPlayer {
   mediaSource: MediaSource | null
   audio: HTMLAudioElement
@@ -22,7 +21,6 @@ export default class AudioPlayer {
   url: string
   isPublic: boolean
   callback: ((event: string) => void) | null
-
   constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => void) | null) {
     this.audioContext = new AudioContext()
     this.msgId = msgId
@@ -31,14 +29,10 @@ export default class AudioPlayer {
     this.isPublic = isPublic
     this.voice = voice
     this.callback = callback
-
     // Compatible with iphone ios17 ManagedMediaSource
     const MediaSource = window.ManagedMediaSource || window.MediaSource
     if (!MediaSource) {
-      Toast.notify({
-        message: 'Your browser does not support audio streaming, if you are using an iPhone, please update to iOS 17.1 or later.',
-        type: 'error',
-      })
+      toast.error('Your browser does not support audio streaming, if you are using an iPhone, please update to iOS 17.1 or later.')
     }
     this.mediaSource = MediaSource ? new MediaSource() : null
     this.audio = new Audio()
@@ -49,7 +43,6 @@ export default class AudioPlayer {
     }
     this.audio.src = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
     this.audio.autoplay = true
-
     const source = this.audioContext.createMediaElementSource(this.audio)
     source.connect(this.audioContext.destination)
     this.listenMediaSource('audio/mpeg')
@@ -63,7 +56,6 @@ export default class AudioPlayer {
     this.mediaSource?.addEventListener('sourceopen', () => {
       if (this.sourceBuffer)
         return
-
       this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
     })
   }
@@ -106,22 +98,18 @@ export default class AudioPlayer {
         voice: this.voice,
         text: this.msgContent,
       })
-
       if (audioResponse.status !== 200) {
         this.isLoadData = false
         if (this.callback)
           this.callback('error')
       }
-
       const reader = audioResponse.body.getReader()
       while (true) {
         const { value, done } = await reader.read()
-
         if (done) {
           this.receiveAudioData(value)
           break
         }
-
         this.receiveAudioData(value)
       }
     }
@@ -167,7 +155,6 @@ export default class AudioPlayer {
         this.theEndOfStream()
         clearInterval(timer)
       }
-
       if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
         const arrayBuffer = this.cacheBuffers.shift()!
         this.sourceBuffer?.appendBuffer(arrayBuffer)
@@ -180,7 +167,6 @@ export default class AudioPlayer {
       this.finishStream()
       return
     }
-
     const audioContent = Buffer.from(audio, 'base64')
     this.receiveAudioData(new Uint8Array(audioContent))
     if (play) {
@@ -196,7 +182,6 @@ export default class AudioPlayer {
         this.callback?.('play')
       }
       else if (this.audio.played) { /* empty */ }
-
       else {
         this.audio.play()
         this.callback?.('play')
@@ -221,7 +206,6 @@ export default class AudioPlayer {
         this.finishStream()
       return
     }
-
     if (this.sourceBuffer?.updating) {
       this.cacheBuffers.push(audioData)
     }

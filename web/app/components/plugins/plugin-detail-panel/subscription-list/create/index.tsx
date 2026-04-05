@@ -159,7 +159,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           className: cn('h-8 bg-transparent px-0 hover:bg-transparent', methodType !== DEFAULT_METHOD && supportedMethods.length > 1 && 'pointer-events-none', buttonType === CreateButtonType.FULL_BUTTON && 'grow'),
         }}
         popupProps={{
-          wrapperClassName: 'z-[1000]',
+          wrapperClassName: 'z-1000',
         }}
         CustomTrigger={() => {
           return buttonType === CreateButtonType.FULL_BUTTON
@@ -203,7 +203,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                     onClick={onClickCreate}
                     className={cn(
                       'float-right',
-                      shape === 'circle' && '!rounded-full border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
+                      shape === 'circle' && 'rounded-full! border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
                     )}
                     state={subscriptionCount >= MAX_COUNT ? ActionButtonState.Disabled : ActionButtonState.Default}
                   >

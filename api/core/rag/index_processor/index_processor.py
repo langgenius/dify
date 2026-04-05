@@ -9,6 +9,7 @@ from flask import current_app
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
@@ -34,7 +35,10 @@ class IndexProcessor:
         if "parent_mode" in preview:
             data.parent_mode = preview["parent_mode"]
 
-        for item in preview["preview"]:
+        # Different index processors return different preview shapes:
+        # - paragraph/parent-child processors: {"preview": [...]}
+        # - QA processor: {"qa_preview": [...]} (no "preview" key)
+        for item in preview.get("preview", []):
             if "content" in item and "child_chunks" in item:
                 data.preview.append(
                     PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None)
@@ -43,6 +47,10 @@ class IndexProcessor:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
             elif "content" in item:
                 data.preview.append(PreviewItem(content=item["content"], child_chunks=None, summary=None))
+
+        for item in preview.get("qa_preview", []):
+            if "question" in item and "answer" in item:
+                data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
         return data
 
     def index_and_clean(
@@ -159,7 +167,7 @@ class IndexProcessor:
             tenant_id = dataset.tenant_id
 
         preview_output = self.format_preview(chunk_structure, chunks)
-        if indexing_technique != "high_quality":
+        if indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return preview_output
 
         if not summary_index_setting or not summary_index_setting.get("enable"):

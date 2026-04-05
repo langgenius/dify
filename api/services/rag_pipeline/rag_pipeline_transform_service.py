@@ -6,10 +6,11 @@ from uuid import uuid4
 
 import yaml
 from flask_login import current_user
+from sqlalchemy import select
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from factories import variable_factory
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class RagPipelineTransformService:
     def transform_dataset(self, dataset_id: str):
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.get(Dataset, dataset_id)
         if not dataset:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
@@ -105,29 +106,29 @@ class RagPipelineTransformService:
         if doc_form == IndexStructureType.PARAGRAPH_INDEX:
             match datasource_type:
                 case DataSourceType.UPLOAD_FILE:
-                    if indexing_technique == "high_quality":
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.file-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/file-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.file-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/file-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.NOTION_IMPORT:
-                    if indexing_technique == "high_quality":
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.notion-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/notion-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.notion-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/notion-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.WEBSITE_CRAWL:
-                    if indexing_technique == "high_quality":
+                    if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.website-crawl-general-high-quality.yml
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-high-quality.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
-                    if indexing_technique == "economy":
+                    if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.website-crawl-general-economy.yml
                         with open(f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml") as f:
                             pipeline_yaml = yaml.safe_load(f)
@@ -170,11 +171,11 @@ class RagPipelineTransformService:
     ):
         knowledge_configuration_dict = node.get("data", {})
 
-        if indexing_technique == "high_quality":
+        if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
         if retrieval_model:
-            if indexing_technique == "economy":
+            if indexing_technique == IndexTechniqueType.ECONOMY:
                 retrieval_model.search_method = RetrievalMethod.KEYWORD_SEARCH
             knowledge_configuration.retrieval_model = retrieval_model
         else:
@@ -306,7 +307,7 @@ class RagPipelineTransformService:
         jina_node_id = "1752491761974"
         firecrawl_node_id = "1752565402678"
 
-        documents = db.session.query(Document).where(Document.dataset_id == dataset.id).all()
+        documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
@@ -316,7 +317,7 @@ class RagPipelineTransformService:
                 document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
-                    file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+                    file = db.session.get(UploadFile, file_id)
                     if file:
                         data_source_info = json.dumps(
                             {

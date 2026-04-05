@@ -14,7 +14,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import { cn } from '@/utils/classnames'
 import { tooltipManager } from './TooltipManager'
 
-export type TooltipProps = {
+type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
   triggerClassName?: string
@@ -127,15 +127,15 @@ const Tooltip: FC<TooltipProps> = ({
         asChild={asChild}
         className={!asChild ? triggerClassName : ''}
       >
-        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
+        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-px'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
-        className={cn('z-[9999]', portalContentClassName || '')}
+        className={cn('z-9999', portalContentClassName || '')}
       >
         {!!popupContent && (
           <div
             className={cn(
-              !noDecoration && 'relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
+              !noDecoration && 'relative max-w-[300px] wrap-break-word rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
               popupClassName,
             )}
             onMouseEnter={() => {

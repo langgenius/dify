@@ -7,10 +7,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
-import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
+import { Slider } from '@/app/components/base/ui/slider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
@@ -78,6 +78,7 @@ function ParameterItem({
   }
 
   const renderValue = value ?? localValue ?? getDefaultValue()
+  const sliderLabel = parameterRule.label[language] || parameterRule.label.en_US
 
   const handleInputChange = (newValue: ParameterValue) => {
     setLocalValue(newValue)
@@ -170,12 +171,13 @@ function ParameterItem({
               min={parameterRule.min}
               max={parameterRule.max}
               step={step}
-              onChange={handleSlideChange}
+              onValueChange={handleSlideChange}
+              aria-label={sliderLabel}
             />
           )}
           <input
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-hidden system-sm-regular"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -197,12 +199,13 @@ function ParameterItem({
               min={parameterRule.min}
               max={parameterRule.max}
               step={0.1}
-              onChange={handleSlideChange}
+              onValueChange={handleSlideChange}
+              aria-label={sliderLabel}
             />
           )}
           <input
             ref={numberInputRef}
-            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-none system-sm-regular"
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-components-input-text-filled outline-hidden system-sm-regular"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
@@ -249,7 +252,7 @@ function ParameterItem({
 
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none system-sm-regular')}
+          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-hidden system-sm-regular')}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -305,7 +308,7 @@ function ParameterItem({
 
     if (parameterRule.type === 'tag') {
       return (
-        <div className={cn('!h-8 w-full')}>
+        <div className={cn('h-8! w-full')}>
           <TagInput
             items={renderValue as string[]}
             onChange={handleTagChange}
@@ -337,9 +340,9 @@ function ParameterItem({
           }
           <div
             className="mr-0.5 truncate text-text-secondary system-xs-regular"
-            title={parameterRule.label[language] || parameterRule.label.en_US}
+            title={sliderLabel}
           >
-            {parameterRule.label[language] || parameterRule.label.en_US}
+            {sliderLabel}
           </div>
           {
             parameterRule.help && (

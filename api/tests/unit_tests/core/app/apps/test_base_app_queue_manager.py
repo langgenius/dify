@@ -59,3 +59,18 @@ class TestBaseAppQueueManager:
         bad = SimpleNamespace(_sa_instance_state=True)
         with pytest.raises(TypeError):
             manager._check_for_sqlalchemy_models(bad)
+
+    def test_stop_listen_defers_graph_runtime_state_cleanup_until_listener_exits(self):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.setex.return_value = True
+            mock_redis.get.return_value = None
+            manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
+
+        runtime_state = SimpleNamespace(name="runtime-state")
+        manager.graph_runtime_state = runtime_state
+
+        manager.stop_listen()
+
+        assert manager.graph_runtime_state is runtime_state
+        assert list(manager.listen()) == []
+        assert manager.graph_runtime_state is None

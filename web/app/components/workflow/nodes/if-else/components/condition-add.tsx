@@ -60,7 +60,7 @@ const ConditionAdd = ({
           {t('nodes.ifElse.addCondition', { ns: 'workflow' })}
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars
             vars={variables}

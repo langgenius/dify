@@ -472,7 +472,7 @@ const Flowchart = (props: FlowchartProps) => {
       'text-gray-700': currentTheme === Theme.light,
       'text-gray-300': currentTheme === Theme.dark,
     }),
-    themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-sm transition-all duration-300', {
+    themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-xs transition-all duration-300', {
       'border border-gray-200 bg-white/80 text-gray-700 hover:bg-white hover:shadow-lg': currentTheme === Theme.light,
       'border border-slate-600 bg-slate-800/80 text-yellow-300 hover:bg-slate-700 hover:shadow-lg': currentTheme === Theme.dark,
     }),
@@ -540,7 +540,7 @@ const Flowchart = (props: FlowchartProps) => {
 
       {svgString && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={handlePreviewClick}>
-          <div className="absolute bottom-2 left-2 z-[100]">
+          <div className="absolute bottom-2 left-2 z-100">
             <button
               type="button"
               onClick={(e) => {

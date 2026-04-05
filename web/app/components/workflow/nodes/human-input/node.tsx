@@ -26,14 +26,14 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           <div className="system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
           <div className="space-y-0.5 px-2.5">
             {deliveryMethods.map(method => (
-              <div key={method.type} className="flex items-center gap-1 rounded-[6px] bg-workflow-block-parma-bg p-1">
+              <div key={method.type} className="flex items-center gap-1 radius-sm bg-workflow-block-parma-bg p-1">
                 {method.type === DeliveryMethodType.WebApp && (
-                  <div className="rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+                  <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
                     <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
                 {method.type === DeliveryMethodType.Email && (
-                  <div className="rounded-[4px] border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+                  <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
                     <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
                   </div>
                 )}
@@ -52,7 +52,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
                 <NodeSourceHandle
                   {...props}
                   handleId={userAction.id}
-                  handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
+                  handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
                 />
               </div>
             ))}
@@ -63,7 +63,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           <NodeSourceHandle
             {...props}
             handleId="__timeout"
-            handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
+            handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
           />
         </div>
       </div>

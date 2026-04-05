@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -13,7 +14,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def _controller() -> WorkflowToolProviderController:

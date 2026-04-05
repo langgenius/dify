@@ -6,17 +6,15 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { ToastProvider } from './components/base/toast'
 import { ToastHost } from './components/base/ui/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
-import BrowserInitializer from './components/browser-initializer'
+import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
-import LazySentryInitializer from './components/lazy-sentry-initializer'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
-import './styles/markdown.scss'
+import './styles/markdown.css'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -56,7 +54,6 @@ const LocaleLayout = async ({
         className="h-full select-auto"
         {...datasetMap}
       >
-        <LazySentryInitializer />
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider
@@ -67,20 +64,17 @@ const LocaleLayout = async ({
               enableColorScheme={false}
             >
               <NuqsAdapter>
-                <BrowserInitializer>
-                  <TanstackQueryInitializer>
-                    <I18nServerProvider>
-                      <ToastHost timeout={5000} limit={3} />
-                      <ToastProvider>
-                        <GlobalPublicStoreProvider>
-                          <TooltipProvider delay={300} closeDelay={200}>
-                            {children}
-                          </TooltipProvider>
-                        </GlobalPublicStoreProvider>
-                      </ToastProvider>
-                    </I18nServerProvider>
-                  </TanstackQueryInitializer>
-                </BrowserInitializer>
+                <TanstackQueryInitializer>
+                  <I18nServerProvider>
+                    <ToastHost timeout={5000} limit={3} />
+                    <PartnerStackCookieRecorder />
+                    <GlobalPublicStoreProvider>
+                      <TooltipProvider delay={300} closeDelay={200}>
+                        {children}
+                      </TooltipProvider>
+                    </GlobalPublicStoreProvider>
+                  </I18nServerProvider>
+                </TanstackQueryInitializer>
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>

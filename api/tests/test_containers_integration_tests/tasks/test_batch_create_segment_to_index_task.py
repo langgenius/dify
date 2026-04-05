@@ -19,7 +19,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -54,7 +54,10 @@ class TestBatchCreateSegmentToIndexTask:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.batch_create_segment_to_index_task.storage", autospec=True) as mock_storage,
-            patch("tasks.batch_create_segment_to_index_task.ModelManager", autospec=True) as mock_model_manager,
+            patch(
+                "tasks.batch_create_segment_to_index_task.ModelManager.for_tenant",
+                autospec=True,
+            ) as mock_model_manager,
             patch("tasks.batch_create_segment_to_index_task.VectorService", autospec=True) as mock_vector_service,
         ):
             # Setup default mock returns
@@ -142,7 +145,7 @@ class TestBatchCreateSegmentToIndexTask:
             name=fake.company(),
             description=fake.text(),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
             created_by=account.id,

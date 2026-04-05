@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import { hasDuplicateStr } from '@/utils/var'
@@ -43,10 +43,7 @@ const VarList: FC<Props> = ({
       }
 
       if (errorMsgKey && typeName) {
-        Toast.notify({
-          type: 'error',
-          message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
-        })
+        toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
         return false
       }
       onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)

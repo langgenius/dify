@@ -1,37 +1,25 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiDeleteBinLine,
-  RiNodeTree,
-  RiUploadCloud2Line,
-} from '@remixicon/react'
+import { RiDeleteBinLine, RiNodeTree, RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
-export type Props = {
+type Props = {
   file: File | undefined
   updateFile: (file?: File) => void
   className?: string
 }
-
-const Uploader: FC<Props> = ({
-  file,
-  updateFile,
-  className,
-}) => {
+const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -56,7 +44,7 @@ const Uploader: FC<Props> = ({
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
+      toast.error(t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }))
       return
     }
     updateFile(files[0])
@@ -79,7 +67,6 @@ const Uploader: FC<Props> = ({
     const currentFile = e.target.files?.[0]
     updateFile(currentFile)
   }
-
   useEffect(() => {
     const dropArea = dropRef.current
     dropArea?.addEventListener('dragenter', handleDragEnter)
@@ -93,33 +80,17 @@ const Uploader: FC<Props> = ({
       dropArea?.removeEventListener('drop', handleDrop)
     }
   }, [])
-
   return (
     <div className={cn('mt-6', className)}>
-      <input
-        ref={fileUploader}
-        style={{ display: 'none' }}
-        type="file"
-        id="fileUploader"
-        accept=".pipeline"
-        onChange={fileChangeHandle}
-      />
+      <input ref={fileUploader} style={{ display: 'none' }} type="file" id="fileUploader" accept=".pipeline" onChange={fileChangeHandle} />
       <div ref={dropRef}>
         {!file && (
-          <div
-            className={cn(
-              'flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
-              dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
-            )}
-          >
+          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
               <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
               <div className="text-text-tertiary">
                 {t('dslUploader.button', { ns: 'app' })}
-                <span
-                  className="cursor-pointer pl-1 text-text-accent"
-                  onClick={selectHandle}
-                >
+                <span className="cursor-pointer pl-1 text-text-accent" onClick={selectHandle}>
                   {t('dslUploader.browse', { ns: 'app' })}
                 </span>
               </div>
@@ -153,5 +124,4 @@ const Uploader: FC<Props> = ({
     </div>
   )
 }
-
 export default React.memo(Uploader)

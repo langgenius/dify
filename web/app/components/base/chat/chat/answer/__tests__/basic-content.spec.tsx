@@ -98,7 +98,7 @@ describe('BasicContent', () => {
     }
     render(<BasicContent item={errorItem as ChatItem} />)
     const markdown = screen.getByTestId('basic-content-markdown')
-    expect(markdown).toHaveClass('!text-[#F04438]')
+    expect(markdown).toHaveClass('text-[#F04438]!')
   })
 
   it('renders non-string content without attempting to wrap (covers typeof !== "string" branch)', () => {

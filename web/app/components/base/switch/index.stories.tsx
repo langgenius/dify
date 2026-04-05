@@ -194,7 +194,7 @@ const LoadingDemo = () => {
   return (
     <div className="flex flex-col items-center space-y-4">
       <button
-        className="rounded border px-2 py-1 text-xs"
+        className="rounded-sm border px-2 py-1 text-xs"
         onClick={() => setLoading(!loading)}
       >
         {loading ? 'Stop Loading' : 'Start Loading'}
@@ -265,7 +265,7 @@ const MutationLoadingDemo = () => {
         <p className="text-xs text-text-tertiary">
           Click once to start a simulated mutate call. While the request is pending, the switch enters
           {' '}
-          <code className="rounded bg-state-base-hover px-1 py-0.5 text-[11px]">loading</code>
+          <code className="rounded-sm bg-state-base-hover px-1 py-0.5 text-[11px]">loading</code>
           {' '}
           and rejects duplicate clicks.
         </p>

@@ -51,7 +51,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
               nodeType={node?.data.type}
               nodeTitle={node?.data.title}
               rightSlot={
-                !!value.operation && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`, { ns: 'workflow' })} />
+                !!value.operation && <Badge className="ml-auto! shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`, { ns: 'workflow' })} />
               }
             />
           )
@@ -75,7 +75,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         nodeType={node?.data.type}
         nodeTitle={node?.data.title}
         rightSlot={
-          writeMode && <Badge className="!ml-auto shrink-0" text={t(`nodes.assigner.operations.${writeMode}`, { ns: 'workflow' })} />
+          writeMode && <Badge className="ml-auto! shrink-0" text={t(`nodes.assigner.operations.${writeMode}`, { ns: 'workflow' })} />
         }
       />
     </div>

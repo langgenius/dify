@@ -11,9 +11,9 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@/app/components/base/slider', () => ({
-  default: ({ onChange }: { onChange: (v: number) => void }) => (
-    <button onClick={() => onChange(2)} data-testid="slider-btn">Slide 2</button>
+vi.mock('@/app/components/base/ui/slider', () => ({
+  Slider: ({ onValueChange }: { onValueChange: (v: number) => void }) => (
+    <button onClick={() => onValueChange(2)} data-testid="slider-btn">Slide 2</button>
   ),
 }))
 
@@ -179,7 +179,7 @@ describe('ParameterItem', () => {
     expect(screen.getByRole('spinbutton')).toHaveValue(0)
   })
 
-  it('should reset input to actual bound value on blur', () => {
+  it('should reset input to actual bound value on blur-sm', () => {
     render(<ParameterItem parameterRule={createRule({ type: 'float', min: 0, max: 1 })} />)
     const input = screen.getByRole('spinbutton')
     fireEvent.change(input, { target: { value: '5' } })
