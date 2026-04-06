@@ -200,6 +200,8 @@ export type ModelConfig = {
   }
   suggested_questions_after_answer: {
     enabled: boolean
+    model?: Model
+    prompt?: string
   }
   speech_to_text: {
     enabled: boolean

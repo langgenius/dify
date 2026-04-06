@@ -90,6 +90,19 @@ class EnabledConfig(TypedDict):
     enabled: bool
 
 
+class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
+    provider: str
+    name: str
+    mode: NotRequired[str]
+    completion_params: NotRequired[dict[str, Any]]
+
+
+class SuggestedQuestionsAfterAnswerConfig(TypedDict):
+    enabled: bool
+    model: NotRequired[SuggestedQuestionsAfterAnswerModelConfig]
+    prompt: NotRequired[str]
+
+
 class EmbeddingModelInfo(TypedDict):
     embedding_provider_name: str
     embedding_model_name: str
@@ -219,7 +232,7 @@ class ModelConfig(TypedDict):
 class AppModelConfigDict(TypedDict):
     opening_statement: str | None
     suggested_questions: list[str]
-    suggested_questions_after_answer: EnabledConfig
+    suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig
     speech_to_text: EnabledConfig
     text_to_speech: EnabledConfig
     retriever_resource: EnabledConfig
@@ -675,9 +688,9 @@ class AppModelConfig(TypeBase):
         return json.loads(self.suggested_questions) if self.suggested_questions else []
 
     @property
-    def suggested_questions_after_answer_dict(self) -> EnabledConfig:
+    def suggested_questions_after_answer_dict(self) -> SuggestedQuestionsAfterAnswerConfig:
         return cast(
-            EnabledConfig,
+            SuggestedQuestionsAfterAnswerConfig,
             json.loads(self.suggested_questions_after_answer)
             if self.suggested_questions_after_answer
             else {"enabled": False},

@@ -74,7 +74,15 @@ export type MoreLikeThisConfig = {
   enabled: boolean
 }
 
-export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
+export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
+  model?: {
+    provider: string
+    name: string
+    mode: ModelModeType
+    completion_params: Record<string, any>
+  }
+  prompt?: string
+}
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 

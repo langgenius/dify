@@ -3,14 +3,17 @@ import logging
 import re
 from collections.abc import Sequence
 
-from core.llm_generator.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+from core.llm_generator.prompts import DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
 logger = logging.getLogger(__name__)
 
 
 class SuggestedQuestionsAfterAnswerOutputParser:
+    def __init__(self, instruction_prompt: str | None = None) -> None:
+        self._instruction_prompt = instruction_prompt or DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+
     def get_format_instructions(self) -> str:
-        return SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+        return self._instruction_prompt
 
     def parse(self, text: str) -> Sequence[str]:
         action_match = re.search(r"\[.*?\]", text.strip(), re.DOTALL)

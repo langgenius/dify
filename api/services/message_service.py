@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -17,7 +18,17 @@ from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, EndUser, Message, MessageFeedback
+from models.model import (
+    App,
+    AppMode,
+    AppModelConfig,
+    AppModelConfigDict,
+    EndUser,
+    Message,
+    MessageFeedback,
+    SuggestedQuestionsAfterAnswerConfig,
+    SuggestedQuestionsAfterAnswerModelConfig,
+)
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
@@ -32,6 +43,7 @@ from services.errors.message import (
 from services.workflow_service import WorkflowService
 
 _app_model_config_adapter: TypeAdapter[AppModelConfigDict] = TypeAdapter(AppModelConfigDict)
+logger = logging.getLogger(__name__)
 
 
 def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
@@ -52,6 +64,31 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
 
 
 class MessageService:
+    @staticmethod
+    def _extract_suggested_questions_model_config(
+        config: SuggestedQuestionsAfterAnswerConfig,
+    ) -> SuggestedQuestionsAfterAnswerModelConfig | None:
+        model_config = config.get("model")
+        if not isinstance(model_config, dict):
+            return None
+
+        provider = model_config.get("provider")
+        model_name = model_config.get("name")
+        if not isinstance(provider, str) or not provider:
+            return None
+        if not isinstance(model_name, str) or not model_name:
+            return None
+
+        normalized_model_config: SuggestedQuestionsAfterAnswerModelConfig = {
+            "provider": provider,
+            "name": model_name,
+        }
+        completion_params = model_config.get("completion_params")
+        if isinstance(completion_params, dict):
+            normalized_model_config["completion_params"] = completion_params
+
+        return normalized_model_config
+
     @classmethod
     def pagination_by_first_id(
         cls,
@@ -252,6 +289,7 @@ class MessageService:
         )
 
         model_manager = ModelManager.for_tenant(tenant_id=app_model.tenant_id)
+        suggested_questions_after_answer_config: SuggestedQuestionsAfterAnswerConfig = {"enabled": False}
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
@@ -271,9 +309,11 @@ class MessageService:
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=app_model.tenant_id, model_type=ModelType.LLM
-            )
+            suggested_questions_after_answer = workflow.features_dict.get("suggested_questions_after_answer")
+            if isinstance(suggested_questions_after_answer, dict):
+                suggested_questions_after_answer_config = cast(
+                    SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
+                )
         else:
             if not conversation.override_model_configs:
                 app_model_config = db.session.scalar(
@@ -293,15 +333,34 @@ class MessageService:
             if not app_model_config:
                 raise ValueError("did not find app model config")
 
-            suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
-            if suggested_questions_after_answer.get("enabled", False) is False:
+            suggested_questions_after_answer_config = app_model_config.suggested_questions_after_answer_dict
+            if suggested_questions_after_answer_config.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
-            model_instance = model_manager.get_model_instance(
+        configured_model = cls._extract_suggested_questions_model_config(suggested_questions_after_answer_config)
+        if configured_model:
+            try:
+                model_instance = model_manager.get_model_instance(
+                    tenant_id=app_model.tenant_id,
+                    provider=configured_model["provider"],
+                    model_type=ModelType.LLM,
+                    model=configured_model["name"],
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to use configured suggested-questions model %s/%s, fallback to default model",
+                    configured_model["provider"],
+                    configured_model["name"],
+                    exc_info=True,
+                )
+                model_instance = model_manager.get_default_model_instance(
+                    tenant_id=app_model.tenant_id,
+                    model_type=ModelType.LLM,
+                )
+        else:
+            model_instance = model_manager.get_default_model_instance(
                 tenant_id=app_model.tenant_id,
-                provider=app_model_config.model_dict["provider"],
                 model_type=ModelType.LLM,
-                model=app_model_config.model_dict["name"],
             )
 
         # get memory of conversation (read-only)
@@ -312,9 +371,16 @@ class MessageService:
             message_limit=3,
         )
 
+        instruction_prompt = suggested_questions_after_answer_config.get("prompt")
+        if not isinstance(instruction_prompt, str) or not instruction_prompt.strip():
+            instruction_prompt = None
+
         with measure_time() as timer:
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
-                tenant_id=app_model.tenant_id, histories=histories
+                tenant_id=app_model.tenant_id,
+                histories=histories,
+                instruction_prompt=instruction_prompt,
+                model_config=configured_model,
             )
             questions: list[str] = list(questions_sequence)
 

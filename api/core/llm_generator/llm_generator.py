@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Protocol, cast
+from typing import NotRequired, Protocol, TypedDict, cast
 
 import json_repair
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -18,13 +18,13 @@ from core.llm_generator.output_parser.rule_config_generator import RuleConfigGen
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
+    DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
+    DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
-    SUGGESTED_QUESTIONS_MAX_TOKENS,
-    SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
@@ -39,6 +39,12 @@ from models import App, Message, WorkflowNodeExecutionModel
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+class SuggestedQuestionsModelConfig(TypedDict):
+    provider: str
+    name: str
+    completion_params: NotRequired[dict[str, object]]
 
 
 class WorkflowServiceInterface(Protocol):
@@ -112,8 +118,15 @@ class LLMGenerator:
         return name
 
     @classmethod
-    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str) -> Sequence[str]:
-        output_parser = SuggestedQuestionsAfterAnswerOutputParser()
+    def generate_suggested_questions_after_answer(
+        cls,
+        tenant_id: str,
+        histories: str,
+        *,
+        instruction_prompt: str | None = None,
+        model_config: SuggestedQuestionsModelConfig | None = None,
+    ) -> Sequence[str]:
+        output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
         format_instructions = output_parser.get_format_instructions()
 
         prompt_template = PromptTemplateParser(template="{{histories}}\n{{format_instructions}}\nquestions:\n")
@@ -122,10 +135,34 @@ class LLMGenerator:
 
         try:
             model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=tenant_id,
-                model_type=ModelType.LLM,
-            )
+
+            provider = model_config.get("provider") if model_config else None
+            model_name = model_config.get("name") if model_config else None
+
+            if provider and model_name:
+                try:
+                    model_instance = model_manager.get_model_instance(
+                        tenant_id=tenant_id,
+                        model_type=ModelType.LLM,
+                        provider=provider,
+                        model=model_name,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to use configured suggested-questions model %s/%s, fallback to default model",
+                        provider,
+                        model_name,
+                        exc_info=True,
+                    )
+                    model_instance = model_manager.get_default_model_instance(
+                        tenant_id=tenant_id,
+                        model_type=ModelType.LLM,
+                    )
+            else:
+                model_instance = model_manager.get_default_model_instance(
+                    tenant_id=tenant_id,
+                    model_type=ModelType.LLM,
+                )
         except InvokeAuthorizationError:
             return []
 
@@ -134,21 +171,24 @@ class LLMGenerator:
         questions: Sequence[str] = []
 
         try:
+            configured_completion_params = model_config.get("completion_params") if model_config else None
+            model_parameters: dict[str, object] = {
+                "max_tokens": DEFAULT_SUGGESTED_QUESTIONS_MAX_TOKENS,
+                "temperature": DEFAULT_SUGGESTED_QUESTIONS_TEMPERATURE,
+            }
+            if isinstance(configured_completion_params, dict):
+                model_parameters.update(configured_completion_params)
+
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters={
-                    "max_tokens": SUGGESTED_QUESTIONS_MAX_TOKENS,
-                    "temperature": SUGGESTED_QUESTIONS_TEMPERATURE,
-                },
+                model_parameters=model_parameters,
                 stream=False,
             )
 
             text_content = response.message.get_text_content()
             questions = output_parser.parse(text_content) if text_content else []
-        except InvokeError:
-            questions = []
-        except Exception:
-            logger.exception("Failed to generate suggested questions after answer")
+        except Exception as e:
+            logger.exception("Failed to generate suggested questions after answer: %s", e)
             questions = []
 
         return questions
