@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from functools import wraps
 
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -21,12 +22,10 @@ def plugin_permission_required(
             tenant_id = current_tenant_id
 
             with sessionmaker(db.engine).begin() as session:
-                permission = (
-                    session.query(TenantPluginPermission)
-                    .where(
+                permission = session.scalar(
+                    select(TenantPluginPermission).where(
                         TenantPluginPermission.tenant_id == tenant_id,
                     )
-                    .first()
                 )
 
                 if not permission:
