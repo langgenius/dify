@@ -352,6 +352,7 @@ class MilvusVector(BaseVector):
 
                 # Create Index params for the collection
                 index_params_obj = IndexParams()
+                assert index_params is not None
                 index_params_obj.add_index(field_name=Field.VECTOR, **index_params)
 
                 # Create Sparse Vector Index for the collection
