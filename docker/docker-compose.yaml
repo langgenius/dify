@@ -812,11 +812,11 @@ services:
       - ./volumes/app/storage:/app/api/storage
     healthcheck:
       test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
-      interval: ${WORKER_HEALTHCHECK_INTERVAL:-30s}
-      timeout: ${WORKER_HEALTHCHECK_TIMEOUT:-30s}
+      interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
       retries: 3
       start_period: 60s
-      disable: ${WORKER_HEALTHCHECK_DISABLED:-true}
+      disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
     networks:
       - ssrf_proxy_network
       - default
@@ -850,11 +850,11 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
-      interval: ${WORKER_HEALTHCHECK_INTERVAL:-30s}
-      timeout: ${WORKER_HEALTHCHECK_TIMEOUT:-30s}
+      interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
       retries: 3
       start_period: 60s
-      disable: ${WORKER_HEALTHCHECK_DISABLED:-true}
+      disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
     networks:
       - ssrf_proxy_network
       - default
