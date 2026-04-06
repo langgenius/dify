@@ -892,7 +892,8 @@ class DatasetApiBaseUrlApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        return {"api_base_url": (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"}
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return {"api_base_url": base.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"}
 
 
 @console_ns.route("/datasets/retrieval-setting")

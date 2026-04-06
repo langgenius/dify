@@ -446,7 +446,8 @@ class App(Base):
 
     @property
     def api_base_url(self) -> str:
-        return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return base.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"
 
     @property
     def tenant(self) -> Tenant | None:
