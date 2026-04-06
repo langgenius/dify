@@ -1,4 +1,3 @@
-
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
