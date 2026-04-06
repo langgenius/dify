@@ -51,7 +51,6 @@ from core.repositories.human_input_repository import (
     HumanInputFormRepository,
     HumanInputFormRepositoryImpl,
 )
-from core.tools.entities.common_entities import EmojiIconDict
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
@@ -419,9 +418,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         *,
         provider_name: str,
         default_icon: str | None = None,
-    ) -> tuple[str | Mapping[str, str] | EmojiIconDict | None, str | Mapping[str, str] | EmojiIconDict | None]:
-        icon: str | Mapping[str, str] | EmojiIconDict | None = default_icon
-        icon_dark: str | Mapping[str, str] | EmojiIconDict | None = None
+    ) -> tuple[str | Mapping[str, str] | None, str | Mapping[str, str] | None]:
+        icon: str | Mapping[str, str] | None = default_icon
+        icon_dark: str | Mapping[str, str] | None = None
 
         manager = PluginInstaller()
         plugins = manager.list_plugins(self._run_context.tenant_id)
