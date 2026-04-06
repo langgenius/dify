@@ -449,8 +449,14 @@ class FileLifecycleManager:
         except Exception:
             logger.exception("Failed to get storage statistics")
             return StorageStatisticsDict(
-                total_files=0, active_files=0, archived_files=0, deleted_files=0,
-                total_size=0, versions_count=0, oldest_file=None, newest_file=None,
+                total_files=0,
+                active_files=0,
+                archived_files=0,
+                deleted_files=0,
+                total_size=0,
+                versions_count=0,
+                oldest_file=None,
+                newest_file=None,
             )
 
     def _create_version_backup(self, filename: str, metadata: dict):
