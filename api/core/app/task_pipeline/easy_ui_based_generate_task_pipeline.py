@@ -510,7 +510,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         """
         with Session(db.engine, expire_on_commit=False) as session:
             agent_thought: MessageAgentThought | None = session.scalar(
-                select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id)
+                select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).limit(1)
             )
 
         if agent_thought:

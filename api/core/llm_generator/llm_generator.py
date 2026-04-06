@@ -454,7 +454,7 @@ class LLMGenerator:
     ):
         session = db.session()
 
-        app: App | None = session.scalar(select(App).where(App.id == flow_id))
+        app: App | None = session.scalar(select(App).where(App.id == flow_id).limit(1))
         if not app:
             raise ValueError("App not found.")
         workflow = workflow_service.get_draft_workflow(app_model=app)

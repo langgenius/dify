@@ -632,16 +632,6 @@ def test_get_upload_file_by_id_builds_file(mocker):
         source_url="http://x",
     )
 
-    class _Q:
-        def __init__(self, row):
-            self._row = row
-
-        def where(self, *_args, **_kwargs):
-            return self
-
-        def first(self):
-            return self._row
-
     class _S:
         def __init__(self, row):
             self._row = row
@@ -652,8 +642,8 @@ def test_get_upload_file_by_id_builds_file(mocker):
         def __exit__(self, *exc):
             return False
 
-        def query(self, *_):
-            return _Q(self._row)
+        def scalar(self, *_args, **_kwargs):
+            return self._row
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S(fake_row))
 
@@ -665,13 +655,6 @@ def test_get_upload_file_by_id_builds_file(mocker):
 
 
 def test_get_upload_file_by_id_raises_when_missing(mocker):
-    class _Q:
-        def where(self, *_args, **_kwargs):
-            return self
-
-        def first(self):
-            return None
-
     class _S:
         def __enter__(self):
             return self
@@ -679,8 +662,8 @@ def test_get_upload_file_by_id_raises_when_missing(mocker):
         def __exit__(self, *exc):
             return False
 
-        def query(self, *_):
-            return _Q()
+        def scalar(self, *_args, **_kwargs):
+            return None
 
     mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S())
 

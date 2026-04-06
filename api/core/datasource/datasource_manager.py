@@ -346,7 +346,7 @@ class DatasourceManager:
     def get_upload_file_by_id(cls, file_id: str, tenant_id: str) -> File:
         with session_factory.create_session() as session:
             upload_file = session.scalar(
-                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
             )
             if not upload_file:
                 raise ValueError(f"UploadFile not found for file_id={file_id}, tenant_id={tenant_id}")
