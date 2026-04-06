@@ -62,8 +62,9 @@ class NotificationApi(Resource):
         result = BillingService.get_account_notification(str(current_user.id))
 
         # Proto JSON uses camelCase field names (Kratos default marshaling).
+        response: NotificationResponseDict
         if not result.get("shouldShow"):
-            response: NotificationResponseDict = {"should_show": False, "notifications": []}
+            response = {"should_show": False, "notifications": []}
             return response, 200
 
         lang = current_user.interface_language or _FALLBACK_LANG
@@ -83,7 +84,7 @@ class NotificationApi(Resource):
             }
             notifications.append(item)
 
-        response: NotificationResponseDict = {"should_show": bool(notifications), "notifications": notifications}
+        response = {"should_show": bool(notifications), "notifications": notifications}
         return response, 200
 
 
