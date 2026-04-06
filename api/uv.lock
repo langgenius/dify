@@ -1481,7 +1481,7 @@ requires-dist = [
     { name = "croniter", specifier = ">=6.0.0" },
     { name = "fastopenapi", extras = ["flask"], specifier = ">=0.7.0" },
     { name = "flask", specifier = "~=3.1.2" },
-    { name = "flask-compress", specifier = ">=1.17,<1.24" },
+    { name = "flask-compress", specifier = ">=1.17,<1.25" },
     { name = "flask-cors", specifier = "~=6.0.0" },
     { name = "flask-login", specifier = "~=0.6.3" },
     { name = "flask-migrate", specifier = "~=4.1.0" },
@@ -1933,7 +1933,7 @@ wheels = [
 
 [[package]]
 name = "flask-compress"
-version = "1.23"
+version = "1.24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backports-zstd" },
@@ -1941,9 +1941,9 @@ dependencies = [
     { name = "brotlicffi", marker = "platform_python_implementation == 'PyPy'" },
     { name = "flask" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/e4/2b54da5cf8ae5d38a495ca20154aa40d6d2ee6dc1756429a82856181aa2c/flask_compress-1.23.tar.gz", hash = "sha256:5580935b422e3f136b9a90909e4b1015ac2b29c9aebe0f8733b790fde461c545", size = 20135, upload-time = "2025-11-06T09:06:29.56Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/de/2ae0118051b38ab53437328074a696f3ee7d61e15bf7454b78a3088e5bc3/flask_compress-1.24.tar.gz", hash = "sha256:14097cefe59ecb3e466d52a6aeb62f34f125a9f7dadf1f33a53e430ce4a50f31", size = 21089, upload-time = "2026-03-31T15:01:39.005Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/9a/bebdcdba82d2786b33cd9f5fd65b8d309797c27176a9c4f357c1150c4ac0/flask_compress-1.23-py3-none-any.whl", hash = "sha256:52108afb4d133a5aab9809e6ac3c085ed7b9c788c75c6846c129faa28468f08c", size = 10515, upload-time = "2025-11-06T09:06:28.691Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/0f/fe51e0b2301bbd429af44273a923ff92127b18d13abba5ae5a1d60e8e497/flask_compress-1.24-py3-none-any.whl", hash = "sha256:1e63668eb6e3242bd4f6ad98825a924e3984409be90c125477893d586007d00c", size = 11033, upload-time = "2026-03-31T15:01:37.302Z" },
 ]
 
 [[package]]
