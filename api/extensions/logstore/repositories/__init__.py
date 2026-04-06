@@ -24,6 +24,9 @@ def safe_int(value: Any, default: int = 0) -> int:
     if value is None or value in {"null", ""}:
         return default
     try:
-        return int(float(value))
+        return int(value)
     except (ValueError, TypeError):
-        return default
+        try:
+            return int(float(value))
+        except (ValueError, TypeError, OverflowError):
+            return default

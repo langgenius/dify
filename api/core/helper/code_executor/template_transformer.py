@@ -3,6 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
 from collections.abc import Mapping
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from graphon.variables.utils import dumps_with_segments
@@ -81,8 +82,13 @@ class TemplateTransformer(ABC):
                 # Check if the string looks like scientific notation
                 if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
                     try:
+                        d = Decimal(value)
+                        # If the value is an integer (no fractional part), return as int
+                        # to preserve precision for large integers
+                        if d == d.to_integral_value():
+                            return int(d)
                         return float(value)
-                    except ValueError:
+                    except (ValueError, InvalidOperation):
                         pass
             elif isinstance(value, dict):
                 return {k: convert_scientific_notation(v) for k, v in value.items()}
