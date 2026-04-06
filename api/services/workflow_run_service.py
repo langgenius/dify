@@ -15,7 +15,7 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, WorkflowRunCountsDict
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -114,7 +114,7 @@ class WorkflowRunService:
         status: str | None = None,
         time_range: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
-    ) -> dict[str, int]:
+    ) -> WorkflowRunCountsDict:
         """
         Get workflow runs count statistics
 
@@ -122,7 +122,7 @@ class WorkflowRunService:
         :param status: optional status filter
         :param time_range: optional time range filter (e.g., "7d", "4h", "30m", "30s")
         :param triggered_from: workflow run triggered from (default: DEBUGGING)
-        :return: dict with total and status counts
+        :return: WorkflowRunCountsDict with total and status counts
         """
         return self._workflow_run_repo.get_workflow_runs_count(
             tenant_id=app_model.tenant_id,

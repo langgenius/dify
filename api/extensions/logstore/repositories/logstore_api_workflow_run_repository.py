@@ -29,7 +29,7 @@ from extensions.logstore.sql_escape import escape_identifier, escape_logstore_qu
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, WorkflowRunCountsDict
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -454,7 +454,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         triggered_from: str,
         status: str | None = None,
         time_range: str | None = None,
-    ) -> dict[str, int]:
+    ) -> WorkflowRunCountsDict:
         """
         Get workflow runs count statistics grouped by status.
 
@@ -567,7 +567,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             # Build response
-            status_counts = {
+            status_counts: WorkflowRunCountsDict = {
+                "total": 0,
                 "running": 0,
                 "succeeded": 0,
                 "failed": 0,
@@ -580,7 +581,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 status_val = result.get("status")
                 count = result.get("count", 0)
                 if status_val in status_counts:
-                    status_counts[status_val] = count
+                    status_counts[status_val] = count  # type: ignore[literal-required]
                     total += count
 
             # Add running count
@@ -588,7 +589,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             status_counts["running"] = running_count
             total += running_count
 
-            return {"total": total} | status_counts
+            status_counts["total"] = total
+            return status_counts
 
         except Exception:
             logger.exception("Failed to get workflow runs count")

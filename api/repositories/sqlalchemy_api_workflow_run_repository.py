@@ -45,7 +45,11 @@ from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
+from repositories.api_workflow_run_repository import (
+    APIWorkflowRunRepository,
+    RunsWithRelatedCountsDict,
+    WorkflowRunCountsDict,
+)
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -214,11 +218,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         triggered_from: str,
         status: str | None = None,
         time_range: str | None = None,
-    ) -> dict[str, int]:
+    ) -> WorkflowRunCountsDict:
         """
         Get workflow runs count statistics grouped by status.
         """
-        _initial_status_counts = {
+        _initial_status_counts: WorkflowRunCountsDict = {
+            "total": 0,
             "running": 0,
             "succeeded": 0,
             "failed": 0,
@@ -245,11 +250,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 count_stmt = select(func.count(WorkflowRun.id)).where(*base_conditions, WorkflowRun.status == status)
                 total = session.scalar(count_stmt) or 0
 
-                result = {"total": total} | _initial_status_counts
+                result: WorkflowRunCountsDict = {**_initial_status_counts, "total": total}
 
                 # Set the count for the filtered status
                 if status in result:
-                    result[status] = total
+                    result[status] = total  # type: ignore[literal-required]
 
                 return result
 
@@ -264,15 +269,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             results = session.execute(base_stmt).all()
 
             # Build response dictionary
-            status_counts = _initial_status_counts.copy()
+            status_counts = {**_initial_status_counts}
 
             total = 0
             for status_val, count in results:
                 total += count
                 if status_val in status_counts:
-                    status_counts[status_val] = count
+                    status_counts[status_val] = count  # type: ignore[literal-required]
 
-            return {"total": total} | status_counts
+            status_counts["total"] = total
+            return status_counts
 
     def get_expired_runs_batch(
         self,

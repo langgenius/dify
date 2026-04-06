@@ -55,6 +55,19 @@ from repositories.types import (
 )
 
 
+WorkflowRunCountsDict = TypedDict(
+    "WorkflowRunCountsDict",
+    {
+        "total": int,
+        "running": int,
+        "succeeded": int,
+        "failed": int,
+        "stopped": int,
+        "partial-succeeded": int,
+    },
+)
+
+
 class RunsWithRelatedCountsDict(TypedDict):
     runs: int
     node_executions: int
@@ -163,7 +176,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         triggered_from: str,
         status: str | None = None,
         time_range: str | None = None,
-    ) -> dict[str, int]:
+    ) -> WorkflowRunCountsDict:
         """
         Get workflow runs count statistics.
 
@@ -179,7 +192,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
                        Filters records based on created_at field
 
         Returns:
-            Dictionary containing:
+            WorkflowRunCountsDict containing:
             - total: Total count of all workflow runs (or filtered by status)
             - running: Count of workflow runs with status "running"
             - succeeded: Count of workflow runs with status "succeeded"
