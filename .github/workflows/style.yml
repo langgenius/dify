@@ -109,7 +109,7 @@ jobs:
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: vp run lint:ci
+        run: eslint --cache --cache-strategy content --concurrency 2 --pass-on-unpruned-suppressions
 
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
