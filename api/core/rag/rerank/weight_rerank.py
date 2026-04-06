@@ -74,7 +74,7 @@ class WeightRerankRunner(BaseRerankRunner):
 
     def _calculate_keyword_score(self, query: str, documents: list[Document]) -> list[float]:
         """
-        Calculate BM25 scores
+        Calculate keyword scores using TF-IDF and cosine similarity
         :param query: search query
         :param documents: documents for reranking
 
