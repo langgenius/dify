@@ -1662,7 +1662,9 @@ class TestNotionExtractorTableAdvanced:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_response = Mock(json=lambda: mock_data)
+        mock_response.status_code = 200
+        mock_request.return_value = mock_response
 
         # Act
         result = extractor._read_table_rows("table-block-123")
