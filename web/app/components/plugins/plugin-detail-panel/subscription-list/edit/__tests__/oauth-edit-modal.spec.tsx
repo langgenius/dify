@@ -30,26 +30,15 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: [], isLoading: false }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
-  return {
-    ...actual,
-    toast: Object.assign((args: { type: string, message: string }) => mockToast(args), {
-      success: (message: string) => mockToast({ type: 'success', message }),
-      error: (message: string) => mockToast({ type: 'error', message }),
-      warning: (message: string) => mockToast({ type: 'warning', message }),
-      info: (message: string) => mockToast({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    }),
-  }
-})
-
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: (args: { type: string, message: string }) => mockToast(args),
-    close: vi.fn(),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign((args: { type: string, message: string }) => mockToast(args), {
+    success: (message: string) => mockToast({ type: 'success', message }),
+    error: (message: string) => mockToast({ type: 'error', message }),
+    warning: (message: string) => mockToast({ type: 'warning', message }),
+    info: (message: string) => mockToast({ type: 'info', message }),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
   }),
 }))
 

@@ -65,11 +65,11 @@ const TagSelector: FC<TagSelectorProps> = ({
           btnElement={<Trigger tags={tags} />}
           btnClassName={open =>
             cn(
-              open ? '!bg-state-base-hover !text-text-secondary' : '!bg-transparent',
-              '!w-full !border-0 !p-0 !text-text-tertiary hover:!bg-state-base-hover hover:!text-text-secondary',
+              open ? 'bg-state-base-hover! text-text-secondary!' : 'bg-transparent!',
+              'w-full! border-0! p-0! text-text-tertiary! hover:bg-state-base-hover! hover:text-text-secondary!',
             )}
-          popupClassName={cn('!w-full !ring-0', minWidth && '!min-w-80')}
-          className="!z-20 h-fit !w-full"
+          popupClassName={cn('w-full! ring-0!', minWidth && 'min-w-80!')}
+          className="z-20! h-fit w-full!"
         />
       )}
     </>

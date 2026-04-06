@@ -40,7 +40,7 @@ export function useIsSystemFeaturesPending() {
   return isPending
 }
 
-export function useSetupStatusQuery() {
+function useSetupStatusQuery() {
   return useQuery({
     queryKey: setupStatusQueryKey,
     queryFn: fetchSetupStatusWithCache,

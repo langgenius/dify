@@ -45,7 +45,7 @@ from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -463,7 +463,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
+    ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
                 "runs": 0,
@@ -638,7 +638,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
+    ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
                 "runs": 0,

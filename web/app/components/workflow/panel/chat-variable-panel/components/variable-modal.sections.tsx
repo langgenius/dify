@@ -16,7 +16,7 @@ type SectionTitleProps = {
   children: ReactNode
 }
 
-export const SectionTitle = ({ children }: SectionTitleProps) => (
+const SectionTitle = ({ children }: SectionTitleProps) => (
   <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{children}</div>
 )
 
@@ -128,7 +128,7 @@ export const ValueSection = ({
     <div className="flex">
       {type === ChatVarType.String && (
         <textarea
-          className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+          className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-hidden system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           value={(value as string) || ''}
           placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
           onChange={e => onArrayChange([e.target.value])}
@@ -178,7 +178,7 @@ export const ValueSection = ({
         />
       )}
       {editInJSON && (
-        <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1" style={{ height: editorMinHeight }}>
+        <div className="w-full radius-lg bg-components-input-bg-normal py-2 pl-3 pr-1" style={{ height: editorMinHeight }}>
           <CodeEditor
             isExpand
             noWrapper
@@ -210,7 +210,7 @@ export const DescriptionSection = ({
     <SectionTitle>{title}</SectionTitle>
     <div className="flex">
       <textarea
-        className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+        className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-hidden system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
         value={description}
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}

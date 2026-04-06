@@ -114,12 +114,12 @@ const NodePanel: FC<Props> = ({
 
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className="group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
+      <div className="group radius-lg border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
         <div
           className={cn(
             'flex cursor-pointer items-center pl-1 pr-3',
             hideInfo ? 'py-2 pl-2' : 'py-1.5',
-            !collapseState && (hideInfo ? '!pb-1' : '!pb-1.5'),
+            !collapseState && (hideInfo ? 'pb-1!' : 'pb-1.5!'),
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
@@ -131,7 +131,7 @@ const NodePanel: FC<Props> = ({
               )}
             />
           )}
-          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
           <Tooltip
             popupContent={
               <div className="max-w-xs">{nodeInfo.title}</div>
@@ -139,7 +139,7 @@ const NodePanel: FC<Props> = ({
           >
             <div className={cn(
               'system-xs-semibold-uppercase grow truncate text-text-secondary',
-              hideInfo && '!text-xs',
+              hideInfo && 'text-xs!',
             )}
             >
               {nodeInfo.title}
@@ -205,7 +205,7 @@ const NodePanel: FC<Props> = ({
                 />
               )
             }
-            <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
+            <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status="stopped">
                   {t('tracing.stopBy', { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}

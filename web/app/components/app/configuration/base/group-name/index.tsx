@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-export type IGroupNameProps = {
+type IGroupNameProps = {
   name: string
 }
 

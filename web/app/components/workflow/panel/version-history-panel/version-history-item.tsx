@@ -85,7 +85,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       {!isLast && <div className="absolute left-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />}
       <div className=" flex h-5 w-[18px] shrink-0 items-center justify-center">
         <div className={cn(
-          'h-2 w-2 rounded-lg border-[2px]',
+          'h-2 w-2 rounded-lg border-2',
           isSelected ? 'border-text-accent' : 'border-text-quaternary',
         )}
         />
@@ -93,7 +93,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       <div className="flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div className={cn(
-            'system-sm-semibold truncate py-[1px]',
+            'system-sm-semibold truncate py-px',
             isSelected ? 'text-text-accent' : 'text-text-secondary',
           )}
           >
@@ -109,7 +109,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         </div>
         {
           !isDraft && (
-            <div className="system-xs-regular break-words text-text-secondary">
+            <div className="system-xs-regular wrap-break-word text-text-secondary">
               {item.marked_comment || ''}
             </div>
           )

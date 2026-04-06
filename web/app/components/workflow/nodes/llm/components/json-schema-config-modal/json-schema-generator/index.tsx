@@ -165,7 +165,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
           <SchemaGenerator />
         </button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[100]">
+      <PortalToFollowElemContent className="z-100">
         {view === GeneratorView.promptEditor && (
           <PromptEditor
             instruction={instruction}

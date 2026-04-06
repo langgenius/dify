@@ -53,7 +53,7 @@ const MemberSelector: FC<Props> = ({
           <div className="">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         <MemberList
           searchValue={searchValue}
           list={list}

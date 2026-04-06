@@ -1,26 +1,20 @@
 import logging
-import sys
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired
+from typing import NotRequired, TypedDict
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
 
 from core.helper.http_client_pooling import get_pooled_http_client
 
-if sys.version_info >= (3, 12):
-    from typing import TypedDict
-else:
-    from typing_extensions import TypedDict
-
 logger = logging.getLogger(__name__)
 
-JsonObject = dict[str, object]
-JsonObjectList = list[JsonObject]
+type JsonObject = dict[str, object]
+type JsonObjectList = list[JsonObject]
 
-JSON_OBJECT_ADAPTER = TypeAdapter(JsonObject)
-JSON_OBJECT_LIST_ADAPTER = TypeAdapter(JsonObjectList)
+JSON_OBJECT_ADAPTER: TypeAdapter[JsonObject] = TypeAdapter(JsonObject)
+JSON_OBJECT_LIST_ADAPTER: TypeAdapter[JsonObjectList] = TypeAdapter(JsonObjectList)
 
 # Reuse a pooled httpx.Client for OAuth flows (public endpoints, no SSRF proxy).
 _http_client: httpx.Client = get_pooled_http_client(

@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterable
 from enum import StrEnum
-from typing import Any, NamedTuple, TypeVar
+from typing import Any, NamedTuple
 
 import pytest
 import sqlalchemy as sa
@@ -58,10 +58,7 @@ class _ColumnTest(_Base):
     long_value: Mapped[_EnumWithLongValue] = mapped_column(EnumText(enum_class=_EnumWithLongValue), nullable=False)
 
 
-_T = TypeVar("_T")
-
-
-def _first(it: Iterable[_T]) -> _T:
+def _first[T](it: Iterable[T]) -> T:
     ls = list(it)
     if not ls:
         raise ValueError("List is empty")

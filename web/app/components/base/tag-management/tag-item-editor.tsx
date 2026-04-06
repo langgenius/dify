@@ -1,31 +1,22 @@
 import type { FC } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
-import {
-  deleteTag,
-  updateTag,
-} from '@/service/tag'
+import { toast } from '@/app/components/base/ui/toast'
+import { deleteTag, updateTag } from '@/service/tag'
 import { cn } from '@/utils/classnames'
 import { useStore as useTagStore } from './store'
 
 type TagItemEditorProps = {
   tag: Tag
 }
-const TagItemEditor: FC<TagItemEditorProps> = ({
-  tag,
-}) => {
+const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
-
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
   const editTag = async (tagID: string, name: string) => {
@@ -34,7 +25,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       return
     }
     if (!name) {
-      notify({ type: 'error', message: 'tag name is empty' })
+      toast.error('tag name is empty')
       setName(tag.name)
       setIsEditing(false)
       return
@@ -54,11 +45,11 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       ])
       setIsEditing(false)
       await updateTag(tagID, name)
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       setName(name)
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       setName(tag.name)
       const recoverList = tagList.map((tag) => {
         if (tag.id === tagID) {
@@ -83,7 +74,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     try {
       setPending(true)
       await deleteTag(tagID)
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       const newList = tagList.filter(tag => tag.id !== tagID)
       setTagList([
         ...newList,
@@ -91,14 +82,13 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       setPending(false)
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       setPending(false)
     }
   }
   const { run: handleRemove } = useDebounceFn(() => {
     removeTag(tag.id)
   }, { wait: 200 })
-
   return (
     <>
       <div className={cn('flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pl-2 pr-1 text-sm leading-5 text-text-secondary')}>
@@ -107,12 +97,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
             <div className="text-sm leading-5 text-text-secondary">
               {tag.name}
             </div>
-            <Tooltip
-              popupContent={
-                <div>{t('common.tagBound', { ns: 'workflow' })}</div>
-              }
-              needsDelay
-            >
+            <Tooltip popupContent={<div>{t('common.tagBound', { ns: 'workflow' })}</div>} needsDelay>
               <div className="leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary">{tag.binding_count}</div>
             </Tooltip>
             <div className="group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={() => setIsEditing(true)}>
@@ -131,16 +116,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
             </div>
           </>
         )}
-        {isEditing && (
-          <input
-            className="shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary"
-            autoFocus
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)}
-            onBlur={() => editTag(tag.id, name)}
-          />
-        )}
+        {isEditing && (<input className="shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
       </div>
       <Confirm
         title={`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
@@ -155,5 +131,4 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     </>
   )
 }
-
 export default TagItemEditor

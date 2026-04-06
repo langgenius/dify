@@ -70,7 +70,7 @@ const resolveMultipleListeningDescription = (
   return t('debug.variableInspect.listening.tipFallback', { ns: 'workflow' })
 }
 
-export type ListeningProps = {
+type ListeningProps = {
   onStop: () => void
   message?: string
 }
@@ -166,7 +166,7 @@ const Listening: FC<ListeningProps> = ({
             type={icon.type}
             toolIcon={icon.toolIcon}
             size="md"
-            className="!h-10 !w-10 !rounded-xl [&_svg]:!h-7 [&_svg]:!w-7"
+            className="h-10! w-10! rounded-xl! [&_svg]:h-7! [&_svg]:w-7!"
           />
         ))}
       </div>
@@ -183,7 +183,7 @@ const Listening: FC<ListeningProps> = ({
             popupContent={debugUrlCopied
               ? t('nodes.triggerWebhook.debugUrlCopied', { ns: 'workflow' })
               : t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' })}
-            popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
+            popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-xs rounded-md px-1.5 py-1"
             position="top"
             offset={{ mainAxis: -4 }}
             needsDelay={true}
@@ -191,7 +191,7 @@ const Listening: FC<ListeningProps> = ({
             <button
               type="button"
               aria-label={t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' }) || ''}
-              className={`inline-flex items-center rounded-[6px] border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-components-panel-border ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
+              className={`inline-flex items-center radius-sm border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-components-panel-border ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
               onClick={() => {
                 copy(webhookDebugUrl)
                 setDebugUrlCopied(true)

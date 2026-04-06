@@ -62,7 +62,7 @@ const MenuBar: FC<MenuBarProps> = ({
       <Input
         showLeftIcon
         showClearIcon
-        wrapperClassName="!w-52"
+        wrapperClassName="w-52!"
         value={inputValue}
         onChange={e => onInputChange(e.target.value)}
         onClear={() => onInputChange('')}
