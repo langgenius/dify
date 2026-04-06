@@ -122,7 +122,7 @@ const MultipleToolSelector = ({
             <ArrowDownRoundFill
               className={cn(
                 'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
-                collapse && 'rotate-[270deg]',
+                collapse && 'rotate-270',
               )}
             />
           )}
@@ -152,7 +152,7 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           {value.length === 0 && (
-            <div className="system-xs-regular flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
+            <div className="system-xs-regular flex justify-center radius-lg bg-background-section p-3 text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
           )}
           {value.length > 0 && value.map((item, index) => (
             <div className="mb-1" key={index}>

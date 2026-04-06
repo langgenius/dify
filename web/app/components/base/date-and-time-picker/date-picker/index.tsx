@@ -35,7 +35,7 @@ const DatePicker = ({
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
-  popupZIndexClassname = 'z-[11]',
+  popupZIndexClassname = 'z-11',
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
@@ -233,7 +233,7 @@ const DatePicker = ({
               >
                 <input
                   className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 text-components-input-text-filled
-            outline-none system-xs-regular placeholder:text-components-input-text-placeholder"
+            outline-hidden system-xs-regular placeholder:text-components-input-text-placeholder"
                   readOnly
                   value={isOpen ? '' : displayValue}
                   placeholder={placeholderDate}

@@ -212,7 +212,8 @@ api/.vscode
 
 # pnpm
 /.pnpm-store
-/node_modules
+node_modules
+.vite-hooks/_
 
 # plugin migrate
 plugins.jsonl

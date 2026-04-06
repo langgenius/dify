@@ -23,7 +23,7 @@ import AuthenticationSection from './sections/authentication-section'
 import ConfigurationsSection from './sections/configurations-section'
 import HeadersSection from './sections/headers-section'
 
-export type MCPModalConfirmPayload = {
+type MCPModalConfirmPayload = {
   name: string
   server_url: string
   icon_type: AppIconType
@@ -43,7 +43,7 @@ export type MCPModalConfirmPayload = {
   }
 }
 
-export type DuplicateAppModalProps = {
+type DuplicateAppModalProps = {
   data?: ToolWithProvider
   show: boolean
   onConfirm: (info: MCPModalConfirmPayload) => void
@@ -284,7 +284,7 @@ const MCPModal: FC<DuplicateAppModalProps> = ({
     <Modal
       isShow={show}
       onClose={noop}
-      className={cn('relative !max-w-[520px]', 'p-6')}
+      className={cn('relative max-w-[520px]!', 'p-6')}
     >
       <MCPModalContent
         key={formKey}

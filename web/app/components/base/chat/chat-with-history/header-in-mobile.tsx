@@ -107,7 +107,7 @@ const HeaderInMobile = () => {
           onClick={() => setShowSidebar(false)}
           data-testid="mobile-sidebar-overlay"
         >
-          <div className="flex h-full w-[calc(100vw_-_40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm" onClick={e => e.stopPropagation()} data-testid="sidebar-content">
+          <div className="flex h-full w-[calc(100vw-40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs" onClick={e => e.stopPropagation()} data-testid="sidebar-content">
             <Sidebar />
           </div>
         </div>
@@ -118,7 +118,7 @@ const HeaderInMobile = () => {
           onClick={() => setShowChatSettings(false)}
           data-testid="mobile-chat-settings-overlay"
         >
-          <div className="flex h-full w-[calc(100vw_-_40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm" onClick={e => e.stopPropagation()}>
+          <div className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
               <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
               <div className="grow text-text-secondary system-xl-semibold">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>

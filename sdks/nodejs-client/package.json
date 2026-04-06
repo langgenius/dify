@@ -45,12 +45,12 @@
   "homepage": "https://dify.ai",
   "license": "MIT",
   "scripts": {
-    "build": "tsup",
+    "build": "vp pack",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "vp test",
+    "test:coverage": "vp test --coverage",
     "publish:check": "./scripts/publish.sh --dry-run",
     "publish:npm": "./scripts/publish.sh"
   },
@@ -61,8 +61,8 @@
     "@typescript-eslint/parser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
-    "tsup": "catalog:",
     "typescript": "catalog:",
+    "vite-plus": "catalog:",
     "vitest": "catalog:"
   }
 }

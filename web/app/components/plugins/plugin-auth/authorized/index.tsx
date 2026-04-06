@@ -19,7 +19,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 import Authorize from '../authorize'
@@ -75,7 +75,6 @@ const Authorized = ({
   notAllowCustomCredential,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -115,10 +114,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
       setDeleteCredentialId(null)
       pendingOperationCredentialId.current = null
@@ -126,7 +122,7 @@ const Authorized = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [deletePluginCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [deletePluginCredential, onUpdate, t, handleSetDoingAction])
   const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
@@ -142,16 +138,13 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await setPluginDefaultCredential(id)
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
+  }, [setPluginDefaultCredential, onUpdate, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
     credential_id: string
@@ -162,16 +155,13 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await updatePluginCredential(payload)
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
+  }, [updatePluginCredential, t, handleSetDoingAction, onUpdate])
   const unavailableCredentials = credentials.filter(credential => credential.not_allowed_to_use)
   const unavailableCredential = credentials.find(credential => credential.not_allowed_to_use && credential.is_default)
 
@@ -216,7 +206,7 @@ const Authorized = ({
                 )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[100]">
+        <PortalToFollowElemContent className="z-100">
           <div className={cn(
             'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
@@ -310,7 +300,7 @@ const Authorized = ({
             {
               !notAllowCustomCredential && (
                 <>
-                  <div className="h-[1px] bg-divider-subtle"></div>
+                  <div className="h-px bg-divider-subtle"></div>
                   <div className="p-2">
                     <Authorize
                       pluginPayload={pluginPayload}

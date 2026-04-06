@@ -25,13 +25,14 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
 COPY web/package.json /app/web/
 COPY e2e/package.json /app/e2e/
 COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
+COPY packages /app/packages
 
 # Use packageManager from package.json
 RUN corepack install
 
 # Install only the web workspace to keep image builds from pulling in
 # unrelated workspace dependencies such as e2e tooling.
-RUN pnpm install --filter ./web... --frozen-lockfile
+RUN VITE_GIT_HOOKS=0 pnpm install --filter ./web... --frozen-lockfile
 
 # build resources
 FROM base AS builder

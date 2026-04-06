@@ -7,7 +7,7 @@ import {
 import Tooltip from '@/app/components/base/tooltip'
 import AppIcon from '../base/app-icon'
 
-export type IAppBasicProps = {
+type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
   icon?: string
   icon_background?: string | null
@@ -43,19 +43,19 @@ const NotionSvg = (
 )
 
 const ICON_MAP = {
-  app: <AppIcon className="border !border-[rgba(0,0,0,0.05)]" />,
+  app: <AppIcon className="border border-[rgba(0,0,0,0.05)]!" />,
   api: (
     <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
       <ApiAggregate className="h-4 w-4 text-text-primary-on-surface" />
     </div>
   ),
-  dataset: <AppIcon innerIcon={DatasetSvg} className="!border-[0.5px] !border-indigo-100 !bg-indigo-25" />,
+  dataset: <AppIcon innerIcon={DatasetSvg} className="border-[0.5px]! border-indigo-100! bg-indigo-25!" />,
   webapp: (
     <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
       <WindowCursor className="h-4 w-4 text-text-primary-on-surface" />
     </div>
   ),
-  notion: <AppIcon innerIcon={NotionSvg} className="!border-[0.5px] !border-indigo-100 !bg-white" />,
+  notion: <AppIcon innerIcon={NotionSvg} className="border-[0.5px]! border-indigo-100! bg-white!" />,
 }
 
 export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, isExtraInLine, mode = 'expand', iconType = 'app', hideType }: IAppBasicProps) {

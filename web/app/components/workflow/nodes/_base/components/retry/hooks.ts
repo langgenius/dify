@@ -1,8 +1,6 @@
 import type { WorkflowRetryConfig } from './types'
-import type { NodeTracing } from '@/types/workflow'
 import {
   useCallback,
-  useState,
 } from 'react'
 import {
   useNodeDataUpdate,
@@ -24,18 +22,5 @@ export const useRetryConfig = (
 
   return {
     handleRetryConfigChange,
-  }
-}
-
-export const useRetryDetailShowInSingleRun = () => {
-  const [retryDetails, setRetryDetails] = useState<NodeTracing[] | undefined>()
-
-  const handleRetryDetailsChange = useCallback((details: NodeTracing[] | undefined) => {
-    setRetryDetails(details)
-  }, [])
-
-  return {
-    retryDetails,
-    handleRetryDetailsChange,
   }
 }

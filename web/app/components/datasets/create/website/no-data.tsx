@@ -57,7 +57,7 @@ const NoData: FC<Props> = ({
   return (
     <>
       <div className="mt-4 max-w-[640px] rounded-2xl bg-workflow-process-bg p-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-[10px] border-[0.5px]
+        <div className="flex h-12 w-12 items-center justify-center radius-lg border-[0.5px]
           border-components-card-border bg-components-card-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
         >
           {currentProvider.emoji}

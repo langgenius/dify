@@ -25,7 +25,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           </div>
         )}
         {linkText && linkHref && (
-          <div className="body-xs-regular z-[100] cursor-pointer text-text-accent">
+          <div className="body-xs-regular z-100 cursor-pointer text-text-accent">
             <Link
               href={linkHref}
               onClick={(e) => {
