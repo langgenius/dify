@@ -1941,7 +1941,7 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class WorkflowPause(DefaultFieldsMixin, Base):
+class WorkflowPause(DefaultFieldsMixin, TypeBase):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
 
@@ -1988,6 +1988,7 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     resumed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
         nullable=True,
+        default=None,
     )
 
     # state_object_key stores the object key referencing the serialized runtime state
@@ -2003,10 +2004,11 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         uselist=False,
         primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
         back_populates="pause",
+        init=False,
     )
 
 
-class WorkflowPauseReason(DefaultFieldsMixin, Base):
+class WorkflowPauseReason(DefaultFieldsMixin, TypeBase):
     __tablename__ = "workflow_pause_reasons"
 
     # `pause_id` represents the identifier of the pause,
@@ -2049,16 +2051,20 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
+        init=False,
     )
 
     @classmethod
-    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
         if isinstance(pause_reason, HumanInputRequired):
             return cls(
-                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+                pause_id=pause_id,
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                form_id=pause_reason.form_id,
+                node_id=pause_reason.node_id,
             )
         elif isinstance(pause_reason, SchedulingPause):
-            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+            return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
         else:
             raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
