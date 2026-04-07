@@ -110,7 +110,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
 
-  const onDeleteDialogSubmit = useCallback<NonNullable<React.ComponentProps<'form'>['onSubmit']>>((e) => {
+  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback((e) => {
     e.preventDefault()
     if (isDeleteConfirmDisabled)
       return
