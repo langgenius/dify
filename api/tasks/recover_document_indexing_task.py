@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
@@ -24,7 +25,9 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+        document = session.scalar(
+            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+        )
 
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
