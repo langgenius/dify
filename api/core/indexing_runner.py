@@ -604,7 +604,7 @@ class IndexingRunner:
 
         # High-quality indexing is memory intensive (embedding generation + vector writes).
         # Running too many chunks in parallel can trigger OOM and freeze the service until reboot.
-        max_workers = max(1, min(10, int(dify_config.INDEXING_MAX_WORKERS)))
+        max_workers = max(1, int(dify_config.INDEXING_MAX_WORKERS))
         max_workers = min(max_workers, len(documents)) if documents else 1
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:

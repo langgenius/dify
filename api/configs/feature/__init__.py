@@ -1109,7 +1109,7 @@ class IndexingConfig(BaseSettings):
     )
 
     INDEXING_MAX_WORKERS: PositiveInt = Field(
-        description="Maximum number of worker threads used for high-quality dataset indexing",
+        description="Maximum number of worker threads used for high-quality dataset indexing (1-10)",
         default=2,
     )
 
