@@ -559,14 +559,14 @@ class DatasetService:
             if not external_knowledge_binding:
                 raise ValueError("External knowledge binding not found.")
 
-        # Update binding if values have changed
-        if (
-            external_knowledge_binding.external_knowledge_id != external_knowledge_id
-            or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
-        ):
-            external_knowledge_binding.external_knowledge_id = external_knowledge_id
-            external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
-            db.session.add(external_knowledge_binding)
+            # Update binding if values have changed
+            if (
+                external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
+            ):
+                external_knowledge_binding.external_knowledge_id = external_knowledge_id
+                external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
+                session.add(external_knowledge_binding)
 
     @staticmethod
     def _update_internal_dataset(dataset, data, user):

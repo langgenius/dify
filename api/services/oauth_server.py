@@ -29,7 +29,7 @@ class OAuthServerService:
     def get_oauth_provider_app(client_id: str) -> OAuthProviderApp | None:
         query = select(OAuthProviderApp).where(OAuthProviderApp.client_id == client_id)
 
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             return session.execute(query).scalar_one_or_none()
 
     @staticmethod
