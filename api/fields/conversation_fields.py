@@ -4,19 +4,11 @@ from datetime import datetime
 from typing import Any
 
 from graphon.file import File
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from fields.base import ResponseModel
 
 type JSONValue = Any
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
 
 
 class MessageFile(ResponseModel):

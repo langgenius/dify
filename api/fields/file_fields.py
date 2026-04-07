@@ -2,17 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import field_validator
 
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+from fields.base import ResponseModel
 
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
