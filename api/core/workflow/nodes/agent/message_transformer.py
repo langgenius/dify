@@ -36,11 +36,13 @@ _file_access_controller = DatabaseFileAccessController()
 _AGENT_SINGLE_TEXT_STREAM_CHUNK_SIZE = 64
 
 
-def _split_text_for_agent_stream(text: str) -> list[str]:
+def _split_text_for_agent_stream(text: str) -> Generator[str, None, None]:
     max_len = _AGENT_SINGLE_TEXT_STREAM_CHUNK_SIZE
     if len(text) <= max_len:
-        return [text]
-    return [text[i : i + max_len] for i in range(0, len(text), max_len)]
+        yield text
+        return
+    for i in range(0, len(text), max_len):
+        yield text[i : i + max_len]
 
 
 class AgentMessageTransformer:
