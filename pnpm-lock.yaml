@@ -541,60 +541,29 @@ catalogs:
 overrides:
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   '@monaco-editor/loader': 1.7.0
-  '@nolyfill/safe-buffer': npm:safe-buffer@^5.2.1
-  array-includes: npm:@nolyfill/array-includes@^1.0.44
-  array.prototype.findlast: npm:@nolyfill/array.prototype.findlast@^1.0.44
-  array.prototype.findlastindex: npm:@nolyfill/array.prototype.findlastindex@^1.0.44
-  array.prototype.flat: npm:@nolyfill/array.prototype.flat@^1.0.44
-  array.prototype.flatmap: npm:@nolyfill/array.prototype.flatmap@^1.0.44
-  array.prototype.tosorted: npm:@nolyfill/array.prototype.tosorted@^1.0.44
-  assert: npm:@nolyfill/assert@^1.0.26
   brace-expansion@>=2.0.0 <2.0.3: 2.0.3
   canvas: ^3.2.2
-  devalue@<5.3.2: 5.3.2
   dompurify@>=3.1.3 <=3.3.1: 3.3.2
-  es-iterator-helpers: npm:@nolyfill/es-iterator-helpers@^1.0.21
   esbuild@<0.27.2: 0.27.2
   flatted@<=3.4.1: 3.4.2
   glob@>=10.2.0 <10.5.0: 11.1.0
-  hasown: npm:@nolyfill/hasown@^1.0.44
-  is-arguments: npm:@nolyfill/is-arguments@^1.0.44
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
-  is-generator-function: npm:@nolyfill/is-generator-function@^1.0.44
-  is-typed-array: npm:@nolyfill/is-typed-array@^1.0.44
-  isarray: npm:@nolyfill/isarray@^1.0.44
   lodash@>=4.0.0 <= 4.17.23: 4.18.0
   lodash-es@>=4.0.0 <= 4.17.23: 4.18.0
-  object.assign: npm:@nolyfill/object.assign@^1.0.44
-  object.entries: npm:@nolyfill/object.entries@^1.0.44
-  object.fromentries: npm:@nolyfill/object.fromentries@^1.0.44
-  object.groupby: npm:@nolyfill/object.groupby@^1.0.44
-  object.values: npm:@nolyfill/object.values@^1.0.44
-  pbkdf2: ~3.1.5
-  pbkdf2@<3.1.3: 3.1.3
   picomatch@<2.3.2: 2.3.2
   picomatch@>=4.0.0 <4.0.4: 4.0.4
-  prismjs: ~1.30
-  prismjs@<1.30.0: 1.30.0
   rollup@>=4.0.0 <4.59.0: 4.59.0
   safe-buffer: ^5.2.1
-  safe-regex-test: npm:@nolyfill/safe-regex-test@^1.0.44
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
   smol-toml@<1.6.1: 1.6.1
   solid-js: 1.9.11
   string-width: ~8.2.0
-  string.prototype.includes: npm:@nolyfill/string.prototype.includes@^1.0.44
-  string.prototype.matchall: npm:@nolyfill/string.prototype.matchall@^1.0.44
-  string.prototype.repeat: npm:@nolyfill/string.prototype.repeat@^1.0.44
-  string.prototype.trimend: npm:@nolyfill/string.prototype.trimend@^1.0.44
   svgo@>=3.0.0 <3.3.3: 3.3.3
   tar@<=7.5.10: 7.5.11
-  typed-array-buffer: npm:@nolyfill/typed-array-buffer@^1.0.44
   undici@>=7.0.0 <7.24.0: 7.24.0
   vite: npm:@voidzero-dev/vite-plus-core@0.1.15
   vitest: npm:@voidzero-dev/vite-plus-test@0.1.15
-  which-typed-array: npm:@nolyfill/which-typed-array@^1.0.44
   yaml@>=2.0.0 <2.8.3: 2.8.3
   yauzl@<3.2.1: 3.2.1
 
