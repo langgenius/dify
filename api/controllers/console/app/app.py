@@ -7,7 +7,7 @@ from flask import request
 from flask_restx import Resource
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import helpers as file_helpers
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest
@@ -29,6 +29,7 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
@@ -153,16 +154,6 @@ class AppTracePayload(BaseModel):
 
 
 type JSONValue = Any
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
 
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
