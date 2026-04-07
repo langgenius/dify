@@ -86,7 +86,11 @@ class BaiduVector(BaseVector):
         return VectorType.BAIDU
 
     def to_index_struct(self) -> VectorIndexStructDict:
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._create_table(len(embeddings[0]))

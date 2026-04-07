@@ -92,7 +92,11 @@ class TidbOnQdrantVector(BaseVector):
         return VectorType.TIDB_ON_QDRANT
 
     def to_index_struct(self) -> VectorIndexStructDict:
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
