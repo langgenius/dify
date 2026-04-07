@@ -3,9 +3,9 @@ import {
   RiClipboardFill,
   RiClipboardLine,
 } from '@remixicon/react'
-import { useClipboard } from '@/hooks/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useClipboard } from '@/hooks/use-clipboard'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import copyStyle from './style.module.css'
