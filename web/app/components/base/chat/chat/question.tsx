@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
+import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
@@ -243,7 +244,7 @@ const Question: FC<QuestionProps> = ({
           {
             questionIcon || (
               <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-                <div className="i-custom-public-avatar-user h-full w-full" />
+                <User className="question-default-user-icon h-full w-full" />
               </div>
             )
           }
