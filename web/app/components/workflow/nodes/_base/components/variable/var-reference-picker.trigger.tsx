@@ -12,6 +12,7 @@ import AddButton from '@/app/components/base/button/add-button'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { cn } from '@/utils/classnames'
@@ -205,7 +206,10 @@ const VarReferencePickerTrigger: FC<Props> = ({
                                             >
                                               <div className="h-3 px-px">
                                                 {'type' in (outputVarNode || {}) && outputVarNode?.type && (
-                                                  <div className="h-3 w-3" />
+                                                  <VarBlockIcon
+                                                    type={outputVarNode.type}
+                                                    className="text-text-primary"
+                                                  />
                                                 )}
                                               </div>
                                               <div
