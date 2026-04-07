@@ -81,11 +81,11 @@ class MCPAppApi(Resource):
 
     def _get_mcp_server_and_app(self, server_code: str, session: Session) -> tuple[AppMCPServer, App]:
         """Get and validate MCP server and app in one query session"""
-        mcp_server = session.scalar(select(AppMCPServer).where(AppMCPServer.server_code == server_code))
+        mcp_server = session.scalar(select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1))
         if not mcp_server:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Server Not Found")
 
-        app = session.scalar(select(App).where(App.id == mcp_server.app_id))
+        app = session.scalar(select(App).where(App.id == mcp_server.app_id).limit(1))
         if not app:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "App Not Found")
 
@@ -196,6 +196,7 @@ class MCPAppApi(Resource):
                 .where(EndUser.tenant_id == tenant_id)
                 .where(EndUser.session_id == mcp_server_id)
                 .where(EndUser.type == "mcp")
+                .limit(1)
             )
 
     def _create_end_user(

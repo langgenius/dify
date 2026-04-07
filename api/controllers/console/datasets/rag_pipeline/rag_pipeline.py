@@ -88,7 +88,7 @@ class CustomizedPipelineTemplateApi(Resource):
     def post(self, template_id: str):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             template = session.scalar(
-                select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id)
+                select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).limit(1)
             )
             if not template:
                 raise ValueError("Customized pipeline template not found.")

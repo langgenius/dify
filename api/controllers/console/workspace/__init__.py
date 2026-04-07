@@ -23,9 +23,11 @@ def plugin_permission_required(
 
             with sessionmaker(db.engine).begin() as session:
                 permission = session.scalar(
-                    select(TenantPluginPermission).where(
+                    select(TenantPluginPermission)
+                    .where(
                         TenantPluginPermission.tenant_id == tenant_id,
                     )
+                    .limit(1)
                 )
 
                 if not permission:
