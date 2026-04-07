@@ -15,7 +15,7 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor, 
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import AttachmentInfoDict, RetrievalChildChunk, RetrievalSegments
-from core.rag.entities.metadata_entities import MetadataCondition
+from core.rag.entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -182,7 +182,9 @@ class RetrievalService:
         if not dataset:
             return []
         metadata_condition = (
-            MetadataCondition.model_validate(metadata_filtering_conditions) if metadata_filtering_conditions else None
+            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            if metadata_filtering_conditions
+            else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
             dataset.tenant_id,

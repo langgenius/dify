@@ -38,9 +38,9 @@ class Condition(BaseModel):
     value: str | Sequence[str] | None | int | float = None
 
 
-class MetadataCondition(BaseModel):
+class MetadataFilteringCondition(BaseModel):
     """
-    Metadata Condition.
+    Metadata Filtering Condition.
     """
 
     logical_operator: Literal["and", "or"] | None = "and"

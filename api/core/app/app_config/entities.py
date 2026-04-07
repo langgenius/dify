@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any, Literal
 
@@ -9,6 +8,7 @@ from graphon.variables.input_entities import VariableEntity as WorkflowVariableE
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.entities import MetadataFilteringCondition
 from models.model import AppMode
 
 
@@ -111,55 +111,11 @@ class ExternalDataVariableEntity(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
-SupportedComparisonOperator = Literal[
-    # for string or array
-    "contains",
-    "not contains",
-    "start with",
-    "end with",
-    "is",
-    "is not",
-    "empty",
-    "not empty",
-    "in",
-    "not in",
-    # for number
-    "=",
-    "≠",
-    ">",
-    "<",
-    "≥",
-    "≤",
-    # for time
-    "before",
-    "after",
-]
-
-
 class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
     completion_params: dict[str, Any] = Field(default_factory=dict)
-
-
-class Condition(BaseModel):
-    """
-    Condition detail
-    """
-
-    name: str
-    comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None | int | float = None
-
-
-class MetadataFilteringCondition(BaseModel):
-    """
-    Metadata Filtering Condition.
-    """
-
-    logical_operator: Literal["and", "or"] | None = "and"
-    conditions: list[Condition] | None = Field(default=None, deprecated=True)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):
