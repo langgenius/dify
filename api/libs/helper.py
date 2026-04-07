@@ -18,8 +18,9 @@ from flask import Response, stream_with_context
 from flask_restx import fields
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -30,6 +31,17 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+class _TokenData(TypedDict, total=False):
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -443,7 +455,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: dict[str, Any] | None = json.loads(token_data_json)
+        token_data = dict(_token_data_adapter.validate_json(token_data_json))
         return token_data
 
     @classmethod

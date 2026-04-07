@@ -1,4 +1,3 @@
-import json
 import logging
 from collections.abc import Mapping
 from typing import Any, Union
@@ -21,6 +20,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolParameter,
     ToolProviderType,
+    emoji_icon_adapter,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
@@ -53,11 +53,14 @@ class ToolTransformService:
         elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
             try:
                 if isinstance(icon, str):
-                    return json.loads(icon)
-                return icon
-            except (json.JSONDecodeError, ValueError):
+                    parsed = emoji_icon_adapter.validate_json(icon)
+                    return {"background": parsed["background"], "content": parsed["content"]}
+                return {"background": icon["background"], "content": icon["content"]}
+            except (ValueError, ValidationError, KeyError):
                 return {"background": "#252525", "content": "\ud83d\ude01"}
         elif provider_type == ToolProviderType.MCP:
+            if isinstance(icon, Mapping):
+                return {"background": icon.get("background", ""), "content": icon.get("content", "")}
             return icon
         return ""
 

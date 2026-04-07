@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, emoji_icon_adapter
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
@@ -313,7 +313,7 @@ class WorkflowToolManageService:
             "label": db_tool.label,
             "workflow_tool_id": db_tool.id,
             "workflow_app_id": db_tool.app_id,
-            "icon": json.loads(db_tool.icon),
+            "icon": emoji_icon_adapter.validate_json(db_tool.icon),
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
             "output_schema": output_schema,

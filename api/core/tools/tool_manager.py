@@ -5,12 +5,14 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, Union, cast
 
 import sqlalchemy as sa
 from graphon.runtime import VariablePool
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 from yarl import URL
 
 import contexts
@@ -49,9 +51,11 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    EmojiIconDict,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
+    emoji_icon_adapter,
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
@@ -72,9 +76,7 @@ class ApiProviderControllerItem(TypedDict):
     controller: ApiToolProviderController
 
 
-class EmojiIconDict(TypedDict):
-    background: str
-    content: str
+_credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class WorkflowToolRuntimeSpec(Protocol):
@@ -885,7 +887,7 @@ class ToolManager:
             raise ValueError(f"you have not added provider {provider_name}")
 
         try:
-            credentials = json.loads(provider_obj.credentials_str) or {}
+            credentials = _credentials_adapter.validate_json(provider_obj.credentials_str) or {}
         except Exception:
             credentials = {}
 
@@ -910,7 +912,7 @@ class ToolManager:
         masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
 
         try:
-            icon = json.loads(provider_obj.icon)
+            icon = emoji_icon_adapter.validate_json(provider_obj.icon)
         except Exception:
             icon = {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -973,7 +975,7 @@ class ToolManager:
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            icon = json.loads(workflow_provider.icon)
+            icon = emoji_icon_adapter.validate_json(workflow_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
@@ -990,7 +992,7 @@ class ToolManager:
             if api_provider is None:
                 raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            icon = json.loads(api_provider.icon)
+            icon = emoji_icon_adapter.validate_json(api_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
