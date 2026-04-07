@@ -11,7 +11,7 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
-from models import Account, AppMode
+from models import Account, App, AppMode
 from models.model import IconType
 from services import app_dsl_service
 from services.app_dsl_service import (
@@ -39,6 +39,14 @@ def _account_mock(*, tenant_id: str = "tenant-1", account_id: str = "account-1")
     account.current_tenant_id = tenant_id
     account.id = account_id
     return account
+
+
+def _app_mock(**kwargs: object) -> MagicMock:
+    """Create a MagicMock with spec=App for type-safe test doubles."""
+    app = MagicMock(spec=App)
+    for key, value in kwargs.items():
+        setattr(app, key, value)
+    return app
 
 
 def _yaml_dump(data: dict) -> str:
@@ -194,7 +202,7 @@ def test_import_app_overwrite_only_allows_workflow_and_advanced_chat(monkeypatch
 
     monkeypatch.setattr(app_dsl_service, "select", fake_select)
 
-    existing_app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT.value)
+    existing_app = _app_mock(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT.value)
 
     session = MagicMock()
     session.scalar.return_value = existing_app
@@ -241,7 +249,7 @@ def test_import_app_completed_uses_declared_dependencies(monkeypatch):
         lambda d: plugin_deps[0],
     )
 
-    created_app = SimpleNamespace(id="app-new", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
+    created_app = _app_mock(id="app-new", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
     monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
 
     draft_var_service = MagicMock()
@@ -285,7 +293,7 @@ def test_import_app_legacy_versions_extract_dependencies(monkeypatch, has_workfl
         lambda deps: [SimpleNamespace(model_dump=lambda: {"dep": deps[0]})],
     )
 
-    created_app = SimpleNamespace(id="app-legacy", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
+    created_app = _app_mock(id="app-legacy", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
     monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
 
     draft_var_service = MagicMock()
@@ -373,7 +381,7 @@ def test_confirm_import_success_deletes_redis_key(monkeypatch):
     )
     app_dsl_service.redis_client.get.return_value = pending.model_dump_json()
 
-    created_app = SimpleNamespace(id="confirmed-app", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
+    created_app = _app_mock(id="confirmed-app", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
     monkeypatch.setattr(AppDslService, "_create_or_update_app", lambda *_args, **_kwargs: created_app)
 
     app_dsl_service.redis_client.delete.reset_mock()
@@ -399,7 +407,7 @@ def test_confirm_import_exception_returns_failed(monkeypatch):
 
 def test_check_dependencies_returns_empty_when_no_redis_data():
     service = AppDslService(MagicMock())
-    result = service.check_dependencies(app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+    result = service.check_dependencies(app_model=_app_mock(id="app-1", tenant_id="tenant-1"))
     assert result.leaked_dependencies == []
 
 
@@ -416,7 +424,7 @@ def test_check_dependencies_calls_analysis_service(monkeypatch):
     )
 
     service = AppDslService(MagicMock())
-    result = service.check_dependencies(app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+    result = service.check_dependencies(app_model=_app_mock(id="app-1", tenant_id="tenant-1"))
     assert len(result.leaked_dependencies) == 1
 
 
@@ -444,7 +452,7 @@ def test_create_or_update_app_existing_app_updates_fields(monkeypatch):
         lambda _m: SimpleNamespace(kind="conv"),
     )
 
-    app = SimpleNamespace(
+    app = _app_mock(
         id="app-1",
         tenant_id="tenant-1",
         mode=AppMode.WORKFLOW.value,
@@ -554,7 +562,7 @@ def test_create_or_update_app_workflow_missing_workflow_data_raises():
     service = AppDslService(MagicMock())
     with pytest.raises(ValueError, match="Missing workflow data"):
         service._create_or_update_app(
-            app=SimpleNamespace(
+            app=_app_mock(
                 id="a",
                 tenant_id="t",
                 mode=AppMode.WORKFLOW.value,
@@ -572,7 +580,7 @@ def test_create_or_update_app_chat_requires_model_config():
     service = AppDslService(MagicMock())
     with pytest.raises(ValueError, match="Missing model_config"):
         service._create_or_update_app(
-            app=SimpleNamespace(
+            app=_app_mock(
                 id="a",
                 tenant_id="t",
                 mode=AppMode.CHAT.value,
@@ -601,7 +609,7 @@ def test_create_or_update_app_chat_creates_model_config_and_sends_event(monkeypa
     session = MagicMock()
     service = AppDslService(session)
 
-    app = SimpleNamespace(
+    app = _app_mock(
         id="app-1",
         tenant_id="tenant-1",
         mode=AppMode.CHAT.value,
@@ -625,7 +633,7 @@ def test_create_or_update_app_invalid_mode_raises():
     service = AppDslService(MagicMock())
     with pytest.raises(ValueError, match="Invalid app mode"):
         service._create_or_update_app(
-            app=SimpleNamespace(
+            app=_app_mock(
                 id="a",
                 tenant_id="t",
                 mode=AppMode.RAG_PIPELINE.value,
@@ -647,7 +655,7 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
         AppDslService, "_append_model_config_export_data", lambda *_args, **_kwargs: model_calls.append(True)
     )
 
-    workflow_app = SimpleNamespace(
+    workflow_app = _app_mock(
         mode=AppMode.WORKFLOW.value,
         tenant_id="tenant-1",
         name="n",
@@ -661,7 +669,7 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
     AppDslService.export_dsl(workflow_app)
     assert workflow_calls == [True]
 
-    chat_app = SimpleNamespace(
+    chat_app = _app_mock(
         mode=AppMode.CHAT.value,
         tenant_id="tenant-1",
         name="n",
@@ -679,7 +687,7 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
 def test_export_dsl_preserves_icon_and_icon_type(monkeypatch):
     monkeypatch.setattr(AppDslService, "_append_workflow_export_data", lambda **_kwargs: None)
 
-    emoji_app = SimpleNamespace(
+    emoji_app = _app_mock(
         mode=AppMode.WORKFLOW.value,
         tenant_id="tenant-1",
         name="Emoji App",
@@ -696,7 +704,7 @@ def test_export_dsl_preserves_icon_and_icon_type(monkeypatch):
     assert data["app"]["icon_type"] == "emoji"
     assert data["app"]["icon_background"] == "#FF5733"
 
-    image_app = SimpleNamespace(
+    image_app = _app_mock(
         mode=AppMode.WORKFLOW.value,
         tenant_id="tenant-1",
         name="Image App",
@@ -759,7 +767,7 @@ def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
     export_data: dict = {}
     AppDslService._append_workflow_export_data(
         export_data=export_data,
-        app_model=SimpleNamespace(tenant_id="tenant-1"),
+        app_model=_app_mock(tenant_id="tenant-1"),
         include_secret=False,
         workflow_id=None,
     )
@@ -783,7 +791,7 @@ def test_append_workflow_export_data_missing_workflow_raises(monkeypatch):
     with pytest.raises(ValueError, match="Missing draft workflow configuration"):
         AppDslService._append_workflow_export_data(
             export_data={},
-            app_model=SimpleNamespace(tenant_id="tenant-1"),
+            app_model=_app_mock(tenant_id="tenant-1"),
             include_secret=False,
             workflow_id=None,
         )
@@ -801,7 +809,7 @@ def test_append_model_config_export_data_filters_credential_id(monkeypatch):
     monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
     app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
-    app_model = SimpleNamespace(tenant_id="tenant-1", app_model_config=app_model_config)
+    app_model = _app_mock(tenant_id="tenant-1", app_model_config=app_model_config)
     export_data: dict = {}
 
     AppDslService._append_model_config_export_data(export_data, app_model)
@@ -811,7 +819,7 @@ def test_append_model_config_export_data_filters_credential_id(monkeypatch):
 
 def test_append_model_config_export_data_requires_app_config():
     with pytest.raises(ValueError, match="Missing app configuration"):
-        AppDslService._append_model_config_export_data({}, SimpleNamespace(app_model_config=None))
+        AppDslService._append_model_config_export_data({}, _app_mock(app_model_config=None))
 
 
 def test_extract_dependencies_from_workflow_graph_covers_all_node_types(monkeypatch):
