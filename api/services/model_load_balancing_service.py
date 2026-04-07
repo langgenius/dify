@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Union
+from typing import Any, TypedDict, Union
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -23,6 +23,23 @@ from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 
 logger = logging.getLogger(__name__)
+
+
+class LoadBalancingConfigDetailDict(TypedDict):
+    id: str
+    name: str
+    credentials: dict[str, Any]
+    enabled: bool
+
+
+class LoadBalancingConfigSummaryDict(TypedDict):
+    id: str
+    name: str
+    credentials: dict[str, Any]
+    credential_id: str | None
+    enabled: bool
+    in_cooldown: bool
+    ttl: int
 
 
 class ModelLoadBalancingService:
@@ -74,7 +91,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_configs(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
-    ) -> tuple[bool, list[dict]]:
+    ) -> tuple[bool, list[LoadBalancingConfigSummaryDict]]:
         """
         Get load balancing configurations.
         :param tenant_id: workspace id
@@ -214,7 +231,7 @@ class ModelLoadBalancingService:
 
     def get_load_balancing_config(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
-    ) -> dict | None:
+    ) -> LoadBalancingConfigDetailDict | None:
         """
         Get load balancing configuration.
         :param tenant_id: workspace id
