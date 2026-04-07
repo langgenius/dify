@@ -202,12 +202,11 @@ class DatasetService:
         ).scalar_one_or_none()
         if dataset_process_rule:
             mode = dataset_process_rule.mode
-            rules = dataset_process_rule.rules_dict
+            rules = dataset_process_rule.rules_dict or {}
         else:
-            mode = DocumentService.DEFAULT_RULES["mode"]
-            rules = DocumentService.DEFAULT_RULES["rules"]
-        result: ProcessRulesDict = {"mode": mode, "rules": rules}
-        return result
+            mode = str(DocumentService.DEFAULT_RULES["mode"])
+            rules = dict(DocumentService.DEFAULT_RULES.get("rules") or {})
+        return {"mode": mode, "rules": rules}
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
