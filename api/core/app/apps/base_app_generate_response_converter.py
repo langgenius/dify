@@ -113,7 +113,7 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception) -> ErrorStreamResponseDict:
+    def _error_to_stream_response(cls, e: Exception) -> dict[str, Any]:
         """
         Error to stream response.
         :param e: exception
