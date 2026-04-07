@@ -3,6 +3,18 @@ import os
 import re
 import sys
 
+# Security-critical vars that must be provided explicitly in deployment .env
+# (do not silently fall back to weak defaults via compose interpolation).
+REQUIRED_SECRET_VARS = frozenset(
+    {
+        "SECRET_KEY",
+        "DB_PASSWORD",
+        "REDIS_PASSWORD",
+        "PLUGIN_DIFY_INNER_API_KEY",
+        "MINIO_SECRET_KEY",
+    }
+)
+
 # Variables that exist only for Docker Compose orchestration and must NOT be
 # injected into containers as environment variables.
 SHARED_ENV_EXCLUDE = frozenset(
