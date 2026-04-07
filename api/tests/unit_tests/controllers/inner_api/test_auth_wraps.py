@@ -250,7 +250,7 @@ class TestEnterpriseInnerApiUserAuth:
         ):
             with patch.object(dify_config, "INNER_API", True):
                 with patch("controllers.inner_api.wraps.db.session") as mock_session:
-                    mock_session.query.return_value.where.return_value.first.return_value = mock_user
+                    mock_session.get.return_value = mock_user
                     result = protected_view()
 
         # Assert
