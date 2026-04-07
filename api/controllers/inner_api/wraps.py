@@ -79,7 +79,7 @@ def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, 
         signature_base64 = b64encode(signature.digest()).decode("utf-8")
 
         if hmac_compare_digest(signature_base64, token):
-            kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
+            kwargs["user"] = db.session.get(EndUser, user_id)
 
         return view(*args, **kwargs)
 
