@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -56,10 +56,22 @@ def create_links_from_trace_id(trace_id: str | None) -> list[Link]:
     return links
 
 
-def extract_retrieval_documents(documents: list[Document]) -> list[dict[str, Any]]:
-    documents_data = []
+class RetrievalDocumentMetadataDict(TypedDict):
+    dataset_id: Any
+    doc_id: Any
+    document_id: Any
+
+
+class RetrievalDocumentDict(TypedDict):
+    content: str
+    metadata: RetrievalDocumentMetadataDict
+    score: Any
+
+
+def extract_retrieval_documents(documents: list[Document]) -> list[RetrievalDocumentDict]:
+    documents_data: list[RetrievalDocumentDict] = []
     for document in documents:
-        document_data = {
+        document_data: RetrievalDocumentDict = {
             "content": document.page_content,
             "metadata": {
                 "dataset_id": document.metadata.get("dataset_id"),
@@ -83,7 +95,7 @@ def create_common_span_attributes(
     framework: str = DEFAULT_FRAMEWORK_NAME,
     inputs: str = "",
     outputs: str = "",
-) -> dict[str, Any]:
+) -> dict[str, str]:
     return {
         GEN_AI_SESSION_ID: session_id,
         GEN_AI_USER_ID: user_id,
