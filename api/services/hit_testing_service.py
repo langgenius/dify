@@ -60,7 +60,7 @@ class HitTestingService:
         if metadata_filtering_conditions and query:
             dataset_retrieval = DatasetRetrieval()
 
-            from core.app.app_config.entities import MetadataFilteringCondition
+            from core.rag.entities import MetadataFilteringCondition
 
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
