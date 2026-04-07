@@ -24,7 +24,7 @@ from weaviate.exceptions import UnexpectedStatusCodeError
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -184,9 +184,13 @@ class WeaviateVector(BaseVector):
         dataset_id = dataset.id
         return Dataset.gen_collection_name_by_id(dataset_id)
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self) -> VectorIndexStructDict:
         """Returns the index structure dictionary for persistence."""
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """
