@@ -37,6 +37,44 @@ class KnowledgeRateLimitDict(TypedDict):
     subscription_plan: str
 
 
+class TenantFeaturePlanUsageDict(TypedDict):
+    result: str
+    history_id: str
+
+
+class LangContentDict(TypedDict):
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    title_pic_url: str
+
+
+class NotificationDict(TypedDict):
+    notification_id: str
+    contents: dict[str, LangContentDict]
+    frequency: Literal["once", "every_page_load"]
+
+
+class AccountNotificationDict(TypedDict, total=False):
+    should_show: bool
+    notification: NotificationDict
+    shouldShow: bool
+    notifications: list[dict]
+
+
+class UpsertNotificationDict(TypedDict):
+    notification_id: str
+
+
+class BatchAddNotificationAccountsDict(TypedDict):
+    count: int
+
+
+class DismissNotificationDict(TypedDict):
+    success: bool
+
+
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
@@ -94,7 +132,9 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
-    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
+    def update_tenant_feature_plan_usage(
+        cls, tenant_id: str, feature_key: str, delta: int
+    ) -> TenantFeaturePlanUsageDict:
         """
         Update tenant feature plan usage.
 
@@ -114,7 +154,7 @@ class BillingService:
         )
 
     @classmethod
-    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> TenantFeaturePlanUsageDict:
         """
         Refund a previous usage charge.
 
@@ -410,7 +450,7 @@ class BillingService:
         return tenant_whitelist
 
     @classmethod
-    def get_account_notification(cls, account_id: str) -> dict:
+    def get_account_notification(cls, account_id: str) -> AccountNotificationDict:
         """Return the active in-product notification for account_id, if any.
 
         Calling this endpoint also marks the notification as seen; subsequent
@@ -434,13 +474,13 @@ class BillingService:
     @classmethod
     def upsert_notification(
         cls,
-        contents: list[dict],
+        contents: list[LangContentDict],
         frequency: str = "once",
         status: str = "active",
         notification_id: str | None = None,
         start_time: str | None = None,
         end_time: str | None = None,
-    ) -> dict:
+    ) -> UpsertNotificationDict:
         """Create or update a notification.
 
         contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
@@ -461,7 +501,9 @@ class BillingService:
         return cls._send_request("POST", "/notifications", json=payload)
 
     @classmethod
-    def batch_add_notification_accounts(cls, notification_id: str, account_ids: list[str]) -> dict:
+    def batch_add_notification_accounts(
+        cls, notification_id: str, account_ids: list[str]
+    ) -> BatchAddNotificationAccountsDict:
         """Register target account IDs for a notification (max 1000 per call).
 
         Returns {"count": int}.
@@ -473,7 +515,7 @@ class BillingService:
         )
 
     @classmethod
-    def dismiss_notification(cls, notification_id: str, account_id: str) -> dict:
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:
         """Mark a notification as dismissed for an account.
 
         Returns {"success": bool}.
