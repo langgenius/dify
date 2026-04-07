@@ -517,4 +517,24 @@ describe('AppPublisher', () => {
       tipKey: 'common.switchToStandardWorkflowTip',
     })
   })
+
+  it('should block switching to evaluation workflow when restricted nodes exist', async () => {
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+        hasHumanInputNode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('common.switchToEvaluationWorkflowDisabledTip')
+    })
+
+    expect(mockConvertWorkflowType).not.toHaveBeenCalled()
+    expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
+    expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('common.switchToEvaluationWorkflowDisabledTip')
+  })
 })

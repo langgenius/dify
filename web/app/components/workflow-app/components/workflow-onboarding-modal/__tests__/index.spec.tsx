@@ -2,7 +2,20 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AppTypeEnum } from '@/types/app'
 import WorkflowOnboardingModal from '../index'
+
+const mockAppType = vi.hoisted<{ current?: string }>(() => ({
+  current: 'workflow',
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
+    appDetail: {
+      type: mockAppType.current,
+    },
+  }),
+}))
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
   default: function MockNodeSelector({
@@ -44,6 +57,7 @@ describe('WorkflowOnboardingModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppType.current = AppTypeEnum.WORKFLOW
   })
 
   const renderComponent = (props = {}) => {
@@ -89,6 +103,15 @@ describe('WorkflowOnboardingModal', () => {
 
       expect(getUserInputHeading()).toBeInTheDocument()
       expect(getTriggerHeading()).toBeInTheDocument()
+    })
+
+    it('should hide the trigger starter in evaluation workflows', () => {
+      mockAppType.current = AppTypeEnum.EVALUATION
+
+      renderComponent()
+
+      expect(getUserInputHeading()).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'workflow.onboarding.trigger' })).not.toBeInTheDocument()
     })
 
     it('should render ESC tip when shown', () => {

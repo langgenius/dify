@@ -138,6 +138,15 @@ const AppPublisher = ({
     ? WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
     : undefined
   const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
+  const workflowTypeSwitchDisabledReason = useMemo(() => {
+    if (workflowTypeSwitchConfig?.targetType !== AppTypeEnum.EVALUATION)
+      return undefined
+
+    if (!hasHumanInputNode && !hasTriggerNode)
+      return undefined
+
+    return t('common.switchToEvaluationWorkflowDisabledTip', { ns: 'workflow' })
+  }, [hasHumanInputNode, hasTriggerNode, t, workflowTypeSwitchConfig?.targetType])
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
@@ -228,6 +237,10 @@ const AppPublisher = ({
   const handleWorkflowTypeSwitch = useCallback(async () => {
     if (!appDetail?.id || !workflowTypeSwitchConfig)
       return
+    if (workflowTypeSwitchDisabledReason) {
+      toast.error(workflowTypeSwitchDisabledReason)
+      return
+    }
 
     try {
       await convertWorkflowType({
@@ -252,7 +265,7 @@ const AppPublisher = ({
         setOpen(false)
     }
     catch { }
-  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
+  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig, workflowTypeSwitchDisabledReason])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -310,7 +323,8 @@ const AppPublisher = ({
               startNodeLimitExceeded={startNodeLimitExceeded}
               upgradeHighlightStyle={upgradeHighlightStyle}
               workflowTypeSwitchConfig={workflowTypeSwitchConfig}
-              workflowTypeSwitchDisabled={publishDisabled || published || isConvertingWorkflowType}
+              workflowTypeSwitchDisabled={publishDisabled || published || isConvertingWorkflowType || Boolean(workflowTypeSwitchDisabledReason)}
+              workflowTypeSwitchDisabledReason={workflowTypeSwitchDisabledReason}
               onWorkflowTypeSwitch={handleWorkflowTypeSwitch}
             />
             {!isEvaluationWorkflowType && (

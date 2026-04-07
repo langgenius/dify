@@ -216,6 +216,7 @@
   "common.setVarValuePlaceholder": "Set variable",
   "common.showRunHistory": "Show Run History",
   "common.switchToEvaluationWorkflow": "Switch to Evaluation Workflow",
+  "common.switchToEvaluationWorkflowDisabledTip": "Evaluation workflows do not support Human Input nodes or Trigger start nodes.",
   "common.switchToEvaluationWorkflowTip": "Turns this workflow into a custom evaluator for batch testing. Disables public Web App access.",
   "common.switchToStandardWorkflow": "Switch to Standard Workflow",
   "common.switchToStandardWorkflowTip": "Turns this evaluator back into a standard workflow and restores public Web App access.",

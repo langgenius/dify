@@ -216,6 +216,7 @@
   "common.setVarValuePlaceholder": "设置变量值",
   "common.showRunHistory": "显示运行历史",
   "common.switchToEvaluationWorkflow": "切换为评测工作流",
+  "common.switchToEvaluationWorkflowDisabledTip": "评测工作流不支持 Human Input 节点或 Trigger 开始节点。",
   "common.switchToEvaluationWorkflowTip": "将当前工作流转换为批量测试用的自定义评测器，并禁用公开 Web App 访问。",
   "common.switchToStandardWorkflow": "切换为标准工作流",
   "common.switchToStandardWorkflowTip": "将当前评测器转换回标准工作流，并恢复公开 Web App 访问。",

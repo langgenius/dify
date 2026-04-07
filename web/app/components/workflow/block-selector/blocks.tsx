@@ -8,8 +8,10 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
+import { filterEvaluationWorkflowRestrictedBlockTypes, isEvaluationWorkflow } from '@/app/components/workflow/utils/evaluation-workflow'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
@@ -29,7 +31,14 @@ const Blocks = ({
 }: BlocksProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
+  const appType = useAppStore(s => s.appDetail?.type)
   const blocksFromHooks = useBlocks()
+  const filteredAvailableBlocksTypes = useMemo(() => {
+    if (!isEvaluationWorkflow(appType))
+      return availableBlocksTypes
+
+    return filterEvaluationWorkflowRestrictedBlockTypes(availableBlocksTypes)
+  }, [appType, availableBlocksTypes])
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks = blocksFromProps || blocksFromHooks.map(block => ({
@@ -57,7 +66,7 @@ const Blocks = ({
           return false
         }
 
-        return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
+        return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && filteredAvailableBlocksTypes.includes(block.metaData.type)
       })
 
       return {
@@ -65,7 +74,7 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, searchText, availableBlocksTypes])
+  }, [blocks, filteredAvailableBlocksTypes, searchText])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {

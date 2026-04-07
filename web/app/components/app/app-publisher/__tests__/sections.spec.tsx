@@ -185,6 +185,37 @@ describe('app-publisher sections', () => {
     expect(onWorkflowTypeSwitch).toHaveBeenCalledTimes(1)
   })
 
+  it('should disable workflow type switch when a disabled reason is provided', () => {
+    render(
+      <PublisherSummarySection
+        debugWithMultipleModel={false}
+        draftUpdatedAt={Date.now()}
+        formatTimeFromNow={() => '1 minute ago'}
+        handlePublish={vi.fn()}
+        handleRestore={vi.fn()}
+        isChatApp={false}
+        multipleModelConfigs={[]}
+        onWorkflowTypeSwitch={vi.fn()}
+        publishDisabled={false}
+        published={false}
+        publishedAt={undefined}
+        publishShortcut={['ctrl', '⇧', 'P']}
+        startNodeLimitExceeded={false}
+        upgradeHighlightStyle={{}}
+        workflowTypeSwitchConfig={{
+          targetType: 'evaluation',
+          publishLabelKey: 'common.publishAsEvaluationWorkflow',
+          switchLabelKey: 'common.switchToEvaluationWorkflow',
+          tipKey: 'common.switchToEvaluationWorkflowTip',
+        }}
+        workflowTypeSwitchDisabled
+        workflowTypeSwitchDisabledReason="common.switchToEvaluationWorkflowDisabledTip"
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /common\.publishAsEvaluationWorkflow/i })).toBeDisabled()
+  })
+
   it('should render loading access state and access mode labels when enabled', () => {
     const { rerender } = render(
       <PublisherAccessSection
