@@ -501,6 +501,16 @@ describe('Question component', () => {
     expect(onRegenerate).toHaveBeenCalled()
   })
 
+  it('should render default question avatar icon when questionIcon is not provided', () => {
+    const { container } = renderWithProvider(
+      makeItem(),
+      vi.fn() as unknown as OnRegenerate,
+    )
+
+    const defaultIcon = container.querySelector('.question-default-user-icon')
+    expect(defaultIcon).toBeInTheDocument()
+  })
+
   it('should render custom questionIcon when provided', () => {
     const { container } = renderWithProvider(
       makeItem(),
@@ -509,7 +519,7 @@ describe('Question component', () => {
     )
 
     expect(screen.getByTestId('custom-question-icon')).toBeInTheDocument()
-    const defaultIcon = container.querySelector('.i-custom-public-avatar-user')
+    const defaultIcon = container.querySelector('.question-default-user-icon')
     expect(defaultIcon).not.toBeInTheDocument()
   })
 
