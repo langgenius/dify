@@ -47,11 +47,15 @@ def fill_docker_env(env_path: pathlib.Path) -> None:
             updated.append(line)
             continue
         key, value = line.split("=", 1)
-        if key in replacement and not value.strip():
-            updated.append(f"{key}={replacement[key]}")
+        key = key.strip()
+        if key in replacement:
             found.add(key)
-        else:
-            updated.append(line)
+            if not value.strip():
+                updated.append(f"{key}={replacement[key]}")
+            else:
+                updated.append(line)
+            continue
+        updated.append(line)
 
     missing = REQUIRED_SECRET_VARS - found
     if missing:
