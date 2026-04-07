@@ -2,7 +2,7 @@ import type { FC, PropsWithChildren } from 'react'
 import type { QA } from '@/models/datasets'
 import { SelectionMod } from '../base/icons/src/public/knowledge'
 
-export type ChunkLabelProps = {
+type ChunkLabelProps = {
   label: string
   characterCount: number
 }
@@ -27,7 +27,7 @@ export const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   )
 }
 
-export type ChunkContainerProps = ChunkLabelProps & PropsWithChildren
+type ChunkContainerProps = ChunkLabelProps & PropsWithChildren
 
 export const ChunkContainer: FC<ChunkContainerProps> = (props) => {
   const { label, characterCount, children } = props
@@ -41,7 +41,7 @@ export const ChunkContainer: FC<ChunkContainerProps> = (props) => {
   )
 }
 
-export type QAPreviewProps = {
+type QAPreviewProps = {
   qa: QA
 }
 

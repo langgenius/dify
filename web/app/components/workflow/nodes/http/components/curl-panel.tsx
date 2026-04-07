@@ -46,7 +46,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
       title={t('nodes.http.curl.title', { ns: 'workflow' })}
       isShow={isShow}
       onClose={onHide}
-      className="!w-[400px] !max-w-[400px] !p-4"
+      className="w-[400px]! max-w-[400px]! p-4!"
     >
       <div>
         <Textarea
@@ -57,8 +57,8 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">
-        <Button className="!w-[95px]" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button className="!w-[95px]" variant="primary" onClick={handleSave}>
+        <Button className="w-[95px]!" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button className="w-[95px]!" variant="primary" onClick={handleSave}>
           {' '}
           {t('operation.save', { ns: 'common' })}
         </Button>

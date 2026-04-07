@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
@@ -39,7 +39,6 @@ const EducationApplyAge = () => {
   const [modalShow, setShowModal] = useState<undefined | { title: string, desc: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged } = useProviderContext()
   const updateEducationStatus = useInvalidateEducationStatus()
-  const { notify } = useToastContext()
   const router = useRouter()
   const docLink = useDocLink()
 
@@ -67,16 +66,13 @@ const EducationApplyAge = () => {
         })
       }
       else {
-        notify({
-          type: 'error',
-          message: t('submitError', { ns: 'education' }),
-        })
+        toast.error(t('submitError', { ns: 'education' }))
       }
     })
   }
 
   return (
-    <div className="fixed inset-0 z-[31] overflow-y-auto bg-background-body p-6">
+    <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
       <div className="mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
           className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
@@ -160,7 +156,7 @@ const EducationApplyAge = () => {
           >
             {t('submit', { ns: 'education' })}
           </Button>
-          <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
+          <div className="mb-4 mt-5 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
             className="flex items-center text-text-accent system-xs-regular"
             href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}

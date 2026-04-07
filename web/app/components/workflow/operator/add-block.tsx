@@ -113,7 +113,7 @@ const AddBlock = ({
         crossAxis: -8,
       }}
       trigger={renderTrigger || renderTriggerElement}
-      popupClassName="!min-w-[256px]"
+      popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
     />

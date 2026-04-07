@@ -1,5 +1,3 @@
-from typing import Union
-
 from sqlalchemy import select
 
 from extensions.ext_database import db
@@ -14,7 +12,7 @@ from services.message_service import MessageService
 class SavedMessageService:
     @classmethod
     def pagination_by_last_id(
-        cls, app_model: App, user: Union[Account, EndUser] | None, last_id: str | None, limit: int
+        cls, app_model: App, user: Account | EndUser | None, last_id: str | None, limit: int
     ) -> InfiniteScrollPagination:
         if not user:
             raise ValueError("User is required")
@@ -34,7 +32,7 @@ class SavedMessageService:
         )
 
     @classmethod
-    def save(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
+    def save(cls, app_model: App, user: Account | EndUser | None, message_id: str):
         if not user:
             return
         saved_message = db.session.scalar(
@@ -64,7 +62,7 @@ class SavedMessageService:
         db.session.commit()
 
     @classmethod
-    def delete(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
+    def delete(cls, app_model: App, user: Account | EndUser | None, message_id: str):
         if not user:
             return
         saved_message = db.session.scalar(

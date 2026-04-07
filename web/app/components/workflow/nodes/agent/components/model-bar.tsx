@@ -7,7 +7,7 @@ import { useModelList } from '@/app/components/header/account-setting/model-prov
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import Indicator from '@/app/components/header/indicator'
 
-export type ModelBarProps = {
+type ModelBarProps = {
   provider: string
   model: string
 } | {}
@@ -44,7 +44,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
         <div className="relative">
           <ModelSelector
             modelList={[]}
-            triggerClassName="bg-workflow-block-parma-bg !h-6 !rounded-md"
+            triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
             defaultModel={undefined}
             showDeprecatedWarnIcon={false}
             readonly
@@ -68,7 +68,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
       <div className="relative">
         <ModelSelector
           modelList={modelList}
-          triggerClassName="bg-workflow-block-parma-bg !h-6 !rounded-md"
+          triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
           defaultModel={props}
           showDeprecatedWarnIcon={false}
           readonly

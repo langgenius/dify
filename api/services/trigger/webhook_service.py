@@ -3,7 +3,7 @@ import logging
 import mimetypes
 import secrets
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
 import orjson
 from flask import request
@@ -48,6 +48,14 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+class RawWebhookDataDict(TypedDict):
+    method: str
+    headers: dict[str, str]
+    query_params: dict[str, str]
+    body: dict[str, Any]
+    files: dict[str, Any]
 
 
 class WebhookService:
@@ -145,7 +153,7 @@ class WebhookService:
     @classmethod
     def extract_and_validate_webhook_data(
         cls, webhook_trigger: WorkflowWebhookTrigger, node_config: NodeConfigDict
-    ) -> dict[str, Any]:
+    ) -> RawWebhookDataDict:
         """Extract and validate webhook data in a single unified process.
 
         Args:
@@ -173,7 +181,7 @@ class WebhookService:
         return processed_data
 
     @classmethod
-    def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> dict[str, Any]:
+    def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> RawWebhookDataDict:
         """Extract raw data from incoming webhook request without type conversion.
 
         Args:
@@ -189,7 +197,7 @@ class WebhookService:
         """
         cls._validate_content_length()
 
-        data = {
+        data: RawWebhookDataDict = {
             "method": request.method,
             "headers": dict(request.headers),
             "query_params": dict(request.args),
@@ -223,7 +231,7 @@ class WebhookService:
         return data
 
     @classmethod
-    def _process_and_validate_data(cls, raw_data: dict[str, Any], node_data: WebhookData) -> dict[str, Any]:
+    def _process_and_validate_data(cls, raw_data: RawWebhookDataDict, node_data: WebhookData) -> RawWebhookDataDict:
         """Process and validate webhook data according to node configuration.
 
         Args:
@@ -664,7 +672,7 @@ class WebhookService:
                     raise ValueError(f"Required header missing: {header_name}")
 
     @classmethod
-    def _validate_http_metadata(cls, webhook_data: dict[str, Any], node_data: WebhookData) -> dict[str, Any]:
+    def _validate_http_metadata(cls, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> dict[str, Any]:
         """Validate HTTP method and content-type.
 
         Args:
@@ -729,7 +737,7 @@ class WebhookService:
             return False
 
     @classmethod
-    def build_workflow_inputs(cls, webhook_data: dict[str, Any]) -> dict[str, Any]:
+    def build_workflow_inputs(cls, webhook_data: RawWebhookDataDict) -> dict[str, Any]:
         """Construct workflow inputs payload from webhook data.
 
         Args:
@@ -747,7 +755,7 @@ class WebhookService:
 
     @classmethod
     def trigger_workflow_execution(
-        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
+        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: RawWebhookDataDict, workflow: Workflow
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 

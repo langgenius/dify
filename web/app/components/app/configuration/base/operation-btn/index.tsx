@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
-export type IOperationBtnProps = {
+type IOperationBtnProps = {
   className?: string
   type: 'add' | 'edit'
   actionName?: string

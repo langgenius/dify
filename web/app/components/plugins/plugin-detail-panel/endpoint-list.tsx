@@ -95,7 +95,7 @@ const EndpointList = ({ detail }: Props) => {
         </ActionButton>
       </div>
       {data.endpoints.length === 0 && (
-        <div className="mb-1 flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary system-xs-regular">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
+        <div className="mb-1 flex justify-center radius-lg bg-background-section p-3 text-text-tertiary system-xs-regular">{t('detailPanel.endpointsEmpty', { ns: 'plugin' })}</div>
       )}
       <div className="flex flex-col gap-2">
         {data.endpoints.map((item, index) => (

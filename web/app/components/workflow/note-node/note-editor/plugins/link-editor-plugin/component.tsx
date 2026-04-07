@@ -80,7 +80,7 @@ const LinkEditorComponent = ({
                 !linkOperatorShow && (
                   <>
                     <input
-                      className="mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none"
+                      className="mr-0.5 h-6 w-[196px] appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       placeholder={t('nodes.note.editor.enterUrl', { ns: 'workflow' }) || ''}
@@ -117,7 +117,7 @@ const LinkEditorComponent = ({
                         {escape(url)}
                       </div>
                     </a>
-                    <div className="mx-1 h-3.5 w-[1px] bg-divider-regular"></div>
+                    <div className="mx-1 h-3.5 w-px bg-divider-regular"></div>
                     <div
                       className="mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={(e) => {

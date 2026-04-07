@@ -5,7 +5,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -68,7 +68,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -81,7 +81,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -94,7 +94,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -106,7 +106,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         workflow_run_id: str,
@@ -239,7 +239,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         conversation: Conversation,
         message: Message,
         application_generate_entity: AdvancedChatAppGenerateEntity,
@@ -271,9 +271,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
-        args: Mapping,
+        args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -359,7 +359,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
         args: LoopNodeRunPayload,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -439,7 +439,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         invoke_from: InvokeFrom,
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -451,7 +451,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         graph_runtime_state: GraphRuntimeState | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -653,10 +653,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         queue_manager: AppQueueManager,
         conversation: ConversationSnapshot,
         message: MessageSnapshot,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    ) -> ChatbotAppBlockingResponse | Generator[ChatbotAppStreamResponse, None, None]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

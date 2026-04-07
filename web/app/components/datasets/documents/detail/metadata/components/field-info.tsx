@@ -76,7 +76,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
   }
 
   return (
-    <div className={cn('flex min-h-5 items-center gap-1 py-0.5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
+    <div className={cn('flex min-h-5 items-center gap-1 py-0.5 text-xs', editAlignTop && 'items-start!', readAlignTop && 'items-start! pt-1')}>
       <div className={cn('w-[200px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary', editAlignTop && 'pt-1')}>{label}</div>
       <div className="flex grow items-center gap-1 text-text-secondary">
         {valueIcon}

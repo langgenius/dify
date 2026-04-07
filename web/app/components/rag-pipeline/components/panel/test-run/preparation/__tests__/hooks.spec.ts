@@ -131,7 +131,7 @@ describe('useDatasourceOptions', () => {
     mockNodes.push(
       { id: 'ds-1', data: { type: BlockEnum.DataSource, title: 'Source' } },
       { id: 'llm-1', data: { type: BlockEnum.LLM, title: 'LLM' } },
-      { id: 'end-1', data: { type: BlockEnum.End, title: 'End' } },
+      { id: 'inset-e-1', data: { type: BlockEnum.End, title: 'End' } },
     )
 
     const { result } = renderHook(() => useDatasourceOptions())

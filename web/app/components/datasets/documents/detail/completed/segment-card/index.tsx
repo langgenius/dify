@@ -170,7 +170,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <div className="flex items-center">
                   <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
                   {embeddingAvailable && (
-                    <div className="absolute -right-2.5 -top-2 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px]
+                    <div className="absolute -right-2.5 -top-2 z-20 hidden items-center gap-x-0.5 radius-lg border-[0.5px]
                       border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex"
                     >
                       {!archived && (

@@ -11,7 +11,7 @@ import {
 type WorkflowStore = ReturnType<typeof createWorkflowStore>
 export const WorkflowContext = createContext<WorkflowStore | null>(null)
 
-export type WorkflowProviderProps = {
+type WorkflowProviderProps = {
   children: React.ReactNode
   injectWorkflowStoreSliceFn?: StateCreator<SliceFromInjection>
 }
