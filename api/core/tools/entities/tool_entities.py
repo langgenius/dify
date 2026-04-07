@@ -6,7 +6,17 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import (
@@ -21,6 +31,14 @@ from core.plugin.entities.parameters import (
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+
+
+class EmojiIconDict(TypedDict):
+    background: str
+    content: str
+
+
+emoji_icon_adapter: TypeAdapter[EmojiIconDict] = TypeAdapter(EmojiIconDict)
 
 
 class ToolLabelEnum(StrEnum):
