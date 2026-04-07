@@ -33,7 +33,7 @@ export function DialogCloseButton({
       aria-label={ariaLabel}
       {...props}
       className={cn(
-        'absolute right-6 top-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50',
+        'absolute top-6 right-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >
@@ -60,7 +60,7 @@ export function DialogContent({
       <BaseDialog.Backdrop
         {...backdropProps}
         className={cn(
-          'fixed inset-0 z-1002 bg-background-overlay',
+          'inset-0 fixed z-1002 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
           overlayClassName,
           backdropProps?.className,
@@ -68,8 +68,8 @@ export function DialogContent({
       />
       <BaseDialog.Popup
         className={cn(
-          'fixed left-1/2 top-1/2 z-1002 max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
-          'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
+          'fixed top-1/2 left-1/2 z-1002 max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
+          'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
           className,
         )}
       >

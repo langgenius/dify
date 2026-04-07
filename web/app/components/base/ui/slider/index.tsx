@@ -28,7 +28,7 @@ type SliderProps = ControlledSliderProps | UncontrolledSliderProps
 
 const sliderRootClassName = 'group/slider relative inline-flex w-full data-disabled:opacity-30'
 const sliderControlClassName = cn(
-  'relative flex h-5 w-full touch-none select-none items-center',
+  'relative flex h-5 w-full touch-none items-center select-none',
   'data-disabled:cursor-not-allowed',
 )
 const sliderTrackClassName = cn(
@@ -45,7 +45,7 @@ const sliderThumbClassName = cn(
   'bg-(--slider-knob,var(--color-components-slider-knob)) shadow-sm',
   'transition-[background-color,border-color,box-shadow,opacity] motion-reduce:transition-none',
   'hover:bg-(--slider-knob-hover,var(--color-components-slider-knob-hover))',
-  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-components-slider-knob-border-hover focus-visible:ring-offset-0',
+  'focus-visible:ring-2 focus-visible:ring-components-slider-knob-border-hover focus-visible:ring-offset-0 focus-visible:outline-hidden',
   'active:shadow-md',
   'group-data-disabled/slider:bg-(--slider-knob-disabled,var(--color-components-slider-knob-disabled))',
   'group-data-disabled/slider:border-(--slider-knob-border,var(--color-components-slider-knob-border))',
