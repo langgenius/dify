@@ -26,7 +26,7 @@ type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
 
 const scrollAreaScrollbarClassName = cn(
   styles.scrollbar,
-  'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
+  'flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
   'pointer-events-none data-hovering:pointer-events-auto',
   'data-scrolling:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
@@ -41,7 +41,7 @@ const scrollAreaThumbClassName = cn(
 
 const scrollAreaViewportClassName = cn(
   'size-full min-h-0 min-w-0 outline-hidden',
-  'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover',
+  'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset',
 )
 
 const scrollAreaCornerClassName = 'bg-transparent'

@@ -186,7 +186,7 @@ export function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <span aria-hidden className="i-ri-arrow-right-s-line ml-auto size-4 shrink-0 text-text-tertiary" />
+      <span aria-hidden className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
     </Menu.SubmenuTrigger>
   )
 }

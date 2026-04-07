@@ -84,7 +84,7 @@ export function NumberFieldInput({
 }
 
 export const numberFieldUnitVariants = cva(
-  'flex shrink-0 items-center self-stretch text-text-tertiary system-sm-regular',
+  'flex shrink-0 items-center self-stretch system-sm-regular text-text-tertiary',
   {
     variants: {
       size: {
@@ -133,9 +133,9 @@ export function NumberFieldControls({
 
 const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation select-none items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors',
+    'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
+    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',
