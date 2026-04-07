@@ -44,7 +44,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: Any,  # FIXME drop this any
+        retrieval_model: dict | None,
         external_retrieval_model: dict,
         attachment_ids: list | None = None,
         limit: int = 10,
@@ -54,6 +54,7 @@ class HitTestingService:
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model or default_retrieval_model
+        assert isinstance(retrieval_model, dict)
         document_ids_filter = None
         metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
         if metadata_filtering_conditions and query:
