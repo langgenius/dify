@@ -1113,6 +1113,11 @@ class IndexingConfig(BaseSettings):
         default=2,
     )
 
+    INDEXING_MEMORY_SNAPSHOT_ENABLED: bool = Field(
+        description="Enable memory snapshot logs during high-quality indexing (for OOM diagnosis)",
+        default=False,
+    )
+
 
 class MultiModalTransferConfig(BaseSettings):
     MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
