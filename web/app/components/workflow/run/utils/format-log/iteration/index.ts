@@ -4,11 +4,11 @@ import formatParallelNode from '../parallel'
 
 export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
-  childrenNodes.forEach((item, index) => {
+  childrenNodes.forEach((item) => {
     if (!item.execution_metadata)
       return
-    const { iteration_index = 0 } = item.execution_metadata
-    const runIndex: number = iteration_index !== undefined ? iteration_index : index
+    const { iteration_index } = item.execution_metadata
+    const runIndex: number = iteration_index ?? Math.max(0, details.length - 1)
     if (!details[runIndex])
       details[runIndex] = []
 

@@ -7,8 +7,8 @@ export function addChildrenToLoopNode(loopNode: NodeTracing, childrenNodes: Node
   childrenNodes.forEach((item) => {
     if (!item.execution_metadata)
       return
-    const { parallel_mode_run_id, loop_index = 0 } = item.execution_metadata
-    const runIndex: number = (parallel_mode_run_id || loop_index) as number
+    const { parallel_mode_run_id, loop_index } = item.execution_metadata
+    const runIndex: number = (parallel_mode_run_id ?? loop_index ?? Math.max(0, details.length - 1)) as number
     if (!details[runIndex])
       details[runIndex] = []
 

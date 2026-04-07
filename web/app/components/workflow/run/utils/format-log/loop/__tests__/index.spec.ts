@@ -1,6 +1,6 @@
 import type { NodeTracing } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
-import format from '..'
+import format, { addChildrenToLoopNode } from '..'
 import graphToLogStruct from '../../graph-to-log-struct'
 
 describe('loop', () => {
@@ -20,5 +20,16 @@ describe('loop', () => {
         ],
       },
     ])
+  })
+
+  it('should place items with missing loop_index at the latest record', () => {
+    const parent = { node_id: 'loop1', node_type: 'loop', execution_metadata: {} } as unknown as NodeTracing
+    const child0 = { node_id: 'a', execution_metadata: { loop_id: 'loop1', loop_index: 0 } } as unknown as NodeTracing
+    const child1 = { node_id: 'b', execution_metadata: { loop_id: 'loop1', loop_index: 1 } } as unknown as NodeTracing
+    const streaming = { node_id: 'c', execution_metadata: { loop_id: 'loop1' } } as unknown as NodeTracing
+
+    const result = addChildrenToLoopNode(parent, [child0, child1, streaming])
+    expect(result.details![0]).toEqual([child0])
+    expect(result.details![1]).toEqual([child1, streaming])
   })
 })
