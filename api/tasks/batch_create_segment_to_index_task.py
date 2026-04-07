@@ -141,9 +141,7 @@ def batch_create_segment_to_index_task(
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
             max_position = session.scalar(
-                select(func.max(DocumentSegment.position)).where(
-                    DocumentSegment.document_id == document_config["id"]
-                )
+                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
             )
             segment_document = DocumentSegment(
                 tenant_id=tenant_id,
