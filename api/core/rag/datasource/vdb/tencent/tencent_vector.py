@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
@@ -23,6 +23,13 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 
+class TencentParamsDict(TypedDict):
+    url: str
+    username: str | None
+    key: str | None
+    timeout: float
+
+
 class TencentConfig(BaseModel):
     url: str
     api_key: str | None = None
@@ -36,8 +43,14 @@ class TencentConfig(BaseModel):
     max_upsert_batch_size: int = 128
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
 
-    def to_tencent_params(self):
-        return {"url": self.url, "username": self.username, "key": self.api_key, "timeout": self.timeout}
+    def to_tencent_params(self) -> TencentParamsDict:
+        result: TencentParamsDict = {
+            "url": self.url,
+            "username": self.username,
+            "key": self.api_key,
+            "timeout": self.timeout,
+        }
+        return result
 
 
 bm25 = BM25Encoder.default("zh")
