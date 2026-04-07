@@ -6,7 +6,7 @@ from chromadb import QueryResult, Settings
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -145,7 +145,10 @@ class ChromaVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            index_struct_dict = {"type": VectorType.CHROMA, "vector_store": {"class_prefix": collection_name}}
+            index_struct_dict: VectorIndexStructDict = {
+                "type": VectorType.CHROMA,
+                "vector_store": {"class_prefix": collection_name},
+            }
             dataset.index_struct = json.dumps(index_struct_dict)
 
         return ChromaVector(
