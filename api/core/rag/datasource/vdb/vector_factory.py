@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.model_manager import ModelManager
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
@@ -30,8 +30,11 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
-        index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> VectorIndexStructDict:
+        index_struct_dict: VectorIndexStructDict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name},
+        }
         return index_struct_dict
 
 
