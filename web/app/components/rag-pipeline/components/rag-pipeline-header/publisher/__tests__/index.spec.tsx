@@ -3,17 +3,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast'
 import Publisher from '../index'
 import Popup from '../popup'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode, href: string }) => (
     <a href={href} {...props}>{children}</a>
   ),
@@ -73,8 +72,24 @@ vi.mock('@/context/provider-context', () => ({
     selector({ isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate() }),
 }))
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.dify.ai/v1/datasets/test-dataset-id',
 }))
@@ -156,9 +171,8 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-        {ui}
-      </ToastContext.Provider>
+      {ui}
+
     </QueryClientProvider>,
   )
 }
@@ -500,7 +514,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith(
+          expect(toastMocks.call).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'success',
               message: 'datasetPipeline.publishPipeline.success.message',
@@ -554,7 +568,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith(
+          expect(toastMocks.call).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'success',
               message: 'datasetPipeline.publishTemplate.success.message',
@@ -609,7 +623,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishPipeline.error.message',
           })
@@ -633,7 +647,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishTemplate.error.message',
           })
@@ -845,7 +859,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishPipeline.error.message',
           })
@@ -890,7 +904,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockNotify).toHaveBeenCalledWith({
+          expect(toastMocks.call).toHaveBeenCalledWith({
             type: 'error',
             message: 'datasetPipeline.publishPipeline.error.message',
           })
@@ -998,7 +1012,7 @@ describe('publisher', () => {
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
+        expect(toastMocks.call).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'success',
           }),

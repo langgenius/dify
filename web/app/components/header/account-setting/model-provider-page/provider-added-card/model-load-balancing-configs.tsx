@@ -24,7 +24,7 @@ import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
-export type ModelLoadBalancingConfigsProps = {
+type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
   setDraftConfig: Dispatch<SetStateAction<ModelLoadBalancingConfig | undefined>>
   provider: ModelProvider
@@ -130,7 +130,7 @@ const ModelLoadBalancingConfigs = ({
 
   const handleRemove = useCallback((credentialId: string) => {
     const index = draftConfig?.configs.findIndex(item => item.credential_id === credentialId && item.name !== '__inherit__')
-    if (index && index > -1)
+    if (typeof index === 'number' && index > -1)
       updateConfigEntry(index, () => undefined)
     onRemove?.(credentialId)
   }, [draftConfig?.configs, updateConfigEntry, onRemove])
@@ -164,7 +164,7 @@ const ModelLoadBalancingConfigs = ({
             withSwitch && (
               <Switch
                 value={Boolean(draftConfig.enabled)}
-                size="l"
+                size="lg"
                 className="ml-3 justify-self-end"
                 disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
                 onChange={value => toggleModalBalancing(value)}
@@ -261,7 +261,7 @@ const ModelLoadBalancingConfigs = ({
       </div>
 
       {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
-        <GridMask canvasClassName="!rounded-xl">
+        <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div
               className={cn('text-gradient text-sm font-semibold leading-tight', s.textGradient)}

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import CredentialSelector from '../index'
 
-// Mock CredentialIcon since it's likely a complex component or uses next/image
+// Mock CredentialIcon since it's likely a complex component.
 vi.mock('@/app/components/datasets/common/credential-icon', () => ({
   CredentialIcon: ({ name }: { name: string }) => <div data-testid="credential-icon">{name}</div>,
 }))

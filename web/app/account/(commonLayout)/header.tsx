@@ -1,11 +1,11 @@
 'use client'
 import { RiArrowRightUpLine, RiRobot2Line } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useRouter } from '@/next/navigation'
 import Avatar from './avatar'
 
 const Header = () => {
@@ -31,7 +31,7 @@ const Header = () => {
               )
             : <DifyLogo />}
         </div>
-        <div className="h-4 w-[1px] origin-center rotate-[11.31deg] bg-divider-regular" />
+        <div className="h-4 w-px origin-center rotate-[11.31deg] bg-divider-regular" />
         <p className="title-3xl-semi-bold relative mt-[-2px] text-text-primary">{t('account.account', { ns: 'common' })}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
@@ -40,7 +40,7 @@ const Header = () => {
           <p>{t('account.studio', { ns: 'common' })}</p>
           <RiArrowRightUpLine className="h-4 w-4" />
         </Button>
-        <div className="h-4 w-[1px] bg-divider-regular" />
+        <div className="h-4 w-px bg-divider-regular" />
         <Avatar />
       </div>
     </div>

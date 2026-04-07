@@ -9,8 +9,8 @@ import {
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
 import Input from '@/app/components/base/input'
-import Slider from '@/app/components/base/slider'
 import Tooltip from '@/app/components/base/tooltip'
+import { Slider } from '@/app/components/base/ui/slider'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { cn } from '@/utils/classnames'
 import {
@@ -94,7 +94,7 @@ const IndexMethod = ({
             >
               <div className="flex items-center">
                 <div className="flex grow items-center">
-                  <div className="system-xs-medium truncate text-text-secondary">
+                  <div className="truncate text-text-secondary system-xs-medium">
                     {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                   </div>
                   <Tooltip
@@ -107,7 +107,8 @@ const IndexMethod = ({
                   disabled={readonly}
                   className="mr-3 w-24 shrink-0"
                   value={keywordNumber}
-                  onChange={onKeywordNumberChange}
+                  onValueChange={onKeywordNumberChange}
+                  aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                 />
                 <Input
                   disabled={readonly}

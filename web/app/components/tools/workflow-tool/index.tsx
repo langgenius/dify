@@ -12,8 +12,8 @@ import Drawer from '@/app/components/base/drawer-plus'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -129,10 +129,7 @@ const WorkflowToolAsModal: FC<Props> = ({
       errorMessage = t('createTool.nameForToolCall', { ns: 'tools' }) + t('createTool.nameForToolCallTip', { ns: 'tools' })
 
     if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      toast.error(errorMessage)
       return
     }
 
@@ -169,8 +166,8 @@ const WorkflowToolAsModal: FC<Props> = ({
         isShow
         onHide={onHide}
         title={t('common.workflowAsTool', { ns: 'workflow' })!}
-        panelClassName="mt-2 !w-[640px]"
-        maxWidthClassName="!max-w-[640px]"
+        panelClassName="mt-2 w-[640px]!"
+        maxWidthClassName="max-w-[640px]!"
         height="calc(100vh - 16px)"
         headerClassName="!border-b-divider"
         body={(
@@ -268,7 +265,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                           <td className="w-[236px] p-2 pl-3 text-text-tertiary">
                             <input
                               type="text"
-                              className="w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary"
+                              className="w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
                               placeholder={t('createTool.toolInput.descriptionPlaceholder', { ns: 'tools' })!}
                               value={item.description}
                               onChange={e => handleParameterChange('description', e.target.value, index)}

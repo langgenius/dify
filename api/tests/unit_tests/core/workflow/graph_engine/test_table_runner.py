@@ -19,20 +19,17 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.graph import Graph
-from dify_graph.graph_engine import GraphEngine, GraphEngineConfig
-from dify_graph.graph_engine.command_channels import InMemoryChannel
-from dify_graph.graph_events import (
+from graphon.entities import GraphInitParams
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables import (
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -42,10 +39,63 @@ from dify_graph.variables import (
     StringVariable,
 )
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from core.tools.utils.yaml_utils import _load_yaml_file
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
 
 logger = logging.getLogger(__name__)
+
+
+class _TableTestChildEngineBuilder:
+    def __init__(self, *, use_mock_factory: bool, mock_config: MockConfig | None) -> None:
+        self._use_mock_factory = use_mock_factory
+        self._mock_config = mock_config
+
+    def build_child_engine(
+        self,
+        *,
+        workflow_id: str,
+        graph_init_params: GraphInitParams,
+        parent_graph_runtime_state: GraphRuntimeState,
+        root_node_id: str,
+        variable_pool: VariablePool | None = None,
+    ) -> GraphEngine:
+        child_graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
+            start_at=time.perf_counter(),
+            execution_context=parent_graph_runtime_state.execution_context,
+        )
+        if self._use_mock_factory:
+            node_factory = MockNodeFactory(
+                graph_init_params=graph_init_params,
+                graph_runtime_state=child_graph_runtime_state,
+                mock_config=self._mock_config,
+            )
+        else:
+            node_factory = DifyNodeFactory(
+                graph_init_params=graph_init_params,
+                graph_runtime_state=child_graph_runtime_state,
+            )
+
+        graph_config = graph_init_params.graph_config
+        child_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
+        if not child_graph:
+            raise ValueError("child graph not found")
+
+        child_engine = GraphEngine(
+            workflow_id=workflow_id,
+            graph=child_graph,
+            graph_runtime_state=child_graph_runtime_state,
+            command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(),
+            child_engine_builder=self,
+        )
+        return child_engine
 
 
 @dataclass
@@ -149,24 +199,29 @@ class WorkflowRunner:
             raise ValueError("Fixture missing workflow.graph configuration")
 
         graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
             workflow_id="test_workflow",
             graph_config=graph_config,
-            user_id="test_user",
-            user_from="account",
-            invoke_from="debugger",  # Set to debugger to avoid conversation_id requirement
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "test_tenant",
+                    "app_id": "test_app",
+                    "user_id": "test_user",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,  # Set to debugger to avoid conversation_id requirement
+                }
+            },
             call_depth=0,
         )
 
-        system_variables = SystemVariable(
-            user_id=graph_init_params.user_id,
-            app_id=graph_init_params.app_id,
+        system_variables = build_system_variables(
+            user_id="test_user",
+            app_id="test_app",
             workflow_id=graph_init_params.workflow_id,
             files=[],
             query=query,
         )
-        user_inputs = inputs if inputs is not None else {}
+        root_node_inputs = dict(inputs or {})
+        root_node_inputs.setdefault("query", query)
 
         # Extract conversation variables from workflow config
         conversation_variables = []
@@ -195,11 +250,16 @@ class WorkflowRunner:
             )
             conversation_variables.append(var)
 
-        variable_pool = VariablePool(
-            system_variables=system_variables,
-            user_inputs=user_inputs,
-            conversation_variables=conversation_variables,
+        root_node_id = get_default_root_node_id(graph_config)
+        variable_pool = VariablePool()
+        add_variables_to_pool(
+            variable_pool,
+            build_bootstrap_variables(
+                system_variables=system_variables,
+                conversation_variables=conversation_variables,
+            ),
         )
+        add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=root_node_inputs)
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
@@ -210,7 +270,11 @@ class WorkflowRunner:
         else:
             node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
 
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=root_node_id,
+        )
 
         return graph, graph_runtime_state
 
@@ -314,6 +378,10 @@ class TableTestRunner:
                     max_workers=self.graph_engine_max_workers,
                     scale_up_threshold=self.graph_engine_scale_up_threshold,
                     scale_down_idle_time=self.graph_engine_scale_down_idle_time,
+                ),
+                child_engine_builder=_TableTestChildEngineBuilder(
+                    use_mock_factory=test_case.use_auto_mock,
+                    mock_config=test_case.mock_config,
                 ),
             )
 

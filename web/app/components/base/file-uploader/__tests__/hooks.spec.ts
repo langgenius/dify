@@ -6,15 +6,14 @@ import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 
-// Exception: hook requires toast context that isn't available without a provider wrapper
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 const mockSetFiles = vi.fn()

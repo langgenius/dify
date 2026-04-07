@@ -4,8 +4,11 @@ from typing import Any, Literal
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from graphon.enums import WorkflowExecutionStatus
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -27,9 +30,6 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
@@ -132,6 +132,8 @@ class WorkflowRunDetailApi(Resource):
             app_id=app_model.id,
             run_id=workflow_run_id,
         )
+        if not workflow_run:
+            raise NotFound("Workflow run not found.")
         return workflow_run
 
 
@@ -312,7 +314,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,

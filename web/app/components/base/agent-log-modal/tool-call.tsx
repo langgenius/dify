@@ -52,7 +52,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
         <div
           className={cn(
             'flex cursor-pointer items-center py-3 pl-[6px] pr-3',
-            !collapseState && '!pb-2',
+            !collapseState && 'pb-2!',
           )}
           onClick={() => setCollapseState(!collapseState)}
         >

@@ -1,13 +1,15 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import helpers as file_helpers
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -25,8 +27,7 @@ from controllers.console.wraps import (
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from dify_graph.enums import NodeType, WorkflowExecutionStatus
-from dify_graph.file import helpers as file_helpers
+from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
@@ -94,7 +95,7 @@ class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
@@ -102,7 +103,7 @@ class CreateAppPayload(BaseModel):
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
@@ -112,7 +113,7 @@ class UpdateAppPayload(BaseModel):
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
     description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
-    icon_type: str | None = Field(default=None, description="Icon type")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
@@ -151,7 +152,7 @@ class AppTracePayload(BaseModel):
         return value
 
 
-JSONValue: TypeAlias = Any
+type JSONValue = Any
 
 
 class ResponseModel(BaseModel):
@@ -508,11 +509,7 @@ class AppListApi(Resource):
                 .scalars()
                 .all()
             )
-            trigger_node_types = {
-                NodeType.TRIGGER_WEBHOOK,
-                NodeType.TRIGGER_SCHEDULE,
-                NodeType.TRIGGER_PLUGIN,
-            }
+            trigger_node_types = TRIGGER_NODE_TYPES
             for workflow in draft_workflows:
                 node_id = None
                 try:
@@ -597,7 +594,7 @@ class AppApi(Resource):
         args_dict: AppService.ArgsDict = {
             "name": args.name,
             "description": args.description or "",
-            "icon_type": args.icon_type or "",
+            "icon_type": args.icon_type,
             "icon": args.icon or "",
             "icon_background": args.icon_background or "",
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
@@ -645,7 +642,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -658,7 +655,6 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
-            session.commit()
 
             # Inherit web app permission from original app
             if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:

@@ -28,8 +28,14 @@ vi.mock('@/service/annotation', () => ({
   addAnnotation: (...args: unknown[]) => mockAddAnnotation(...args),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: { notify: vi.fn() },
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
 }))
 
 describe('AnnotationCtrlButton', () => {
@@ -145,5 +151,31 @@ describe('AnnotationCtrlButton', () => {
 
     expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
     expect(mockAddAnnotation).not.toHaveBeenCalled()
+  })
+
+  it('should fallback author name to empty string when account name is missing', async () => {
+    const onAdded = vi.fn()
+    mockAddAnnotation.mockResolvedValueOnce({
+      id: 'annotation-2',
+      account: undefined,
+    })
+
+    render(
+      <AnnotationCtrlButton
+        appId="test-app"
+        messageId="msg-2"
+        cached={false}
+        query="test query"
+        answer="test answer"
+        onAdded={onAdded}
+        onEdit={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button'))
+
+    await waitFor(() => {
+      expect(onAdded).toHaveBeenCalledWith('annotation-2', '')
+    })
   })
 })

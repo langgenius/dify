@@ -66,7 +66,7 @@ describe('AppIcon', () => {
 
   it('applies size classes correctly', () => {
     const { container: xsContainer } = render(<AppIcon size="xs" />)
-    expect(xsContainer.firstChild).toHaveClass('w-4 h-4 rounded-[4px]')
+    expect(xsContainer.firstChild).toHaveClass('w-4 h-4 radius-xs')
 
     const { container: tinyContainer } = render(<AppIcon size="tiny" />)
     expect(tinyContainer.firstChild).toHaveClass('w-6 h-6 rounded-md')
@@ -75,10 +75,10 @@ describe('AppIcon', () => {
     expect(smallContainer.firstChild).toHaveClass('w-8 h-8 rounded-lg')
 
     const { container: mediumContainer } = render(<AppIcon size="medium" />)
-    expect(mediumContainer.firstChild).toHaveClass('w-9 h-9 rounded-[10px]')
+    expect(mediumContainer.firstChild).toHaveClass('w-9 h-9 radius-lg')
 
     const { container: largeContainer } = render(<AppIcon size="large" />)
-    expect(largeContainer.firstChild).toHaveClass('w-10 h-10 rounded-[10px]')
+    expect(largeContainer.firstChild).toHaveClass('w-10 h-10 radius-lg')
 
     const { container: xlContainer } = render(<AppIcon size="xl" />)
     expect(xlContainer.firstChild).toHaveClass('w-12 h-12 rounded-xl')
@@ -87,7 +87,7 @@ describe('AppIcon', () => {
     expect(xxlContainer.firstChild).toHaveClass('w-14 h-14 rounded-2xl')
   })
 
-  it('applies rounded class when rounded=true', () => {
+  it('applies rounded-sm class when rounded-sm=true', () => {
     const { container } = render(<AppIcon rounded />)
     expect(container.firstChild).toHaveClass('rounded-full')
   })

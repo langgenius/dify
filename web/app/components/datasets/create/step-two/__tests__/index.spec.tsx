@@ -1772,16 +1772,14 @@ describe('StepTwoFooter', () => {
       render(<StepTwoFooter {...defaultProps} isCreating={true} />)
 
       const nextButton = screen.getByText(/nextStep/i).closest('button')
-      // Button has disabled:btn-disabled class which handles the loading state
-      expect(nextButton).toHaveClass('disabled:btn-disabled')
+      expect(nextButton).toBeDisabled()
     })
 
     it('should show loading state on Save button when creating in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} isSetting={true} isCreating={true} />)
 
       const saveButton = screen.getByText(/save/i).closest('button')
-      // Button has disabled:btn-disabled class which handles the loading state
-      expect(saveButton).toHaveClass('disabled:btn-disabled')
+      expect(saveButton).toBeDisabled()
     })
   })
 })

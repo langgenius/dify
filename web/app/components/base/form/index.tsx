@@ -14,8 +14,10 @@ import UploadMethodField from './components/field/upload-method'
 import VariableOrConstantInputField from './components/field/variable-selector'
 import Actions from './components/form/actions'
 
-export const { fieldContext, useFieldContext, formContext, useFormContext }
+const { fieldContext, useFieldContext, formContext, useFormContext }
   = createFormHookContexts()
+
+export { formContext, useFieldContext, useFormContext }
 
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {

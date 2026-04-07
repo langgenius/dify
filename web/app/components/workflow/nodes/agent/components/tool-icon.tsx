@@ -72,7 +72,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
         className={cn('relative')}
         ref={containerRef}
       >
-        <div className="flex size-5 items-center justify-center overflow-hidden rounded-[6px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+        <div className="flex size-5 items-center justify-center overflow-hidden radius-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
           {(() => {
             if (iconFetchError || !icon)
               return <Group className="h-3 w-3 opacity-35" />
@@ -98,7 +98,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
             return <Group className="h-3 w-3 opacity-35" />
           })()}
         </div>
-        {indicator && <Indicator color={indicator} className="absolute -right-[1px] -top-[1px]" />}
+        {indicator && <Indicator color={indicator} className="absolute -right-px -top-px" />}
       </div>
     </Tooltip>
   )

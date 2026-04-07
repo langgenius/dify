@@ -3,11 +3,11 @@ import {
   RiVolumeUpLine,
 } from '@remixicon/react'
 import { t } from 'i18next'
-import { useParams, usePathname } from 'next/navigation'
 import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import Tooltip from '@/app/components/base/tooltip'
+import { useParams, usePathname } from '@/next/navigation'
 
 type AudioBtnProps = {
   id?: string

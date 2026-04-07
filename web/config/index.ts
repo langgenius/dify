@@ -42,8 +42,10 @@ export const AMPLITUDE_API_KEY = getStringConfig(
   '',
 )
 
-export const IS_DEV = env.NODE_ENV === 'development'
-export const IS_PROD = env.NODE_ENV === 'production'
+export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
+
+export const IS_DEV = process.env.NODE_ENV === 'development'
+export const IS_PROD = process.env.NODE_ENV === 'production'
 
 export const SUPPORT_MAIL_LOGIN = env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
 
@@ -281,8 +283,7 @@ Thought: {{agent_scratchpad}}
   `,
 }
 
-export const VAR_REGEX
-  = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
+export const VAR_REGEX = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
@@ -290,9 +291,6 @@ export const HITL_INPUT_REG = /\{\{(#\$output\.(?:[a-z_]\w{0,29}){1,10}#)\}\}/gi
 export const resetHITLInputReg = () => HITL_INPUT_REG.lastIndex = 0
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
-
-export const GITHUB_ACCESS_TOKEN
-  = env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN
 
 export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.difybndl'
 export const FULL_DOC_PREVIEW_LENGTH = 50
@@ -342,6 +340,12 @@ export const ZENDESK_FIELD_IDS = {
     '',
   ),
 }
+
+export const SUPPORT_EMAIL_ADDRESS = getStringConfig(
+  env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS,
+  '',
+)
+
 export const APP_VERSION = pkg.version
 
 export const IS_MARKETPLACE = env.NEXT_PUBLIC_IS_MARKETPLACE

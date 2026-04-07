@@ -3,7 +3,8 @@ import type { ChatContextValue } from '../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ChatContextProvider, useChatContext } from '../context'
+import { useChatContext } from '../context'
+import { ChatContextProvider } from '../context-provider'
 
 const TestConsumer = () => {
   const context = useChatContext()

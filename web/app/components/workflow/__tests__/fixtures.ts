@@ -1,4 +1,5 @@
-import type { CommonEdgeType, CommonNodeType, Edge, Node } from '../types'
+import type { CommonEdgeType, CommonNodeType, Edge, Node, WorkflowRunningData } from '../types'
+import type { NodeTracing } from '@/types/workflow'
 import { Position } from 'reactflow'
 import { CUSTOM_NODE } from '../constants'
 import { BlockEnum, NodeRunningStatus } from '../types'
@@ -41,6 +42,13 @@ export function createStartNode(overrides: Omit<Partial<Node>, 'data'> & { data?
   })
 }
 
+export function createNodeDataFactory<T extends CommonNodeType & Record<string, unknown>>(defaults: T) {
+  return (overrides: Partial<T> = {}): T => ({
+    ...defaults,
+    ...overrides,
+  })
+}
+
 export function createTriggerNode(
   triggerType: BlockEnum.TriggerSchedule | BlockEnum.TriggerWebhook | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
   overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {},
@@ -80,32 +88,49 @@ export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Par
   } as Edge
 }
 
-export function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Edge[] } {
-  const nodes: Node[] = []
-  const edges: Edge[] = []
+// ---------------------------------------------------------------------------
+// Workflow-level factories
+// ---------------------------------------------------------------------------
 
-  for (let i = 0; i < nodeCount; i++) {
-    const type = i === 0 ? BlockEnum.Start : BlockEnum.Code
-    nodes.push(createNode({
-      id: `n${i}`,
-      position: { x: i * 300, y: 0 },
-      data: { type, title: `Node ${i}`, desc: '' },
-    }))
-    if (i > 0) {
-      edges.push(createEdge({
-        id: `e-n${i - 1}-n${i}`,
-        source: `n${i - 1}`,
-        target: `n${i}`,
-        sourceHandle: 'source',
-        targetHandle: 'target',
-        data: {
-          sourceType: i === 1 ? BlockEnum.Start : BlockEnum.Code,
-          targetType: BlockEnum.Code,
-        },
-      }))
-    }
+export function createWorkflowRunningData(
+  overrides?: Partial<WorkflowRunningData>,
+): WorkflowRunningData {
+  return {
+    task_id: 'task-test',
+    result: {
+      status: 'running',
+      inputs_truncated: false,
+      process_data_truncated: false,
+      outputs_truncated: false,
+      ...overrides?.result,
+    },
+    tracing: overrides?.tracing ?? [],
+    ...overrides,
   }
-  return { nodes, edges }
 }
 
-export { BlockEnum, NodeRunningStatus }
+export function createNodeTracing(
+  overrides?: Partial<NodeTracing>,
+): NodeTracing {
+  const nodeId = overrides?.node_id ?? 'node-1'
+  return {
+    id: `trace-${nodeId}`,
+    index: 0,
+    predecessor_node_id: '',
+    node_id: nodeId,
+    node_type: BlockEnum.Code,
+    title: 'Node',
+    inputs: null,
+    inputs_truncated: false,
+    process_data: null,
+    process_data_truncated: false,
+    outputs_truncated: false,
+    status: NodeRunningStatus.Running,
+    elapsed_time: 0,
+    metadata: { iterator_length: 0, iterator_index: 0, loop_length: 0, loop_index: 0 },
+    created_at: 0,
+    created_by: { id: 'user-1', name: 'Test', email: 'test@test.com' },
+    finished_at: 0,
+    ...overrides,
+  }
+}

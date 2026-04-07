@@ -5,11 +5,13 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useClipboardUploader, useDraggableUploader, useImageFiles, useLocalFileUploader } from '../hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: undefined }),
 }))
 

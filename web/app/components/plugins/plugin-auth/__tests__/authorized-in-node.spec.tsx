@@ -42,10 +42,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
-}))
-
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))

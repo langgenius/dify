@@ -32,7 +32,7 @@ const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType, 
   [NodeStatusEnum.error]: { IconComponent: RiErrorWarningFill, message: 'Error' },
 }
 
-export type NodeStatusProps = {
+type NodeStatusProps = {
   message?: string
   styleCss?: CSSProperties
   iconClassName?: string

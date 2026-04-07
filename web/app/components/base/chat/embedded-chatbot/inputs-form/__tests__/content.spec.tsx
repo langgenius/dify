@@ -9,15 +9,15 @@ vi.mock('../../context', () => ({
   useEmbeddedChatbotContext: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({ notify: vi.fn() }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+
 }))
 
 // Mock CodeEditor to trigger onChange easily

@@ -2,14 +2,15 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Literal
+from typing import Literal, TypedDict
 
 import httpx
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError
 
+from core.helper.http_client_pooling import get_pooled_http_client
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -18,12 +19,60 @@ from models import Account, TenantAccountJoin, TenantAccountRole
 
 logger = logging.getLogger(__name__)
 
+_http_client: httpx.Client = get_pooled_http_client(
+    "billing:default",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
+
 
 class SubscriptionPlan(TypedDict):
     """Tenant subscriptionplan information."""
 
     plan: str
     expiration_date: int
+
+
+class KnowledgeRateLimitDict(TypedDict):
+    limit: int
+    subscription_plan: str
+
+
+class TenantFeaturePlanUsageDict(TypedDict):
+    result: str
+    history_id: str
+
+
+class LangContentDict(TypedDict):
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    title_pic_url: str
+
+
+class NotificationDict(TypedDict):
+    notification_id: str
+    contents: dict[str, LangContentDict]
+    frequency: Literal["once", "every_page_load"]
+
+
+class AccountNotificationDict(TypedDict, total=False):
+    should_show: bool
+    notification: NotificationDict
+    shouldShow: bool
+    notifications: list[dict]
+
+
+class UpsertNotificationDict(TypedDict):
+    notification_id: str
+
+
+class BatchAddNotificationAccountsDict(TypedDict):
+    count: int
+
+
+class DismissNotificationDict(TypedDict):
+    success: bool
 
 
 class BillingService:
@@ -52,7 +101,7 @@ class BillingService:
         return usage_info
 
     @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
+    def get_knowledge_rate_limit(cls, tenant_id: str) -> KnowledgeRateLimitDict:
         params = {"tenant_id": tenant_id}
 
         knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
@@ -83,7 +132,9 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
-    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
+    def update_tenant_feature_plan_usage(
+        cls, tenant_id: str, feature_key: str, delta: int
+    ) -> TenantFeaturePlanUsageDict:
         """
         Update tenant feature plan usage.
 
@@ -103,7 +154,7 @@ class BillingService:
         )
 
     @classmethod
-    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> TenantFeaturePlanUsageDict:
         """
         Refund a previous usage charge.
 
@@ -131,7 +182,7 @@ class BillingService:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = httpx.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
+        response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         if method == "PUT":
@@ -152,10 +203,10 @@ class BillingService:
     def is_tenant_owner_or_admin(current_user: Account):
         tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = (
-            db.session.query(TenantAccountJoin)
+        join: TenantAccountJoin | None = db.session.scalar(
+            select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
-            .first()
+            .limit(1)
         )
 
         if not join:
@@ -335,7 +386,11 @@ class BillingService:
                         # Redis returns bytes, decode to string and parse JSON
                         json_str = cached_value.decode("utf-8") if isinstance(cached_value, bytes) else cached_value
                         plan_dict = json.loads(json_str)
+                        # NOTE (hj24): New billing versions may return timestamp as str, and validate_python
+                        # in non-strict mode will coerce it to the expected int type.
+                        # To preserve compatibility, always keep non-strict mode here and avoid strict mode.
                         subscription_plan = subscription_adapter.validate_python(plan_dict)
+                        # NOTE END
                         tenant_plans[tenant_id] = subscription_plan
                     except Exception:
                         logger.exception(
@@ -393,3 +448,80 @@ class BillingService:
         for item in data:
             tenant_whitelist.append(item["tenant_id"])
         return tenant_whitelist
+
+    @classmethod
+    def get_account_notification(cls, account_id: str) -> AccountNotificationDict:
+        """Return the active in-product notification for account_id, if any.
+
+        Calling this endpoint also marks the notification as seen; subsequent
+        calls will return should_show=false when frequency='once'.
+
+        Response shape (mirrors GetAccountNotificationReply):
+          {
+            "should_show": bool,
+            "notification": {          # present only when should_show=true
+              "notification_id": str,
+              "contents": {            # lang -> LangContent
+                "en": {"lang": "en", "title": ..., "subtitle": ..., "body": ..., "title_pic_url": ...},
+                ...
+              },
+              "frequency": "once" | "every_page_load"
+            }
+          }
+        """
+        return cls._send_request("GET", "/notifications/active", params={"account_id": account_id})
+
+    @classmethod
+    def upsert_notification(
+        cls,
+        contents: list[LangContentDict],
+        frequency: str = "once",
+        status: str = "active",
+        notification_id: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
+    ) -> UpsertNotificationDict:
+        """Create or update a notification.
+
+        contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
+        start_time / end_time: RFC3339 strings (e.g. "2026-03-01T00:00:00Z"), optional.
+        Returns {"notification_id": str}.
+        """
+        payload: dict = {
+            "contents": contents,
+            "frequency": frequency,
+            "status": status,
+        }
+        if notification_id:
+            payload["notification_id"] = notification_id
+        if start_time:
+            payload["start_time"] = start_time
+        if end_time:
+            payload["end_time"] = end_time
+        return cls._send_request("POST", "/notifications", json=payload)
+
+    @classmethod
+    def batch_add_notification_accounts(
+        cls, notification_id: str, account_ids: list[str]
+    ) -> BatchAddNotificationAccountsDict:
+        """Register target account IDs for a notification (max 1000 per call).
+
+        Returns {"count": int}.
+        """
+        return cls._send_request(
+            "POST",
+            f"/notifications/{notification_id}/accounts",
+            json={"account_ids": account_ids},
+        )
+
+    @classmethod
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:
+        """Mark a notification as dismissed for an account.
+
+        Returns {"success": bool}.
+        """
+        return cls._send_request(
+            "POST",
+            f"/notifications/{notification_id}/dismiss",
+            json={"account_id": account_id},
+        )

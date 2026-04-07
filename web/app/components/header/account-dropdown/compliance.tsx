@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/app/components/base/ui/dropdown-menu'
+import { toast } from '@/app/components/base/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -17,7 +18,6 @@ import Soc2 from '../../base/icons/src/public/common/Soc2'
 import SparklesSoft from '../../base/icons/src/public/common/SparklesSoft'
 import PremiumBadge from '../../base/premium-badge'
 import Spinner from '../../base/spinner'
-import Toast from '../../base/toast'
 import { MenuItemContent } from './menu-item-content'
 
 enum DocName {
@@ -46,14 +46,15 @@ function ComplianceDocActionVisual({
     return (
       <div
         aria-hidden
+        data-disabled={isPending || undefined}
         className={cn(
-          'btn btn-small btn-secondary pointer-events-none flex items-center gap-[1px]',
-          isPending && 'btn-disabled',
+          'btn btn-small btn-secondary pointer-events-none flex items-center gap-px',
+          isPending && 'cursor-not-allowed',
         )}
       >
         <span className="i-ri-arrow-down-circle-line size-[14px] text-components-button-secondary-text-disabled" />
         <span className="px-[3px] text-components-button-secondary-text system-xs-medium">{downloadText}</span>
-        {isPending && <Spinner loading={true} className="!ml-1 !h-3 !w-3 !border-2 !text-text-tertiary" />}
+        {isPending && <Spinner loading={true} className="ml-1! h-3! w-3! border-2! text-text-tertiary!" />}
       </div>
     )
   }
@@ -67,7 +68,7 @@ function ComplianceDocActionVisual({
         disabled={!canShowUpgradeTooltip}
         render={(
           <PremiumBadge color="blue" allowHover={true}>
-            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
             <div className="px-1 system-xs-medium">
               {upgradeText}
             </div>
@@ -105,17 +106,11 @@ function ComplianceDocRowItem({
       try {
         const ret = await getDocDownloadUrl(docName)
         downloadUrl({ url: ret.url })
-        Toast.notify({
-          type: 'success',
-          message: t('operation.downloadSuccess', { ns: 'common' }),
-        })
+        toast.success(t('operation.downloadSuccess', { ns: 'common' }))
       }
       catch (error) {
         console.error(error)
-        Toast.notify({
-          type: 'error',
-          message: t('operation.downloadFailed', { ns: 'common' }),
-        })
+        toast.error(t('operation.downloadFailed', { ns: 'common' }))
       }
     },
   })
@@ -181,9 +176,9 @@ export default function Compliance() {
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        popupClassName="w-[337px] divide-y divide-divider-subtle !bg-components-panel-bg-blur !py-0 backdrop-blur-sm"
+        popupClassName="w-[337px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs"
       >
-        <DropdownMenuGroup className="p-1">
+        <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
             label={t('compliance.soc2Type1', { ns: 'common' })}

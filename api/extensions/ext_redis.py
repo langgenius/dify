@@ -3,7 +3,7 @@ import logging
 import ssl
 from collections.abc import Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import redis
 from redis import RedisError
@@ -18,6 +18,7 @@ from dify_app import DifyApp
 from libs.broadcast_channel.channel import BroadcastChannel as BroadcastChannelProtocol
 from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
+from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
 if TYPE_CHECKING:
     from redis.lock import Lock
@@ -181,13 +182,18 @@ def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, 
 
     sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
 
+    sentinel_kwargs = {
+        "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
+        "username": dify_config.REDIS_SENTINEL_USERNAME,
+        "password": dify_config.REDIS_SENTINEL_PASSWORD,
+    }
+
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        sentinel_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+
     sentinel = Sentinel(
         sentinel_hosts,
-        sentinel_kwargs={
-            "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
-            "username": dify_config.REDIS_SENTINEL_USERNAME,
-            "password": dify_config.REDIS_SENTINEL_PASSWORD,
-        },
+        sentinel_kwargs=sentinel_kwargs,
     )
 
     master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
@@ -204,12 +210,15 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
         for node in dify_config.REDIS_CLUSTERS.split(",")
     ]
 
-    cluster: RedisCluster = RedisCluster(
-        startup_nodes=nodes,
-        password=dify_config.REDIS_CLUSTERS_PASSWORD,
-        protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
-        cache_config=_get_cache_configuration(),
-    )
+    cluster_kwargs: dict[str, Any] = {
+        "startup_nodes": nodes,
+        "password": dify_config.REDIS_CLUSTERS_PASSWORD,
+        "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        "cache_config": _get_cache_configuration(),
+    }
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        cluster_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+    cluster: RedisCluster = RedisCluster(**cluster_kwargs)
     return cluster
 
 
@@ -225,6 +234,9 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
         }
     )
 
+    if dify_config.REDIS_MAX_CONNECTIONS:
+        redis_params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+
     if ssl_kwargs:
         redis_params.update(ssl_kwargs)
 
@@ -234,9 +246,17 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
 
 
 def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | RedisCluster:
+    max_conns = dify_config.REDIS_MAX_CONNECTIONS
     if use_clusters:
-        return RedisCluster.from_url(pubsub_url)
-    return redis.Redis.from_url(pubsub_url)
+        if max_conns:
+            return RedisCluster.from_url(pubsub_url, max_connections=max_conns)
+        else:
+            return RedisCluster.from_url(pubsub_url)
+
+    if max_conns:
+        return redis.Redis.from_url(pubsub_url, max_connections=max_conns)
+    else:
+        return redis.Redis.from_url(pubsub_url)
 
 
 def init_app(app: DifyApp):
@@ -269,15 +289,15 @@ def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
     assert _pubsub_redis_client is not None, "PubSub redis Client should be initialized here."
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "sharded":
         return ShardedRedisBroadcastChannel(_pubsub_redis_client)
+    if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
+        return StreamsBroadcastChannel(
+            _pubsub_redis_client,
+            retention_seconds=dify_config.PUBSUB_STREAMS_RETENTION_SECONDS,
+        )
     return RedisBroadcastChannel(_pubsub_redis_client)
 
 
-P = ParamSpec("P")
-R = TypeVar("R")
-T = TypeVar("T")
-
-
-def redis_fallback(default_return: T | None = None):  # type: ignore
+def redis_fallback[T](default_return: T | None = None):  # type: ignore
     """
     decorator to handle Redis operation exceptions and return a default value when Redis is unavailable.
 
@@ -285,9 +305,9 @@ def redis_fallback(default_return: T | None = None):  # type: ignore
         default_return: The value to return when a Redis operation fails. Defaults to None.
     """
 
-    def decorator(func: Callable[P, R]):
+    def decorator[**P, R](func: Callable[P, R]) -> Callable[P, R | T | None]:
         @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | T | None:
             try:
                 return func(*args, **kwargs)
             except RedisError as e:

@@ -62,7 +62,7 @@ const ToolItem: FC<Props> = ({
       key={payload.name}
       position="right"
       needsDelay={false}
-      popupClassName="!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
+      popupClassName="p-0! px-3! py-2.5! w-[200px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
       popupContent={(
         <div>
           <BlockIcon
@@ -111,11 +111,11 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
+        <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 text-text-secondary system-sm-medium')}>
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
         {isAdded && (
-          <div className="system-xs-regular mr-4 text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+          <div className="mr-4 text-text-tertiary system-xs-regular">{t('addToolModal.added', { ns: 'tools' })}</div>
         )}
       </div>
     </Tooltip>

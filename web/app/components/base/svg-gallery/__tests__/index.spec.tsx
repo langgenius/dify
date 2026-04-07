@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SVGRenderer from '..'
 
 const mockClick = vi.fn()
@@ -117,6 +118,7 @@ describe('SVGRenderer', () => {
     })
 
     it('closes image preview on cancel', async () => {
+      const user = userEvent.setup()
       render(<SVGRenderer content={validSvg} />)
 
       await waitFor(() => {
@@ -129,9 +131,11 @@ describe('SVGRenderer', () => {
 
       expect(screen.getByAltText('Preview')).toBeInTheDocument()
 
-      fireEvent.keyDown(document, { key: 'Escape' })
+      await user.click(screen.getByTestId('image-preview-close-button'))
 
-      expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()
+      })
     })
   })
 })

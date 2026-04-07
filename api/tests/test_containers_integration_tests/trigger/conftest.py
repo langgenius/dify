@@ -105,18 +105,26 @@ def app_model(
 
 
 class MockCeleryGroup:
-    """Mock for celery group() function that collects dispatched tasks."""
+    """Mock for celery group() function that collects dispatched tasks.
+
+    Matches the Celery group API loosely, accepting arbitrary kwargs on apply_async
+    (e.g. producer) so production code can pass broker-related options without
+    breaking tests.
+    """
 
     def __init__(self) -> None:
         self.collected: list[dict[str, Any]] = []
         self._applied = False
+        self.last_apply_async_kwargs: dict[str, Any] | None = None
 
     def __call__(self, items: Any) -> MockCeleryGroup:
         self.collected = list(items)
         return self
 
-    def apply_async(self) -> None:
+    def apply_async(self, **kwargs: Any) -> None:
+        # Accept arbitrary kwargs like producer to be compatible with Celery
         self._applied = True
+        self.last_apply_async_kwargs = kwargs
 
     @property
     def applied(self) -> bool:

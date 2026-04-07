@@ -1,7 +1,6 @@
 import { useClickAway } from 'ahooks'
 import {
   memo,
-  useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,15 +24,10 @@ const PanelContextmenu = () => {
   const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
   const { exportCheck } = useDSL()
-
-  useEffect(() => {
-    if (panelMenu)
-      handleNodeContextmenuCancel()
-  }, [panelMenu, handleNodeContextmenuCancel])
 
   useClickAway(() => {
     handlePaneContextmenuCancel()
@@ -54,7 +48,7 @@ const PanelContextmenu = () => {
 
   return (
     <div
-      className="absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
+      className="absolute z-9 w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
       style={{
         left: panelMenu.left,
         top: panelMenu.top,

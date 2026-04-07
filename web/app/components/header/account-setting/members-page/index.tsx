@@ -2,8 +2,8 @@
 import type { InvitationResult } from '@/models/common'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/avatar'
-import Tooltip from '@/app/components/base/tooltip'
+import { Avatar } from '@/app/components/base/avatar'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -50,29 +50,34 @@ const MembersPage = () => {
   return (
     <>
       <div className="flex flex-col">
-        <div className="mb-4 flex items-center gap-3 rounded-xl border-l-[0.5px] border-t-[0.5px] border-divider-subtle bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5">
+        <div className="mb-4 flex items-center gap-3 rounded-xl border-l-[0.5px] border-t-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[20px]">
-            <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+            <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-text-secondary system-md-semibold">
               <span>{currentWorkspace?.name}</span>
               {isCurrentWorkspaceOwner && (
                 <span>
-                  <Tooltip
-                    popupContent={t('account.editWorkspaceInfo', { ns: 'common' })}
-                  >
-                    <div
-                      className="cursor-pointer rounded-md p-1 hover:bg-black/5"
-                      onClick={() => {
-                        setEditWorkspaceModalVisible(true)
-                      }}
-                    >
-                      <div
-                        data-testid="edit-workspace-pencil"
-                        className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
-                      />
-                    </div>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <div
+                          className="cursor-pointer rounded-md p-1 hover:bg-black/5"
+                          onClick={() => {
+                            setEditWorkspaceModalVisible(true)
+                          }}
+                        >
+                          <div
+                            data-testid="edit-workspace-pencil"
+                            className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
+                          />
+                        </div>
+                      )}
+                    />
+                    <TooltipContent>
+                      {t('account.editWorkspaceInfo', { ns: 'common' })}
+                    </TooltipContent>
                   </Tooltip>
                 </span>
               )}
@@ -120,7 +125,7 @@ const MembersPage = () => {
               accounts.map(account => (
                 <div key={account.id} className="flex border-b border-divider-subtle">
                   <div className="flex grow items-center px-3 py-2">
-                    <Avatar avatar={account.avatar_url} size={24} className="mr-2" name={account.name} />
+                    <Avatar avatar={account.avatar_url} size="sm" className="mr-2" name={account.name} />
                     <div className="">
                       <div className="text-text-secondary system-sm-medium">
                         {account.name}

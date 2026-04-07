@@ -8,7 +8,7 @@ import List from '../list'
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(''),
 }))
@@ -106,6 +106,10 @@ vi.mock('@/service/use-apps', () => ({
     error: mockServiceState.error,
     refetch: mockRefetch,
   }),
+  useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/service/tag', () => ({
@@ -120,7 +124,7 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 

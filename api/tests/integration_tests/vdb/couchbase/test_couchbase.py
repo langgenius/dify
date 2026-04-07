@@ -4,8 +4,9 @@ import time
 from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    setup_mock_redis,
 )
+
+pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 def wait_for_healthy_container(service_name="couchbase-server", timeout=300):

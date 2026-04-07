@@ -19,7 +19,7 @@ vi.mock('../plans/self-hosted-plan-item/list', () => ({
   ),
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, className, target }: { children: React.ReactNode, href: string, className?: string, target?: string }) => (
     <a href={href} className={className} target={target} data-testid="pricing-link">
       {children}
@@ -68,21 +68,18 @@ describe('Pricing', () => {
     it('should render pricing header and localized footer link', () => {
       render(<Pricing onCancel={vi.fn()} />)
 
+      expect(screen.getByRole('dialog', { name: 'billing.plansCommon.title.plans' })).toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.title.plans')).toBeInTheDocument()
       expect(screen.getByTestId('pricing-link')).toHaveAttribute('href', 'https://dify.ai/en/pricing#plans-and-features')
     })
   })
 
   describe('Props', () => {
-    it('should allow switching categories and handle esc key', () => {
-      const handleCancel = vi.fn()
-      render(<Pricing onCancel={handleCancel} />)
+    it('should allow switching categories', () => {
+      render(<Pricing onCancel={vi.fn()} />)
 
       fireEvent.click(screen.getByText('billing.plansCommon.self'))
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-
-      fireEvent.keyDown(window, { key: 'Escape', keyCode: 27 })
-      expect(handleCancel).toHaveBeenCalled()
     })
   })
 

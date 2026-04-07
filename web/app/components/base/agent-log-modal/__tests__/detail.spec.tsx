@@ -1,13 +1,30 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogDetail from '../detail'
 
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
 vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -21,7 +38,7 @@ vi.mock('@/app/components/workflow/run/status', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: ReactNode, value: string | object }) => (
     <div data-testid="code-editor">
       {title}
       {typeof value === 'string' ? value : JSON.stringify(value)}
@@ -75,19 +92,13 @@ const createMockResponse = (overrides: Partial<AgentLogDetailResponse> = {}): Ag
 })
 
 describe('AgentLogDetail', () => {
-  const notify = vi.fn()
-
   const renderComponent = (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
     const defaultProps: ComponentProps<typeof AgentLogDetail> = {
       conversationID: 'conv-id',
       messageID: 'msg-id',
       log: createMockLog(),
     }
-    return render(
-      <ToastContext.Provider value={{ notify, close: vi.fn() } as ComponentProps<typeof ToastContext.Provider>['value']}>
-        <AgentLogDetail {...defaultProps} {...props} />
-      </ToastContext.Provider>,
-    )
+    return render(<AgentLogDetail {...defaultProps} {...props} />)
   }
 
   const renderAndWaitForData = async (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
@@ -104,7 +115,7 @@ describe('AgentLogDetail', () => {
 
   describe('Rendering', () => {
     it('should show loading indicator while fetching data', async () => {
-      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => { }))
 
       renderComponent()
 
@@ -193,16 +204,25 @@ describe('AgentLogDetail', () => {
   })
 
   describe('Edge Cases', () => {
+    it('should not fetch data when app detail is unavailable', async () => {
+      vi.mocked(useAppStore).mockImplementationOnce(selector => selector({ appDetail: undefined } as never))
+      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+
+      renderComponent()
+
+      await waitFor(() => {
+        expect(fetchAgentLogDetail).not.toHaveBeenCalled()
+      })
+      expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+
     it('should notify on API error', async () => {
       vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('API Error'))
 
       renderComponent()
 
       await waitFor(() => {
-        expect(notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Error: API Error',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('Error: API Error')
       })
     })
 

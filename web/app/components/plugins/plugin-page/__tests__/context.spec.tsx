@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocks
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
-import { PluginPageContext, PluginPageContextProvider, usePluginPageContext } from '../context'
+import { PluginPageContext, usePluginPageContext } from '../context'
+import { PluginPageContextProvider } from '../context-provider'
 
 // Mock dependencies
 vi.mock('nuqs', () => ({

@@ -17,7 +17,7 @@ import {
 } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 
-export type ModalProps = {
+type ModalProps = {
   appID: string
   latestParams?: any[]
   data?: MCPServerDetail
@@ -91,7 +91,7 @@ const MCPServerModal = ({
     <Modal
       isShow={show}
       onClose={onHide}
-      className={cn('relative !max-w-[520px] !p-0')}
+      className={cn('relative max-w-[520px]! p-0!')}
     >
       <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
@@ -117,7 +117,7 @@ const MCPServerModal = ({
           <div>
             <div className="mb-1 flex items-center gap-2">
               <div className="system-xs-medium-uppercase shrink-0 text-text-primary">{t('mcp.server.modal.parameters', { ns: 'tools' })}</div>
-              <Divider type="horizontal" className="!m-0 !h-px grow bg-divider-subtle" />
+              <Divider type="horizontal" className="m-0! h-px! grow bg-divider-subtle" />
             </div>
             <div className="body-xs-regular mb-2 text-text-tertiary">{t('mcp.server.modal.parametersTip', { ns: 'tools' })}</div>
             <div className="space-y-3">

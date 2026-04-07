@@ -13,8 +13,24 @@ import { IndexingType } from '../../../../create/step-two'
 import { DocumentContext } from '../../context'
 import EmbeddingDetail from '../index'
 
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
+
 vi.mock('@/service/datasets')
 vi.mock('@/service/knowledge/use-dataset')
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
@@ -32,9 +48,11 @@ const createWrapper = (contextValue: DocumentContextValue = { datasetId: 'ds1', 
   const queryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <DocumentContext.Provider value={contextValue}>
-        {children}
-      </DocumentContext.Provider>
+      <>
+        <DocumentContext.Provider value={contextValue}>
+          {children}
+        </DocumentContext.Provider>
+      </>
     </QueryClientProvider>
   )
 }

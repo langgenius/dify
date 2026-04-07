@@ -68,7 +68,7 @@ const {
   mockPathname: { current: '/datasets/test/documents/test' },
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname.current,
 }))
 
@@ -92,8 +92,11 @@ vi.mock('../../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 vi.mock('@/context/event-emitter', () => ({

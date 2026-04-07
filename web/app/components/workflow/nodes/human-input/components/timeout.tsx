@@ -38,7 +38,7 @@ const TimeoutInput: FC<Props> = ({
         onChange={handleValueChange}
         disabled={readonly}
       />
-      <div className="flex items-center gap-0.5 rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
+      <div className="flex items-center gap-0.5 radius-lg bg-components-segmented-control-bg-normal p-0.5">
         <div
           className={cn(
             'rounded-lg px-2 py-1 text-text-tertiary',

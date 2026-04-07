@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 // markdown-button.spec.tsx
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ChatContextProvider } from '@/app/components/base/chat/chat/context'
+import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 
 import MarkdownButton from '../button'
 
@@ -117,5 +117,12 @@ describe('MarkdownButton (integration)', () => {
   it('has displayName set to MarkdownButton', () => {
     const comp = MarkdownButton as NamedExoticComponent<{ node: unknown }>
     expect(comp.displayName).toBe('MarkdownButton')
+  })
+
+  it('falls back to empty label when first child value is missing', () => {
+    const node: TestNode = { properties: {}, children: [{}] }
+    renderWithCtx(node)
+
+    expect(screen.getByRole('button')).toHaveTextContent('')
   })
 })

@@ -6,7 +6,7 @@ import WorkflowVariableBlockComponent from './component'
 
 export type WorkflowNodesMap = WorkflowVariableBlockType['workflowNodesMap']
 
-export type SerializedNode = SerializedLexicalNode & {
+type SerializedNode = SerializedLexicalNode & {
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
   getVarType?: GetVarType

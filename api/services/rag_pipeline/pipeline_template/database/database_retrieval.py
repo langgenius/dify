@@ -1,4 +1,5 @@
 import yaml
+from sqlalchemy import select
 
 from extensions.ext_database import db
 from models.dataset import PipelineBuiltInTemplate
@@ -30,8 +31,10 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :return:
         """
 
-        pipeline_built_in_templates: list[PipelineBuiltInTemplate] = (
-            db.session.query(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language).all()
+        pipeline_built_in_templates = list(
+            db.session.scalars(
+                select(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language)
+            ).all()
         )
 
         recommended_pipelines_results = []
@@ -58,9 +61,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :return:
         """
         # is in public recommended list
-        pipeline_template = (
-            db.session.query(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.id == template_id).first()
-        )
+        pipeline_template = db.session.get(PipelineBuiltInTemplate, template_id)
 
         if not pipeline_template:
             return None

@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import LinkedAppsPanel from '../index'
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, className }: { children: React.ReactNode, href: string, className: string }) => (
     <a href={href} className={className} data-testid="link-item">
       {children}
