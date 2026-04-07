@@ -12,7 +12,7 @@ from tcvectordb.model.document import AnnSearch, Filter, KeywordSearch, Weighted
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import parse_metadata_json
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -83,8 +83,12 @@ class TencentVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.TENCENT
 
-    def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+    def to_index_struct(self) -> VectorIndexStructDict:
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def _has_collection(self) -> bool:
         return bool(
