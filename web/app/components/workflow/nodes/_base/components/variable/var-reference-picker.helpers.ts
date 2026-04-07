@@ -2,7 +2,7 @@
 
 import type { VarType as VarKindType } from '../../../tool/types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CommonNodeType, Node, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from './utils'
 
@@ -116,13 +116,20 @@ export const getVariableMeta = (
   outputVarNode: { type?: string } | null,
   value: ValueSelector | string,
   varName: string,
+  availableVars: NodeOutPutVar[] = [],
+  canValidateSpecialVars = false,
 ) => {
   const selector = value as ValueSelector
-  const isEnv = isENV(selector)
-  const isChatVar = isConversationVar(selector)
-  const isGlobal = isGlobalVar(selector)
-  const isRagVar = isRagVariableVar(selector)
-  const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar || isGlobal || isRagVar
+  const isSelectorValue = Array.isArray(selector)
+  const isEnv = isSelectorValue && isENV(selector)
+  const isChatVar = isSelectorValue && isConversationVar(selector)
+  const isGlobal = isSelectorValue && isGlobalVar(selector)
+  const isRagVar = isSelectorValue && isRagVariableVar(selector)
+  const isSpecialVar = isEnv || isChatVar || isRagVar
+  const hasAvailableSpecialVar = !canValidateSpecialVars || !isSelectorValue || availableVars.some(nodeWithVars =>
+    nodeWithVars.vars.some(variable => variable.variable === selector.join('.')),
+  )
+  const isValidVar = Boolean(outputVarNode) || isGlobal || (isSpecialVar && hasAvailableSpecialVar)
   return {
     isChatVar,
     isEnv,

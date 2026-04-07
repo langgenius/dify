@@ -26,6 +26,7 @@ import {
 } from '@/app/components/workflow/hooks'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
@@ -124,6 +125,7 @@ const VarReferencePicker: FC<Props> = ({
   const store = useStoreApi()
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
+  const isWorkflowDataLoaded = useWorkflowStore(s => s.isWorkflowDataLoaded)
   const { getCurrentVariableType } = useWorkflowVariables()
   const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar,
@@ -270,13 +272,14 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const { isEnv, isChatVar, isGlobal, isRagVar, isValidVar } = useMemo(
-    () => getVariableMeta(outputVarNode, value, varName),
-    [outputVarNode, value, varName],
+    () => getVariableMeta(outputVarNode, value, varName, outputVars, isWorkflowDataLoaded),
+    [isWorkflowDataLoaded, outputVarNode, outputVars, value, varName],
   )
   const isException = useMemo(
     () => isExceptionVariable(varName, outputVarNode?.type),
     [outputVarNode?.type, varName],
   )
+  const showErrorIcon = hasValue && !isValidVar
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const {
@@ -385,6 +388,7 @@ const VarReferencePicker: FC<Props> = ({
             schemaWithDynamicSelect={schemaWithDynamicSelect}
             setControlFocus={setControlFocus}
             setOpen={setOpen}
+            showErrorIcon={showErrorIcon}
             tooltipPopup={tooltipPopup}
             triggerRef={triggerRef}
             type={type}

@@ -53,6 +53,7 @@ type Props = {
   schemaWithDynamicSelect?: Partial<CredentialFormSchema>
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
+  showErrorIcon?: boolean
   tooltipPopup: ReactNode
   triggerRef: React.RefObject<HTMLDivElement | null>
   type?: string
@@ -98,6 +99,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   schemaWithDynamicSelect,
   setControlFocus,
   setOpen,
+  showErrorIcon = false,
   tooltipPopup,
   triggerRef,
   type,
@@ -250,7 +252,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                                           >
                                             {type}
                                           </div>
-                                          {!('title' in (outputVarNode || {})) && <RiErrorWarningFill className="ml-0.5 h-3 w-3 text-text-destructive" />}
+                                          {showErrorIcon && <RiErrorWarningFill data-testid="var-reference-picker-error-icon" className="ml-0.5 h-3 w-3 text-text-destructive" />}
                                         </>
                                       )
                                     : (
