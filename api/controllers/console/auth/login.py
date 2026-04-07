@@ -42,6 +42,7 @@ from libs.token import (
 )
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
+from services.entities.auth_entities import LoginPayloadBase
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
@@ -49,9 +50,7 @@ from services.feature_service import FeatureService
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class LoginPayload(BaseModel):
-    email: EmailStr = Field(..., description="Email address")
-    password: str = Field(..., description="Password")
+class LoginPayload(LoginPayloadBase):
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 

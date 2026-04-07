@@ -29,13 +29,11 @@ from libs.token import (
 )
 from services.account_service import AccountService
 from services.app_service import AppService
+from services.entities.auth_entities import LoginPayloadBase
 from services.webapp_auth_service import WebAppAuthService
 
 
-class LoginPayload(BaseModel):
-    email: EmailStr
-    password: str
-
+class LoginPayload(LoginPayloadBase):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
