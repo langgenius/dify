@@ -346,13 +346,13 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_app_not_found(self):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = None
+            mock_session.return_value.scalar.return_value = None
             with pytest.raises(ValueError, match="App not found."):
                 LLMGenerator.instruction_modify_workflow("t", "f", "n", "c", "i", MagicMock(), "o", MagicMock())
 
     def test_instruction_modify_workflow_no_workflow(self):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow_service = MagicMock()
             workflow_service.get_draft_workflow.return_value = None
             with pytest.raises(ValueError, match="Workflow not found for the given app model."):
@@ -360,7 +360,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_success(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
 
