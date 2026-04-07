@@ -92,7 +92,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:
             with session_factory.create_session() as session:
-                deleted_count = (
+                deleted_count = int(
                     session.query(DatasetMetadataBinding)
                     .where(
                         DatasetMetadataBinding.dataset_id == dataset_id,
