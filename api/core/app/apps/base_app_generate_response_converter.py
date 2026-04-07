@@ -107,13 +107,13 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception):
+    def _error_to_stream_response(cls, e: Exception) -> dict[str, Any]:
         """
         Error to stream response.
         :param e: exception
         :return:
         """
-        error_responses = {
+        error_responses: dict[type[Exception], dict[str, Any]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
@@ -127,7 +127,7 @@ class AppGenerateResponseConverter(ABC):
         }
 
         # Determine the response based on the type of exception
-        data = None
+        data: dict[str, Any] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v
