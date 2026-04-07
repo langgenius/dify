@@ -3,10 +3,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, cast
-
-if TYPE_CHECKING:
-    from services.model_load_balancing_service import LoadBalancingConfigSummaryDict
+from typing import Any, cast
 
 from graphon.entities import GraphInitParams, WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
@@ -638,9 +635,7 @@ class WorkflowService:
             # If we can't determine the status, assume load balancing is not enabled
             return False
 
-    def _get_load_balancing_configs(
-        self, tenant_id: str, provider: str, model_name: str
-    ) -> list[LoadBalancingConfigSummaryDict]:
+    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict]:
         """
         Get all load balancing configurations for a model.
 
