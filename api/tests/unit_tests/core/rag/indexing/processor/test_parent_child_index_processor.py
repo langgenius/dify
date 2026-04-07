@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
-from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 
 class TestParentChildIndexProcessor:

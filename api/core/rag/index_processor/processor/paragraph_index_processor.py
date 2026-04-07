@@ -32,6 +32,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.entities import Rule
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
@@ -49,7 +50,6 @@ from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
-from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
 
 _file_access_controller = DatabaseFileAccessController()
