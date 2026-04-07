@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from configs import dify_config
 from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,
     OnlineDriveBrowseFilesRequest,
@@ -155,6 +156,7 @@ class TestPluginDatasourceManager:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["content"])
+        merge_mock = mocker.patch("core.plugin.impl.datasource.merge_blob_chunks", return_value=["merged"])
 
         assert list(
             manager.get_online_document_page_content(
@@ -166,9 +168,10 @@ class TestPluginDatasourceManager:
                 GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="p", type="doc"),
                 "online_document",
             )
-        ) == ["content"]
+        ) == ["merged"]
 
         assert stream_mock.call_count == 1
+        merge_mock.assert_called_once_with(stream_mock.return_value, max_file_size=dify_config.PLUGIN_MAX_FILE_SIZE)
 
     def test_online_drive_browse_files_streaming(self, mocker):
         manager = PluginDatasourceManager()
@@ -193,6 +196,7 @@ class TestPluginDatasourceManager:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
         stream_mock.return_value = iter(["download"])
+        merge_mock = mocker.patch("core.plugin.impl.datasource.merge_blob_chunks", return_value=["merged"])
 
         assert list(
             manager.online_drive_download_file(
@@ -204,9 +208,10 @@ class TestPluginDatasourceManager:
                 OnlineDriveDownloadFileRequest(id="file-1"),
                 "online_drive",
             )
-        ) == ["download"]
+        ) == ["merged"]
 
         assert stream_mock.call_count == 1
+        merge_mock.assert_called_once_with(stream_mock.return_value, max_file_size=dify_config.PLUGIN_MAX_FILE_SIZE)
 
     def test_validate_provider_credentials_returns_true_when_stream_yields_result(self, mocker):
         manager = PluginDatasourceManager()
