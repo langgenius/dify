@@ -59,6 +59,8 @@ class NotificationDict(TypedDict):
 class AccountNotificationDict(TypedDict, total=False):
     should_show: bool
     notification: NotificationDict
+    shouldShow: bool
+    notifications: list[dict]
 
 
 class UpsertNotificationDict(TypedDict):
