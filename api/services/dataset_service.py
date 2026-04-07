@@ -3017,7 +3017,7 @@ class DocumentService:
                         document = update_info["document"]
                         indexing_cache_key = f"document_{document.id}_indexing"
                         redis_client.setex(indexing_cache_key, 600, 1)
-                except Exception as e:
+                except Exception:
                     # Log the error but do not rollback the transaction
                     logger.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
