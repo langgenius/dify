@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -9,6 +11,21 @@ from services.billing_service import BillingService
 
 # Notification content is stored under three lang tags.
 _FALLBACK_LANG = "en-US"
+
+
+class NotificationItemDict(TypedDict):
+    notification_id: str | None
+    frequency: str | None
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    title_pic_url: str
+
+
+class NotificationResponseDict(TypedDict):
+    should_show: bool
+    notifications: list[NotificationItemDict]
 
 
 def _pick_lang_content(contents: dict, lang: str) -> dict:
@@ -45,28 +62,30 @@ class NotificationApi(Resource):
         result = BillingService.get_account_notification(str(current_user.id))
 
         # Proto JSON uses camelCase field names (Kratos default marshaling).
+        response: NotificationResponseDict
         if not result.get("shouldShow"):
-            return {"should_show": False, "notifications": []}, 200
+            response = {"should_show": False, "notifications": []}
+            return response, 200
 
         lang = current_user.interface_language or _FALLBACK_LANG
 
-        notifications = []
+        notifications: list[NotificationItemDict] = []
         for notification in result.get("notifications") or []:
             contents: dict = notification.get("contents") or {}
             lang_content = _pick_lang_content(contents, lang)
-            notifications.append(
-                {
-                    "notification_id": notification.get("notificationId"),
-                    "frequency": notification.get("frequency"),
-                    "lang": lang_content.get("lang", lang),
-                    "title": lang_content.get("title", ""),
-                    "subtitle": lang_content.get("subtitle", ""),
-                    "body": lang_content.get("body", ""),
-                    "title_pic_url": lang_content.get("titlePicUrl", ""),
-                }
-            )
+            item: NotificationItemDict = {
+                "notification_id": notification.get("notificationId"),
+                "frequency": notification.get("frequency"),
+                "lang": lang_content.get("lang", lang),
+                "title": lang_content.get("title", ""),
+                "subtitle": lang_content.get("subtitle", ""),
+                "body": lang_content.get("body", ""),
+                "title_pic_url": lang_content.get("titlePicUrl", ""),
+            }
+            notifications.append(item)
 
-        return {"should_show": bool(notifications), "notifications": notifications}, 200
+        response = {"should_show": bool(notifications), "notifications": notifications}
+        return response, 200
 
 
 @console_ns.route("/notification/dismiss")
