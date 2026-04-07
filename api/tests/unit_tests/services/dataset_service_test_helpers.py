@@ -14,6 +14,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from werkzeug.exceptions import Forbidden, NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -44,12 +45,9 @@ from services.entities.knowledge_entities.knowledge_entities import (
     NotionIcon,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     ProcessRule,
     RerankingModel,
     RetrievalModel,
-    Rule,
-    Segmentation,
     SegmentUpdateArgs,
     WebsiteInfo,
 )
