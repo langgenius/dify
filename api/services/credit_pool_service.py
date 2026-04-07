@@ -1,7 +1,7 @@
 import logging
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
