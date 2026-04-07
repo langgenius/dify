@@ -93,6 +93,9 @@ describe('VarReferencePicker branches', () => {
         nodes: [startNode, sourceNode, currentNode],
         edges: [],
         hooksStoreProps: {},
+        initialStoreState: {
+          isWorkflowDataLoaded: true,
+        },
       },
     )
 
@@ -222,5 +225,25 @@ describe('VarReferencePicker branches', () => {
     })
 
     expect(screen.getByText('answer')).toBeInTheDocument()
+    expect(screen.getByTestId('var-reference-picker-error-icon')).toBeInTheDocument()
+  })
+
+  it('should not show an error icon for env variables that still exist in the workflow env list', () => {
+    const envVars: NodeOutPutVar[] = [
+      ...availableVars,
+      {
+        nodeId: 'env',
+        title: 'ENVIRONMENT',
+        vars: [{ variable: 'env.API_KEY', type: VarType.string }],
+      },
+    ]
+
+    renderPicker({
+      availableVars: envVars,
+      value: ['env', 'API_KEY'],
+    })
+
+    expect(screen.getByText('API_KEY')).toBeInTheDocument()
+    expect(screen.queryByTestId('var-reference-picker-error-icon')).not.toBeInTheDocument()
   })
 })
