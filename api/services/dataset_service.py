@@ -206,7 +206,8 @@ class DatasetService:
         else:
             mode = DocumentService.DEFAULT_RULES["mode"]
             rules = DocumentService.DEFAULT_RULES["rules"]
-        return {"mode": mode, "rules": rules}
+        result: ProcessRulesDict = {"mode": mode, "rules": rules}
+        return result
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
