@@ -635,7 +635,7 @@ class WorkflowService:
             # If we can't determine the status, assume load balancing is not enabled
             return False
 
-    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict]:
+    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict[str, Any]]:
         """
         Get all load balancing configurations for a model.
 
