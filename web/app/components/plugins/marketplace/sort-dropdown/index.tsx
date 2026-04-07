@@ -62,7 +62,7 @@ const SortDropdown = () => {
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
+        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs">
           {
             options.map(option => (
               <div

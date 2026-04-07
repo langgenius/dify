@@ -144,7 +144,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           <Input
             showLeftIcon
             showClearIcon
-            wrapperClassName="!w-[200px]"
+            wrapperClassName="w-[200px]!"
             value={inputValue}
             onChange={e => onInputChange(e.target.value)}
             onClear={() => onInputChange('')}
@@ -159,7 +159,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex !h-8 items-center justify-center gap-2">
+        <div className="flex h-8! items-center justify-center gap-2">
           {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
           <IndexFailed datasetId={datasetId} />
           {!embeddingAvailable && (

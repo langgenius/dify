@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self, TypeAlias
+from typing import Annotated, Literal, Self
 
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
@@ -27,7 +27,7 @@ class _AdvancedChatAppGenerateEntityWrapper(BaseModel):
     entity: AdvancedChatAppGenerateEntity
 
 
-_GenerateEntityUnion: TypeAlias = Annotated[
+type _GenerateEntityUnion = Annotated[
     _WorkflowGenerateEntityWrapper | _AdvancedChatAppGenerateEntityWrapper,
     Field(discriminator="type"),
 ]

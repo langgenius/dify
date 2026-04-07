@@ -81,7 +81,7 @@ describe('GenericTable', () => {
     expect(onChange).toHaveBeenLastCalledWith([{ name: 'my_key', enabled: false }])
   })
 
-  it('should skip intermediate empty rows and blur the current input when enter is pressed', () => {
+  it('should skip intermediate empty rows and blur-sm the current input when enter is pressed', () => {
     render(
       <GenericTable
         title="Headers"

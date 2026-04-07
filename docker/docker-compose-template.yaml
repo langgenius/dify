@@ -102,11 +102,12 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     healthcheck:
-      test: ["CMD-SHELL", "celery -A celery_entrypoint.celery inspect ping"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
+      interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
       retries: 3
       start_period: 60s
+      disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
     networks:
       - ssrf_proxy_network
       - default
@@ -139,11 +140,12 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "celery -A app.celery inspect ping"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
+      interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
       retries: 3
       start_period: 60s
+      disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
     networks:
       - ssrf_proxy_network
       - default

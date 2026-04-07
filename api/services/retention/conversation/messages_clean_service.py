@@ -3,7 +3,7 @@ import logging
 import random
 import time
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import sqlalchemy as sa
 from sqlalchemy import delete, select, tuple_
@@ -158,6 +158,13 @@ class MessagesCleanupMetrics:
         self._record(self._job_duration_seconds, job_duration_seconds, attributes)
 
 
+class MessagesCleanStatsDict(TypedDict):
+    batches: int
+    total_messages: int
+    filtered_messages: int
+    total_deleted: int
+
+
 class MessagesCleanService:
     """
     Service for cleaning expired messages based on retention policies.
@@ -299,7 +306,7 @@ class MessagesCleanService:
             task_label=task_label,
         )
 
-    def run(self) -> dict[str, int]:
+    def run(self) -> MessagesCleanStatsDict:
         """
         Execute the message cleanup operation.
 
@@ -319,7 +326,7 @@ class MessagesCleanService:
                 job_duration_seconds=time.monotonic() - run_start,
             )
 
-    def _clean_messages_by_time_range(self) -> dict[str, int]:
+    def _clean_messages_by_time_range(self) -> MessagesCleanStatsDict:
         """
         Clean messages within a time range using cursor-based pagination.
 
@@ -334,7 +341,7 @@ class MessagesCleanService:
         Returns:
             Dict with statistics: batches, filtered_messages, total_deleted
         """
-        stats = {
+        stats: MessagesCleanStatsDict = {
             "batches": 0,
             "total_messages": 0,
             "filtered_messages": 0,

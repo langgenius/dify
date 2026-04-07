@@ -2,11 +2,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask, g
-from flask_login import LoginManager, UserMixin
+from flask import Flask, Response, g
+from flask_login import UserMixin
 from pytest_mock import MockerFixture
 
 import libs.login as login_module
+from extensions.ext_login import DifyLoginManager
 from libs.login import current_user
 from models.account import Account
 
@@ -39,9 +40,12 @@ def login_app(mocker: MockerFixture) -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
 
-    login_manager = LoginManager()
+    login_manager = DifyLoginManager()
     login_manager.init_app(app)
-    login_manager.unauthorized = mocker.Mock(name="unauthorized", return_value="Unauthorized")
+    login_manager.unauthorized = mocker.Mock(
+        name="unauthorized",
+        return_value=Response("Unauthorized", status=401, content_type="application/json"),
+    )
 
     @login_manager.user_loader
     def load_user(_user_id: str):
@@ -109,16 +113,41 @@ class TestLoginRequired:
         resolved_user: MockUser | None,
         description: str,
     ):
-        """Test that missing or unauthenticated users are redirected."""
+        """Test that missing or unauthenticated users return the manager response."""
 
         resolve_user = resolve_current_user(resolved_user)
 
         with login_app.test_request_context():
             result = protected_view()
 
-        assert result == "Unauthorized", description
+        assert result is login_app.login_manager.unauthorized.return_value, description
+        assert isinstance(result, Response)
+        assert result.status_code == 401
         resolve_user.assert_called_once_with()
         login_app.login_manager.unauthorized.assert_called_once_with()
+        csrf_check.assert_not_called()
+
+    def test_unauthorized_access_propagates_response_object(
+        self,
+        login_app: Flask,
+        protected_view,
+        csrf_check: MagicMock,
+        resolve_current_user,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test that unauthorized responses are propagated as Flask Response objects."""
+        resolve_user = resolve_current_user(None)
+        response = Response("Unauthorized", status=401, content_type="application/json")
+        mocker.patch.object(
+            login_module, "_get_login_manager", return_value=SimpleNamespace(unauthorized=lambda: response)
+        )
+
+        with login_app.test_request_context():
+            result = protected_view()
+
+        assert result is response
+        assert isinstance(result, Response)
+        resolve_user.assert_called_once_with()
         csrf_check.assert_not_called()
 
     @pytest.mark.parametrize(
@@ -168,10 +197,14 @@ class TestGetUser:
         """Test that _get_user loads user if not already in g."""
         mock_user = MockUser("test_user")
 
-        def _load_user() -> None:
+        def load_user_from_request_context() -> None:
             g._login_user = mock_user
 
-        load_user = mocker.patch.object(login_app.login_manager, "_load_user", side_effect=_load_user)
+        load_user = mocker.patch.object(
+            login_app.login_manager,
+            "load_user_from_request_context",
+            side_effect=load_user_from_request_context,
+        )
 
         with login_app.test_request_context():
             user = login_module._get_user()
