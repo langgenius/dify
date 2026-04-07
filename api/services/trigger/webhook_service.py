@@ -3,7 +3,7 @@ import logging
 import mimetypes
 import secrets
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 import orjson
 from flask import request
@@ -56,6 +56,18 @@ class RawWebhookDataDict(TypedDict):
     query_params: dict[str, str]
     body: dict[str, Any]
     files: dict[str, Any]
+
+
+class ValidationResultDict(TypedDict):
+    valid: bool
+    error: NotRequired[str]
+
+
+class WorkflowInputsDict(TypedDict):
+    webhook_data: RawWebhookDataDict
+    webhook_headers: dict[str, str]
+    webhook_query_params: dict[str, str]
+    webhook_body: dict[str, Any]
 
 
 class WebhookService:
@@ -173,7 +185,7 @@ class WebhookService:
         node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
         validation_result = cls._validate_http_metadata(raw_data, node_data)
         if not validation_result["valid"]:
-            raise ValueError(validation_result["error"])
+            raise ValueError(validation_result.get("error", "Validation failed"))
 
         # Process and validate data according to configuration
         processed_data = cls._process_and_validate_data(raw_data, node_data)
@@ -672,7 +684,7 @@ class WebhookService:
                     raise ValueError(f"Required header missing: {header_name}")
 
     @classmethod
-    def _validate_http_metadata(cls, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> dict[str, Any]:
+    def _validate_http_metadata(cls, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> ValidationResultDict:
         """Validate HTTP method and content-type.
 
         Args:
@@ -716,7 +728,7 @@ class WebhookService:
         return content_type.split(";")[0].strip()
 
     @classmethod
-    def _validation_error(cls, error_message: str) -> dict[str, Any]:
+    def _validation_error(cls, error_message: str) -> ValidationResultDict:
         """Create a standard validation error response.
 
         Args:
@@ -737,7 +749,7 @@ class WebhookService:
             return False
 
     @classmethod
-    def build_workflow_inputs(cls, webhook_data: RawWebhookDataDict) -> dict[str, Any]:
+    def build_workflow_inputs(cls, webhook_data: RawWebhookDataDict) -> WorkflowInputsDict:
         """Construct workflow inputs payload from webhook data.
 
         Args:
