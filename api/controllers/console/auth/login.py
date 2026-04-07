@@ -1,5 +1,3 @@
-from typing import Any
-
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
@@ -42,7 +40,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from services.account_service import AccountService, RegisterService, TenantService
+from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
@@ -101,7 +99,7 @@ class LoginApi(Resource):
             raise EmailPasswordLoginLimitError()
 
         invite_token = args.invite_token
-        invitation_data: dict[str, Any] | None = None
+        invitation_data: InvitationDetailDict | None = None
         if invite_token:
             invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
             if invitation_data is None:

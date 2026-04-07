@@ -83,6 +83,12 @@ from tasks.mail_reset_password_task import (
 logger = logging.getLogger(__name__)
 
 
+class InvitationDetailDict(TypedDict):
+    account: Account
+    data: InvitationData
+    tenant: Tenant
+
+
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
     """Best-effort join to enterprise default workspace."""
     if not dify_config.ENTERPRISE_ENABLED:
@@ -1585,7 +1591,7 @@ class RegisterService:
     @classmethod
     def get_invitation_if_token_valid(
         cls, workspace_id: str | None, email: str | None, token: str
-    ) -> dict[str, Any] | None:
+    ) -> InvitationDetailDict | None:
         invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
@@ -1647,7 +1653,7 @@ class RegisterService:
     @classmethod
     def get_invitation_with_case_fallback(
         cls, workspace_id: str | None, email: str | None, token: str
-    ) -> dict[str, Any] | None:
+    ) -> InvitationDetailDict | None:
         invitation = cls.get_invitation_if_token_valid(workspace_id, email, token)
         if invitation or not email or email == email.lower():
             return invitation
