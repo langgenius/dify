@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NotRequired, TypedDict, cast
 
 import httpx
 from flask_login import current_user
@@ -124,6 +124,15 @@ class WebsiteCrawlStatusApiRequest:
             raise ValueError("Job ID is required")
 
         return cls(provider=provider, job_id=job_id)
+
+
+class CrawlStatusDict(TypedDict):
+    status: str
+    job_id: str
+    total: int
+    current: int
+    data: list[Any]
+    time_consuming: NotRequired[str | float]
 
 
 class WebsiteService:
@@ -261,13 +270,13 @@ class WebsiteService:
             return {"status": "active", "job_id": response.json().get("data", {}).get("taskId")}
 
     @classmethod
-    def get_crawl_status(cls, job_id: str, provider: str) -> dict[str, Any]:
+    def get_crawl_status(cls, job_id: str, provider: str) -> CrawlStatusDict:
         """Get crawl status using string parameters."""
         api_request = WebsiteCrawlStatusApiRequest(provider=provider, job_id=job_id)
         return cls.get_crawl_status_typed(api_request)
 
     @classmethod
-    def get_crawl_status_typed(cls, api_request: WebsiteCrawlStatusApiRequest) -> dict[str, Any]:
+    def get_crawl_status_typed(cls, api_request: WebsiteCrawlStatusApiRequest) -> CrawlStatusDict:
         """Get crawl status using typed request."""
         api_key, config = cls._get_credentials_and_config(current_user.current_tenant_id, api_request.provider)
 
@@ -281,10 +290,10 @@ class WebsiteService:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def _get_firecrawl_status(cls, job_id: str, api_key: str, config: dict) -> dict[str, Any]:
+    def _get_firecrawl_status(cls, job_id: str, api_key: str, config: dict) -> CrawlStatusDict:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
         result: CrawlStatusResponse = firecrawl_app.check_crawl_status(job_id)
-        crawl_status_data: dict[str, Any] = {
+        crawl_status_data: CrawlStatusDict = {
             "status": result["status"],
             "job_id": job_id,
             "total": result["total"] or 0,
@@ -302,18 +311,18 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def _get_watercrawl_status(cls, job_id: str, api_key: str, config: dict[str, Any]) -> dict[str, Any]:
-        return dict(WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_status(job_id))
+    def _get_watercrawl_status(cls, job_id: str, api_key: str, config: dict[str, Any]) -> CrawlStatusDict:
+        return cast(CrawlStatusDict, dict(WaterCrawlProvider(api_key, config.get("base_url")).get_crawl_status(job_id)))
 
     @classmethod
-    def _get_jinareader_status(cls, job_id: str, api_key: str) -> dict[str, Any]:
+    def _get_jinareader_status(cls, job_id: str, api_key: str) -> CrawlStatusDict:
         response = _adaptive_http_client.post(
             "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
             json={"taskId": job_id},
         )
         data = response.json().get("data", {})
-        crawl_status_data = {
+        crawl_status_data: CrawlStatusDict = {
             "status": data.get("status", "active"),
             "job_id": job_id,
             "total": len(data.get("urls", [])),
