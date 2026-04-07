@@ -50,7 +50,10 @@ const TestApi: FC<Props> = ({
       delete credentials.basic_username
       delete credentials.basic_password
     }
-    if (credentials.auth_type !== AuthType.apiKeyHeader) {
+    if (
+      credentials.auth_type !== AuthType.apiKeyHeader
+      && credentials.auth_type !== AuthType.apiKey
+    ) {
       delete credentials.api_key_header_prefix
       delete credentials.api_key_header
     }

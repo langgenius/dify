@@ -1,4 +1,4 @@
-import { access, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process'
 import {
@@ -23,28 +23,6 @@ import {
 } from './common'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
-const standaloneServerPath = path.join(webDir, '.next', 'standalone', 'web', 'server.js')
-
-const hasReusableWebBuild = async () => {
-  try {
-    await Promise.all([
-      access(buildIdPath),
-      access(standaloneServerPath),
-    ])
-    return true
-  } catch {
-    return false
-  }
-}
-
-const ensureWebClaudeFile = async () => {
-  const webClaudePath = path.join(webDir, 'CLAUDE.md')
-  try {
-    await access(webClaudePath)
-  } catch {
-    await writeFile(webClaudePath, 'AGENTS.md\n', 'utf8')
-  }
-}
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -133,26 +111,26 @@ const waitForDependency = async ({
 
 export const ensureWebBuild = async () => {
   await ensureWebEnvLocal()
-  await ensureWebClaudeFile()
 
   if (process.env.E2E_FORCE_WEB_BUILD === '1') {
     await runCommandOrThrow({
-      command: 'npx',
-      args: ['pnpm', 'run', 'build'],
+      command: 'pnpm',
+      args: ['run', 'build'],
       cwd: webDir,
     })
     return
   }
 
-  if (await hasReusableWebBuild()) {
+  try {
+    await access(buildIdPath)
     console.log('Reusing existing web build artifact.')
     return
+  } catch {
+    console.log('Web build artifact is missing required files. Running fresh build.')
   }
-
-  console.log('Web build artifact is missing required files. Running fresh build.')
   await runCommandOrThrow({
-    command: 'npx',
-    args: ['pnpm', 'run', 'build'],
+    command: 'pnpm',
+    args: ['run', 'build'],
     cwd: webDir,
   })
 }
@@ -161,8 +139,8 @@ export const startWeb = async () => {
   await ensureWebBuild()
 
   await runForegroundProcess({
-    command: 'npx',
-    args: ['pnpm', 'run', 'start'],
+    command: 'pnpm',
+    args: ['run', 'start'],
     cwd: webDir,
     env: {
       HOSTNAME: '127.0.0.1',
