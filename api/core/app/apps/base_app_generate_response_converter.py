@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, TypedDict, Union
+from typing import Any, Union
 
 from graphon.model_runtime.errors.invoke import InvokeError
 
@@ -10,12 +10,6 @@ from core.app.entities.task_entities import AppBlockingResponse, AppStreamRespon
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 
 logger = logging.getLogger(__name__)
-
-
-class ErrorStreamResponseDict(TypedDict):
-    code: str
-    message: str
-    status: int
 
 
 class AppGenerateResponseConverter(ABC):
@@ -119,28 +113,27 @@ class AppGenerateResponseConverter(ABC):
         :param e: exception
         :return:
         """
-        error_responses: dict[type[Exception], ErrorStreamResponseDict] = {
-            ValueError: {"code": "invalid_param", "message": "", "status": 400},
-            ProviderTokenNotInitError: {"code": "provider_not_initialize", "message": "", "status": 400},
+        error_responses: dict[type[Exception], dict[str, Any]] = {
+            ValueError: {"code": "invalid_param", "status": 400},
+            ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
                 "code": "provider_quota_exceeded",
                 "message": "Your quota for Dify Hosted Model Provider has been exhausted. "
                 "Please go to Settings -> Model Provider to complete your own provider credentials.",
                 "status": 400,
             },
-            ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "message": "", "status": 400},
-            InvokeError: {"code": "completion_request_error", "message": "", "status": 400},
+            ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "status": 400},
+            InvokeError: {"code": "completion_request_error", "status": 400},
         }
 
         # Determine the response based on the type of exception
-        data: ErrorStreamResponseDict | None = None
+        data: dict[str, Any] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v
 
         if data:
-            if not data["message"]:
-                data["message"] = getattr(e, "description", str(e))
+            data.setdefault("message", getattr(e, "description", str(e)))
         else:
             logger.error(e)
             data = {
