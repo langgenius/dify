@@ -659,7 +659,7 @@ class WorkflowService:
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
             )
-            all_configs: list[dict[str, Any]] = configs + custom_configs
+            all_configs = cast(list[dict[str, Any]], configs) + cast(list[dict[str, Any]], custom_configs)
 
             return [config for config in all_configs if config.get("credential_id")]
 
