@@ -12,7 +12,7 @@ import re
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     LLMResult,
@@ -29,7 +29,6 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.node_events import (
-    ModelInvokeCompletedEvent,
     NodeEventBase,
     NodeRunResult,
     StreamChunkEvent,
@@ -157,7 +156,6 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 tools=[],
                 stop=[],
                 stream=True,
-                user=dify_ctx.user_id,
                 callbacks=[],
             )
 
@@ -183,24 +181,22 @@ class AgentV2Node(Node[AgentV2NodeData]):
             if self.node_data.reasoning_format == "separated":
                 full_text, reasoning_content = self._separate_reasoning(full_text)
 
+            metadata = {}
             if usage:
-                yield ModelInvokeCompletedEvent(
-                    text=full_text,
-                    usage=usage,
-                    finish_reason=finish_reason,
-                    reasoning_content=reasoning_content or None,
-                )
+                metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
+                metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
+                metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
 
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    inputs={"prompt_messages": [m.model_dump() for m in prompt_messages]},
+                    inputs={},
                     outputs={
                         "text": full_text,
                         "reasoning_content": reasoning_content,
-                        "usage": usage.model_dump() if usage else {},
                         "finish_reason": finish_reason or "stop",
                     },
+                    metadata=metadata,
                 )
             )
         except Exception as e:
@@ -269,13 +265,12 @@ class AgentV2Node(Node[AgentV2NodeData]):
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    inputs={"prompt_messages": [m.model_dump() for m in prompt_messages]},
+                    inputs={},
                     outputs={
                         "text": result.text,
-                        "files": [f.model_dump() if hasattr(f, "model_dump") else str(f) for f in result.files],
-                        "usage": result.usage.model_dump() if hasattr(result.usage, "model_dump") else {},
                         "finish_reason": result.finish_reason or "stop",
                     },
+                    metadata=self._build_usage_metadata(result.usage),
                 )
             )
         except Exception as e:
@@ -294,7 +289,8 @@ class AgentV2Node(Node[AgentV2NodeData]):
 
     def _fetch_model_instance(self, dify_ctx: DifyRunContext) -> ModelInstance:
         model_config = self.node_data.model
-        model_instance = ModelManager().get_model_instance(
+        model_manager = ModelManager.for_tenant(tenant_id=dify_ctx.tenant_id)
+        model_instance = model_manager.get_model_instance(
             tenant_id=dify_ctx.tenant_id,
             provider=model_config.provider,
             model_type=ModelType.LLM,
@@ -315,7 +311,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 jinja2_text = getattr(msg_template, "jinja2_text", None)
                 content = jinja2_text or text
 
-                resolved = VariableTemplateParser.resolve_template(content, variable_pool)
+                resolved = self._resolve_variable_template(content, variable_pool)
 
                 if role == "system":
                     messages.append(SystemPromptMessage(content=resolved))
@@ -325,10 +321,28 @@ class AgentV2Node(Node[AgentV2NodeData]):
                     messages.append(AssistantPromptMessage(content=resolved))
         else:
             text_content = getattr(template, "text", "") or ""
-            resolved = VariableTemplateParser.resolve_template(text_content, variable_pool)
+            resolved = self._resolve_variable_template(text_content, variable_pool)
             messages.append(UserPromptMessage(content=resolved))
 
         return messages
+
+    @staticmethod
+    def _resolve_variable_template(template: str, variable_pool: Any) -> str:
+        """Resolve {{#node.var#}} references in a template string using the variable pool."""
+        parser = VariableTemplateParser(template)
+        selectors = parser.extract_variable_selectors()
+        if not selectors:
+            return template
+
+        inputs: dict[str, Any] = {}
+        for selector in selectors:
+            value = variable_pool.get(selector.value_selector)
+            if value is not None:
+                inputs[selector.variable] = value.text if hasattr(value, "text") else str(value)
+            else:
+                inputs[selector.variable] = ""
+
+        return parser.format(inputs)
 
     def _get_model_features(self, model_instance: ModelInstance) -> list[ModelFeature]:
         try:
@@ -340,6 +354,15 @@ class AgentV2Node(Node[AgentV2NodeData]):
         except Exception:
             logger.warning("Failed to get model features, assuming none")
             return []
+
+    @staticmethod
+    def _build_usage_metadata(usage: Any) -> dict:
+        metadata: dict = {}
+        if usage and hasattr(usage, "total_tokens"):
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
+            metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = getattr(usage, "currency", "USD")
+        return metadata
 
     @staticmethod
     def _map_strategy_config(

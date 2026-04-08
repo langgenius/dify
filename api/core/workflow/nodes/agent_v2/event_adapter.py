@@ -10,10 +10,8 @@ from collections.abc import Generator
 from typing import Any
 
 from graphon.model_runtime.entities import LLMResultChunk
-from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import (
     AgentLogEvent,
-    ModelInvokeCompletedEvent,
     NodeEventBase,
     StreamChunkEvent,
 )
@@ -44,13 +42,6 @@ class AgentV2EventAdapter:
                     yield from self._convert_llm_chunk(item, node_id=node_id)
         except StopIteration as e:
             result: AgentResult = e.value
-            if result.usage:
-                usage = result.usage if isinstance(result.usage, LLMUsage) else LLMUsage.empty_usage()
-                yield ModelInvokeCompletedEvent(
-                    text=result.text,
-                    usage=usage,
-                    finish_reason=result.finish_reason,
-                )
             return result
 
     def _convert_agent_log(

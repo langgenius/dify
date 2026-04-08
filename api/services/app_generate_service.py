@@ -52,16 +52,20 @@ class AppGenerateService:
             nonlocal started
             with lock:
                 if started:
+                    logger.info("[DEBUG-AGENT] _try_start: already started, skipping")
                     return True
                 try:
+                    logger.info("[DEBUG-AGENT] _try_start: calling start_task()...")
                     start_task()
+                    logger.info("[DEBUG-AGENT] _try_start: start_task() succeeded")
                 except Exception:
-                    logger.exception("Failed to enqueue streaming task")
+                    logger.exception("[DEBUG-AGENT] _try_start: Failed to enqueue streaming task")
                     return False
                 started = True
                 return True
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
+        logger.info("[DEBUG-AGENT] channel_type=%s", channel_type)
         if channel_type == "streams":
             # With Redis Streams, we can safely start right away; consumers can read past events.
             _try_start()
@@ -117,7 +121,9 @@ class AppGenerateService:
         try:
             request_id = rate_limit.enter(request_id)
             effective_mode = (
-                AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
+                AppMode.AGENT_CHAT
+                if app_model.is_agent and app_model.mode not in {AppMode.AGENT_CHAT, AppMode.AGENT}
+                else app_model.mode
             )
             match effective_mode:
                 case AppMode.COMPLETION:
@@ -148,8 +154,10 @@ class AppGenerateService:
                         request_id=request_id,
                     )
                 case AppMode.AGENT:
+                    logger.info("[DEBUG-AGENT] Entered AGENT case, streaming=%s", streaming)
                     workflow_id = args.get("workflow_id")
                     workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                    logger.info("[DEBUG-AGENT] Got workflow id=%s", workflow.id)
 
                     if streaming:
                         with rate_limit_context(rate_limit, request_id):
@@ -172,7 +180,7 @@ class AppGenerateService:
                         return rate_limit.generate(
                             generator.convert_to_event_stream(
                                 generator.retrieve_events(
-                                    AppMode.ADVANCED_CHAT,
+                                    AppMode.AGENT,
                                     payload.workflow_run_id,
                                     on_subscribe=on_subscribe,
                                 ),
