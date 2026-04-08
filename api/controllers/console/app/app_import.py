@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -71,7 +71,7 @@ class AppImportApi(Resource):
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # Create service with session
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user

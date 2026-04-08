@@ -8,7 +8,7 @@ from sqlalchemy import select
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
 from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
