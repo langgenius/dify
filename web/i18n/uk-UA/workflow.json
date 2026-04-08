@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Є успіх. У разі успіху значення 1, у разі невдачі значення 0.",
   "nodes.parameterExtractor.outputVars.usage": "Інформація про використання моделі",
   "nodes.parameterExtractor.reasoningMode": "Режим інференції",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Виклик функції/інструменту",
+  "nodes.parameterExtractor.reasoningModePrompt": "Підказка",
   "nodes.parameterExtractor.reasoningModeTip": "Ви можете вибрати відповідний режим інференції залежно від здатності моделі реагувати на інструкції щодо викликів функцій або запитів.",
   "nodes.questionClassifiers.addClass": "Додати клас",
   "nodes.questionClassifiers.advancedSetting": "Розширене налаштування",
