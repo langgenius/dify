@@ -23,7 +23,7 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, any> | null
 }
 
-const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
+const afterResponse204: AfterResponseHook = async ({ response }) => {
   if (response.status === 204) {
     return new Response(JSON.stringify({ result: 'success' }), {
       status: 200,
@@ -39,7 +39,7 @@ export type ResponseError = {
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async (_request, _options, response) => {
+  return async ({ response }) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
       const errorData = await response.clone()
         .json()
@@ -78,7 +78,7 @@ const resolveShareCode = () => {
   }
 }
 
-const beforeRequestPublicWithCode = (request: Request) => {
+const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   const accessToken = getWebAppAccessToken()
   if (accessToken)
     request.headers.set('Authorization', `Bearer ${accessToken}`)
