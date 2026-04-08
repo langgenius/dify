@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type FooterProps = {
+type FooterProps = {
   resultCount: number
   searchMode: string
   isError: boolean

@@ -8,6 +8,7 @@ from tempfile import NamedTemporaryFile
 from typing import Literal, Union
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from graphon.file import helpers as file_helpers
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
@@ -20,7 +21,6 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
-from dify_graph.file import helpers as file_helpers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType

@@ -15,6 +15,7 @@ from volcengine.viking_db import (  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as vdb_Field
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -163,7 +164,7 @@ class VikingDBVector(BaseVector):
         for result in results:
             metadata = result.fields.get(vdb_Field.METADATA_KEY)
             if metadata is not None:
-                metadata = json.loads(metadata)
+                metadata = parse_metadata_json(metadata)
                 if metadata.get(key) == value:
                     ids.append(result.id)
         return ids
@@ -189,9 +190,7 @@ class VikingDBVector(BaseVector):
 
         docs = []
         for result in results:
-            metadata = result.fields.get(vdb_Field.METADATA_KEY)
-            if metadata is not None:
-                metadata = json.loads(metadata)
+            metadata = parse_metadata_json(result.fields.get(vdb_Field.METADATA_KEY))
             if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(page_content=result.fields.get(vdb_Field.CONTENT_KEY), metadata=metadata)

@@ -188,7 +188,7 @@ const ToolSelector: FC<Props> = ({
         <div className={cn(
           'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
           'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
-          'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-sm',
+          'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-xs',
         )}
         >
           {/* Header */}

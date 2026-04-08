@@ -2,9 +2,24 @@ import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../../types'
 import DetailHeader from '../detail-header'
+
+const { mockToast } = vi.hoisted(() => ({
+  mockToast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 const {
   mockSetShowUpdatePluginModal,
@@ -88,12 +103,14 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+vi.mock('../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../install-plugin/hooks')>()
+  return {
+    ...actual,
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }),
-}))
+  }
+})
 
 // Auto upgrade settings mock
 let mockAutoUpgradeInfo: {
@@ -272,7 +289,7 @@ describe('DetailHeader', () => {
     vi.clearAllMocks()
     mockAutoUpgradeInfo = null
     mockEnableMarketplace = true
-    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
+    vi.clearAllMocks()
     vi.spyOn(amplitude, 'trackEvent').mockImplementation(() => {})
   })
 

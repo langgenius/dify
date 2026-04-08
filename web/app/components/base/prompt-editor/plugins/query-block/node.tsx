@@ -2,7 +2,7 @@ import type { LexicalNode, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import QueryBlockComponent from './component'
 
-export type SerializedNode = SerializedLexicalNode
+type SerializedNode = SerializedLexicalNode
 
 export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
   static getType(): string {

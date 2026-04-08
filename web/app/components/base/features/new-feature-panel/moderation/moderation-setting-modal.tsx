@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -40,7 +40,6 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useToastContext()
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
@@ -190,39 +189,36 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return
 
     if (!localeData.config?.inputs_config?.enabled && !localeData.config?.outputs_config?.enabled) {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.condition', { ns: 'appDebug' }) })
+      toast.error(t('feature.moderation.modal.content.condition', { ns: 'appDebug' }))
       return
     }
 
     if (localeData.type === 'keywords' && !localeData.config.keywords) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }) })
+      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }))
       return
     }
 
     if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
+      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
       return
     }
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
-          notify({
-            type: 'error',
-            message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
-          })
+          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }))
           return
         }
       }
     }
 
     if (localeData.config.inputs_config?.enabled && !localeData.config.inputs_config.preset_response && localeData.type !== 'api') {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
+      toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
     if (localeData.config.outputs_config?.enabled && !localeData.config.outputs_config.preset_response && localeData.type !== 'api') {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
+      toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
@@ -233,7 +229,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     <Modal
       isShow
       onClose={noop}
-      className="!mt-14 !w-[600px] !max-w-none !p-6"
+      className="mt-14! w-[600px]! max-w-none! p-6!"
     >
       <div className="flex items-center justify-between">
         <div className="text-text-primary title-2xl-semi-bold">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
@@ -309,7 +305,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <textarea
                 value={localeData.config?.keywords || ''}
                 onChange={handleDataKeywordsChange}
-                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-none"
+                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
                 placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
               />
               <div className="absolute bottom-2 right-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">

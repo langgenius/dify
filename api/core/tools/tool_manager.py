@@ -5,15 +5,19 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, Union, cast
 
 import sqlalchemy as sa
+from graphon.runtime import VariablePool
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 from yarl import URL
 
 import contexts
 from configs import dify_config
+from core.entities import PluginCredentialType
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
@@ -24,20 +28,19 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from dify_graph.runtime.variable_pool import VariablePool
 from extensions.ext_database import db
 from models.provider_ids import ToolProviderID
-from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.tool.entities import ToolEntity
+    pass
+
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -48,21 +51,22 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    EmojiIconDict,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
+    emoji_icon_adapter,
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.tool.entities import ToolEntity
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +76,24 @@ class ApiProviderControllerItem(TypedDict):
     controller: ApiToolProviderController
 
 
-class EmojiIconDict(TypedDict):
-    background: str
-    content: str
+_credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
+
+class WorkflowToolRuntimeSpec(Protocol):
+    @property
+    def provider_type(self) -> ToolProviderType: ...
+
+    @property
+    def provider_id(self) -> str: ...
+
+    @property
+    def tool_name(self) -> str: ...
+
+    @property
+    def tool_configurations(self) -> Mapping[str, Any]: ...
+
+    @property
+    def credential_id(self) -> str | None: ...
 
 
 class ToolManager:
@@ -167,6 +186,7 @@ class ToolManager:
         provider_id: str,
         tool_name: str,
         tenant_id: str,
+        user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
@@ -178,6 +198,7 @@ class ToolManager:
         :param provider_id: the id of the provider
         :param tool_name: the name of the tool
         :param tenant_id: the tenant id
+        :param user_id: the caller id bound to runtime-scoped model/tool lookups
         :param invoke_from: invoke from
         :param tool_invoke_from: the tool invoke from
         :param credential_id: the credential id
@@ -196,6 +217,7 @@ class ToolManager:
                 return builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
+                        user_id=user_id,
                         credentials={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
@@ -235,11 +257,11 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
             else:
-                builtin_provider = (
-                    db.session.query(BuiltinToolProvider)
+                builtin_provider = db.session.scalar(
+                    select(BuiltinToolProvider)
                     .where(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
                     .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                    .first()
+                    .limit(1)
                 )
 
                 if builtin_provider is None:
@@ -304,8 +326,9 @@ class ToolManager:
             return builtin_tool.fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    user_id=user_id,
                     credentials=dict(decrypted_credentials),
-                    credential_type=CredentialType.of(builtin_provider.credential_type),
+                    credential_type=builtin_provider.credential_type,
                     runtime_parameters={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -321,6 +344,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    user_id=user_id,
                     credentials=dict(encrypter.decrypt(credentials)),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -344,6 +368,7 @@ class ToolManager:
             return controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
+                    user_id=user_id,
                     credentials={},
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
@@ -352,9 +377,21 @@ class ToolManager:
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
         elif provider_type == ToolProviderType.PLUGIN:
-            return cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
+            plugin_tool = cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
+            runtime = getattr(plugin_tool, "runtime", None)
+            if runtime is not None:
+                runtime.user_id = user_id
+                runtime.invoke_from = invoke_from
+                runtime.tool_invoke_from = tool_invoke_from
+            return plugin_tool
         elif provider_type == ToolProviderType.MCP:
-            return cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
+            mcp_tool = cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
+            runtime = getattr(mcp_tool, "runtime", None)
+            if runtime is not None:
+                runtime.user_id = user_id
+                runtime.invoke_from = invoke_from
+                runtime.tool_invoke_from = tool_invoke_from
+            return mcp_tool
         else:
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
@@ -364,6 +401,7 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         agent_tool: AgentToolEntity,
+        user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
@@ -375,6 +413,7 @@ class ToolManager:
             provider_id=agent_tool.provider_id,
             tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
+            user_id=user_id,
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
@@ -405,7 +444,8 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         node_id: str,
-        workflow_tool: "ToolEntity",
+        workflow_tool: WorkflowToolRuntimeSpec,
+        user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
@@ -418,6 +458,7 @@ class ToolManager:
             provider_id=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
+            user_id=user_id,
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
@@ -450,6 +491,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
+        user_id: str | None = None,
         credential_id: str | None = None,
     ) -> Tool:
         """
@@ -460,6 +502,7 @@ class ToolManager:
             provider_id=provider,
             tool_name=tool_name,
             tenant_id=tenant_id,
+            user_id=user_id,
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.PLUGIN,
             credential_id=credential_id,
@@ -777,13 +820,13 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.id == provider_id,
                 ApiToolProvider.tenant_id == tenant_id,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -831,20 +874,20 @@ class ToolManager:
         get api provider
         """
         provider_name = provider
-        provider_obj: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider_obj: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider_obj is None:
             raise ValueError(f"you have not added provider {provider_name}")
 
         try:
-            credentials = json.loads(provider_obj.credentials_str) or {}
+            credentials = _credentials_adapter.validate_json(provider_obj.credentials_str) or {}
         except Exception:
             credentials = {}
 
@@ -869,7 +912,7 @@ class ToolManager:
         masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
 
         try:
-            icon = json.loads(provider_obj.icon)
+            icon = emoji_icon_adapter.validate_json(provider_obj.icon)
         except Exception:
             icon = {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -923,16 +966,16 @@ class ToolManager:
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            workflow_provider: WorkflowToolProvider | None = (
-                db.session.query(WorkflowToolProvider)
+            workflow_provider: WorkflowToolProvider | None = db.session.scalar(
+                select(WorkflowToolProvider)
                 .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
+                .limit(1)
             )
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            icon = json.loads(workflow_provider.icon)
+            icon = emoji_icon_adapter.validate_json(workflow_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
@@ -940,16 +983,16 @@ class ToolManager:
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict:
         try:
-            api_provider: ApiToolProvider | None = (
-                db.session.query(ApiToolProvider)
+            api_provider: ApiToolProvider | None = db.session.scalar(
+                select(ApiToolProvider)
                 .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                .first()
+                .limit(1)
             )
 
             if api_provider is None:
                 raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            icon = json.loads(api_provider.icon)
+            icon = emoji_icon_adapter.validate_json(api_provider.icon)
             return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
@@ -1015,14 +1058,14 @@ class ToolManager:
         cls,
         parameters: list[ToolParameter],
         variable_pool: Optional["VariablePool"],
-        tool_configurations: dict[str, Any],
+        tool_configurations: Mapping[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:
         """
         Convert tool parameters type
         """
-        from dify_graph.nodes.tool.entities import ToolNodeData
-        from dify_graph.nodes.tool.exc import ToolParameterError
+        from graphon.nodes.tool.entities import ToolNodeData
+        from graphon.nodes.tool.exc import ToolParameterError
 
         runtime_parameters = {}
         for parameter in parameters:

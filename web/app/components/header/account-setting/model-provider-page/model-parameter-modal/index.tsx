@@ -9,6 +9,10 @@ import type {
 } from '../declarations'
 import type { ParameterValue } from './parameter-item'
 import type { TriggerProps } from './trigger'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -45,6 +49,8 @@ export type ModelParameterModalProps = {
   readonly?: boolean
   isInWorkflow?: boolean
   scope?: string
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
@@ -61,11 +67,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   renderTrigger,
   readonly,
   isInWorkflow,
+  nodesOutputVars,
+  availableNodes,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const settingsIconRef = useRef<HTMLDivElement>(null)
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
+  const {
+    data: parameterRulesData,
+    isPending,
+    isLoading,
+  } = useModelParameterRules(provider, modelId)
+  const isRulesLoading = isPending || isLoading
   const {
     currentProvider,
     currentModel,
@@ -132,7 +145,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       <PopoverTrigger
         render={(
-          <button type="button" className="block w-full border-none bg-transparent p-0 text-left [color:inherit] [font:inherit]">
+          <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
             {
               renderTrigger
                 ? renderTrigger({
@@ -191,7 +204,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   }
                 </div>
                 {
-                  isLoading
+                  isRulesLoading
                     ? <div className="py-5"><Loading /></div>
                     : (
                         [
@@ -205,6 +218,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                             onChange={v => handleParamChange(parameter.name, v)}
                             onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
                             isInWorkflow={isInWorkflow}
+                            nodesOutputVars={nodesOutputVars}
+                            availableNodes={availableNodes}
                           />
                         ))
                       )
@@ -213,7 +228,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             )
           }
           {
-            !parameterRules.length && isLoading && (
+            !parameterRules.length && isRulesLoading && (
               <div className="px-4 py-5"><Loading /></div>
             )
           }

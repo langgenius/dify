@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import Toast from '../../../toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
@@ -179,7 +179,7 @@ describe('Question component', () => {
 
   it('should call copy-to-clipboard and show a toast when copy action is clicked', async () => {
     const user = userEvent.setup()
-    const toastSpy = vi.spyOn(Toast, 'notify')
+    const toastSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
     renderWithProvider(makeItem())
 
@@ -501,6 +501,16 @@ describe('Question component', () => {
     expect(onRegenerate).toHaveBeenCalled()
   })
 
+  it('should render default question avatar icon when questionIcon is not provided', () => {
+    const { container } = renderWithProvider(
+      makeItem(),
+      vi.fn() as unknown as OnRegenerate,
+    )
+
+    const defaultIcon = container.querySelector('.question-default-user-icon')
+    expect(defaultIcon).toBeInTheDocument()
+  })
+
   it('should render custom questionIcon when provided', () => {
     const { container } = renderWithProvider(
       makeItem(),
@@ -509,7 +519,7 @@ describe('Question component', () => {
     )
 
     expect(screen.getByTestId('custom-question-icon')).toBeInTheDocument()
-    const defaultIcon = container.querySelector('.i-custom-public-avatar-user')
+    const defaultIcon = container.querySelector('.question-default-user-icon')
     expect(defaultIcon).not.toBeInTheDocument()
   })
 

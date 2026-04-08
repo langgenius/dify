@@ -41,26 +41,17 @@ export const DeleteConfirm = (props: Props) => {
 
   const onConfirm = () => {
     if (workflowsInUse > 0 && inputName !== currentName) {
-      toast.add({
-        type: 'error',
-        title: t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }),
-      })
+      toast.error(t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }))
       return
     }
     deleteSubscription(currentId, {
       onSuccess: () => {
-        toast.add({
-          type: 'success',
-          title: t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }),
-        })
+        toast.success(t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }))
         refetch?.()
         onClose(true)
       },
       onError: (error: unknown) => {
-        toast.add({
-          type: 'error',
-          title: error instanceof Error ? error.message : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
-        })
+        toast.error(error instanceof Error ? error.message : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }))
       },
     })
   }
@@ -72,7 +63,7 @@ export const DeleteConfirm = (props: Props) => {
           <AlertDialogTitle title={t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })} className="w-full truncate text-text-primary title-2xl-semi-bold">
             {t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full whitespace-pre-wrap break-words text-text-tertiary system-md-regular">
+          <AlertDialogDescription className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">
             {workflowsInUse > 0
               ? t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })
               : t(`${tPrefix}.content`, { ns: 'pluginTrigger' })}

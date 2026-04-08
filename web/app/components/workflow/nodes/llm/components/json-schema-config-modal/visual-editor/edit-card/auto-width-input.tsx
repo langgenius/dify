@@ -59,7 +59,7 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
         value={value}
         className={cn(
           'system-sm-semibold placeholder:system-sm-semibold h-5 rounded-[5px] border border-transparent px-1',
-          'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-none',
+          'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-hidden',
           'placeholder:text-text-placeholder hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
           className,
         )}

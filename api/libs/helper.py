@@ -16,13 +16,14 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from pydantic import BaseModel, TypeAdapter
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from dify_graph.file import helpers as file_helpers
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
@@ -30,6 +31,17 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+class _TokenData(TypedDict, total=False):
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -172,6 +184,18 @@ def normalize_uuid(value: str | UUID) -> str:
         return uuid_value(value)
     except ValueError as exc:
         raise ValueError("must be a valid UUID") from exc
+
+
+def parse_uuid_str_or_none(value: str | None) -> str | None:
+    """
+    Return None for missing/empty UUID-like values.
+
+    Keep non-empty values unchanged to avoid changing behavior in paths that
+    currently pass placeholder IDs in tests/mocks.
+    """
+    if value is None or not str(value).strip():
+        return None
+    return str(value)
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
@@ -431,7 +455,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: dict[str, Any] | None = json.loads(token_data_json)
+        token_data = dict(_token_data_adapter.validate_json(token_data_json))
         return token_data
 
     @classmethod

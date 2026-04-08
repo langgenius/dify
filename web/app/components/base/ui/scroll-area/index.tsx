@@ -6,18 +6,17 @@ import { cn } from '@/utils/classnames'
 import styles from './index.module.css'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
-export type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
+type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
 
 export const ScrollAreaContent = BaseScrollArea.Content
-export type ScrollAreaContentProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Content>
 
-export type ScrollAreaSlotClassNames = {
+type ScrollAreaSlotClassNames = {
   viewport?: string
   content?: string
   scrollbar?: string
 }
 
-export type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
+type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
   children: React.ReactNode
   orientation?: 'vertical' | 'horizontal'
   slotClassNames?: ScrollAreaSlotClassNames
@@ -25,29 +24,29 @@ export type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
   labelledBy?: string
 }
 
-export const scrollAreaScrollbarClassName = cn(
+const scrollAreaScrollbarClassName = cn(
   styles.scrollbar,
-  'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
-  'pointer-events-none data-[hovering]:pointer-events-auto',
-  'data-[scrolling]:pointer-events-auto',
+  'flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
+  'pointer-events-none data-hovering:pointer-events-auto',
+  'data-scrolling:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
   'data-[orientation=horizontal]:absolute data-[orientation=horizontal]:inset-x-0 data-[orientation=horizontal]:h-3 data-[orientation=horizontal]:items-center',
 )
 
-export const scrollAreaThumbClassName = cn(
-  'shrink-0 rounded-[4px] bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
+const scrollAreaThumbClassName = cn(
+  'shrink-0 radius-xs bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
 )
 
-export const scrollAreaViewportClassName = cn(
-  'size-full min-h-0 min-w-0 outline-none',
-  'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover',
+const scrollAreaViewportClassName = cn(
+  'size-full min-h-0 min-w-0 outline-hidden',
+  'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset',
 )
 
-export const scrollAreaCornerClassName = 'bg-transparent'
+const scrollAreaCornerClassName = 'bg-transparent'
 
-export type ScrollAreaViewportProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Viewport>
+type ScrollAreaViewportProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Viewport>
 
 export function ScrollAreaViewport({
   className,
@@ -61,7 +60,7 @@ export function ScrollAreaViewport({
   )
 }
 
-export type ScrollAreaScrollbarProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Scrollbar>
+type ScrollAreaScrollbarProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Scrollbar>
 
 export function ScrollAreaScrollbar({
   className,
@@ -75,7 +74,7 @@ export function ScrollAreaScrollbar({
   )
 }
 
-export type ScrollAreaThumbProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Thumb>
+type ScrollAreaThumbProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Thumb>
 
 export function ScrollAreaThumb({
   className,
@@ -89,7 +88,7 @@ export function ScrollAreaThumb({
   )
 }
 
-export type ScrollAreaCornerProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Corner>
+type ScrollAreaCornerProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Corner>
 
 export function ScrollAreaCorner({
   className,

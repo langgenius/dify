@@ -1,6 +1,5 @@
 from flask_restx import fields
-
-from dify_graph.file import File
+from graphon.file import File
 
 
 class FilesContainedField(fields.Raw):

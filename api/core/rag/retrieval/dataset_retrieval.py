@@ -9,6 +9,11 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.orm import Session
 
@@ -34,9 +39,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
-from core.rag.entities.metadata_entities import Condition, MetadataCondition
+from core.rag.entities import Condition, DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -56,6 +59,7 @@ from core.rag.retrieval.template_prompts import (
 )
 from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import (
     KnowledgeRetrievalRequest,
@@ -63,13 +67,9 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
     SourceChildChunk,
     SourceMetadata,
 )
-from dify_graph.file import File, FileTransferMethod, FileType
-from dify_graph.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from dify_graph.model_runtime.entities.model_entities import ModelFeature, ModelType
-from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import (
@@ -160,7 +160,7 @@ class DatasetRetrieval:
             if request.model_provider is None or request.model_name is None or request.query is None:
                 raise ValueError("model_provider, model_name, and query are required for single retrieval mode")
 
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=request.tenant_id, user_id=request.user_id)
             model_instance = model_manager.get_model_instance(
                 tenant_id=request.tenant_id,
                 model_type=ModelType.LLM,
@@ -383,22 +383,26 @@ class DatasetRetrieval:
             return None, []
         retrieve_config = config.retrieve_config
 
-        # check model is support tool calling
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=model_config.provider, model=model_config.model
         )
+        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
 
-        # get model schema
+        # Reuse the caller-bound model instance for both schema resolution and
+        # downstream planner/invoke calls so a single request never mixes
+        # tenant-scope and request-bound runtimes.
         model_schema = model_type_instance.get_model_schema(
-            model=model_config.model, credentials=model_config.credentials
+            model=model_instance.model_name,
+            credentials=model_instance.credentials,
         )
 
         if not model_schema:
             return None, []
+
+        model_config.provider_model_bundle = model_instance.provider_model_bundle
+        model_config.credentials = model_instance.credentials
+        model_config.model_schema = model_schema
 
         planning_strategy = PlanningStrategy.REACT_ROUTER
         features = model_schema.features
@@ -517,11 +521,12 @@ class DatasetRetrieval:
                                     filename=upload_file.name,
                                     extension="." + upload_file.extension,
                                     mime_type=upload_file.mime_type,
-                                    tenant_id=segment.tenant_id,
                                     type=FileType.IMAGE,
                                     transfer_method=FileTransferMethod.LOCAL_FILE,
                                     remote_url=upload_file.source_url,
-                                    related_id=upload_file.id,
+                                    reference=build_file_reference(
+                                        record_id=str(upload_file.id),
+                                    ),
                                     size=upload_file.size,
                                     storage_key=upload_file.key,
                                     url=sign_upload_file(upload_file.id, upload_file.extension),
@@ -597,7 +602,7 @@ class DatasetRetrieval:
         planning_strategy: PlanningStrategy,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
     ):
         tools = []
         for dataset in available_datasets:
@@ -675,7 +680,7 @@ class DatasetRetrieval:
                     # get top k
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
-                    if selected_dataset.indexing_technique == "economy":
+                    if selected_dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                         retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
@@ -736,7 +741,7 @@ class DatasetRetrieval:
         reranking_enable: bool = True,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
         if not available_datasets:
@@ -752,7 +757,7 @@ class DatasetRetrieval:
                 "The configured knowledge base list have different indexing technique, please set reranking model."
             )
         index_type = available_datasets[0].indexing_technique
-        if index_type == "high_quality":
+        if index_type == IndexTechniqueType.HIGH_QUALITY:
             embedding_model_check = all(
                 item.embedding_model == available_datasets[0].embedding_model for item in available_datasets
             )
@@ -986,6 +991,24 @@ class DatasetRetrieval:
                 )
             )
 
+    @staticmethod
+    def _resolve_creator_user_role(user_from: str) -> CreatorUserRole | None:
+        """Map runtime user source values to dataset query audit roles.
+
+        Workflow run context uses the hyphenated ``end-user`` value, while
+        ``DatasetQuery.created_by_role`` persists the underscore-based
+        ``CreatorUserRole.END_USER`` enum. Query logging is a side effect, so an
+        unsupported value should be skipped instead of aborting retrieval.
+        """
+        normalized_user_from = str(user_from).strip().lower().replace("-", "_")
+        if normalized_user_from == CreatorUserRole.ACCOUNT.value:
+            return CreatorUserRole.ACCOUNT
+        if normalized_user_from == CreatorUserRole.END_USER.value:
+            return CreatorUserRole.END_USER
+
+        logger.warning("Skipping dataset query audit log for unsupported user_from=%r", user_from)
+        return None
+
     def _on_query(
         self,
         query: str | None,
@@ -996,9 +1019,17 @@ class DatasetRetrieval:
         user_id: str,
     ):
         """
-        Handle query.
+        Persist dataset query audit rows for retrieval requests.
         """
         if not query and not attachment_ids:
+            return
+        created_by = parse_uuid_str_or_none(user_id)
+        if created_by is None:
+            logger.debug(
+                "Skipping dataset query log: empty created_by user_id (user_from=%s, app_id=%s)",
+                user_from,
+                app_id,
+            )
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1015,7 +1046,7 @@ class DatasetRetrieval:
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
                     created_by_role=CreatorUserRole(user_from),
-                    created_by=user_id,
+                    created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
             if dataset_queries:
@@ -1030,7 +1061,7 @@ class DatasetRetrieval:
         top_k: int,
         all_documents: list[Document],
         document_ids_filter: list[str] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
         with flask_app.app_context():
@@ -1068,7 +1099,7 @@ class DatasetRetrieval:
                     else default_retrieval_model
                 )
 
-                if dataset.indexing_technique == "economy":
+                if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                     # use keyword table query
                     documents = RetrievalService.retrieve(
                         retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
@@ -1306,8 +1337,8 @@ class DatasetRetrieval:
         metadata_model_config: ModelConfig,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
-    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
-        document_query = db.session.query(DatasetDocument).where(
+    ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
+        document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled == True,
@@ -1338,7 +1369,7 @@ class DatasetRetrieval:
                             value=filter.get("value"),
                         )
                     )
-                metadata_condition = MetadataCondition(
+                metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator
                     if metadata_filtering_conditions
                     else "or",  # type: ignore
@@ -1367,7 +1398,7 @@ class DatasetRetrieval:
                         expected_value,
                         filters,
                     )
-                metadata_condition = MetadataCondition(
+                metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator,
                     conditions=conditions,
                 )
@@ -1378,7 +1409,7 @@ class DatasetRetrieval:
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
-        documents = document_query.all()
+        documents = db.session.scalars(document_query).all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:
@@ -1411,7 +1442,7 @@ class DatasetRetrieval:
             raise ValueError("metadata_model_config is required")
         # get metadata model instance
         # fetch model config
-        model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config)
+        model_instance, model_config = self._fetch_model_config(tenant_id, metadata_model_config, user_id=user_id)
 
         # fetch prompt messages
         prompt_messages, stop = self._get_prompt_template(
@@ -1430,7 +1461,6 @@ class DatasetRetrieval:
                     model_parameters=model_config.parameters,
                     stop=stop,
                     stream=True,
-                    user=user_id,
                 ),
             )
 
@@ -1533,7 +1563,7 @@ class DatasetRetrieval:
         return filters
 
     def _fetch_model_config(
-        self, tenant_id: str, model: ModelConfig
+        self, tenant_id: str, model: ModelConfig, user_id: str | None = None
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
@@ -1543,7 +1573,7 @@ class DatasetRetrieval:
         model_name = model.name
         provider_name = model.provider
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id, model_type=ModelType.LLM, provider=provider_name, model=model_name
         )
@@ -1691,7 +1721,7 @@ class DatasetRetrieval:
         self,
         flask_app: Flask,
         available_datasets: list[Dataset],
-        metadata_condition: MetadataCondition | None,
+        metadata_condition: MetadataFilteringCondition | None,
         metadata_filter_document_ids: dict[str, list[str]] | None,
         all_documents: list[Document],
         tenant_id: str,

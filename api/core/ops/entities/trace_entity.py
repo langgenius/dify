@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 class BaseTraceInfo(BaseModel):
     message_id: str | None = None
     message_data: Any | None = None
-    inputs: Union[str, dict[str, Any], list] | None = None
-    outputs: Union[str, dict[str, Any], list] | None = None
+    inputs: Union[str, dict[str, Any], list[Any]] | None = None
+    outputs: Union[str, dict[str, Any], list[Any]] | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
     metadata: dict[str, Any]
@@ -18,7 +18,7 @@ class BaseTraceInfo(BaseModel):
 
     @field_validator("inputs", "outputs")
     @classmethod
-    def ensure_type(cls, v):
+    def ensure_type(cls, v: str | dict[str, Any] | list[Any] | None) -> str | dict[str, Any] | list[Any] | None:
         if v is None:
             return None
         if isinstance(v, str | dict | list):
@@ -26,6 +26,48 @@ class BaseTraceInfo(BaseModel):
         return ""
 
     model_config = ConfigDict(protected_namespaces=())
+
+    @property
+    def resolved_trace_id(self) -> str | None:
+        """Get trace_id with intelligent fallback.
+
+        Priority:
+        1. External trace_id (from X-Trace-Id header)
+        2. workflow_run_id (if this trace type has it)
+        3. message_id (as final fallback)
+        """
+        if self.trace_id:
+            return self.trace_id
+
+        # Try workflow_run_id (only exists on workflow-related traces)
+        workflow_run_id = getattr(self, "workflow_run_id", None)
+        if workflow_run_id:
+            return workflow_run_id
+
+        # Final fallback to message_id
+        return str(self.message_id) if self.message_id else None
+
+    @property
+    def resolved_parent_context(self) -> tuple[str | None, str | None]:
+        """Resolve cross-workflow parent linking from metadata.
+
+        Extracts typed parent IDs from the untyped ``parent_trace_context``
+        metadata dict (set by tool_node when invoking nested workflows).
+
+        Returns:
+            (trace_correlation_override, parent_span_id_source) where
+            trace_correlation_override is the outer workflow_run_id and
+            parent_span_id_source is the outer node_execution_id.
+        """
+        parent_ctx = self.metadata.get("parent_trace_context")
+        if not isinstance(parent_ctx, dict):
+            return None, None
+        trace_override = parent_ctx.get("parent_workflow_run_id")
+        parent_span = parent_ctx.get("parent_node_execution_id")
+        return (
+            trace_override if isinstance(trace_override, str) else None,
+            parent_span if isinstance(parent_span, str) else None,
+        )
 
     @field_serializer("start_time", "end_time")
     def serialize_datetime(self, dt: datetime | None) -> str | None:
@@ -48,7 +90,10 @@ class WorkflowTraceInfo(BaseTraceInfo):
     workflow_run_version: str
     error: str | None = None
     total_tokens: int
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
     file_list: list[str]
+    invoked_by: str | None = None
     query: str
     metadata: dict[str, Any]
 
@@ -59,7 +104,7 @@ class MessageTraceInfo(BaseTraceInfo):
     answer_tokens: int
     total_tokens: int
     error: str | None = None
-    file_list: Union[str, dict[str, Any], list] | None = None
+    file_list: Union[str, dict[str, Any], list[Any]] | None = None
     message_file_data: Any | None = None
     conversation_mode: str
     gen_ai_server_time_to_first_token: float | None = None
@@ -106,12 +151,85 @@ class ToolTraceInfo(BaseTraceInfo):
     tool_config: dict[str, Any]
     time_cost: Union[int, float]
     tool_parameters: dict[str, Any]
-    file_url: Union[str, None, list] = None
+    file_url: Union[str, None, list[str]] = None
 
 
 class GenerateNameTraceInfo(BaseTraceInfo):
     conversation_id: str | None = None
     tenant_id: str
+
+
+class PromptGenerationTraceInfo(BaseTraceInfo):
+    """Trace information for prompt generation operations (rule-generate, code-generate, etc.)."""
+
+    tenant_id: str
+    user_id: str
+    app_id: str | None = None
+
+    operation_type: str
+    instruction: str
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+    model_provider: str
+    model_name: str
+
+    latency: float
+
+    total_price: float | None = None
+    currency: str | None = None
+
+    error: str | None = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class WorkflowNodeTraceInfo(BaseTraceInfo):
+    workflow_id: str
+    workflow_run_id: str
+    tenant_id: str
+    node_execution_id: str
+    node_id: str
+    node_type: str
+    title: str
+
+    status: str
+    error: str | None = None
+    elapsed_time: float
+
+    index: int
+    predecessor_node_id: str | None = None
+
+    total_tokens: int = 0
+    total_price: float = 0.0
+    currency: str | None = None
+
+    model_provider: str | None = None
+    model_name: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+
+    tool_name: str | None = None
+
+    iteration_id: str | None = None
+    iteration_index: int | None = None
+    loop_id: str | None = None
+    loop_index: int | None = None
+    parallel_id: str | None = None
+
+    node_inputs: Mapping[str, Any] | None = None
+    node_outputs: Mapping[str, Any] | None = None
+    process_data: Mapping[str, Any] | None = None
+
+    invoked_by: str | None = None
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class DraftNodeExecutionTrace(WorkflowNodeTraceInfo):
+    pass
 
 
 class TaskData(BaseModel):
@@ -128,11 +246,31 @@ trace_info_info_map = {
     "DatasetRetrievalTraceInfo": DatasetRetrievalTraceInfo,
     "ToolTraceInfo": ToolTraceInfo,
     "GenerateNameTraceInfo": GenerateNameTraceInfo,
+    "PromptGenerationTraceInfo": PromptGenerationTraceInfo,
+    "WorkflowNodeTraceInfo": WorkflowNodeTraceInfo,
+    "DraftNodeExecutionTrace": DraftNodeExecutionTrace,
 }
+
+
+class OperationType(StrEnum):
+    """Operation type for token metric labels.
+
+    Used as a metric attribute on ``dify.tokens.input`` / ``dify.tokens.output``
+    counters so consumers can break down token usage by operation.
+    """
+
+    WORKFLOW = "workflow"
+    NODE_EXECUTION = "node_execution"
+    MESSAGE = "message"
+    RULE_GENERATE = "rule_generate"
+    CODE_GENERATE = "code_generate"
+    STRUCTURED_OUTPUT = "structured_output"
+    INSTRUCTION_MODIFY = "instruction_modify"
 
 
 class TraceTaskName(StrEnum):
     CONVERSATION_TRACE = "conversation"
+    DRAFT_NODE_EXECUTION_TRACE = "draft_node_execution"
     WORKFLOW_TRACE = "workflow"
     MESSAGE_TRACE = "message"
     MODERATION_TRACE = "moderation"
@@ -140,4 +278,6 @@ class TraceTaskName(StrEnum):
     DATASET_RETRIEVAL_TRACE = "dataset_retrieval"
     TOOL_TRACE = "tool"
     GENERATE_NAME_TRACE = "generate_conversation_name"
+    PROMPT_GENERATION_TRACE = "prompt_generation"
+    NODE_EXECUTION_TRACE = "node_execution"
     DATASOURCE_TRACE = "datasource"

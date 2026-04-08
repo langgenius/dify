@@ -12,7 +12,7 @@ import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
@@ -81,7 +81,7 @@ const CreateAppModal = ({
 
   const submit = useCallback(() => {
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('appCustomize.nameRequired', { ns: 'explore' }) })
+      toast(t('appCustomize.nameRequired', { ns: 'explore' }), { type: 'error' })
       return
     }
     const isValid = maxActiveRequestsInput.trim() !== '' && !isNaN(Number(maxActiveRequestsInput))
@@ -117,7 +117,7 @@ const CreateAppModal = ({
       <Modal
         isShow={show}
         onClose={noop}
-        className="relative !max-w-[480px] px-8"
+        className="relative max-w-[480px]! px-8"
       >
         <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />

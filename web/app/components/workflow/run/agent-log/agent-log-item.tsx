@@ -54,7 +54,7 @@ const AgentLogItem = ({
   }, [status])
 
   return (
-    <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default">
+    <div className="radius-lg border-[0.5px] border-components-panel-border bg-background-default">
       <div
         className={cn(
           'flex cursor-pointer items-center pb-2 pl-1.5 pr-3 pt-2',

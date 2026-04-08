@@ -7,11 +7,11 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 
-export type AddVariablePopupProps = {
+type AddVariablePopupProps = {
   availableVars: NodeOutPutVar[]
   onSelect: (value: ValueSelector, item: Var) => void
 }
-export const AddVariablePopup = ({
+const AddVariablePopup = ({
   availableVars,
   onSelect,
 }: AddVariablePopupProps) => {

@@ -3,10 +3,11 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
 from typing import Any, Union
 
+from graphon.model_runtime.errors.invoke import InvokeError
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from dify_graph.model_runtime.errors.invoke import InvokeError
 
 logger = logging.getLogger(__name__)
 
@@ -106,13 +107,13 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception):
+    def _error_to_stream_response(cls, e: Exception) -> dict[str, Any]:
         """
         Error to stream response.
         :param e: exception
         :return:
         """
-        error_responses = {
+        error_responses: dict[type[Exception], dict[str, Any]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
@@ -126,7 +127,7 @@ class AppGenerateResponseConverter(ABC):
         }
 
         # Determine the response based on the type of exception
-        data = None
+        data: dict[str, Any] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v

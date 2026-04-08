@@ -19,9 +19,10 @@ from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.entities import Rule
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -30,7 +31,6 @@ from libs import helper
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
@@ -224,7 +224,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             doc_store.add_documents(docs=documents, save_child=False)
-            if dataset.indexing_technique == "high_quality":
+            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset)
                 vector.create(documents)
             else:

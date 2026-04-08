@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -94,10 +94,7 @@ const VarGroupItem: FC<Props> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
       return
     }
     onGroupNameChange?.(value)
@@ -109,7 +106,7 @@ const VarGroupItem: FC<Props> = ({
       title={groupEnabled
         ? (
             <div className="flex items-center">
-              <div className="flex items-center !normal-case">
+              <div className="flex items-center normal-case!">
                 <Folder className="mr-0.5 h-3.5 w-3.5" />
                 {(!isEditGroupName)
                   ? (
@@ -120,7 +117,7 @@ const VarGroupItem: FC<Props> = ({
                   : (
                       <input
                         type="text"
-                        className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-none"
+                        className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
                         // style={{
                         //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
                         // }}

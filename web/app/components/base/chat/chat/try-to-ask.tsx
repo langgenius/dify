@@ -18,9 +18,9 @@ const TryToAsk: FC<TryToAskProps> = ({
   return (
     <div className="mb-2 py-2">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <Divider bgStyle="gradient" className="h-px !w-auto grow rotate-180" />
+        <Divider bgStyle="gradient" className="h-px w-auto! grow rotate-180" />
         <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('feature.suggestedQuestionsAfterAnswer.tryToAsk', { ns: 'appDebug' })}</div>
-        <Divider bgStyle="gradient" className="h-px !w-auto grow" />
+        <Divider bgStyle="gradient" className="h-px w-auto! grow" />
       </div>
       <div className="flex flex-wrap justify-center">
         {

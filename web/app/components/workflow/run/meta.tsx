@@ -33,7 +33,7 @@ const MetaData: FC<Props> = ({
           <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.status', { ns: 'runLog' })}</div>
           <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-16 rounded-sm bg-text-quaternary" />
+              <div className="my-1 h-2 w-16 rounded-xs bg-text-quaternary" />
             )}
             {status === 'succeeded' && (
               <span>SUCCESS</span>
@@ -59,7 +59,7 @@ const MetaData: FC<Props> = ({
           <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.executor', { ns: 'runLog' })}</div>
           <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-[88px] rounded-sm bg-text-quaternary" />
+              <div className="my-1 h-2 w-[88px] rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && (
               <span>{executor || 'N/A'}</span>
@@ -70,7 +70,7 @@ const MetaData: FC<Props> = ({
           <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.startTime', { ns: 'runLog' })}</div>
           <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-[72px] rounded-sm bg-text-quaternary" />
+              <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && (
               <span>{startTime ? formatTime(startTime, t('dateTimeFormat', { ns: 'appLog' }) as string) : '-'}</span>
@@ -81,7 +81,7 @@ const MetaData: FC<Props> = ({
           <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.time', { ns: 'runLog' })}</div>
           <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-[72px] rounded-sm bg-text-quaternary" />
+              <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && (
               <span>{time ? `${time.toFixed(3)}s` : '-'}</span>
@@ -92,7 +92,7 @@ const MetaData: FC<Props> = ({
           <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.tokens', { ns: 'runLog' })}</div>
           <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
             {['running', 'paused'].includes(status) && (
-              <div className="my-1 h-2 w-[48px] animate-pulse rounded-sm bg-text-quaternary" />
+              <div className="my-1 h-2 w-[48px] animate-pulse rounded-xs bg-text-quaternary" />
             )}
             {!['running', 'paused'].includes(status) && (
               <span>{`${tokens || 0} Tokens`}</span>
@@ -104,7 +104,7 @@ const MetaData: FC<Props> = ({
             <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.steps', { ns: 'runLog' })}</div>
             <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
               {status === 'running' && (
-                <div className="my-1 h-2 w-[24px] rounded-sm bg-text-quaternary" />
+                <div className="my-1 h-2 w-[24px] rounded-xs bg-text-quaternary" />
               )}
               {status !== 'running' && (
                 <span>{steps}</span>

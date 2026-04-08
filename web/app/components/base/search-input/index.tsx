@@ -28,8 +28,8 @@ const SearchInput: FC<SearchInputProps> = ({
   return (
     <div className={cn(
       'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
-      focus && '!bg-components-input-bg-active',
-      white && '!border-gray-300 !bg-white shadow-xs hover:!border-gray-300 hover:!bg-white',
+      focus && 'bg-components-input-bg-active!',
+      white && 'border-gray-300! bg-white! shadow-xs hover:border-gray-300! hover:bg-white!',
       className,
     )}
     >
@@ -41,8 +41,8 @@ const SearchInput: FC<SearchInputProps> = ({
         type="text"
         name="query"
         className={cn(
-          'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
-          white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
+          'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
+          white && 'bg-white! placeholder:text-gray-400! hover:bg-white! group-hover:bg-white!',
         )}
         placeholder={placeholder || t('operation.search', { ns: 'common' })!}
         value={isComposing.current ? compositionValue : value}
