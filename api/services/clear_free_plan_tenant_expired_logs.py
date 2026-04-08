@@ -120,7 +120,7 @@ class ClearFreePlanTenantExpiredLogs:
             apps = db.session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             app_ids = [app.id for app in apps]
             while True:
-                with Session(db.engine).no_autoflush as session:
+                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
                     messages = (
                         session.query(Message)
                         .where(
@@ -152,7 +152,6 @@ class ClearFreePlanTenantExpiredLogs:
                     ).delete(synchronize_session=False)
 
                     cls._clear_message_related_tables(session, tenant_id, message_ids)
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -161,7 +160,7 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
             while True:
-                with Session(db.engine).no_autoflush as session:
+                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
                     conversations = (
                         session.query(Conversation)
                         .where(
@@ -190,7 +189,6 @@ class ClearFreePlanTenantExpiredLogs:
                     session.query(Conversation).where(
                         Conversation.id.in_(conversation_ids),
                     ).delete(synchronize_session=False)
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -294,7 +292,7 @@ class ClearFreePlanTenantExpiredLogs:
                     break
 
             while True:
-                with Session(db.engine).no_autoflush as session:
+                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
                     workflow_app_logs = (
                         session.query(WorkflowAppLog)
                         .where(
@@ -326,7 +324,6 @@ class ClearFreePlanTenantExpiredLogs:
                     session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(
                         synchronize_session=False
                     )
-                    session.commit()
 
                     click.echo(
                         click.style(
