@@ -5,8 +5,10 @@ from flask_restx import fields, marshal_with
 from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
+from pydantic import field_validator
+
 import services
-from controllers.common.controller_schemas import TextToAudioPayload
+from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -30,7 +32,19 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+from libs.helper import uuid_value
+
 from ..common.schema import register_schema_models
+
+
+class TextToAudioPayload(TextToAudioPayloadBase):
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
 
 register_schema_models(web_ns, TextToAudioPayload)
 

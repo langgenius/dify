@@ -1,8 +1,8 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from libs.helper import UUIDStrOrEmpty, uuid_value
+from libs.helper import UUIDStrOrEmpty
 
 # --- Conversation schemas ---
 
@@ -61,10 +61,3 @@ class TextToAudioPayload(BaseModel):
     voice: str | None = None
     text: str | None = None
     streaming: bool | None = None
-
-    @field_validator("message_id")
-    @classmethod
-    def validate_message_id(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return uuid_value(value)
