@@ -5,7 +5,7 @@ from typing import Any, TypedDict, cast
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -311,7 +311,7 @@ class ApiToolManageService:
             )
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
-        
+
         # parse openapi to tool bundle
         extra_info: dict[str, str] = {}
         # extra info like description will be set here
@@ -525,10 +525,7 @@ class ApiToolManageService:
         # create new session with automatic transaction management
         providers: list[ApiToolProvider] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = _session.scalars(
-                select(ApiToolProvider).
-                where(ApiToolProvider.tenant_id == tenant_id)
-            ).all()
+            providers = _session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
 
         result: list[ToolProviderApiEntity] = []
         for provider in providers:

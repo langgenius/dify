@@ -50,13 +50,11 @@ class WorkflowToolManageService:
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
                     # name or app_id
-                    or_(
-                        WorkflowToolProvider.name == name,
-                        WorkflowToolProvider.app_id == workflow_app_id
-                    ),
-                ).limit(1)
+                    or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
+                )
+                .limit(1)
             )
-            
+
         # if the name or app_id exists raise error
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
@@ -64,14 +62,7 @@ class WorkflowToolManageService:
         # query the app
         app: App | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            app= _session.scalar(
-                select(App)
-                .where(
-                    App.id == workflow_app_id,
-                    App.tenant_id == tenant_id
-                )
-                .limit(1)
-            )
+            app = _session.scalar(select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1))
 
         # if not found raise error
         if app is None:
@@ -112,8 +103,7 @@ class WorkflowToolManageService:
         # keep the session open to make orm instances in the same session
         if labels is not None:
             ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
-                labels
+                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
 
         return {"result": "success"}
@@ -170,10 +160,7 @@ class WorkflowToolManageService:
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_tool_provider = _session.scalar(
                 select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id == workflow_tool_id
-                )
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
                 .limit(1)
             )
 
@@ -185,11 +172,7 @@ class WorkflowToolManageService:
         app: App | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(
-                select(App).
-                where(
-                    App.id == workflow_tool_provider.app_id,
-                    App.tenant_id == tenant_id
-                ).limit(1)
+                select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
             )
 
         # if not found raise error
@@ -223,8 +206,7 @@ class WorkflowToolManageService:
 
         if labels is not None:
             ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
-                labels
+                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
 
         return {"result": "success"}
@@ -242,8 +224,7 @@ class WorkflowToolManageService:
         providers: list[WorkflowToolProvider] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             providers = _session.scalars(
-                select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id)
+                select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
             ).all()
 
         # Create a mapping from provider_id to app_id
@@ -289,13 +270,11 @@ class WorkflowToolManageService:
         :param tenant_id: the tenant id
         :param workflow_tool_id: the workflow tool id
         """
-        
+
         with sessionmaker(db.engine).begin() as _session:
             _session.execute(
-                delete(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id == workflow_tool_id
+                delete(WorkflowToolProvider).where(
+                    WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id
                 )
             )
 
@@ -316,10 +295,7 @@ class WorkflowToolManageService:
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             tool_provider = _session.scalar(
                 select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id == workflow_tool_id
-                )
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
                 .limit(1)
             )
 
@@ -360,12 +336,7 @@ class WorkflowToolManageService:
         workflow_app: App | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_app = _session.scalar(
-                select(App)
-                .where(
-                    App.id == db_tool.app_id,
-                    App.tenant_id == db_tool.tenant_id
-                )
-                .limit(1)
+                select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
             )
 
         if workflow_app is None:
@@ -417,10 +388,7 @@ class WorkflowToolManageService:
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider = _session.scalar(
                 select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id == workflow_tool_id
-                )
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
                 .limit(1)
             )
 
