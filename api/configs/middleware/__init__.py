@@ -134,6 +134,26 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
+    DIFY_DB_USER: str | None = Field(
+        description="Override for DB_USERNAME. Takes precedence when set.",
+        default=None,
+    )
+
+    DIFY_DB_PASS: str | None = Field(
+        description="Override for DB_PASSWORD. Takes precedence when set.",
+        default=None,
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def effective_db_username(self) -> str:
+        return self.DIFY_DB_USER if self.DIFY_DB_USER is not None else self.DB_USERNAME
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def effective_db_password(self) -> str:
+        return self.DIFY_DB_PASS if self.DIFY_DB_PASS is not None else self.DB_PASSWORD
+
     DB_DATABASE: str = Field(
         description="Name of the database to connect to.",
         default="dify",
@@ -163,7 +183,7 @@ class DatabaseConfig(BaseSettings):
         db_extras = f"?{db_extras}" if db_extras else ""
         return (
             f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
-            f"{quote_plus(self.DB_USERNAME)}:{quote_plus(self.DB_PASSWORD)}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
+            f"{quote_plus(self.effective_db_username)}:{quote_plus(self.effective_db_password)}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
             f"{db_extras}"
         )
 
