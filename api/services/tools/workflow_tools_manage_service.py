@@ -233,9 +233,9 @@ class WorkflowToolManageService:
 
         providers: list[WorkflowToolProvider] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = _session.scalars(
+            providers = list(_session.scalars(
                 select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
-            ).all()
+            ).all())
 
         # Create a mapping from provider_id to app_id
         provider_id_to_app_id = {provider.id: provider.app_id for provider in providers}
