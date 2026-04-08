@@ -46,6 +46,9 @@ class InvokeFrom(StrEnum):
         return source_mapping.get(self, "dev")
 
 
+DIFY_SANDBOX_CONTEXT_KEY = "_dify_sandbox"
+
+
 class DifyRunContext(BaseModel):
     tenant_id: str
     app_id: str

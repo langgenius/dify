@@ -87,36 +87,84 @@ class AgentV2ToolManager:
         self,
         context: ExecutionContext,
         workflow_call_depth: int = 0,
+        sandbox: Any | None = None,
     ) -> ToolInvokeHook:
-        """Create a ToolInvokeHook for workflow context (uses generic_invoke)."""
+        """Create a ToolInvokeHook for workflow context.
+
+        When sandbox is provided, tools that support sandbox execution will run
+        inside the sandbox environment. Otherwise, falls back to generic_invoke.
+        """
 
         def hook(
             tool: Tool,
             tool_args: dict[str, Any],
             tool_name: str,
         ) -> tuple[str, list[str], ToolInvokeMeta]:
-            tool_response = ToolEngine.generic_invoke(
-                tool=tool,
-                tool_parameters=tool_args,
-                user_id=context.user_id or "",
-                workflow_tool_callback=DifyWorkflowCallbackHandler(),
-                workflow_call_depth=workflow_call_depth,
-                app_id=context.app_id,
-                conversation_id=context.conversation_id,
-            )
+            if sandbox is not None:
+                return self._invoke_tool_in_sandbox(sandbox, tool, tool_args, tool_name, context)
 
-            response_content = ""
-            for response in tool_response:
-                if response.type == ToolInvokeMessage.MessageType.TEXT:
-                    assert isinstance(response.message, ToolInvokeMessage.TextMessage)
-                    response_content += response.message.text
-                elif response.type == ToolInvokeMessage.MessageType.JSON:
-                    if isinstance(response.message, ToolInvokeMessage.JsonMessage):
-                        response_content += json.dumps(response.message.json_object, ensure_ascii=False)
-                elif response.type == ToolInvokeMessage.MessageType.LINK:
-                    if isinstance(response.message, ToolInvokeMessage.TextMessage):
-                        response_content += f"[Link: {response.message.text}]"
-
-            return response_content, [], ToolInvokeMeta.empty()
+            return self._invoke_tool_directly(tool, tool_args, tool_name, context, workflow_call_depth)
 
         return hook
+
+    def _invoke_tool_directly(
+        self,
+        tool: Tool,
+        tool_args: dict[str, Any],
+        tool_name: str,
+        context: ExecutionContext,
+        workflow_call_depth: int,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        """Invoke tool directly via ToolEngine (no sandbox)."""
+        tool_response = ToolEngine.generic_invoke(
+            tool=tool,
+            tool_parameters=tool_args,
+            user_id=context.user_id or "",
+            workflow_tool_callback=DifyWorkflowCallbackHandler(),
+            workflow_call_depth=workflow_call_depth,
+            app_id=context.app_id,
+            conversation_id=context.conversation_id,
+        )
+
+        response_content = ""
+        for response in tool_response:
+            if response.type == ToolInvokeMessage.MessageType.TEXT:
+                assert isinstance(response.message, ToolInvokeMessage.TextMessage)
+                response_content += response.message.text
+            elif response.type == ToolInvokeMessage.MessageType.JSON:
+                if isinstance(response.message, ToolInvokeMessage.JsonMessage):
+                    response_content += json.dumps(response.message.json_object, ensure_ascii=False)
+            elif response.type == ToolInvokeMessage.MessageType.LINK:
+                if isinstance(response.message, ToolInvokeMessage.TextMessage):
+                    response_content += f"[Link: {response.message.text}]"
+
+        return response_content, [], ToolInvokeMeta.empty()
+
+    @staticmethod
+    def _invoke_tool_in_sandbox(
+        sandbox: Any,
+        tool: Tool,
+        tool_args: dict[str, Any],
+        tool_name: str,
+        context: ExecutionContext,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        """Invoke tool inside a sandbox environment.
+
+        Uses the sandbox's bash session to execute the tool via DifyCli,
+        which calls back to Dify's CLI API to perform the actual invocation.
+        """
+        try:
+            from core.sandbox.bash.session import SandboxBashSession
+
+            session = SandboxBashSession(sandbox)
+            result = session.run_tool(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                tenant_id=context.tenant_id or "",
+                app_id=context.app_id or "",
+                user_id=context.user_id or "",
+            )
+            return result.stdout.decode("utf-8", errors="replace"), [], ToolInvokeMeta.empty()
+        except Exception as e:
+            logger.warning("Sandbox tool invocation failed for %s, falling back to direct: %s", tool_name, e)
+            return f"Sandbox execution failed: {e}", [], ToolInvokeMeta.empty()

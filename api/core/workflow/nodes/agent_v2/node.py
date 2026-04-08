@@ -72,6 +72,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
         *,
         tool_manager: AgentV2ToolManager,
         event_adapter: AgentV2EventAdapter,
+        sandbox: Any | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -81,6 +82,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
         )
         self._tool_manager = tool_manager
         self._event_adapter = event_adapter
+        self._sandbox = sandbox
 
     @classmethod
     def version(cls) -> str:
@@ -246,7 +248,9 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 max_iterations=self.node_data.max_iterations,
                 context=context,
                 agent_strategy=agent_strategy_enum,
-                tool_invoke_hook=self._tool_manager.create_workflow_tool_invoke_hook(context),
+                tool_invoke_hook=self._tool_manager.create_workflow_tool_invoke_hook(
+                    context, sandbox=self._sandbox
+                ),
             )
 
             outputs_gen = strategy.run(

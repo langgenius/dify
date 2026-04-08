@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DIFY_SANDBOX_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
@@ -403,6 +403,7 @@ class DifyNodeFactory(NodeFactory):
                     app_id=self._dify_context.app_id,
                 ),
                 "event_adapter": AgentV2EventAdapter(),
+                "sandbox": self._resolve_sandbox(),
             },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
@@ -413,6 +414,10 @@ class DifyNodeFactory(NodeFactory):
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
         )
+
+    def _resolve_sandbox(self) -> Any:
+        """Resolve sandbox from run_context, if available."""
+        return self.graph_init_params.run_context.get(DIFY_SANDBOX_CONTEXT_KEY)
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
