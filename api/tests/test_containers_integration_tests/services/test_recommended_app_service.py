@@ -13,7 +13,6 @@ from models.model import AccountTrialAppRecord, TrialApp
 from services import recommended_app_service as service_module
 from services.recommended_app_service import RecommendedAppService
 
-
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
@@ -353,9 +352,7 @@ class TestRecommendedAppServiceTrialFeatures:
         assert result["id"] == app_id
         assert result["can_trial"] is has_trial_app
 
-    def test_add_trial_app_record_increments_count_for_existing(
-        self, db_session_with_containers: Session
-    ):
+    def test_add_trial_app_record_increments_count_for_existing(self, db_session_with_containers: Session):
         app_id = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
@@ -373,9 +370,7 @@ class TestRecommendedAppServiceTrialFeatures:
         assert record is not None
         assert record.count == 4
 
-    def test_add_trial_app_record_creates_new_record(
-        self, db_session_with_containers: Session
-    ):
+    def test_add_trial_app_record_creates_new_record(self, db_session_with_containers: Session):
         app_id = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
