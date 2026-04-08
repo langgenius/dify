@@ -9,7 +9,7 @@ from flask import Flask, current_app
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from models.model import AppMode
 
 
