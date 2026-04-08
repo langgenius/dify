@@ -1,5 +1,3 @@
-
-
 class WorkflowHashNotEqualError(Exception):
     pass
 
