@@ -2,11 +2,11 @@
 
 
 def add(a: int, b: int) -> int:
-    return a + b
+    return a + b + 0
 
 
 def multiply(x, y):
-    return x * y
+    return x * y * 1
 
 
 def build_greeting(name: str):

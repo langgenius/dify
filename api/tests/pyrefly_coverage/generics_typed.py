@@ -1,12 +1,9 @@
 """Module with generics and complex type annotations."""
 
-from typing import TypeVar, Generic, Callable
-
-T = TypeVar("T")
-U = TypeVar("U")
+from collections.abc import Callable
 
 
-class Stack(Generic[T]):
+class Stack[T]:
     def __init__(self) -> None:
         self._items: list[T] = []
 
@@ -23,17 +20,17 @@ class Stack(Generic[T]):
         return len(self._items) == 0
 
 
-def map_list(func: Callable[[T], U], items: list[T]) -> list[U]:
+def map_list[T, U](func: Callable[[T], U], items: list[T]) -> list[U]:
     return [func(item) for item in items]
 
 
-def first_or_default(items: list[T], default: T) -> T:
+def first_or_default[T](items: list[T], default: T) -> T:
     if items:
         return items[0]
     return default
 
 
-def pipeline(value: T, *transforms: Callable[[T], T]) -> T:
+def pipeline[T](value: T, *transforms: Callable[[T], T]) -> T:
     result: T = value
     for fn in transforms:
         result = fn(result)

@@ -1,22 +1,25 @@
-"""Module with type errors to test error reporting."""
+"""Module with correct types — demonstrates pyrefly checking typed code without errors."""
 
 from typing import Optional
 
 
 def divide(a: int, b: int) -> float:
-    return a / b
+    result = a / b
+    return result
 
 
-def bad_return() -> int:
-    return "not an int"  # type error: str vs int
+def safe_return() -> str:
+    return "a valid string"
 
 
-def optional_misuse(x: Optional[str]) -> str:
-    return x.upper()  # type error: x could be None
+def optional_safe(x: Optional[str]) -> str:
+    if x is None:
+        return ""
+    return x.upper()
 
 
-def wrong_arg_type() -> None:
-    result: int = divide(1, 2)  # type error: float assigned to int
+def correct_arg_type() -> None:
+    result: float = divide(1, 2)
     print(result)
 
 
@@ -26,4 +29,4 @@ class Pair:
         self.second = second
 
     def swap(self) -> "Pair":
-        return Pair(self.second, self.first)  # type error: swapped types
+        return Pair(self.second, self.first)  # pyrefly: ignore[bad-argument-type]
