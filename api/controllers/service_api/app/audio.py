@@ -3,10 +3,10 @@ import logging
 from flask import request
 from flask_restx import Resource
 from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -84,13 +84,6 @@ class AudioApi(Resource):
         except Exception as e:
             logger.exception("internal server error.")
             raise InternalServerError()
-
-
-class TextToAudioPayload(BaseModel):
-    message_id: str | None = Field(default=None, description="Message ID")
-    voice: str | None = Field(default=None, description="Voice to use for TTS")
-    text: str | None = Field(default=None, description="Text to convert to audio")
-    streaming: bool | None = Field(default=None, description="Enable streaming response")
 
 
 register_schema_model(service_api_ns, TextToAudioPayload)
