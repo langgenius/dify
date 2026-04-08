@@ -9,19 +9,3 @@ runs:
         node-version-file: .nvmrc
         cache: true
         run-install: true
-    - name: Setup pnpm
-      shell: bash
-      run: |
-        PACKAGE_MANAGER=$(node -p "require('./package.json').packageManager || ''")
-        case "$PACKAGE_MANAGER" in
-          pnpm@*)
-            corepack enable
-            corepack prepare "$PACKAGE_MANAGER" --activate
-            ;;
-          *)
-            echo "Expected root packageManager to declare pnpm, got: ${PACKAGE_MANAGER:-<empty>}" >&2
-            exit 1
-            ;;
-        esac
-
-        echo "$(dirname "$(command -v pnpm)")" >> "$GITHUB_PATH"
