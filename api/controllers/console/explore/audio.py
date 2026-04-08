@@ -5,7 +5,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.audio_schemas import TextToAudioPayload
+from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,

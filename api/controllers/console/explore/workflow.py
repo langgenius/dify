@@ -4,8 +4,8 @@ from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.controller_schemas import WorkflowRunPayload
 from controllers.common.schema import register_schema_model
-from controllers.common.workflow_schemas import WorkflowRunPayload
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,

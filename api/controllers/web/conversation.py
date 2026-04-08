@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from controllers.common.conversation_schemas import ConversationRenamePayload
+from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError

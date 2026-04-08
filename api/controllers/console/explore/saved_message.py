@@ -2,7 +2,7 @@ from flask import request
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
-from controllers.common.saved_message_schemas import SavedMessageCreatePayload, SavedMessageListQuery
+from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError

@@ -6,7 +6,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.common.message_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.schema import register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
