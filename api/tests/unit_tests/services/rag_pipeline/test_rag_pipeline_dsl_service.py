@@ -9,11 +9,8 @@ from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
-from services.rag_pipeline.rag_pipeline_dsl_service import (
-    ImportStatus,
-    RagPipelineDslService,
-    _check_version_compatibility,
-)
+from services.entities.dsl_entities import ImportStatus, check_version_compatibility
+from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 @pytest.mark.parametrize(
@@ -26,7 +23,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import (
     ],
 )
 def test_check_version_compatibility(imported_version: str, expected_status: ImportStatus) -> None:
-    assert _check_version_compatibility(imported_version) == expected_status
+    assert check_version_compatibility(imported_version, "0.1.0") == expected_status
 
 
 def test_encrypt_decrypt_dataset_id_roundtrip() -> None:
@@ -977,10 +974,8 @@ def test_extract_dependencies_from_model_config_includes_dataset_reranking_and_t
     tool_analyze.assert_called_once_with("google")
 
 
-def test_check_version_compatibility_hits_major_older_branch(mocker) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.CURRENT_DSL_VERSION", "1.0.0")
-
-    status = _check_version_compatibility("0.9.0")
+def test_check_version_compatibility_hits_major_older_branch() -> None:
+    status = check_version_compatibility("0.9.0", "1.0.0")
 
     assert status == ImportStatus.PENDING
 
