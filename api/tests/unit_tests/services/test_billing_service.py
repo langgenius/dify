@@ -640,6 +640,38 @@ class TestBillingServiceQuotaOperations:
         assert result["released"] == 1
         assert isinstance(result["released"], int)
 
+    def test_get_quota_info_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int for get_quota_info."""
+        mock_send_request.return_value = {
+            "trigger_event": {"usage": "42", "limit": "3000", "reset_date": "1700000000"},
+            "api_rate_limit": {"usage": "10", "limit": "-1", "reset_date": "-1"},
+        }
+
+        result = BillingService.get_quota_info("t1")
+
+        assert result["trigger_event"]["usage"] == 42
+        assert isinstance(result["trigger_event"]["usage"], int)
+        assert result["trigger_event"]["limit"] == 3000
+        assert isinstance(result["trigger_event"]["limit"], int)
+        assert result["trigger_event"]["reset_date"] == 1700000000
+        assert isinstance(result["trigger_event"]["reset_date"], int)
+        assert result["api_rate_limit"]["limit"] == -1
+        assert isinstance(result["api_rate_limit"]["limit"], int)
+
+    def test_get_quota_info_accepts_int_values(self, mock_send_request):
+        """Test that get_quota_info works with native int values."""
+        expected = {
+            "trigger_event": {"usage": 42, "limit": 3000, "reset_date": 1700000000},
+            "api_rate_limit": {"usage": 0, "limit": -1},
+        }
+        mock_send_request.return_value = expected
+
+        result = BillingService.get_quota_info("t1")
+
+        assert result["trigger_event"]["usage"] == 42
+        assert result["trigger_event"]["limit"] == 3000
+        assert result["api_rate_limit"]["limit"] == -1
+
 
 class TestBillingServiceRateLimitEnforcement:
     """Unit tests for rate limit enforcement mechanisms.
@@ -1724,7 +1756,7 @@ class TestBillingServiceSubscriptionInfoDataType:
             },
             "members": {"size": "10", "limit": "50"},
             "apps": {"size": "80", "limit": "200"},
-            "vector_space": {"size": "5120.75", "limit": "20480"},
+            "vector_space": {"size": 5120.75, "limit": "20480"},
             "knowledge_rate_limit": {"limit": "1000"},
             "documents_upload_quota": {"size": "450", "limit": "1000"},
             "annotation_quota_limit": {"size": "1200", "limit": "5000"},

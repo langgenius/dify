@@ -2,7 +2,7 @@ import type { HTMLProps, PropsWithChildren } from 'react'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 
-export type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
+type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
   icon?: React.ReactNode
   link?: string
   disabled?: boolean

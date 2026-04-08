@@ -1,15 +1,10 @@
-from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+from core.rag.entities import Rule
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-
-
-class ParentMode(StrEnum):
-    FULL_DOC = "full-doc"
-    PARAGRAPH = "paragraph"
 
 
 class NotionIcon(BaseModel):
@@ -51,24 +46,6 @@ class InfoList(BaseModel):
 
 class DataSource(BaseModel):
     info_list: InfoList
-
-
-class PreProcessingRule(BaseModel):
-    id: str
-    enabled: bool
-
-
-class Segmentation(BaseModel):
-    separator: str = "\n"
-    max_tokens: int
-    chunk_overlap: int = 0
-
-
-class Rule(BaseModel):
-    pre_processing_rules: list[PreProcessingRule] | None = None
-    segmentation: Segmentation | None = None
-    parent_mode: Literal["full-doc", "paragraph"] | None = None
-    subchunk_segmentation: Segmentation | None = None
 
 
 class ProcessRule(BaseModel):

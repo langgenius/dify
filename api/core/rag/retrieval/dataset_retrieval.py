@@ -39,9 +39,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
-from core.rag.entities.metadata_entities import Condition, MetadataCondition
+from core.rag.entities import Condition, DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -604,7 +602,7 @@ class DatasetRetrieval:
         planning_strategy: PlanningStrategy,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
     ):
         tools = []
         for dataset in available_datasets:
@@ -743,7 +741,7 @@ class DatasetRetrieval:
         reranking_enable: bool = True,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
         if not available_datasets:
@@ -1063,7 +1061,7 @@ class DatasetRetrieval:
         top_k: int,
         all_documents: list[Document],
         document_ids_filter: list[str] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
         with flask_app.app_context():
@@ -1339,7 +1337,7 @@ class DatasetRetrieval:
         metadata_model_config: ModelConfig,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
-    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
+    ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
         document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
@@ -1371,7 +1369,7 @@ class DatasetRetrieval:
                             value=filter.get("value"),
                         )
                     )
-                metadata_condition = MetadataCondition(
+                metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator
                     if metadata_filtering_conditions
                     else "or",  # type: ignore
@@ -1400,7 +1398,7 @@ class DatasetRetrieval:
                         expected_value,
                         filters,
                     )
-                metadata_condition = MetadataCondition(
+                metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator,
                     conditions=conditions,
                 )
@@ -1723,7 +1721,7 @@ class DatasetRetrieval:
         self,
         flask_app: Flask,
         available_datasets: list[Dataset],
-        metadata_condition: MetadataCondition | None,
+        metadata_condition: MetadataFilteringCondition | None,
         metadata_filter_document_ids: dict[str, list[str]] | None,
         all_documents: list[Document],
         tenant_id: str,

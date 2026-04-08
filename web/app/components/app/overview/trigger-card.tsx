@@ -22,7 +22,7 @@ import {
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
 
-export type ITriggerCardProps = {
+type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   onToggleResult?: (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => void
 }

@@ -10,7 +10,7 @@ from configs import dify_config
 from dify_app import DifyApp
 
 
-def _get_celery_ssl_options() -> dict[str, Any] | None:
+def get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
     # Only apply SSL if we're using Redis as broker/backend
     if not dify_config.BROKER_USE_SSL:
@@ -43,6 +43,19 @@ def _get_celery_ssl_options() -> dict[str, Any] | None:
     return ssl_options
 
 
+def get_celery_broker_transport_options() -> dict[str, Any]:
+    """Get broker transport options (e.g. Redis Sentinel) for Celery connections."""
+    if dify_config.CELERY_USE_SENTINEL:
+        return {
+            "master_name": dify_config.CELERY_SENTINEL_MASTER_NAME,
+            "sentinel_kwargs": {
+                "socket_timeout": dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
+                "password": dify_config.CELERY_SENTINEL_PASSWORD,
+            },
+        }
+    return {}
+
+
 def init_app(app: DifyApp) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
@@ -53,16 +66,7 @@ def init_app(app: DifyApp) -> Celery:
                 init_request_context()
                 return self.run(*args, **kwargs)
 
-    broker_transport_options = {}
-
-    if dify_config.CELERY_USE_SENTINEL:
-        broker_transport_options = {
-            "master_name": dify_config.CELERY_SENTINEL_MASTER_NAME,
-            "sentinel_kwargs": {
-                "socket_timeout": dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
-                "password": dify_config.CELERY_SENTINEL_PASSWORD,
-            },
-        }
+    broker_transport_options = get_celery_broker_transport_options()
 
     celery_app = Celery(
         app.name,
@@ -89,7 +93,7 @@ def init_app(app: DifyApp) -> Celery:
         )
 
     # Apply SSL configuration if enabled
-    ssl_options = _get_celery_ssl_options()
+    ssl_options = get_celery_ssl_options()
     if ssl_options:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,

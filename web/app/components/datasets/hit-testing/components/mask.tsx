@@ -5,7 +5,7 @@ type MaskProps = {
   className?: string
 }
 
-export const Mask = ({
+const Mask = ({
   className,
 }: MaskProps) => {
   return (

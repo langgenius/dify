@@ -12,13 +12,13 @@ export enum CreateFromDSLModalTab {
   FROM_FILE = 'from-file',
   FROM_URL = 'from-url',
 }
-export type UseDSLImportOptions = {
+type UseDSLImportOptions = {
   activeTab?: CreateFromDSLModalTab
   dslUrl?: string
   onSuccess?: () => void
   onClose?: () => void
 }
-export type DSLVersions = {
+type DSLVersions = {
   importedVersion: string
   systemVersion: string
 }

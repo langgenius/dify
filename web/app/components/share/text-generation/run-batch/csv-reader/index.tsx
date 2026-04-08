@@ -9,7 +9,7 @@ import {
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { cn } from '@/utils/classnames'
 
-export type Props = {
+type Props = {
   onParsed: (data: string[][]) => void
 }
 

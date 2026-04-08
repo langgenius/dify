@@ -7,7 +7,7 @@ import VariableInspectPanel from '../variable-inspect'
 import VariableTrigger from '../variable-inspect/trigger'
 import ZoomInOut from './zoom-in-out'
 
-export type OperatorProps = {
+type OperatorProps = {
   handleUndo: () => void
   handleRedo: () => void
 }

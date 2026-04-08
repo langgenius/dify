@@ -1100,12 +1100,11 @@ def test_trigger_workflow_execution_should_mark_tenant_rate_limited_when_quota_e
         "get_or_create_end_user_by_type",
         MagicMock(return_value=SimpleNamespace(id="end-user-1")),
     )
-    quota_type = SimpleNamespace(
-        TRIGGER=SimpleNamespace(
-            consume=MagicMock(side_effect=QuotaExceededError(feature="trigger", tenant_id="tenant-1", required=1))
-        )
+    monkeypatch.setattr(
+        service_module.QuotaService,
+        "reserve",
+        MagicMock(side_effect=QuotaExceededError(feature="trigger", tenant_id="tenant-1", required=1)),
     )
-    monkeypatch.setattr(service_module, "QuotaType", quota_type)
     mark_rate_limited_mock = MagicMock()
     monkeypatch.setattr(service_module.AppTriggerService, "mark_tenant_triggers_rate_limited", mark_rate_limited_mock)
 

@@ -25,7 +25,7 @@ import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
 
-export type ICardViewProps = {
+type ICardViewProps = {
   appId: string
   isInPanel?: boolean
   className?: string

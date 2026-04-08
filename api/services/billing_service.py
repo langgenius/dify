@@ -107,6 +107,124 @@ class BillingInfo(TypedDict):
 _billing_info_adapter = TypeAdapter(BillingInfo)
 
 
+class _TenantFeatureQuota(TypedDict):
+    usage: int
+    limit: int
+    reset_date: NotRequired[int]
+
+
+class TenantFeatureQuotaInfo(TypedDict):
+    """Response of /quota/info.
+
+    NOTE (hj24):
+    - Same convention as BillingInfo: billing may return int fields as str,
+      always keep non-strict mode to auto-coerce.
+    """
+
+    trigger_event: _TenantFeatureQuota
+    api_rate_limit: _TenantFeatureQuota
+
+
+_tenant_feature_quota_info_adapter = TypeAdapter(TenantFeatureQuotaInfo)
+
+
+class _BillingQuota(TypedDict):
+    size: int
+    limit: int
+
+
+class _VectorSpaceQuota(TypedDict):
+    size: float
+    limit: int
+
+
+class _KnowledgeRateLimit(TypedDict):
+    # NOTE (hj24):
+    # 1. Return for sandbox users but is null for other plans, it's defined but never used.
+    # 2. Keep it for compatibility for now, can be deprecated in future versions.
+    size: NotRequired[int]
+    # NOTE END
+    limit: int
+
+
+class _BillingSubscription(TypedDict):
+    plan: str
+    interval: str
+    education: bool
+
+
+class BillingInfo(TypedDict):
+    """Response of /subscription/info.
+
+    NOTE (hj24):
+    - Fields not listed here (e.g. trigger_event, api_rate_limit) are stripped by TypeAdapter.validate_python()
+    - To ensure the precision, billing may convert fields like int as str, be careful when use TypeAdapter:
+        1. validate_python in non-strict mode will coerce it to the expected type
+        2. In strict mode, it will raise ValidationError
+        3. To preserve compatibility, always keep non-strict mode here and avoid strict mode
+    """
+
+    enabled: bool
+    subscription: _BillingSubscription
+    members: _BillingQuota
+    apps: _BillingQuota
+    vector_space: _VectorSpaceQuota
+    knowledge_rate_limit: _KnowledgeRateLimit
+    documents_upload_quota: _BillingQuota
+    annotation_quota_limit: _BillingQuota
+    docs_processing: str
+    can_replace_logo: bool
+    model_load_balancing_enabled: bool
+    knowledge_pipeline_publish_enabled: bool
+    next_credit_reset_date: NotRequired[int]
+
+
+_billing_info_adapter = TypeAdapter(BillingInfo)
+
+
+class KnowledgeRateLimitDict(TypedDict):
+    limit: int
+    subscription_plan: str
+
+
+class TenantFeaturePlanUsageDict(TypedDict):
+    result: str
+    history_id: str
+
+
+class LangContentDict(TypedDict):
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    title_pic_url: str
+
+
+class NotificationDict(TypedDict):
+    notification_id: str
+    contents: dict[str, LangContentDict]
+    frequency: Literal["once", "every_page_load"]
+
+
+class AccountNotificationDict(TypedDict, total=False):
+    should_show: bool
+    notification: NotificationDict
+    shouldShow: bool
+    notifications: list[dict]
+
+
+class UpsertNotificationDict(TypedDict):
+    notification_id: str
+
+
+class BatchAddNotificationAccountsDict(TypedDict):
+    count: int
+
+
+class DismissNotificationDict(TypedDict):
+    success: bool
+
+
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
@@ -133,9 +251,11 @@ class BillingService:
         return usage_info
 
     @classmethod
-    def get_quota_info(cls, tenant_id: str):
+    def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
         params = {"tenant_id": tenant_id}
-        return cls._send_request("GET", "/quota/info", params=params)
+        return _tenant_feature_quota_info_adapter.validate_python(
+            cls._send_request("GET", "/quota/info", params=params)
+        )
 
     @classmethod
     def quota_reserve(
@@ -183,7 +303,7 @@ class BillingService:
         )
 
     @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
+    def get_knowledge_rate_limit(cls, tenant_id: str) -> KnowledgeRateLimitDict:
         params = {"tenant_id": tenant_id}
 
         knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
@@ -214,7 +334,9 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
-    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
+    def update_tenant_feature_plan_usage(
+        cls, tenant_id: str, feature_key: str, delta: int
+    ) -> TenantFeaturePlanUsageDict:
         """
         Update tenant feature plan usage.
 
@@ -234,7 +356,7 @@ class BillingService:
         )
 
     @classmethod
-    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> TenantFeaturePlanUsageDict:
         """
         Refund a previous usage charge.
 
@@ -530,7 +652,7 @@ class BillingService:
         return tenant_whitelist
 
     @classmethod
-    def get_account_notification(cls, account_id: str) -> dict:
+    def get_account_notification(cls, account_id: str) -> AccountNotificationDict:
         """Return the active in-product notification for account_id, if any.
 
         Calling this endpoint also marks the notification as seen; subsequent
@@ -554,13 +676,13 @@ class BillingService:
     @classmethod
     def upsert_notification(
         cls,
-        contents: list[dict],
+        contents: list[LangContentDict],
         frequency: str = "once",
         status: str = "active",
         notification_id: str | None = None,
         start_time: str | None = None,
         end_time: str | None = None,
-    ) -> dict:
+    ) -> UpsertNotificationDict:
         """Create or update a notification.
 
         contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
@@ -581,7 +703,9 @@ class BillingService:
         return cls._send_request("POST", "/notifications", json=payload)
 
     @classmethod
-    def batch_add_notification_accounts(cls, notification_id: str, account_ids: list[str]) -> dict:
+    def batch_add_notification_accounts(
+        cls, notification_id: str, account_ids: list[str]
+    ) -> BatchAddNotificationAccountsDict:
         """Register target account IDs for a notification (max 1000 per call).
 
         Returns {"count": int}.
@@ -593,7 +717,7 @@ class BillingService:
         )
 
     @classmethod
-    def dismiss_notification(cls, notification_id: str, account_id: str) -> dict:
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:
         """Mark a notification as dismissed for an account.
 
         Returns {"success": bool}.

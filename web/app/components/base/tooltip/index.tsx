@@ -14,7 +14,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import { cn } from '@/utils/classnames'
 import { tooltipManager } from './TooltipManager'
 
-export type TooltipProps = {
+type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
   triggerClassName?: string

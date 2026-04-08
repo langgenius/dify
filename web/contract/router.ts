@@ -98,5 +98,3 @@ export const consoleRouterContract = {
     oauthInitiate: triggerOAuthInitiateContract,
   },
 }
-
-export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>

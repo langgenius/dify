@@ -193,7 +193,7 @@ workflow_draft_variable_list_model = console_ns.model(
 )
 
 
-def _api_prerequisite(f: Callable[..., Any]) -> Callable[..., Any]:
+def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -210,7 +210,7 @@ def _api_prerequisite(f: Callable[..., Any]) -> Callable[..., Any]:
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @wraps(f)
-    def wrapper(*args: Any, **kwargs: Any):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         return f(*args, **kwargs)
 
     return wrapper

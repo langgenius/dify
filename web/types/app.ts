@@ -16,22 +16,6 @@ export enum Theme {
   system = 'system',
 }
 
-export enum ProviderType {
-  openai = 'openai',
-  anthropic = 'anthropic',
-  azure_openai = 'azure_openai',
-  replicate = 'replicate',
-  huggingface_hub = 'huggingface_hub',
-  minimax = 'minimax',
-  tongyi = 'tongyi',
-  spark = 'spark',
-}
-
-export enum AppType {
-  chat = 'chat',
-  completion = 'completion',
-}
-
 export enum ModelModeType {
   chat = 'chat',
   completion = 'completion',
@@ -49,12 +33,6 @@ export enum RETRIEVE_METHOD {
   hybrid = 'hybrid_search',
   invertedIndex = 'invertedIndex',
   keywordSearch = 'keyword_search',
-}
-
-export type VariableInput = {
-  key: string
-  name: string
-  value: string
 }
 
 /**
@@ -386,20 +364,6 @@ export type App = {
 
 export type AppSSO = {
   enable_sso: boolean
-}
-
-/**
- * App Template
- */
-export type AppTemplate = {
-  /** Name */
-  name: string
-  /** Description */
-  description: string
-  /** Mode */
-  mode: AppModeEnum
-  /** Model */
-  model_config: ModelConfig
 }
 
 export enum Resolution {
