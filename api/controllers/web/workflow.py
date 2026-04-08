@@ -1,12 +1,11 @@
 import logging
-from typing import Any
 
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.schema import register_schema_models
+from controllers.common.workflow_schemas import WorkflowRunPayload
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -29,12 +28,6 @@ from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
-
-
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(description="Input variables for the workflow")
-    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed by the workflow")
-
 
 logger = logging.getLogger(__name__)
 
