@@ -387,6 +387,8 @@ class ToolManager:
                 return mcp_tool
             case ToolProviderType.DATASET_RETRIEVAL:
                 raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
+            case _:
+                raise ToolProviderNotFoundError(f"provider type {provider_type} not found")
 
     @classmethod
     def get_agent_tool_runtime(
@@ -1042,6 +1044,8 @@ class ToolManager:
             case ToolProviderType.MCP:
                 return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)
             case ToolProviderType.APP | ToolProviderType.DATASET_RETRIEVAL:
+                raise ValueError(f"provider type {provider_type} not found")
+            case _:
                 raise ValueError(f"provider type {provider_type} not found")
 
     @classmethod
