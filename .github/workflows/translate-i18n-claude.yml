@@ -272,6 +272,7 @@ jobs:
       - name: Create or update translation PR
         if: steps.pr_meta.outputs.has_changes == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: ${{ steps.pr_meta.outputs.branch_name }}
           FILES_IN_SCOPE: ${{ steps.context.outputs.CHANGED_FILES }}
           TARGET_LANGS: ${{ steps.context.outputs.TARGET_LANGS }}
