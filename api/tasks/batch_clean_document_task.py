@@ -73,7 +73,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
             try:
                 # Fetch dataset in a fresh session to avoid DetachedInstanceError
                 with session_factory.create_session() as session:
-                    dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+                    dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                     if not dataset:
                         logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
                     else:
