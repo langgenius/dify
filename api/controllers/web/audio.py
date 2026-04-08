@@ -3,9 +3,8 @@ import logging
 from flask import request
 from flask_restx import fields, marshal_with
 from graphon.model_runtime.errors.invoke import InvokeError
-from werkzeug.exceptions import InternalServerError
-
 from pydantic import field_validator
+from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
@@ -23,6 +22,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from libs.helper import uuid_value
 from models.model import App
 from services.audio_service import AudioService
 from services.errors.audio import (
@@ -31,8 +31,6 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from libs.helper import uuid_value
 
 from ..common.schema import register_schema_models
 
