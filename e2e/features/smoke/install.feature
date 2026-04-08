@@ -1,5 +1,9 @@
 @smoke @fresh
 Feature: Fresh installation bootstrap
+  Scenario: Redirect the first apps console visit to the install page on a fresh instance
+    Given the last authentication bootstrap came from a fresh install
+    And the fresh install bootstrap redirected the apps console to the install page
+
   Scenario: Complete the initial installation bootstrap on a fresh instance
     Given the last authentication bootstrap came from a fresh install
     When I open the apps console
