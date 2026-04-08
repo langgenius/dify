@@ -70,6 +70,7 @@ const AddCondition = ({
                 <div
                   key={metadata.name}
                   className="system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover"
+                  onClick={() => handleAddConditionWrapped(metadata)}
                 >
                   <div className="mr-1 p-px">
                     <MetadataIcon type={metadata.type} />
@@ -77,7 +78,6 @@ const AddCondition = ({
                   <div
                     className="grow truncate"
                     title={metadata.name}
-                    onClick={() => handleAddConditionWrapped(metadata)}
                   >
                     {metadata.name}
                   </div>
