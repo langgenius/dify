@@ -1383,7 +1383,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 15
+      "count": 10
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -3806,71 +3806,6 @@
   "app/components/base/tooltip/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/base/ui/alert-dialog/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/base/ui/context-menu/index.stories.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/ui/dialog/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
-  "app/components/base/ui/dropdown-menu/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/ui/number-field/index.stories.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/base/ui/number-field/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/base/ui/popover/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/ui/scroll-area/index.stories.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 46
-    }
-  },
-  "app/components/base/ui/scroll-area/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/base/ui/select/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    }
-  },
-  "app/components/base/ui/slider/index.stories.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/ui/slider/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
-  "app/components/base/ui/tooltip/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/video-gallery/VideoPlayer.tsx": {

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import contextlib
-import json
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -15,6 +14,7 @@ from graphon.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -57,6 +57,8 @@ from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.runtime import ModelRuntime
+
+_credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class ProviderManager:
@@ -875,8 +877,8 @@ class ProviderManager:
             return {"openai_api_key": encrypted_config}
 
         try:
-            credentials = cast(dict, json.loads(encrypted_config))
-        except JSONDecodeError:
+            credentials = _credentials_adapter.validate_json(encrypted_config)
+        except (ValueError, JSONDecodeError):
             return {}
 
         # Decrypt secret variables
@@ -1015,7 +1017,7 @@ class ProviderManager:
                 if not cached_provider_credentials:
                     provider_credentials: dict[str, Any] = {}
                     if provider_records and provider_records[0].encrypted_config:
-                        provider_credentials = json.loads(provider_records[0].encrypted_config)
+                        provider_credentials = _credentials_adapter.validate_json(provider_records[0].encrypted_config)
 
                     # Get provider credential secret variables
                     provider_credential_secret_variables = self._extract_secret_variables(
@@ -1162,8 +1164,10 @@ class ProviderManager:
 
                         if not cached_provider_model_credentials:
                             try:
-                                provider_model_credentials = json.loads(load_balancing_model_config.encrypted_config)
-                            except JSONDecodeError:
+                                provider_model_credentials = _credentials_adapter.validate_json(
+                                    load_balancing_model_config.encrypted_config
+                                )
+                            except (ValueError, JSONDecodeError):
                                 continue
 
                             # Get decoding rsa key and cipher for decrypting credentials
@@ -1176,7 +1180,7 @@ class ProviderManager:
                                 if variable in provider_model_credentials:
                                     try:
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                            provider_model_credentials.get(variable),
+                                            provider_model_credentials.get(variable) or "",
                                             self.decoding_rsa_key,
                                             self.decoding_cipher_rsa,
                                         )

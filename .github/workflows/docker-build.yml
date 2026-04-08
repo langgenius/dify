@@ -8,9 +8,11 @@ on:
       - api/Dockerfile
       - web/docker/**
       - web/Dockerfile
+      - packages/**
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - .npmrc
       - .nvmrc
 
 concurrency:

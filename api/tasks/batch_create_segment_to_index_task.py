@@ -8,7 +8,7 @@ import click
 import pandas as pd
 from celery import shared_task
 from graphon.model_runtime.entities.model_entities import ModelType
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
@@ -140,10 +140,8 @@ def batch_create_segment_to_index_task(
             content = segment["content"]
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
-            max_position = (
-                session.query(func.max(DocumentSegment.position))
-                .where(DocumentSegment.document_id == document_config["id"])
-                .scalar()
+            max_position = session.scalar(
+                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
             )
             segment_document = DocumentSegment(
                 tenant_id=tenant_id,

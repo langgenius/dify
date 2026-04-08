@@ -66,13 +66,13 @@ class WebhookTriggerApi(Resource):
 
         with sessionmaker(db.engine).begin() as session:
             # Get webhook trigger for this app and node
-            webhook_trigger = (
-                session.query(WorkflowWebhookTrigger)
+            webhook_trigger = session.scalar(
+                select(WorkflowWebhookTrigger)
                 .where(
                     WorkflowWebhookTrigger.app_id == app_model.id,
                     WorkflowWebhookTrigger.node_id == node_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not webhook_trigger:

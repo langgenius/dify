@@ -1,18 +1,27 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 import chromadb
 from chromadb import QueryResult, Settings
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+
+class ChromaParamsDict(TypedDict):
+    host: str
+    port: int
+    ssl: bool
+    tenant: str
+    database: str
+    settings: Settings
 
 
 class ChromaConfig(BaseModel):
@@ -23,14 +32,13 @@ class ChromaConfig(BaseModel):
     auth_provider: str | None = None
     auth_credentials: str | None = None
 
-    def to_chroma_params(self):
+    def to_chroma_params(self) -> ChromaParamsDict:
         settings = Settings(
             # auth
             chroma_client_auth_provider=self.auth_provider,
             chroma_client_auth_credentials=self.auth_credentials,
         )
-
-        return {
+        result: ChromaParamsDict = {
             "host": self.host,
             "port": self.port,
             "ssl": False,
@@ -38,6 +46,7 @@ class ChromaConfig(BaseModel):
             "database": self.database,
             "settings": settings,
         }
+        return result
 
 
 class ChromaVector(BaseVector):
@@ -145,7 +154,10 @@ class ChromaVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            index_struct_dict = {"type": VectorType.CHROMA, "vector_store": {"class_prefix": collection_name}}
+            index_struct_dict: VectorIndexStructDict = {
+                "type": VectorType.CHROMA,
+                "vector_store": {"class_prefix": collection_name},
+            }
             dataset.index_struct = json.dumps(index_struct_dict)
 
         return ChromaVector(

@@ -9,7 +9,7 @@ from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 
 class InvitationData(TypedDict):
@@ -81,6 +81,12 @@ from tasks.mail_reset_password_task import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class InvitationDetailDict(TypedDict):
+    account: Account
+    data: InvitationData
+    tenant: Tenant
 
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
@@ -1510,7 +1516,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:
@@ -1585,7 +1591,7 @@ class RegisterService:
     @classmethod
     def get_invitation_if_token_valid(
         cls, workspace_id: str | None, email: str | None, token: str
-    ) -> dict[str, Any] | None:
+    ) -> InvitationDetailDict | None:
         invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
@@ -1647,7 +1653,7 @@ class RegisterService:
     @classmethod
     def get_invitation_with_case_fallback(
         cls, workspace_id: str | None, email: str | None, token: str
-    ) -> dict[str, Any] | None:
+    ) -> InvitationDetailDict | None:
         invitation = cls.get_invitation_if_token_valid(workspace_id, email, token)
         if invitation or not email or email == email.lower():
             return invitation
