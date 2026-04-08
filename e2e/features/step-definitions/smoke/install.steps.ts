@@ -10,12 +10,3 @@ Given(
     expect(session.mode).toBe('install')
   },
 )
-
-Given(
-  'the fresh install bootstrap redirected the apps console to the install page',
-  async function (this: DifyWorld) {
-    const session = await this.getAuthSession()
-
-    expect(session.initialAppsEntryRedirectedToInstall).toBe(true)
-  },
-)

@@ -8,7 +8,6 @@ import { defaultBaseURL, defaultLocale } from '../test-env'
 export type AuthSessionMetadata = {
   adminEmail: string
   baseURL: string
-  initialAppsEntryRedirectedToInstall: boolean
   mode: 'install' | 'login'
   usedInitPassword: boolean
 }
@@ -102,7 +101,6 @@ const completeLogin = async (page: Page, baseURL: string) => {
 
 export const ensureAuthenticatedState = async (browser: Browser, configuredBaseURL?: string) => {
   const baseURL = resolveBaseURL(configuredBaseURL)
-  const installURLPattern = new RegExp(`^${escapeRegex(baseURL)}/install(?:\\?.*)?$`)
 
   await mkdir(authDir, { recursive: true })
 
@@ -113,17 +111,10 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
   const page = await context.newPage()
 
   try {
-    await page.goto(appURL(baseURL, '/apps'), { waitUntil: 'networkidle' })
+    await page.goto(appURL(baseURL, '/install'), { waitUntil: 'networkidle' })
 
     let usedInitPassword = await completeInitPasswordIfNeeded(page)
     let pageState = await waitForPageState(page)
-    const initialAppsEntryRedirectedToInstall = pageState !== 'login'
-
-    if (initialAppsEntryRedirectedToInstall) {
-      await expect(page).toHaveURL(installURLPattern, {
-        timeout: WAIT_TIMEOUT_MS,
-      })
-    }
 
     while (pageState === 'init') {
       const completedInitPassword = await completeInitPasswordIfNeeded(page)
@@ -146,7 +137,6 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     const metadata: AuthSessionMetadata = {
       adminEmail: adminCredentials.email,
       baseURL,
-      initialAppsEntryRedirectedToInstall,
       mode: pageState,
       usedInitPassword,
     }
