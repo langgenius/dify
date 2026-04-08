@@ -5,7 +5,6 @@ import type {
 import { memo } from 'react'
 import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
-import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { Markdown } from '@/app/components/base/markdown'
 
 type AgentContentProps = {
@@ -40,7 +39,7 @@ const AgentContent: FC<AgentContentProps> = ({
           data-testid="agent-content-markdown"
         />
       ) : agent_thoughts?.map((thought, index) => (
-        <div key={index} className="px-2 py-1" data-testid="agent-thought-item">
+        <div key={thought.id || index} className="px-2 py-1" data-testid="agent-thought-item">
           {thought.thought && (
             <Markdown
               content={thought.thought}
@@ -59,7 +58,7 @@ const AgentContent: FC<AgentContentProps> = ({
           {
             !!thought.message_files?.length && (
               <FileList
-                files={getProcessedFilesFromResponse(thought.message_files.map((item: any) => ({ ...item, related_id: item.id })))}
+                files={thought.message_files}
                 showDeleteAction={false}
                 showDownloadAction={true}
                 canPreview={true}

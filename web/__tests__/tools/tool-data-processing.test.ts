@@ -19,6 +19,7 @@ import {
   toType,
   triggerEventParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { TransferMethod } from '@/types/app'
 
 describe('Tool Data Processing Pipeline Integration', () => {
   describe('End-to-end: API schema → form schema → form value', () => {
@@ -184,8 +185,24 @@ describe('Tool Data Processing Pipeline Integration', () => {
       ] as Parameters<typeof sortAgentSorts>[0]
 
       const messageFiles = [
-        { id: 'f1', name: 'result.txt', type: 'document' },
-        { id: 'f2', name: 'summary.pdf', type: 'document' },
+        {
+          id: 'f1',
+          name: 'result.txt',
+          size: 0,
+          type: 'text/plain',
+          progress: 100,
+          transferMethod: TransferMethod.remote_url,
+          supportFileType: 'document',
+        },
+        {
+          id: 'f2',
+          name: 'summary.pdf',
+          size: 0,
+          type: 'application/pdf',
+          progress: 100,
+          transferMethod: TransferMethod.remote_url,
+          supportFileType: 'document',
+        },
       ] as Parameters<typeof addFileInfos>[1]
 
       const sorted = sortAgentSorts(thoughts)

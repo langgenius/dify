@@ -23,17 +23,13 @@ vi.mock('@/app/components/base/chat/chat/thought', () => ({
   ),
 }))
 
-// Mock FileList and Utils
+// Mock FileList
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileList: ({ files }: { files: FileEntity[] }) => (
     <div data-testid="file-list-component">
       {files.map(f => f.name).join(', ')}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getProcessedFilesFromResponse: (files: FileEntity[]) => files.map(f => ({ ...f, name: `processed-${f.id}` })),
 }))
 
 describe('AgentContent', () => {
@@ -119,12 +115,15 @@ describe('AgentContent', () => {
       agent_thoughts: [
         {
           thought: 'T1',
-          message_files: [{ id: 'file1' }, { id: 'file2' }],
+          message_files: [
+            { id: 'file1', name: 'image-1.png' },
+            { id: 'file2', name: 'image-2.png' },
+          ],
         },
       ],
     }
     render(<AgentContent item={itemWithFiles as ChatItem} />)
-    expect(screen.getByTestId('file-list-component')).toHaveTextContent('processed-file1, processed-file2')
+    expect(screen.getByTestId('file-list-component')).toHaveTextContent('image-1.png, image-2.png')
   })
 
   it('renders nothing if no annotation, content, or thoughts', () => {
