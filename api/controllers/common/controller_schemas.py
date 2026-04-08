@@ -1,4 +1,5 @@
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -51,6 +52,28 @@ class SavedMessageCreatePayload(BaseModel):
 class WorkflowRunPayload(BaseModel):
     inputs: dict[str, Any]
     files: list[dict[str, Any]] | None = None
+
+
+# --- Dataset schemas ---
+
+
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+
+
+class ChildChunkCreatePayload(BaseModel):
+    content: str
+
+
+class ChildChunkUpdatePayload(BaseModel):
+    content: str
+
+
+class DocumentBatchDownloadZipPayload(BaseModel):
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
+class MetadataUpdatePayload(BaseModel):
+    name: str
 
 
 # --- Audio schemas ---

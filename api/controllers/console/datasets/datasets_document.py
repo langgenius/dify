@@ -4,7 +4,6 @@ from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from contextlib import ExitStack
 from typing import Any, Literal, cast
-from uuid import UUID
 
 import sqlalchemy as sa
 from flask import request, send_file
@@ -16,6 +15,7 @@ from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from core.errors.error import (
@@ -71,9 +71,6 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
-# NOTE: Keep constants near the top of the module for discoverability.
-DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
-
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 dataset_model = get_or_create_model("Dataset", dataset_fields)
@@ -108,12 +105,6 @@ class DocumentRenamePayload(BaseModel):
 
 class GenerateSummaryPayload(BaseModel):
     document_list: list[str]
-
-
-class DocumentBatchDownloadZipPayload(BaseModel):
-    """Request payload for bulk downloading documents as a zip archive."""
-
-    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
 
 
 class DocumentDatasetListParam(BaseModel):
