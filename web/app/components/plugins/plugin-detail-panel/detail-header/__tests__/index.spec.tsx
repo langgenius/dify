@@ -10,16 +10,6 @@ const mockHandleUpdate = vi.fn()
 const mockHandleUpdatedFromMarketplace = vi.fn()
 const mockHandleDelete = vi.fn()
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, time?: string }) => {
-      if (options?.time)
-        return `${options.ns}.${key}:${options.time}`
-      return options?.ns ? `${options.ns}.${key}` : key
-    },
-  }),
-}))
-
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     userProfile: { timezone: 'UTC' },

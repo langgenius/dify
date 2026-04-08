@@ -5,17 +5,6 @@ import { AUTO_UPDATE_STRATEGY } from '../types'
 
 let portalOpen = false
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiArrowDownSLine: () => <span data-testid="arrow-icon">arrow</span>,
-  RiCheckLine: () => <span data-testid="check-icon">check</span>,
-}))
-
 vi.mock('@/app/components/base/button', () => ({
   default: ({
     children,
@@ -90,7 +79,7 @@ describe('StrategyPicker', () => {
     fireEvent.click(screen.getByTestId('trigger'))
 
     expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-    expect(screen.getAllByTestId('check-icon')).toHaveLength(1)
+    expect(screen.getByTestId('portal-content').querySelectorAll('svg')).toHaveLength(1)
     expect(screen.getByText('plugin.autoUpdate.strategy.latest.description')).toBeInTheDocument()
   })
 

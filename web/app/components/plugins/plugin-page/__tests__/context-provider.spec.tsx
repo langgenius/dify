@@ -1,16 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { useQueryState } from 'nuqs'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { usePluginPageContext } from '../context'
 import { PluginPageContextProvider } from '../context-provider'
-
-vi.mock('nuqs', () => ({
-  parseAsStringEnum: vi.fn(() => ({
-    withDefault: vi.fn(() => ({})),
-  })),
-  useQueryState: vi.fn(() => ['plugins', vi.fn()]),
-}))
 
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: vi.fn(),
@@ -51,13 +44,12 @@ const Consumer = () => {
 describe('PluginPageContextProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useQueryState).mockReturnValue(['plugins', vi.fn()])
   })
 
   it('filters out the marketplace tab when the feature is disabled', () => {
     mockGlobalPublicStore(false)
 
-    render(
+    renderWithNuqs(
       <PluginPageContextProvider>
         <Consumer />
       </PluginPageContextProvider>,
@@ -68,12 +60,12 @@ describe('PluginPageContextProvider', () => {
 
   it('keeps the query-state tab and updates the current plugin id', () => {
     mockGlobalPublicStore(true)
-    vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
 
-    render(
+    renderWithNuqs(
       <PluginPageContextProvider>
         <Consumer />
       </PluginPageContextProvider>,
+      { searchParams: '?tab=discover' },
     )
 
     fireEvent.click(screen.getByText('select plugin'))

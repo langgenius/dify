@@ -16,12 +16,6 @@ const {
   },
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockWorkflowStore,
 }))
@@ -30,10 +24,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiCloseLine: () => <span data-testid="close-icon" />,
 }))
 
 describe('TestRun header', () => {
@@ -48,7 +38,7 @@ describe('TestRun header', () => {
   it('should render the title and reset preparing state on close', () => {
     render(<Header />)
 
-    fireEvent.click(screen.getByTestId('close-icon').parentElement!)
+    fireEvent.click(screen.getByRole('button'))
 
     expect(screen.getByText('datasetPipeline.testRun.title')).toBeInTheDocument()
     expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
@@ -62,7 +52,7 @@ describe('TestRun header', () => {
     })
 
     render(<Header />)
-    fireEvent.click(screen.getByTestId('close-icon').parentElement!)
+    fireEvent.click(screen.getByRole('button'))
 
     expect(mockSetIsPreparingDataSource).not.toHaveBeenCalled()
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)

@@ -9,12 +9,6 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-vi.mock('@remixicon/react', () => ({
-  RiArrowDownSLine: () => <span data-testid="arrow-icon">arrow</span>,
-  RiCloseCircleFill: ({ onClick }: { onClick?: () => void }) => <button data-testid="clear-icon" onClick={onClick}>clear</button>,
-  RiFilter3Line: () => <span data-testid="filter-icon">filter</span>,
-}))
-
 const tagsMap: Record<string, Tag> = {
   agent: { name: 'agent', label: 'Agent' },
   rag: { name: 'rag', label: 'RAG' },
@@ -23,7 +17,7 @@ const tagsMap: Record<string, Tag> = {
 
 describe('MarketplaceTrigger', () => {
   it('shows all-tags text when no tags are selected', () => {
-    render(
+    const { container } = render(
       <MarketplaceTrigger
         selectedTagsLength={0}
         open={false}
@@ -34,8 +28,8 @@ describe('MarketplaceTrigger', () => {
     )
 
     expect(screen.getByText('pluginTags.allTags')).toBeInTheDocument()
-    expect(screen.getByTestId('arrow-icon')).toBeInTheDocument()
-    expect(screen.queryByTestId('clear-icon')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('svg').length).toBeGreaterThan(0)
+    expect(container.querySelectorAll('svg').length).toBe(2)
   })
 
   it('shows selected tag labels and overflow count', () => {
@@ -56,7 +50,7 @@ describe('MarketplaceTrigger', () => {
   it('clears selected tags when clear icon is clicked', () => {
     const onTagsChange = vi.fn()
 
-    render(
+    const { container } = render(
       <MarketplaceTrigger
         selectedTagsLength={1}
         open={false}
@@ -66,7 +60,7 @@ describe('MarketplaceTrigger', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('clear-icon'))
+    fireEvent.click(container.querySelectorAll('svg')[1]!)
 
     expect(onTagsChange).toHaveBeenCalledWith([])
   })

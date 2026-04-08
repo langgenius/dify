@@ -1,21 +1,13 @@
 import type { GenRes } from '@/service/debug'
 import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import useGenData from '../use-gen-data'
 
-vi.mock('ahooks', async (importOriginal) => {
-  const React = await import('react')
-  const actual = await importOriginal<typeof import('ahooks')>()
-
-  return {
-    ...actual,
-    useSessionStorageState: <T>(_key: string, options: { defaultValue: T }) => {
-      const [value, setValue] = React.useState(options.defaultValue)
-      return [value, setValue] as const
-    },
-  }
-})
-
 describe('useGenData', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
   it('should start with an empty version list', () => {
     const { result } = renderHook(() => useGenData({ storageKey: 'prompt' }))
 

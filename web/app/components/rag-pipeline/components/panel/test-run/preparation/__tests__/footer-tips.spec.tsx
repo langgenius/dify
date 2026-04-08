@@ -1,12 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import FooterTips from '../footer-tips'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 describe('FooterTips', () => {
   beforeEach(() => {
     vi.clearAllMocks()

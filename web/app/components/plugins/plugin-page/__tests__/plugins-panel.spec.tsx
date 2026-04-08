@@ -1,6 +1,6 @@
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PluginsPanel from '../plugins-panel'
 
 const mockState = vi.hoisted(() => ({
@@ -18,18 +18,6 @@ const mockLoadNextPage = vi.fn()
 const mockInvalidateInstalledPluginList = vi.fn()
 const mockUseInstalledPluginList = vi.fn()
 const mockPluginListWithLatestVersion = vi.fn<() => PluginDetail[]>(() => [])
-
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (filters: typeof mockState.filters) => void) => ({
-    run: fn,
-  }),
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
@@ -129,6 +117,7 @@ const createPlugin = (pluginId: string, label: string, tags: string[] = []): Plu
 describe('PluginsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
     mockState.filters = { categories: [], tags: [], searchQuery: '' }
     mockState.currentPluginID = undefined
     mockUseInstalledPluginList.mockReturnValue({
@@ -139,6 +128,10 @@ describe('PluginsPanel', () => {
       loadNextPage: mockLoadNextPage,
     })
     mockPluginListWithLatestVersion.mockReturnValue([])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('renders the loading state while the plugin list is pending', () => {
@@ -176,6 +169,7 @@ describe('PluginsPanel', () => {
 
     fireEvent.click(screen.getByText('workflow.common.loadMore'))
     fireEvent.click(screen.getByTestId('filter-management'))
+    vi.runAllTimers()
 
     expect(mockLoadNextPage).toHaveBeenCalled()
     expect(mockSetFilters).toHaveBeenCalledWith({

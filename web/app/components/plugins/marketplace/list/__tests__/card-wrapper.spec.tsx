@@ -1,5 +1,7 @@
 import type { Plugin } from '@/app/components/plugins/types'
+import type { ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import CardWrapper from '../card-wrapper'
@@ -10,29 +12,6 @@ vi.mock('#i18n', () => ({
   }),
   useLocale: () => 'en-US',
 }))
-
-vi.mock('next-themes', () => ({
-  useTheme: () => ({
-    theme: 'dark',
-  }),
-}))
-
-vi.mock('ahooks', async () => {
-  const React = await import('react')
-  return {
-    useBoolean: (initialValue: boolean) => {
-      const [value, setValue] = React.useState(initialValue)
-      return [
-        value,
-        {
-          setTrue: () => setValue(true),
-          setFalse: () => setValue(false),
-          toggle: () => setValue(current => !current),
-        },
-      ] as const
-    },
-  }
-})
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
@@ -64,12 +43,6 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
     <div data-testid="install-modal">
       <button data-testid="close-install-modal" onClick={onClose}>close</button>
     </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <button onClick={onClick}>{children}</button>
   ),
 }))
 
@@ -107,25 +80,31 @@ describe('CardWrapper', () => {
     vi.clearAllMocks()
   })
 
+  const renderCardWrapper = (props: Partial<ComponentProps<typeof CardWrapper>> = {}) => render(
+    <ThemeProvider forcedTheme="dark">
+      <CardWrapper plugin={plugin} {...props} />
+    </ThemeProvider>,
+  )
+
   it('renders plugin detail link when install button is hidden', () => {
-    render(<CardWrapper plugin={plugin} />)
+    renderCardWrapper()
 
     expect(screen.getByRole('link')).toHaveAttribute('href', '/detail/dify/plugin-a')
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
   })
 
   it('renders install and marketplace detail actions when install button is shown', () => {
-    render(<CardWrapper plugin={plugin} showInstallButton />)
+    renderCardWrapper({ showInstallButton: true })
 
     expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' })).toHaveAttribute(
       'href',
-      '/marketplace/dify/plugin-a?language=en-US&theme=dark',
+      '/marketplace/dify/plugin-a?language=en-US&theme=system',
     )
   })
 
   it('opens and closes install modal from install action', () => {
-    render(<CardWrapper plugin={plugin} showInstallButton />)
+    renderCardWrapper({ showInstallButton: true })
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }))
     expect(screen.getByTestId('install-modal')).toBeInTheDocument()

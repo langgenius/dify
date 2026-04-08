@@ -8,12 +8,6 @@ import ParamConfig from '../param-config'
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),

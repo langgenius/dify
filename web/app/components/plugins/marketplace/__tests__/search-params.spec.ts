@@ -1,61 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const {
-  mockCategoryParser,
-  mockStringParser,
-  mockArrayParser,
-  mockParseAsStringEnum,
-  mockParseAsArrayOf,
-} = vi.hoisted(() => {
-  const mockCategoryParser = {
-    withDefault: vi.fn(() => ({
-      withOptions: vi.fn(() => 'category-parser'),
-    })),
-  }
-  const mockStringParser = {
-    withDefault: vi.fn(() => ({
-      withOptions: vi.fn(() => 'string-parser'),
-    })),
-  }
-  const mockArrayParser = {
-    withDefault: vi.fn(() => ({
-      withOptions: vi.fn(() => 'array-parser'),
-    })),
-  }
-  return {
-    mockCategoryParser,
-    mockStringParser,
-    mockArrayParser,
-    mockParseAsStringEnum: vi.fn(() => mockCategoryParser),
-    mockParseAsArrayOf: vi.fn(() => mockArrayParser),
-  }
-})
-
-vi.mock('nuqs/server', () => ({
-  parseAsStringEnum: mockParseAsStringEnum,
-  parseAsString: mockStringParser,
-  parseAsArrayOf: mockParseAsArrayOf,
-}))
+import { describe, expect, it } from 'vitest'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
+import { marketplaceSearchParamsParsers } from '../search-params'
 
 describe('marketplace search params', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.resetModules()
+  it('applies the expected default values', () => {
+    expect(marketplaceSearchParamsParsers.category.parseServerSide(undefined)).toBe(PLUGIN_TYPE_SEARCH_MAP.all)
+    expect(marketplaceSearchParamsParsers.q.parseServerSide(undefined)).toBe('')
+    expect(marketplaceSearchParamsParsers.tags.parseServerSide(undefined)).toEqual([])
   })
 
-  it('builds parser definitions with expected defaults and options', async () => {
-    const { marketplaceSearchParamsParsers } = await import('../search-params')
-    const { PLUGIN_TYPE_SEARCH_MAP } = await import('../constants')
-
-    expect(mockParseAsStringEnum).toHaveBeenCalledWith(Object.values(PLUGIN_TYPE_SEARCH_MAP))
-    expect(mockCategoryParser.withDefault).toHaveBeenCalledWith('all')
-    expect(mockStringParser.withDefault).toHaveBeenCalledWith('')
-    expect(mockParseAsArrayOf).toHaveBeenCalledWith(mockStringParser)
-    expect(mockArrayParser.withDefault).toHaveBeenCalledWith([])
-    expect(marketplaceSearchParamsParsers).toEqual({
-      category: 'category-parser',
-      q: 'string-parser',
-      tags: 'array-parser',
-    })
+  it('parses supported query values with the configured parsers', () => {
+    expect(marketplaceSearchParamsParsers.category.parseServerSide(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe(PLUGIN_TYPE_SEARCH_MAP.tool)
+    expect(marketplaceSearchParamsParsers.category.parseServerSide('unsupported')).toBe(PLUGIN_TYPE_SEARCH_MAP.all)
+    expect(marketplaceSearchParamsParsers.q.parseServerSide('keyword')).toBe('keyword')
+    expect(marketplaceSearchParamsParsers.tags.parseServerSide('rag,search')).toEqual(['rag', 'search'])
   })
 })

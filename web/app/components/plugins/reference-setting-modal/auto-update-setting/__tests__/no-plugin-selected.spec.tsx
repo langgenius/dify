@@ -3,12 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import NoPluginSelected from '../no-plugin-selected'
 import { AUTO_UPDATE_MODE } from '../types'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 describe('NoPluginSelected', () => {
   it('renders partial mode placeholder', () => {
     render(<NoPluginSelected updateMode={AUTO_UPDATE_MODE.partial} />)

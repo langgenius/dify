@@ -4,12 +4,6 @@ import ToolItem from '../tool-item'
 
 let mcpAllowed = true
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
   useMCPToolAvailability: () => ({
     allowed: mcpAllowed,

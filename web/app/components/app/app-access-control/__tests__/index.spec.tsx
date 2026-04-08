@@ -20,34 +20,6 @@ let mockWebappAuth = {
   allow_email_code_login: false,
 }
 
-vi.mock('@headlessui/react', () => {
-  const DialogComponent: any = ({ children, className, ...rest }: any) => (
-    <div role="dialog" className={className} {...rest}>{children}</div>
-  )
-  DialogComponent.Panel = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogTitle = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogDescription = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const TransitionChild = ({ children }: any) => (
-    <>{typeof children === 'function' ? children({}) : children}</>
-  )
-  const Transition = ({ show = true, children }: any) => (
-    show ? <>{typeof children === 'function' ? children({}) : children}</> : null
-  )
-  Transition.Child = TransitionChild
-  return {
-    Dialog: DialogComponent,
-    Transition,
-    DialogTitle,
-    Description: DialogDescription,
-  }
-})
-
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: (selector: (state: { systemFeatures: { webapp_auth: typeof mockWebappAuth } }) => unknown) => selector({
     systemFeatures: {

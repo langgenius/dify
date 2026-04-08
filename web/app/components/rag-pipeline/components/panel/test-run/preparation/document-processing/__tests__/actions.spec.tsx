@@ -5,12 +5,6 @@ import Actions from '../actions'
 
 let mockWorkflowRunningData: { result: { status: WorkflowRunningStatus } } | undefined
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { workflowRunningData: typeof mockWorkflowRunningData }) => unknown) => selector({
     workflowRunningData: mockWorkflowRunningData,

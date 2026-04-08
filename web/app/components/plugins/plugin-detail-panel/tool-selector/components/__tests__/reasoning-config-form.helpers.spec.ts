@@ -29,7 +29,10 @@ describe('reasoning-config-form helpers', () => {
     expect(resolveTargetVarType(FormTypeEnum.textInput)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.textNumber)).toBe(VarType.number)
     expect(resolveTargetVarType(FormTypeEnum.files)).toBe(VarType.arrayFile)
+    expect(resolveTargetVarType(FormTypeEnum.file)).toBe(VarType.file)
+    expect(resolveTargetVarType(FormTypeEnum.checkbox)).toBe(VarType.boolean)
     expect(resolveTargetVarType(FormTypeEnum.object)).toBe(VarType.object)
+    expect(resolveTargetVarType(FormTypeEnum.array)).toBe(VarType.arrayObject)
   })
 
   it('creates variable filters for supported field types', () => {

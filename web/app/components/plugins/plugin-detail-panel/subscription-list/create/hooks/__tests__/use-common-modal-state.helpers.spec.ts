@@ -1,9 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react'
 import type { RefObject } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import {
   buildSubscriptionPayload,
   DEFAULT_FORM_VALUES,

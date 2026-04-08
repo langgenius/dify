@@ -4,12 +4,6 @@ import TagFilter from '../tag-filter'
 
 let portalOpen = false
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('../../../hooks', () => ({
   useTags: () => ({
     tags: [

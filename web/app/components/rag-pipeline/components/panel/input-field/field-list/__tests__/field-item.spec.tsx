@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import FieldItem from '../field-item'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: PipelineInputVarType.textInput,
   label: 'Field Label',

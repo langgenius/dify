@@ -5,7 +5,6 @@ import InstallPluginDropdown from '../install-plugin-dropdown'
 let portalOpen = false
 const {
   mockSystemFeatures,
-  mockT,
 } = vi.hoisted(() => ({
   mockSystemFeatures: {
     enable_marketplace: true,
@@ -13,13 +12,6 @@ const {
       restrict_to_marketplace_only: false,
     },
   },
-  mockT: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: mockT,
-  }),
 }))
 
 vi.mock('@/config', () => ({
@@ -29,15 +21,6 @@ vi.mock('@/config', () => ({
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: (selector: (state: { systemFeatures: typeof mockSystemFeatures }) => unknown) =>
     selector({ systemFeatures: mockSystemFeatures }),
-}))
-
-vi.mock('es-toolkit/function', () => ({
-  noop: vi.fn(),
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiAddLine: () => <span data-testid="add-icon">add</span>,
-  RiArrowDownSLine: () => <span data-testid="down-icon">down</span>,
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/solid/files', () => ({

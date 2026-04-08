@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import PromptToast from '../prompt-toast'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 describe('PromptToast', () => {
   it('should render the note title and markdown message', () => {
     render(<PromptToast message="Prompt body" />)

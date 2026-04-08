@@ -3,18 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ToolSelectorTrigger from '../tool-selector'
 
-vi.mock('@remixicon/react', () => ({
-  RiCloseCircleFill: ({ onClick }: { onClick?: (event: { stopPropagation: () => void }) => void }) => (
-    <button
-      data-testid="clear-icon"
-      onClick={() => onClick?.({ stopPropagation: vi.fn() })}
-    >
-      clear
-    </button>
-  ),
-  RiPriceTag3Line: () => <span data-testid="tag-icon">tag</span>,
-}))
-
 const tagsMap: Record<string, Tag> = {
   agent: { name: 'agent', label: 'Agent' },
   rag: { name: 'rag', label: 'RAG' },
@@ -23,7 +11,7 @@ const tagsMap: Record<string, Tag> = {
 
 describe('ToolSelectorTrigger', () => {
   it('renders only icon when no tags are selected', () => {
-    render(
+    const { container } = render(
       <ToolSelectorTrigger
         selectedTagsLength={0}
         open={false}
@@ -33,13 +21,12 @@ describe('ToolSelectorTrigger', () => {
       />,
     )
 
-    expect(screen.getByTestId('tag-icon')).toBeInTheDocument()
-    expect(screen.queryByTestId('clear-icon')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('svg')).toHaveLength(1)
     expect(screen.queryByText('Agent')).not.toBeInTheDocument()
   })
 
   it('renders selected tag labels and overflow count', () => {
-    render(
+    const { container } = render(
       <ToolSelectorTrigger
         selectedTagsLength={3}
         open
@@ -51,13 +38,13 @@ describe('ToolSelectorTrigger', () => {
 
     expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
     expect(screen.getByText('+1')).toBeInTheDocument()
-    expect(screen.getByTestId('clear-icon')).toBeInTheDocument()
+    expect(container.querySelectorAll('svg')).toHaveLength(2)
   })
 
   it('clears selected tags when clear icon is clicked', () => {
     const onTagsChange = vi.fn()
 
-    render(
+    const { container } = render(
       <ToolSelectorTrigger
         selectedTagsLength={1}
         open={false}
@@ -67,7 +54,7 @@ describe('ToolSelectorTrigger', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('clear-icon'))
+    fireEvent.click(container.querySelectorAll('svg')[1]!)
 
     expect(onTagsChange).toHaveBeenCalledWith([])
   })

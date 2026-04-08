@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PluginVersionPicker from '../plugin-version-picker'
 
-let popoverOpen = false
 type VersionItem = {
   version: string
   unique_identifier: string
@@ -13,16 +12,6 @@ const mockVersionList = vi.hoisted(() => ({
   data: {
     versions: [] as VersionItem[],
   },
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      if (key === 'dateTimeFormat' && options?.ns === 'appLog')
-        return 'YYYY-MM-DD HH:mm'
-      return options?.ns ? `${options.ns}.${key}` : key
-    },
-  }),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -37,40 +26,9 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/badge', () => ({
-  default: ({ text, children }: { text?: string, children?: React.ReactNode }) => <span data-testid="badge">{text || children}</span>,
-}))
-
-vi.mock('@/app/components/base/ui/popover', async () => {
-  const React = await import('react')
-  return {
-    Popover: ({
-      open,
-      children,
-    }: {
-      open: boolean
-      children: React.ReactNode
-    }) => {
-      popoverOpen = open
-      return <div>{children}</div>
-    },
-    PopoverTrigger: ({
-      children,
-    }: {
-      children: React.ReactNode
-    }) => <div data-testid="popover-trigger">{children}</div>,
-    PopoverContent: ({
-      children,
-    }: {
-      children: React.ReactNode
-    }) => popoverOpen ? <div data-testid="popover-content">{children}</div> : null,
-  }
-})
-
 describe('PluginVersionPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    popoverOpen = false
     mockVersionList.data.versions = [
       {
         version: '2.0.0',
@@ -99,8 +57,8 @@ describe('PluginVersionPicker', () => {
 
     expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
     expect(screen.getByText('2.0.0')).toBeInTheDocument()
-    expect(screen.getByText('2024-01-02:YYYY-MM-DD')).toBeInTheDocument()
-    expect(screen.getByTestId('badge')).toHaveTextContent('CURRENT')
+    expect(screen.getByText('2024-01-02:appLog.dateTimeFormat')).toBeInTheDocument()
+    expect(screen.getByText('CURRENT')).toBeInTheDocument()
   })
 
   it('calls onSelect with downgrade metadata and closes the picker', () => {

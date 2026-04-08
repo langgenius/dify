@@ -18,14 +18,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  return {
-    ...actual,
-    useDebounce: (value: unknown) => value,
-  }
-})
-
 vi.mock('@/service/access-control', () => ({
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))

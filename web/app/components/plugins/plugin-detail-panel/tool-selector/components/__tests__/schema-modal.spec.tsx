@@ -2,16 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SchemaModal from '../schema-modal'
 
-vi.mock('@remixicon/react', () => ({
-  RiCloseLine: () => <span data-testid="close-icon" />,
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/base/modal', () => ({
   default: ({
     children,
@@ -63,7 +53,7 @@ describe('SchemaModal', () => {
     expect(screen.getByText('workflow.nodes.agent.parameterSchema')).toBeInTheDocument()
     expect(screen.getByTestId('visual-editor')).toHaveTextContent('response')
 
-    const closeButton = screen.getByTestId('close-icon').parentElement
+    const closeButton = document.body.querySelector('div.absolute.right-5.top-5')
     fireEvent.click(closeButton!)
 
     expect(onClose).toHaveBeenCalled()

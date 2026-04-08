@@ -4,31 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Installed from '../installed'
 
 const mockCard = vi.fn()
-const mockButton = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
 
 vi.mock('@/config', () => ({
   API_PREFIX: 'https://api.example.com',
   MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
-}))
-
-vi.mock('@/app/components/base/badge/index', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="badge">{children}</div>,
-  BadgeState: {
-    Default: 'default',
-  },
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: (props: { children: React.ReactNode, onClick: () => void }) => {
-    mockButton(props)
-    return <button data-testid="close-button" onClick={props.onClick}>{props.children}</button>
-  },
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
@@ -85,8 +64,9 @@ describe('Installed', () => {
     )
 
     expect(screen.getAllByTestId('card')).toHaveLength(2)
-    expect(screen.getByTestId('close-button')).toBeInTheDocument()
-    expect(screen.getAllByTestId('badge')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
+    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+    expect(screen.getByText('2.0.0')).toBeInTheDocument()
     expect(mockCard).toHaveBeenNthCalledWith(1, expect.objectContaining({
       installed: true,
       installFailed: false,
@@ -114,7 +94,7 @@ describe('Installed', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('close-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -129,6 +109,6 @@ describe('Installed', () => {
       />,
     )
 
-    expect(screen.queryByTestId('close-button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.close' })).not.toBeInTheDocument()
   })
 })

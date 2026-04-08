@@ -1,12 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import GlobalInputs from '../global-inputs'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/base/tooltip', () => ({
   default: ({
     popupContent,

@@ -13,12 +13,6 @@ const mockInstalledPluginList = vi.hoisted(() => ({
   isLoading: false,
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockInstalledPluginList,
 }))

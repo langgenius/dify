@@ -3,25 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import PluginsPicker from '../plugins-picker'
 import { AUTO_UPDATE_MODE } from '../types'
 
-const mockSetToolPicker = vi.fn()
 const mockToolPicker = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, num?: number }) =>
-      options?.num !== undefined && options?.ns
-        ? `${options.ns}.${key}:${options.num}`
-        : options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
-vi.mock('ahooks', () => ({
-  useBoolean: () => [false, { set: mockSetToolPicker }],
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiAddLine: () => <span data-testid="add-icon">add</span>,
-}))
 
 vi.mock('@/app/components/base/button', () => ({
   default: ({
@@ -61,7 +43,7 @@ describe('PluginsPicker', () => {
     expect(mockToolPicker).toHaveBeenCalledWith(expect.objectContaining({
       value: [],
       isShow: false,
-      onShowChange: mockSetToolPicker,
+      onShowChange: expect.any(Function),
     }))
   })
 
@@ -75,7 +57,7 @@ describe('PluginsPicker', () => {
       />,
     )
 
-    expect(screen.getByText('plugin.autoUpdate.excludeUpdate:2')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":2}')).toBeInTheDocument()
     expect(screen.getByTestId('plugins-selected')).toHaveTextContent('dify/plugin-1,dify/plugin-2')
 
     fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))

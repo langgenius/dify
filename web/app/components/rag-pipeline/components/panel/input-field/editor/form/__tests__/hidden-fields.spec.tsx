@@ -1,35 +1,14 @@
-import type { ComponentType } from 'react'
-import { useStore } from '@tanstack/react-form'
 import { render, screen } from '@testing-library/react'
+import { useAppForm } from '@/app/components/base/form'
 import HiddenFields from '../hidden-fields'
 import { useHiddenConfigurations } from '../hooks'
 
-type MockForm = {
-  store: object
-}
-
-const {
-  mockForm,
-  mockInputField,
-} = vi.hoisted(() => ({
-  mockForm: {
-    store: {},
-  } as MockForm,
+const { mockInputField } = vi.hoisted(() => ({
   mockInputField: vi.fn(({ config }: { config: { variable: string } }) => {
     return function FieldComponent() {
       return <div data-testid="input-field">{config.variable}</div>
     }
   }),
-}))
-
-vi.mock('@tanstack/react-form', () => ({
-  useStore: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/form', () => ({
-  withForm: ({ render }: {
-    render: (props: { form: MockForm }) => React.ReactNode
-  }) => ({ form }: { form?: MockForm }) => render({ form: form ?? mockForm }),
 }))
 
 vi.mock('@/app/components/base/form/form-scenarios/input-field/field', () => ({
@@ -43,11 +22,6 @@ vi.mock('../hooks', () => ({
 describe('HiddenFields', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useStore).mockImplementation((_, selector) => selector({
-      values: {
-        options: ['option-a', 'option-b'],
-      },
-    }))
   })
 
   it('should build fields from the hidden configuration list', () => {
@@ -56,8 +30,19 @@ describe('HiddenFields', () => {
       { variable: 'tooltips' },
     ] as ReturnType<typeof useHiddenConfigurations>)
 
-    const HiddenFieldsComp = HiddenFields({ initialData: { variable: 'field_1' } }) as unknown as ComponentType
-    render(<HiddenFieldsComp />)
+    const HiddenFieldsHarness = () => {
+      const initialData = {
+        variable: 'field_1',
+        options: ['option-a', 'option-b'],
+      }
+      const form = useAppForm({
+        defaultValues: initialData,
+        onSubmit: () => {},
+      })
+      const HiddenFieldsComp = HiddenFields({ initialData })
+      return <HiddenFieldsComp form={form} />
+    }
+    render(<HiddenFieldsHarness />)
 
     expect(useHiddenConfigurations).toHaveBeenCalledWith({
       options: ['option-a', 'option-b'],
@@ -71,8 +56,16 @@ describe('HiddenFields', () => {
   it('should render nothing when there are no hidden configurations', () => {
     vi.mocked(useHiddenConfigurations).mockReturnValue([])
 
-    const HiddenFieldsComp = HiddenFields({}) as unknown as ComponentType
-    const { container } = render(<HiddenFieldsComp />)
+    const HiddenFieldsHarness = () => {
+      const initialData = { options: [] }
+      const form = useAppForm({
+        defaultValues: initialData,
+        onSubmit: () => {},
+      })
+      const HiddenFieldsComp = HiddenFields({ initialData })
+      return <HiddenFieldsComp form={form} />
+    }
+    const { container } = render(<HiddenFieldsHarness />)
 
     expect(container).toBeEmptyDOMElement()
   })

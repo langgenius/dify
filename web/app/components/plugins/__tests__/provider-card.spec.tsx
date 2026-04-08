@@ -1,36 +1,9 @@
 import type { Plugin } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProviderCard from '../provider-card'
 import { PluginCategoryEnum } from '../types'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
-vi.mock('next-themes', () => ({
-  useTheme: () => ({
-    theme: 'light',
-  }),
-}))
-
-vi.mock('ahooks', async () => {
-  const React = await import('react')
-  return {
-    useBoolean: (initialValue: boolean) => {
-      const [value, setValue] = React.useState(initialValue)
-      return [
-        value,
-        {
-          setTrue: () => setValue(true),
-          setFalse: () => setValue(false),
-        },
-      ] as const
-    },
-  }
-})
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
@@ -38,16 +11,6 @@ vi.mock('@/context/i18n', () => ({
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: Record<string, string>) => value['en-US'] || value.en_US,
-}))
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => <button onClick={onClick}>{children}</button>,
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
@@ -61,10 +24,6 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 vi.mock('@/app/components/plugins/marketplace/utils', () => ({
   getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) =>
     `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
-}))
-
-vi.mock('@/app/components/base/badge', () => ({
-  default: ({ text }: { text: string }) => <span data-testid="tag-badge">{text}</span>,
 }))
 
 vi.mock('../card/base/card-icon', () => ({
@@ -112,22 +71,29 @@ describe('ProviderCard', () => {
     vi.clearAllMocks()
   })
 
+  const renderProviderCard = () => render(
+    <ThemeProvider forcedTheme="light">
+      <ProviderCard payload={payload} />
+    </ThemeProvider>,
+  )
+
   it('renders provider information, tags, and detail link', () => {
-    render(<ProviderCard payload={payload} />)
+    renderProviderCard()
 
     expect(screen.getByTestId('title')).toHaveTextContent('Provider One')
     expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByTestId('download-count')).toHaveTextContent('123')
     expect(screen.getByTestId('description')).toHaveTextContent('Provider description')
-    expect(screen.getAllByTestId('tag-badge')).toHaveLength(2)
+    expect(screen.getByText('search')).toBeInTheDocument()
+    expect(screen.getByText('rag')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /plugin.detailPanel.operation.detail/i })).toHaveAttribute(
       'href',
-      '/marketplace/dify/provider-one?language=en-US&theme=light',
+      '/marketplace/dify/provider-one?language=en-US&theme=system',
     )
   })
 
   it('opens and closes the install modal', () => {
-    render(<ProviderCard payload={payload} />)
+    renderProviderCard()
 
     fireEvent.click(screen.getByRole('button', { name: /plugin.detailPanel.operation.install/i }))
     expect(screen.getByTestId('install-modal')).toBeInTheDocument()

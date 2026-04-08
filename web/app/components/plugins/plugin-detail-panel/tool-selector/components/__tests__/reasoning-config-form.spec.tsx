@@ -118,11 +118,6 @@ vi.mock('../schema-modal', () => ({
   ),
 }))
 
-vi.mock('@remixicon/react', () => ({
-  RiArrowRightUpLine: () => <span>arrow</span>,
-  RiBracesLine: () => <span data-testid="schema-trigger">schema</span>,
-}))
-
 const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema => ({
   variable: 'field',
   type: FormTypeEnum.textInput,
@@ -218,7 +213,7 @@ describe('ReasoningConfigForm', () => {
   it('should open schema modal for object fields and support app selection', () => {
     const onChange = vi.fn()
 
-    render(
+    const { container } = render(
       <ReasoningConfigForm
         value={{
           app: {
@@ -250,7 +245,7 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('schema-trigger'))
+    fireEvent.click(container.querySelector('div.ml-0\\.5.cursor-pointer')!)
     expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
     fireEvent.click(screen.getByTestId('close-schema'))
 
@@ -265,5 +260,81 @@ describe('ReasoningConfigForm', () => {
         },
       },
     }))
+  })
+
+  it('should merge model selector values into the current field value', () => {
+    const onChange = vi.fn()
+
+    render(
+      <ReasoningConfigForm
+        value={{
+          model: {
+            auto: 0,
+            value: { provider: 'openai' },
+          },
+        }}
+        onChange={onChange}
+        schemas={[
+          createSchema({
+            variable: 'model',
+            type: FormTypeEnum.modelSelector,
+            label: { en_US: 'Model', zh_Hans: '模型' },
+          }),
+        ]}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('model-selector'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      model: {
+        auto: 0,
+        value: {
+          provider: 'openai',
+          model: 'gpt-4.1',
+        },
+      },
+    })
+  })
+
+  it('should update file fields from the variable selector', () => {
+    const onChange = vi.fn()
+
+    render(
+      <ReasoningConfigForm
+        value={{
+          files: {
+            auto: 0,
+            value: { type: VarKindType.variable, value: [] },
+          },
+        }}
+        onChange={onChange}
+        schemas={[
+          createSchema({
+            variable: 'files',
+            type: FormTypeEnum.files,
+            label: { en_US: 'Files', zh_Hans: '文件' },
+          }),
+        ]}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('var-picker'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      files: {
+        auto: 0,
+        value: {
+          type: VarKindType.variable,
+          value: ['node', 'field'],
+        },
+      },
+    })
   })
 })
