@@ -87,6 +87,37 @@ class AgentV2Node(Node[AgentV2NodeData]):
     def version(cls) -> str:
         return "1"
 
+    @classmethod
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
+        return {
+            "type": AGENT_V2_NODE_TYPE,
+            "config": {
+                "prompt_templates": {
+                    "chat_model": {
+                        "prompts": [
+                            {
+                                "role": "system",
+                                "text": "You are a helpful AI assistant.",
+                                "edition_type": "basic",
+                            }
+                        ]
+                    },
+                    "completion_model": {
+                        "conversation_histories_role": {
+                            "user_prefix": "Human",
+                            "assistant_prefix": "Assistant",
+                        },
+                        "prompt": {
+                            "text": "{{#sys.query#}}",
+                            "edition_type": "basic",
+                        },
+                    },
+                },
+                "agent_strategy": "auto",
+                "max_iterations": 10,
+            },
+        }
+
     def _run(self) -> Generator[NodeEventBase, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
 

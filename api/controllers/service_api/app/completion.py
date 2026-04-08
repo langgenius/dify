@@ -194,7 +194,7 @@ class ChatApi(Resource):
         Supports conversation management and both blocking and streaming response modes.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
@@ -258,7 +258,7 @@ class ChatStopApi(Resource):
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running chat message generation."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         AppTaskService.stop_task(

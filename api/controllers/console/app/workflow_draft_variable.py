@@ -208,7 +208,7 @@ def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT])
     @wraps(f)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         return f(*args, **kwargs)
