@@ -111,10 +111,14 @@ vi.mock('../use-workflow-history', () => ({
 
 vi.mock('../../utils', async importOriginal => ({
   ...(await importOriginal<typeof import('../../utils')>()),
-  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
-  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
   initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
   initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
+}))
+
+vi.mock('../../utils/elk-layout', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../utils/elk-layout')>()),
+  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
+  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
 }))
 
 describe('use-workflow-interactions exports', () => {
