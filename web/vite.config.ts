@@ -51,8 +51,12 @@ export default defineConfig(({ mode }) => {
             }),
             tailwindcss(),
             react(),
-            vinext({ react: false, precompress: true }),
+            vinext({ react: false }),
             customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: rootClientInjectTarget,
+            //   projectRoot,
+            // }),
           ],
     resolve: {
       tsconfigPaths: true,
@@ -61,10 +65,6 @@ export default defineConfig(({ mode }) => {
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
-          build: {
-            target: 'es2022',
-            cssMinify: 'lightningcss' as const,
-          },
           optimizeDeps: {
             exclude: ['@tanstack/react-query'],
           },
