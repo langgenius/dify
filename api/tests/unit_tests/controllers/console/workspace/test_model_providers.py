@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from pydantic_core import ValidationError
 from werkzeug.exceptions import Forbidden
@@ -44,6 +45,26 @@ class TestModelProviderListApi:
             result = method(api)
 
         assert "data" in result
+
+    def test_get_accepts_legacy_embedding_alias(self, app):
+        api = ModelProviderListApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?model_type=embeddings"),
+            patch(
+                "controllers.console.workspace.model_providers.current_account_with_tenant",
+                return_value=(MagicMock(), "tenant1"),
+            ),
+            patch(
+                "controllers.console.workspace.model_providers.ModelProviderService.get_provider_list",
+                return_value=[{"name": "openai"}],
+            ) as get_provider_list,
+        ):
+            result = method(api)
+
+        assert "data" in result
+        get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=ModelType.TEXT_EMBEDDING)
 
 
 class TestModelProviderCredentialApi:

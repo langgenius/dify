@@ -142,3 +142,25 @@ def test_validate_credentials_with_config_id(app: Flask, load_balancing_module, 
         credentials={"api_key": "sk-***"},
         config_id="cfg-1",
     )
+
+
+def test_validate_credentials_accepts_legacy_embedding_alias(
+    app: Flask, load_balancing_module, monkeypatch: pytest.MonkeyPatch
+):
+    service = _prepare_context(load_balancing_module, monkeypatch)
+
+    with app.test_request_context(
+        "/workspaces/current/model-providers/openai/models/load-balancing-configs/credentials-validate",
+        method="POST",
+        json={"model": "text-embedding-3-large", "model_type": "embeddings", "credentials": {"api_key": "sk-***"}},
+    ):
+        response = load_balancing_module.LoadBalancingCredentialsValidateApi().post(provider="openai")
+
+    assert response == {"result": "success"}
+    service.validate_load_balancing_credentials.assert_called_once_with(
+        tenant_id="tenant-123",
+        provider="openai",
+        model="text-embedding-3-large",
+        model_type=ModelType.TEXT_EMBEDDING,
+        credentials={"api_key": "sk-***"},
+    )
