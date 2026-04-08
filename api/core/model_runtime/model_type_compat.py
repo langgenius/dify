@@ -22,7 +22,7 @@ _MODEL_TYPE_ALIASES: dict[str, ModelType] = {
     "speech2text": ModelType.SPEECH2TEXT,
     "tts": ModelType.TTS,
 }
-_PATCH_INSTALLED = False
+_patch_installed = False
 
 
 def _model_type_missing(cls: type[ModelType], value: object) -> ModelType | None:
@@ -39,16 +39,16 @@ def _model_type_missing(cls: type[ModelType], value: object) -> ModelType | None
 def patch_model_type_missing() -> None:
     """Install the compatibility patch only when Graphon still needs it."""
 
-    global _PATCH_INSTALLED
+    global _patch_installed
 
     try:
         ModelType("embeddings")
     except ValueError:
-        if _PATCH_INSTALLED:
+        if _patch_installed:
             return
 
         ModelType._missing_ = classmethod(_model_type_missing)  # type: ignore[method-assign,assignment]
-        _PATCH_INSTALLED = True
+        _patch_installed = True
 
 
 patch_model_type_missing()
