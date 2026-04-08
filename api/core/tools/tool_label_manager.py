@@ -1,4 +1,5 @@
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -19,10 +20,17 @@ class ToolLabelManager:
         return list(set(tool_labels))
 
     @classmethod
-    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str]):
+    def update_tool_labels(
+        cls, controller: ToolProviderController, labels: list[str]
+    ) -> None:
         """
         Update tool labels
+
+        :param controller: tool provider controller
+        :param labels: list of tool labels
+        :return: None
         """
+
         labels = cls.filter_tool_labels(labels)
 
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
@@ -30,26 +38,33 @@ class ToolLabelManager:
         else:
             raise ValueError("Unsupported tool type")
 
-        # delete old labels
-        db.session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
-
-        # insert new labels
-        for label in labels:
-            db.session.add(
-                ToolLabelBinding(
-                    tool_id=provider_id,
-                    tool_type=controller.provider_type,
-                    label_name=label,
-                )
+        # keep the atomicity of delete and insert operations
+        with sessionmaker(db.engine).begin() as _session:
+            # delete old labels
+            _session.execute(
+                delete(ToolLabelBinding)
+                .where(ToolLabelBinding.tool_id == provider_id)
             )
 
-        db.session.commit()
+            # insert new labels
+            for label in labels:
+                _session.add(
+                    ToolLabelBinding(
+                        tool_id=provider_id,
+                        tool_type=controller.provider_type,
+                        label_name=label
+                    )
+                )
 
     @classmethod
     def get_tool_labels(cls, controller: ToolProviderController) -> list[str]:
         """
         Get tool labels
+
+        :param controller: tool provider controller
+        :return: list of tool labels (str)
         """
+
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
             provider_id = controller.provider_id
         elif isinstance(controller, BuiltinToolProviderController):
@@ -60,7 +75,10 @@ class ToolLabelManager:
             ToolLabelBinding.tool_id == provider_id,
             ToolLabelBinding.tool_type == controller.provider_type,
         )
-        labels = db.session.scalars(stmt).all()
+
+        labels: list[str] = []
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            labels = _session.scalars(stmt).all()
 
         return list(labels)
 
@@ -87,7 +105,14 @@ class ToolLabelManager:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
             provider_ids.append(controller.provider_id)
 
-        labels = db.session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all()
+        labels: list[ToolLabelBinding] = []
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            labels = _session.scalars(
+                select(ToolLabelBinding).
+                where(
+                    ToolLabelBinding.tool_id.in_(provider_ids)
+                )
+            ).all()
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 
