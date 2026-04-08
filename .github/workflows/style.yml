@@ -77,9 +77,11 @@ jobs:
         with:
           files: |
             web/**
+            packages/**
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
+            .npmrc
             .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
