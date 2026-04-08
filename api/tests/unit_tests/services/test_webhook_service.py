@@ -606,6 +606,17 @@ class _FakeQuery:
         return self._result
 
 
+class _SessionContext:
+    def __init__(self, session: Any) -> None:
+        self._session = session
+
+    def __enter__(self) -> Any:
+        return self._session
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+
 class _SessionmakerContext:
     def __init__(self, session: Any) -> None:
         self._session = session
@@ -627,6 +638,7 @@ def flask_app() -> Flask:
 
 def _patch_session(monkeypatch: pytest.MonkeyPatch, session: Any) -> None:
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=MagicMock(), session=MagicMock()))
+    monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext(session))
     monkeypatch.setattr(service_module, "sessionmaker", lambda *args, **kwargs: _SessionmakerContext(session))
 
 

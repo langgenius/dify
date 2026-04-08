@@ -438,9 +438,9 @@ class TestWebhookService:
                 mock_select.return_value.join.return_value.where.return_value = mock_query
 
                 # Mock the session to return our test account
-                with patch("services.trigger.webhook_service.sessionmaker", autospec=True) as mock_sessionmaker:
+                with patch("services.trigger.webhook_service.Session", autospec=True) as mock_session:
                     mock_session_instance = MagicMock()
-                    mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session_instance
+                    mock_session.return_value.__enter__.return_value = mock_session_instance
                     mock_session_instance.scalar.return_value = test_data["account"]
 
                     # Should not raise any exceptions

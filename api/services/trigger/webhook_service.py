@@ -12,7 +12,7 @@ from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -102,7 +102,7 @@ class WebhookService:
         Raises:
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine) as session:
             # Get webhook trigger
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
@@ -781,7 +781,7 @@ class WebhookService:
             Exception: If workflow execution fails
         """
         try:
-            with sessionmaker(bind=db.engine).begin() as session:
+            with Session(db.engine) as session:
                 # Prepare inputs for the webhook node
                 # The webhook node expects webhook_data in the inputs
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
