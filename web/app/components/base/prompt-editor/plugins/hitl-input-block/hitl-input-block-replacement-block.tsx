@@ -22,7 +22,7 @@ const HITLInputReplacementBlock = ({
   onFormInputsChange,
   onFormInputItemRename,
   onFormInputItemRemove,
-  workflowNodesMap,
+  workflowNodesMap = {},
   getVarType,
   variables,
   readonly,
