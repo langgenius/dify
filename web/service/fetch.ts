@@ -78,7 +78,7 @@ const resolveShareCode = () => {
   }
 }
 
-const beforeRequestPublicWithCode = (request: Request) => {
+const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   const accessToken = getWebAppAccessToken()
   if (accessToken)
     request.headers.set('Authorization', `Bearer ${accessToken}`)
