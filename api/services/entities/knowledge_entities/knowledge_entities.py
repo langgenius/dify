@@ -2,9 +2,12 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-from core.rag.entities import Rule
+from core.rag.entities import RerankingModelConfig, Rule
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
+# Backwards-compatible alias — canonical definition lives in core.rag.entities
+RerankingModel = RerankingModelConfig
 
 
 class NotionIcon(BaseModel):
@@ -51,11 +54,6 @@ class DataSource(BaseModel):
 class ProcessRule(BaseModel):
     mode: Literal["automatic", "custom", "hierarchical"]
     rules: Rule | None = None
-
-
-class RerankingModel(BaseModel):
-    reranking_provider_name: str | None = None
-    reranking_model_name: str | None = None
 
 
 class WeightVectorSetting(BaseModel):
