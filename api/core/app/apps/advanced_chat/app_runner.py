@@ -10,7 +10,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import Variable
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -363,7 +363,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         :return: List of conversation variables ready for use
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             existing_variables = self._load_existing_conversation_variables(session)
 
             if not existing_variables:
@@ -376,7 +376,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             # Convert to Variable objects for use in the workflow
             conversation_variables = [var.to_variable() for var in existing_variables]
 
-            session.commit()
             return cast(list[Variable], conversation_variables)
 
     def _load_existing_conversation_variables(self, session: Session) -> list[ConversationVariable]:
