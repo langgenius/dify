@@ -1,3 +1,4 @@
+import logging
 import threading
 from typing import Any
 
@@ -13,6 +14,8 @@ from extensions.ext_database import db
 from libs.login import current_user
 from models import Account
 from models.model import App, Conversation, EndUser, Message
+
+logger = logging.getLogger(__name__)
 
 
 class AgentService:
@@ -110,6 +113,7 @@ class AgentService:
                         provider_type=tool_config.get("tool_provider_type", ""),
                         provider_id=tool_config.get("tool_provider", ""),
                     )
+
                     if not tool_icon:
                         tool_entity = find_agent_tool(tool_name)
                         if tool_entity:
