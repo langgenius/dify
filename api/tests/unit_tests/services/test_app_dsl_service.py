@@ -79,7 +79,10 @@ def test_check_version_compatibility_minor_older_returns_completed_with_warnings
 
 
 def test_check_version_compatibility_equal_returns_completed():
-    assert check_version_compatibility(app_dsl_service.CURRENT_DSL_VERSION, app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
+    assert (
+        check_version_compatibility(app_dsl_service.CURRENT_DSL_VERSION, app_dsl_service.CURRENT_DSL_VERSION)
+        == ImportStatus.COMPLETED
+    )
 
 
 def test_import_app_invalid_import_mode_raises_value_error():
