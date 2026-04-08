@@ -11278,7 +11278,7 @@
   },
   "app/components/workflow/utils/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "app/components/workflow/utils/node-navigation.ts": {
