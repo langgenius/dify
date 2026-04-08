@@ -483,7 +483,7 @@ class AppDslService:
             )
 
         # Initialize app based on mode
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT}:
             workflow_data = data.get("workflow")
             if not workflow_data or not isinstance(workflow_data, dict):
                 raise ValueError("Missing workflow data for workflow/advanced chat app")
@@ -566,7 +566,7 @@ class AppDslService:
             },
         }
 
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT}:
             cls._append_workflow_export_data(
                 export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
             )

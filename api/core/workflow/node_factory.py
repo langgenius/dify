@@ -52,6 +52,9 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyResolver,
 )
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from core.workflow.nodes.agent_v2.entities import AGENT_V2_NODE_TYPE
+from core.workflow.nodes.agent_v2.event_adapter import AgentV2EventAdapter
+from core.workflow.nodes.agent_v2.tool_manager import AgentV2ToolManager
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.ext_database import db
@@ -393,6 +396,13 @@ class DifyNodeFactory(NodeFactory):
                 "presentation_provider": self._agent_strategy_presentation_provider,
                 "runtime_support": self._agent_runtime_support,
                 "message_transformer": self._agent_message_transformer,
+            },
+            AGENT_V2_NODE_TYPE: lambda: {
+                "tool_manager": AgentV2ToolManager(
+                    tenant_id=self._dify_context.tenant_id,
+                    app_id=self._dify_context.app_id,
+                ),
+                "event_adapter": AgentV2EventAdapter(),
             },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()

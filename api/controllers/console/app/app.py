@@ -51,7 +51,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.feature_service import FeatureService
 
-ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion", "agent"]
 
 register_enum_models(console_ns, IconType)
 
@@ -61,7 +61,7 @@ _logger = logging.getLogger(__name__)
 class AppListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = Field(
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = Field(
         default="all", description="App mode filter"
     )
     name: str | None = Field(default=None, description="Filter by app name")
@@ -93,7 +93,9 @@ class AppListQuery(BaseModel):
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
+    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion", "agent"] = Field(
+        ..., description="App mode"
+    )
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")

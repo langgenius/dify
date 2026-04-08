@@ -352,6 +352,7 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
+    AGENT = "agent"
     CHANNEL = "channel"
     RAG_PIPELINE = "rag-pipeline"
 

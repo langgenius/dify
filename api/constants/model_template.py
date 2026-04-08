@@ -81,4 +81,20 @@ default_app_templates: Mapping[AppMode, Mapping] = {
             },
         },
     },
+    # agent default mode (new agent backed by single-node workflow)
+    AppMode.AGENT: {
+        "app": {
+            "mode": AppMode.AGENT,
+            "enable_site": True,
+            "enable_api": True,
+        },
+        "model_config": {
+            "model": {
+                "provider": "openai",
+                "name": "gpt-4o",
+                "mode": "chat",
+                "completion_params": {},
+            },
+        },
+    },
 }
