@@ -115,9 +115,7 @@ def _delete_batch(
         with session.begin_nested():
             workflow_run_ids = [run.id for run in workflow_runs]
             message_data = session.execute(
-                select(Message.id, Message.conversation_id).where(
-                    Message.workflow_run_id.in_(workflow_run_ids)
-                )
+                select(Message.id, Message.conversation_id).where(Message.workflow_run_id.in_(workflow_run_ids))
             ).all()
             message_id_list = [msg.id for msg in message_data]
             conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
@@ -141,9 +139,7 @@ def _delete_batch(
 
             if conversation_id_list:
                 session.execute(
-                    delete(ConversationVariable).where(
-                        ConversationVariable.conversation_id.in_(conversation_id_list)
-                    )
+                    delete(ConversationVariable).where(ConversationVariable.conversation_id.in_(conversation_id_list))
                 )
 
                 session.execute(delete(Conversation).where(Conversation.id.in_(conversation_id_list)))
