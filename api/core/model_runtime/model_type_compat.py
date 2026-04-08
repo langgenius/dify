@@ -44,8 +44,8 @@ def patch_model_type_missing() -> None:
         if getattr(ModelType, "_dify_missing_patch_installed", False):
             return
 
-        setattr(ModelType, "_missing_", classmethod(_model_type_missing))
-        setattr(ModelType, "_dify_missing_patch_installed", True)
+        ModelType._missing_ = classmethod(_model_type_missing)
+        ModelType._dify_missing_patch_installed = True
 
 
 patch_model_type_missing()
