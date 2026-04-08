@@ -271,6 +271,17 @@ class PluginConfig(BaseSettings):
     )
 
 
+class CliApiConfig(BaseSettings):
+    """
+    Configuration for CLI API (for dify-cli to call back from external sandbox environments)
+    """
+
+    CLI_API_URL: str = Field(
+        description="CLI API URL for external sandbox (e.g., e2b) to call back.",
+        default="http://localhost:5001",
+    )
+
+
 class MarketplaceConfig(BaseSettings):
     """
     Configuration for marketplace
@@ -284,6 +295,27 @@ class MarketplaceConfig(BaseSettings):
     MARKETPLACE_API_URL: HttpUrl = Field(
         description="Marketplace API URL",
         default=HttpUrl("https://marketplace.dify.ai"),
+    )
+
+
+class CreatorsPlatformConfig(BaseSettings):
+    """
+    Configuration for creators platform
+    """
+
+    CREATORS_PLATFORM_FEATURES_ENABLED: bool = Field(
+        description="Enable or disable creators platform features",
+        default=True,
+    )
+
+    CREATORS_PLATFORM_API_URL: HttpUrl = Field(
+        description="Creators Platform API URL",
+        default=HttpUrl("https://creators.dify.ai"),
+    )
+
+    CREATORS_PLATFORM_OAUTH_CLIENT_ID: str = Field(
+        description="OAuth client_id for the Creators Platform app registered in Dify",
+        default="",
     )
 
 
@@ -338,6 +370,15 @@ class FileAccessConfig(BaseSettings):
         description="Internal base URL for file access within Docker network,"
         " used for plugin daemon and internal service communication."
         " Falls back to FILES_URL if not specified.",
+        default="",
+    )
+
+    FILES_API_URL: str = Field(
+        description="Base URL for storage file ticket API endpoints."
+        " Used by sandbox containers (internal or external like e2b) that need"
+        " an absolute, routable address to upload/download files via the API."
+        " For all-in-one Docker deployments, set to http://localhost."
+        " For public sandbox environments, set to a public domain or IP.",
         default="",
     )
 
@@ -1274,6 +1315,13 @@ class PositionConfig(BaseSettings):
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
 
+class CollaborationConfig(BaseSettings):
+    ENABLE_COLLABORATION_MODE: bool = Field(
+        description="Whether to enable collaboration mode features across the workspace",
+        default=False,
+    )
+
+
 class LoginConfig(BaseSettings):
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
@@ -1375,7 +1423,9 @@ class FeatureConfig(
     TriggerConfig,
     AsyncWorkflowConfig,
     PluginConfig,
+    CliApiConfig,
     MarketplaceConfig,
+    CreatorsPlatformConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,
@@ -1399,6 +1449,7 @@ class FeatureConfig(
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
+    CollaborationConfig,
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,
