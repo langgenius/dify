@@ -85,6 +85,7 @@ class BillingInfo(TypedDict):
 
 _billing_info_adapter = TypeAdapter(BillingInfo)
 
+
 class KnowledgeRateLimitDict(TypedDict):
     limit: int
     subscription_plan: str
