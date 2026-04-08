@@ -578,26 +578,33 @@ class TestDatasetServiceCreationAndUpdate:
         binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
         session = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = binding
+        session.add = MagicMock()
         session_context = _make_session_context(session)
+
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = session_context
 
         with (
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.Session", return_value=session_context),
+            patch("services.dataset_service.sessionmaker", mock_sessionmaker),
         ):
             DatasetService._update_external_knowledge_binding("dataset-1", "new-knowledge", "new-api")
 
         assert binding.external_knowledge_id == "new-knowledge"
         assert binding.external_knowledge_api_id == "new-api"
-        mock_db.session.add.assert_called_once_with(binding)
+        session.add.assert_called_once_with(binding)
 
     def test_update_external_knowledge_binding_raises_for_missing_binding(self):
         session = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = None
         session_context = _make_session_context(session)
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = session_context
+
         with (
             patch("services.dataset_service.db"),
-            patch("services.dataset_service.Session", return_value=session_context),
+            patch("services.dataset_service.sessionmaker", mock_sessionmaker),
         ):
             with pytest.raises(ValueError, match="External knowledge binding not found"):
                 DatasetService._update_external_knowledge_binding("dataset-1", "knowledge-1", "api-1")

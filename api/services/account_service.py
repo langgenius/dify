@@ -9,7 +9,7 @@ from typing import Any, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 
 class InvitationData(TypedDict):
@@ -1516,7 +1516,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:

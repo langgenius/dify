@@ -209,8 +209,22 @@ def _session_wrapper_for_no_autoflush(session: Mock) -> Mock:
     return wrapper
 
 
+def _sessionmaker_wrapper_for_begin(session: Mock) -> Mock:
+    """
+    ClearFreePlanTenantExpiredLogs.process uses: with sessionmaker(db.engine).begin() as session:
+    so sessionmaker(db.engine) must return an object with a begin() method that returns a context manager.
+    """
+    begin_cm = MagicMock()
+    begin_cm.__enter__.return_value = session
+    begin_cm.__exit__.return_value = None
+
+    sessionmaker_result = MagicMock()
+    sessionmaker_result.begin.return_value = begin_cm
+    return sessionmaker_result
+
+
 def _session_wrapper_for_direct(session: Mock) -> Mock:
-    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session:"""
+    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session: (for old code paths)"""
     wrapper = MagicMock()
     wrapper.__enter__.return_value = session
     wrapper.__exit__.return_value = None
@@ -348,7 +362,7 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: py
     count_query.count.return_value = 2
     count_session.query.return_value = count_query
 
-    monkeypatch.setattr(service_module, "Session", lambda _engine: _session_wrapper_for_direct(count_session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: _sessionmaker_wrapper_for_begin(count_session))
 
     # Avoid LocalProxy usage
     flask_app = service_module.Flask("test-app")
@@ -438,8 +452,8 @@ def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pyt
 
     batch_session.query.side_effect = [q1, q2, q3, q4, q_rs]
 
-    sessions = [_session_wrapper_for_direct(total_session), _session_wrapper_for_direct(batch_session)]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: sessions.pop(0))
+    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
@@ -457,7 +471,7 @@ def test_process_with_tenant_ids_emits_progress_every_100(monkeypatch: pytest.Mo
     count_query = MagicMock()
     count_query.count.return_value = 100
     count_session.query.return_value = count_query
-    monkeypatch.setattr(service_module, "Session", lambda _engine: _session_wrapper_for_direct(count_session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: _sessionmaker_wrapper_for_begin(count_session))
 
     flask_app = service_module.Flask("test-app")
     monkeypatch.setattr(service_module, "current_app", SimpleNamespace(_get_current_object=lambda: flask_app))
@@ -523,8 +537,8 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
 
     batch_session.query.side_effect = [*count_queries, q_rs]
 
-    sessions = [_session_wrapper_for_direct(total_session), _session_wrapper_for_direct(batch_session)]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: sessions.pop(0))
+    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)

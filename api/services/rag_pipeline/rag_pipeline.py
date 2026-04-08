@@ -1182,7 +1182,7 @@ class RagPipelineService:
         workflow = db.session.get(Workflow, pipeline.workflow_id)
         if not workflow:
             raise ValueError("Workflow not found")
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             dataset = pipeline.retrieve_dataset(session=session)
             if not dataset:
                 raise ValueError("Dataset not found")
@@ -1209,7 +1209,7 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         if args.get("icon_info") is None:

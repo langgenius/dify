@@ -1427,16 +1427,18 @@ class TestRegisterService:
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
 
-        # Mock database queries - need to mock the Session query
+        # Mock database queries - need to mock the sessionmaker query
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = None  # No existing account
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__exit__.return_value = None
+
         with (
-            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.sessionmaker", mock_sessionmaker),
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
         ):
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = None
 
             # Mock RegisterService.register
@@ -1485,12 +1487,14 @@ class TestRegisterService:
         mixed_email = "Invitee@Example.com"
 
         mock_session = MagicMock()
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__exit__.return_value = None
+
         with (
-            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.sessionmaker", mock_sessionmaker),
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
         ):
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = None
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1541,16 +1545,18 @@ class TestRegisterService:
             account_id="existing-user-456", email="existing@example.com", status="pending"
         )
 
-        # Mock database queries - need to mock the Session query
+        # Mock database queries - need to mock the sessionmaker query
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__exit__.return_value = None
+
         with (
-            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.sessionmaker", mock_sessionmaker),
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
         ):
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = mock_existing_account
 
             # Mock scalar for TenantAccountJoin lookup - no existing member
