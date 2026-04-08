@@ -143,6 +143,13 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
     def process_result_value(self, value: str | None, dialect: Dialect) -> T | None:
         if value is None or value == "":
             return None
+        # Use value_of() when available to handle legacy database values
+        # (e.g. "embeddings" -> ModelType.TEXT_EMBEDDING, "reranking" -> ModelType.RERANK).
+        if hasattr(self._enum_class, "value_of"):
+            try:
+                return self._enum_class.value_of(value)  # type: ignore[attr-defined]
+            except (ValueError, KeyError):
+                pass
         # Type annotation guarantees value is str at this point
         return self._enum_class(value)
 
