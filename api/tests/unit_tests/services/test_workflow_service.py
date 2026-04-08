@@ -2752,8 +2752,8 @@ class TestWorkflowServiceFreeNodeExecution:
 
         with (
             patch("services.workflow_service.DifyGraphInitContext") as mock_graph_init_context_cls,
-            patch("services.workflow_service.GraphRuntimeState"),
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
+            patch("services.workflow_service.create_graph_runtime_state"),
             patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):

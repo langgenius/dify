@@ -9,6 +9,7 @@ does not depend on that implicit behavior.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+from typing import Any, cast
 
 from graphon.graph import Graph
 from graphon.graph_engine.domain.graph_execution import GraphExecution
@@ -64,13 +65,14 @@ def ensure_graph_runtime_state_initialized(
 ) -> GraphRuntimeState:
     """Materialize non-graph collaborators when loading legacy or sparse state."""
     workflow_id = _require_workflow_id(workflow_id)
+    state = cast(Any, graph_runtime_state)
 
-    if graph_runtime_state._ready_queue is None:
-        graph_runtime_state._ready_queue = InMemoryReadyQueue()
+    if state._ready_queue is None:
+        state._ready_queue = InMemoryReadyQueue()
 
-    graph_execution = graph_runtime_state._graph_execution
+    graph_execution = state._graph_execution
     if graph_execution is None:
-        graph_runtime_state._graph_execution = GraphExecution(
+        state._graph_execution = GraphExecution(
             workflow_id=workflow_id,
         )
     elif not graph_execution.workflow_id:
@@ -93,19 +95,21 @@ def bind_graph_runtime_state_to_graph(
         graph_runtime_state,
         workflow_id=workflow_id,
     )
+    state = cast(Any, graph_runtime_state)
+    graph_protocol = cast(Any, graph)
 
-    attached_graph = graph_runtime_state._graph
+    attached_graph = state._graph
     if attached_graph is not None and attached_graph is not graph:
         raise ValueError("GraphRuntimeState already attached to a different graph instance")
 
-    if graph_runtime_state._response_coordinator is None:
+    if state._response_coordinator is None:
         response_coordinator = ResponseStreamCoordinator(
             variable_pool=graph_runtime_state.variable_pool,
-            graph=graph,
+            graph=graph_protocol,
         )
-        graph_runtime_state._response_coordinator = response_coordinator
+        state._response_coordinator = response_coordinator
 
-    graph_runtime_state.attach_graph(graph)
+    graph_runtime_state.attach_graph(graph_protocol)
     return graph_runtime_state
 
 

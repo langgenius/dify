@@ -107,11 +107,12 @@ class TestWorkflowChildEngineBuilder:
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(
                 workflow_entry,
-                "GraphRuntimeState",
+                "create_graph_runtime_state",
                 return_value=child_graph_runtime_state,
-            ) as graph_runtime_state_cls,
+            ) as create_graph_runtime_state,
             patch.object(workflow_entry, "DifyNodeFactory", return_value=sentinel.factory) as dify_node_factory,
             patch.object(workflow_entry.Graph, "init", return_value=child_graph) as graph_init,
+            patch.object(workflow_entry, "bind_graph_runtime_state_to_graph") as bind_runtime_state,
             patch.object(workflow_entry, "GraphEngine", return_value=child_engine) as graph_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
@@ -126,9 +127,10 @@ class TestWorkflowChildEngineBuilder:
             )
 
         assert result is child_engine
-        graph_runtime_state_cls.assert_called_once_with(
+        create_graph_runtime_state.assert_called_once_with(
             variable_pool=sentinel.child_variable_pool,
             start_at=123.0,
+            workflow_id="workflow-id",
             execution_context=sentinel.execution_context,
         )
         dify_node_factory.assert_called_once_with(
@@ -139,6 +141,11 @@ class TestWorkflowChildEngineBuilder:
             graph_config={"nodes": [{"id": "root"}]},
             node_factory=sentinel.factory,
             root_node_id="root",
+        )
+        bind_runtime_state.assert_called_once_with(
+            child_graph_runtime_state,
+            child_graph,
+            workflow_id="workflow-id",
         )
         graph_engine_cls.assert_called_once_with(
             workflow_id="workflow-id",
@@ -247,6 +254,7 @@ class TestWorkflowEntryInit:
             patch.object(workflow_entry.dify_config, "ENABLE_OTEL", False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
             patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
+            patch.object(workflow_entry, "bind_graph_runtime_state_to_graph"),
             patch.object(workflow_entry, "GraphEngine", return_value=graph_engine) as graph_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
@@ -352,7 +360,7 @@ class TestWorkflowEntrySingleStepRun:
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(
                 workflow_entry,
-                "GraphRuntimeState",
+                "create_graph_runtime_state",
                 return_value=SimpleNamespace(variable_pool=variable_pool),
             ),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
@@ -413,7 +421,7 @@ class TestWorkflowEntrySingleStepRun:
 
         with (
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
-            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
+            patch.object(workflow_entry, "create_graph_runtime_state", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
@@ -482,7 +490,7 @@ class TestWorkflowEntrySingleStepRun:
 
         with (
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
-            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
+            patch.object(workflow_entry, "create_graph_runtime_state", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeDatasourceNode),
@@ -542,7 +550,7 @@ class TestWorkflowEntrySingleStepRun:
 
         with (
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
-            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
+            patch.object(workflow_entry, "create_graph_runtime_state", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
@@ -653,7 +661,9 @@ class TestWorkflowEntryHelpers:
             patch.object(
                 workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context
             ) as graph_init_context_cls,
-            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
+            patch.object(
+                workflow_entry, "create_graph_runtime_state", return_value=sentinel.graph_runtime_state
+            ) as create_graph_runtime_state,
             patch.object(
                 workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}
             ) as build_dify_run_context,
@@ -693,13 +703,14 @@ class TestWorkflowEntryHelpers:
             invoke_from=InvokeFrom.DEBUGGER,
         )
         graph_init_context_cls.assert_called_once_with(
-            workflow_id="",
+            workflow_id="free-node:node-id",
             graph_config=workflow_entry.WorkflowEntry._create_single_node_graph(
                 "node-id", {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "title": "Node"}
             ),
             run_context={"_dify": "context"},
             call_depth=0,
         )
+        create_graph_runtime_state.assert_called_once()
         dify_node_factory_cls.assert_called_once_with(
             graph_init_context=sentinel.graph_init_context,
             graph_runtime_state=sentinel.graph_runtime_state,
@@ -739,7 +750,7 @@ class TestWorkflowEntryHelpers:
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool),
             patch.object(workflow_entry, "add_variables_to_pool"),
             patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
-            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
+            patch.object(workflow_entry, "create_graph_runtime_state", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(
