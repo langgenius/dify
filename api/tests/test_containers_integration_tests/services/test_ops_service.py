@@ -259,9 +259,7 @@ class TestOpsService:
 
         assert result is None
 
-    def test_create_tracing_app_config_no_app(
-        self, db_session_with_containers: Session, mock_ops_trace_manager
-    ):
+    def test_create_tracing_app_config_no_app(self, db_session_with_containers: Session, mock_ops_trace_manager):
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
         result = OpsService.create_tracing_app_config(str(uuid.uuid4()), TracingProviderEnum.ARIZE, {})
         assert result is None
@@ -298,15 +296,11 @@ class TestOpsService:
         with pytest.raises(ValueError, match="Invalid tracing provider: invalid_provider"):
             OpsService.update_tracing_app_config(str(uuid.uuid4()), "invalid_provider", {})
 
-    def test_update_tracing_app_config_no_config(
-        self, db_session_with_containers: Session, mock_ops_trace_manager
-    ):
+    def test_update_tracing_app_config_no_config(self, db_session_with_containers: Session, mock_ops_trace_manager):
         result = OpsService.update_tracing_app_config(str(uuid.uuid4()), TracingProviderEnum.ARIZE, {})
         assert result is None
 
-    def test_update_tracing_app_config_no_app(
-        self, db_session_with_containers: Session, mock_ops_trace_manager
-    ):
+    def test_update_tracing_app_config_no_app(self, db_session_with_containers: Session, mock_ops_trace_manager):
         fake_app_id = str(uuid.uuid4())
         self._insert_trace_config(db_session_with_containers, fake_app_id, str(TracingProviderEnum.ARIZE))
         mock_ops_trace_manager.encrypt_tracing_config.return_value = {}
