@@ -87,23 +87,17 @@ class AgentHistoryPromptTransform(PromptTransform):
         if dropped:
             kept_ids = {id(m) for m in prompt_messages[num_system:]}
             messages_to_summarize = [
-                m
-                for m in self.history_messages
-                if not isinstance(m, SystemPromptMessage) and id(m) not in kept_ids
+                m for m in self.history_messages if not isinstance(m, SystemPromptMessage) and id(m) not in kept_ids
             ]
             if messages_to_summarize:
                 try:
                     summary = self._summarize_messages(messages_to_summarize)
                     if summary:
-                        summary_message = SystemPromptMessage(
-                            content=f"[Earlier conversation summary]\n{summary}"
-                        )
+                        summary_message = SystemPromptMessage(content=f"[Earlier conversation summary]\n{summary}")
                         prompt_messages.insert(num_system, summary_message)
                         num_system += 1
                 except Exception:
-                    logger.exception(
-                        "Failed to summarize conversation history, dropping oldest messages instead"
-                    )
+                    logger.exception("Failed to summarize conversation history, dropping oldest messages instead")
 
         # return prompt messages in asc order
         message_prompts = prompt_messages[num_system:]
