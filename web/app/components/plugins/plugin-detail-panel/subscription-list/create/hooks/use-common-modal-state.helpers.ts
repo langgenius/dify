@@ -8,7 +8,7 @@ import { toast } from '@/app/components/base/ui/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 
-export type FormValuesResult = {
+type FormValuesResult = {
   values: Record<string, unknown>
   isCheckValidated: boolean
 }
