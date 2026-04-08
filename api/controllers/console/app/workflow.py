@@ -325,7 +325,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App):
         """
@@ -371,7 +371,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -447,7 +447,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -549,7 +549,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -578,7 +578,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
