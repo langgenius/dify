@@ -30,31 +30,21 @@ def delete_conversation_related_data(conversation_id: str):
 
     with session_factory.create_session() as session:
         try:
-            session.execute(
-                delete(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id)
-            )
+            session.execute(delete(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id))
+
+            session.execute(delete(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id))
 
             session.execute(
-                delete(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id)
-            )
-
-            session.execute(
-                delete(ToolConversationVariables).where(
-                    ToolConversationVariables.conversation_id == conversation_id
-                )
+                delete(ToolConversationVariables).where(ToolConversationVariables.conversation_id == conversation_id)
             )
 
             session.execute(delete(ToolFile).where(ToolFile.conversation_id == conversation_id))
 
-            session.execute(
-                delete(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id)
-            )
+            session.execute(delete(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id))
 
             session.execute(delete(Message).where(Message.conversation_id == conversation_id))
 
-            session.execute(
-                delete(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id)
-            )
+            session.execute(delete(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id))
 
             session.commit()
 
