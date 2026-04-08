@@ -362,9 +362,7 @@ class TestAsyncWorkflowService:
 
         with (
             patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
-            patch.object(
-                async_workflow_service_module, "sessionmaker", mock_sessionmaker
-            ),
+            patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
                 "SQLAlchemyWorkflowTriggerLogRepository",
