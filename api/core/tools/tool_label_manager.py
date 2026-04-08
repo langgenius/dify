@@ -1,3 +1,4 @@
+from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -78,11 +79,10 @@ class ToolLabelManager:
             ToolLabelBinding.tool_type == controller.provider_type,
         )
 
-        labels: list[str] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            labels = _session.scalars(stmt).all()
+            labels: list[str] = list(_session.scalars(stmt).all())
 
-        return list(labels)
+        return labels
 
     @classmethod
     def get_tools_labels(cls, tool_providers: list[ToolProviderController]) -> dict[str, list[str]]:
@@ -102,14 +102,14 @@ class ToolLabelManager:
             if not isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
                 raise ValueError("Unsupported tool type")
 
-        provider_ids = []
+        provider_ids: list[str] = []
         for controller in tool_providers:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
             provider_ids.append(controller.provider_id)
 
         labels: list[ToolLabelBinding] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            labels = _session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all()
+            labels = list(_session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all())
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 
