@@ -6,7 +6,6 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { headers } from '@/next/headers'
 import { ToastHost } from './components/base/ui/toast'
 import { TooltipProvider } from './components/base/ui/tooltip'
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
@@ -32,7 +31,6 @@ const LocaleLayout = async ({
 }) => {
   const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
-  const nonce = (await headers()).get('x-nonce') ?? undefined
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -64,7 +62,6 @@ const LocaleLayout = async ({
               enableSystem
               disableTransitionOnChange
               enableColorScheme={false}
-              nonce={nonce}
             >
               <NuqsAdapter>
                 <TanstackQueryInitializer>
