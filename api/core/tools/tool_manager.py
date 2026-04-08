@@ -17,6 +17,7 @@ from yarl import URL
 
 import contexts
 from configs import dify_config
+from core.entities import PluginCredentialType
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
@@ -29,7 +30,6 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
 from models.provider_ids import ToolProviderID
-from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
