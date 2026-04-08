@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.",
   "nodes.parameterExtractor.outputVars.usage": "Thông tin sử dụng mô hình",
   "nodes.parameterExtractor.reasoningMode": "Chế độ suy luận",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Hàm/Gọi công cụ",
+  "nodes.parameterExtractor.reasoningModePrompt": "Prompt",
   "nodes.parameterExtractor.reasoningModeTip": "Bạn có thể chọn chế độ suy luận phù hợp dựa trên khả năng của mô hình để phản hồi các hướng dẫn về việc gọi hàm hoặc prompt.",
   "nodes.questionClassifiers.addClass": "Thêm lớp",
   "nodes.questionClassifiers.advancedSetting": "Cài đặt nâng cao",

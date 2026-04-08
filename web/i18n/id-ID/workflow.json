@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Apakah Success.Pada keberhasilan nilainya adalah 1, pada kegagalan nilainya adalah 0.",
   "nodes.parameterExtractor.outputVars.usage": "Informasi Penggunaan Model",
   "nodes.parameterExtractor.reasoningMode": "Mode Penalaran",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Fungsi/Pemanggilan Alat",
+  "nodes.parameterExtractor.reasoningModePrompt": "Prompt",
   "nodes.parameterExtractor.reasoningModeTip": "Anda dapat memilih mode penalaran yang sesuai berdasarkan kemampuan model untuk menanggapi instruksi untuk pemanggilan fungsi atau perintah.",
   "nodes.questionClassifiers.addClass": "Tambahkan Kelas",
   "nodes.questionClassifiers.advancedSetting": "Pengaturan Lanjutan",

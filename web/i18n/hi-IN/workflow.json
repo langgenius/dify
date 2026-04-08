@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।",
   "nodes.parameterExtractor.outputVars.usage": "मॉडल उपयोग जानकारी",
   "nodes.parameterExtractor.reasoningMode": "रीज़निंग मोड",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "फ़ंक्शन/टूल कॉलिंग",
+  "nodes.parameterExtractor.reasoningModePrompt": "प्रॉम्प्ट",
   "nodes.parameterExtractor.reasoningModeTip": "फ़ंक्शन कॉलिंग या प्रॉम्प्ट्स के लिए निर्देशों का जवाब देने की मॉडल की क्षमता के आधार पर उपयुक्त रीज़निंग मोड चुन सकते हैं।",
   "nodes.questionClassifiers.addClass": "क्लास जोड़ें",
   "nodes.questionClassifiers.advancedSetting": "उन्नत सेटिंग",

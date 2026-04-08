@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "هو نجاح. عند النجاح تكون القيمة 1، عند الفشل تكون القيمة 0.",
   "nodes.parameterExtractor.outputVars.usage": "معلومات استخدام النموذج",
   "nodes.parameterExtractor.reasoningMode": "وضع التفكير",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "استدعاء دالة/أداة",
+  "nodes.parameterExtractor.reasoningModePrompt": "موجّه",
   "nodes.parameterExtractor.reasoningModeTip": "يمكنك اختيار وضع التفكير المناسب بناءً على قدرة النموذج على الاستجابة للتعليمات لاستدعاء الوظيفة أو المطالبات.",
   "nodes.questionClassifiers.addClass": "إضافة فئة",
   "nodes.questionClassifiers.advancedSetting": "إعدادات متقدمة",

@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.",
   "nodes.parameterExtractor.outputVars.usage": "Informacje o użyciu modelu",
   "nodes.parameterExtractor.reasoningMode": "Tryb wnioskowania",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Funkcja/Wywołanie narzędzia",
+  "nodes.parameterExtractor.reasoningModePrompt": "Prompt",
   "nodes.parameterExtractor.reasoningModeTip": "Możesz wybrać odpowiedni tryb wnioskowania w zależności od zdolności modelu do reagowania na instrukcje dotyczące wywoływania funkcji lub zapytań.",
   "nodes.questionClassifiers.addClass": "Dodaj klasę",
   "nodes.questionClassifiers.advancedSetting": "Zaawansowane ustawienia",

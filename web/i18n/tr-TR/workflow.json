@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0'dır.",
   "nodes.parameterExtractor.outputVars.usage": "Model Kullanım Bilgileri",
   "nodes.parameterExtractor.reasoningMode": "Akıl Yürütme Modu",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Fonksiyon/Araç Çağrısı",
+  "nodes.parameterExtractor.reasoningModePrompt": "Prompt",
   "nodes.parameterExtractor.reasoningModeTip": "Modelin fonksiyon çağırma veya istemler için talimatlara yanıt verme yeteneğine bağlı olarak uygun akıl yürütme modunu seçebilirsiniz.",
   "nodes.questionClassifiers.addClass": "Sınıf Ekle",
   "nodes.questionClassifiers.advancedSetting": "Gelişmiş Ayarlar",
