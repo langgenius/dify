@@ -207,7 +207,6 @@ class ToolManager:
         """
         match provider_type:
             case ToolProviderType.BUILT_IN:
-                # check if the builtin tool need credentials
                 provider_controller = cls.get_builtin_provider(provider_id, tenant_id)
 
                 builtin_tool = provider_controller.get_tool(tool_name)
@@ -227,7 +226,6 @@ class ToolManager:
                 builtin_provider = None
                 if isinstance(provider_controller, PluginToolProviderController):
                     provider_id_entity = ToolProviderID(provider_id)
-                    # get specific credentials
                     if is_valid_uuid(credential_id):
                         try:
                             builtin_provider_stmt = select(BuiltinToolProvider).where(
@@ -238,13 +236,10 @@ class ToolManager:
                         except Exception as e:
                             builtin_provider = None
                             logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
-                        # if the provider has been deleted, raise an error
                         if builtin_provider is None:
                             raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
 
-                    # fallback to the default provider
                     if builtin_provider is None:
-                        # use the default provider
                         with Session(db.engine) as session:
                             builtin_provider = session.scalar(
                                 sa.select(BuiltinToolProvider)
@@ -268,7 +263,6 @@ class ToolManager:
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-                # check if the credential is allowed to be used
                 from core.helper.credential_utils import check_credential_policy_compliance
 
                 check_credential_policy_compliance(
@@ -289,23 +283,19 @@ class ToolManager:
                     ),
                 )
 
-                # decrypt the credentials
                 decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(builtin_provider.credentials)
 
-                # check if the credentials is expired
                 if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
                     # TODO: circular import
                     from core.plugin.impl.oauth import OAuthHandler
                     from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-                    # refresh the credentials
                     tool_provider = ToolProviderID(provider_id)
                     provider_name = tool_provider.provider_name
                     redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
                     system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
 
                     oauth_handler = OAuthHandler()
-                    # refresh the credentials
                     refreshed_credentials = oauth_handler.refresh_credentials(
                         tenant_id=tenant_id,
                         user_id=builtin_provider.user_id,
