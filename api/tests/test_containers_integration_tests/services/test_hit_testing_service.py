@@ -65,7 +65,9 @@ class TestHitTestingService:
             {"content": "c2", "title": "t2", "score": 0.8, "metadata": {"m2": "v2"}},
         ]
 
-        result = cast(dict[str, Any], HitTestingService.compact_external_retrieve_response(dataset, "test query", documents))
+        result = cast(
+            dict[str, Any], HitTestingService.compact_external_retrieve_response(dataset, "test query", documents)
+        )
 
         assert cast(dict[str, Any], result["query"])["content"] == "test query"
         assert len(result["records"]) == 2
@@ -76,7 +78,10 @@ class TestHitTestingService:
         dataset = MagicMock(spec=Dataset)
         dataset.provider = "not_external"
 
-        result = cast(dict[str, Any], HitTestingService.compact_external_retrieve_response(dataset, "test query", [{"content": "c1"}]))
+        result = cast(
+            dict[str, Any],
+            HitTestingService.compact_external_retrieve_response(dataset, "test query", [{"content": "c1"}]),
+        )
 
         assert cast(dict[str, Any], result["query"])["content"] == "test query"
         assert result["records"] == []
@@ -181,7 +186,11 @@ class TestHitTestingService:
         mock_retrieve.return_value = []
 
         HitTestingService.retrieve(
-            dataset=dataset, query="test query", account=account, retrieval_model=retrieval_model, external_retrieval_model={}
+            dataset=dataset,
+            query="test query",
+            account=account,
+            retrieval_model=retrieval_model,
+            external_retrieval_model={},
         )
 
         mock_get_meta.assert_called_once()
@@ -207,7 +216,11 @@ class TestHitTestingService:
         result = cast(
             dict[str, Any],
             HitTestingService.retrieve(
-                dataset=dataset, query="test query", account=account, retrieval_model=retrieval_model, external_retrieval_model={}
+                dataset=dataset,
+                query="test query",
+                account=account,
+                retrieval_model=retrieval_model,
+                external_retrieval_model={},
             ),
         )
 
@@ -287,7 +300,11 @@ class TestHitTestingService:
         mock_retrieve.return_value = []
 
         HitTestingService.retrieve(
-            dataset=dataset, query="test query", account=account, retrieval_model=retrieval_model, external_retrieval_model={}
+            dataset=dataset,
+            query="test query",
+            account=account,
+            retrieval_model=retrieval_model,
+            external_retrieval_model={},
         )
 
         mock_retrieve.assert_called_once()
