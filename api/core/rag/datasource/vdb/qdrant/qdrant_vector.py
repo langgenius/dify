@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import qdrant_client
 from flask import current_app
@@ -32,7 +32,6 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetCollectionBinding
 
 if TYPE_CHECKING:
-    from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
     from qdrant_client.http import models as rest
 
@@ -176,7 +175,7 @@ class QdrantVector(BaseVector):
         for batch_ids, points in self._generate_rest_batches(
             texts, embeddings, filtered_metadatas, uuids, 64, self._group_id
         ):
-            self._client.upsert(collection_name=self._collection_name, points=points)
+            self._client.upsert(collection_name=self._collection_name, points=cast("common_types.Points", points))
             added_ids.extend(batch_ids)
 
         return added_ids
@@ -468,7 +467,7 @@ class QdrantVector(BaseVector):
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
-            self._client._load()
+            self._client._load()  # pyright: ignore[reportPrivateUsage]
 
     @classmethod
     def _document_from_scored_point(
