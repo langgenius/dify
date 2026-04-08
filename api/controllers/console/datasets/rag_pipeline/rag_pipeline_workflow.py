@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -92,22 +93,6 @@ class PublishedWorkflowRunPayload(DraftWorkflowRunPayload):
     is_preview: bool = False
     response_mode: Literal["streaming", "blocking"] = "streaming"
     original_document_id: str | None = None
-
-
-class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
-
-
-class WorkflowListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
-    named_only: bool = False
-
-
-class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=20)
-    marked_comment: str | None = Field(default=None, max_length=100)
 
 
 class NodeIdQuery(BaseModel):
