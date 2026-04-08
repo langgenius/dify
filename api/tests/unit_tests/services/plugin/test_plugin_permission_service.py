@@ -6,12 +6,12 @@ MODULE = "services.plugin.plugin_permission_service"
 
 
 def _patched_session():
-    """Patch Session(db.engine) to return a mock session as context manager."""
+    """Patch sessionmaker(bind=db.engine).begin() to return a mock session as context manager."""
     session = MagicMock()
-    session_cls = MagicMock()
-    session_cls.return_value.__enter__ = MagicMock(return_value=session)
-    session_cls.return_value.__exit__ = MagicMock(return_value=False)
-    patcher = patch(f"{MODULE}.Session", session_cls)
+    mock_sessionmaker = MagicMock()
+    mock_sessionmaker.return_value.begin.return_value.__enter__ = MagicMock(return_value=session)
+    mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+    patcher = patch(f"{MODULE}.sessionmaker", mock_sessionmaker)
     db_patcher = patch(f"{MODULE}.db")
     return patcher, db_patcher, session
 
@@ -55,7 +55,6 @@ class TestChangePermission:
             )
 
         session.add.assert_called_once()
-        session.commit.assert_called_once()
 
     def test_updates_existing_permission(self):
         p1, p2, session = _patched_session()
@@ -71,5 +70,4 @@ class TestChangePermission:
 
         assert existing.install_permission == TenantPluginPermission.InstallPermission.ADMINS
         assert existing.debug_permission == TenantPluginPermission.DebugPermission.ADMINS
-        session.commit.assert_called_once()
         session.add.assert_not_called()

@@ -6,12 +6,12 @@ MODULE = "services.plugin.plugin_auto_upgrade_service"
 
 
 def _patched_session():
-    """Patch Session(db.engine) to return a mock session as context manager."""
+    """Patch sessionmaker(bind=db.engine).begin() to return a mock session as context manager."""
     session = MagicMock()
-    session_cls = MagicMock()
-    session_cls.return_value.__enter__ = MagicMock(return_value=session)
-    session_cls.return_value.__exit__ = MagicMock(return_value=False)
-    patcher = patch(f"{MODULE}.Session", session_cls)
+    mock_sessionmaker = MagicMock()
+    mock_sessionmaker.return_value.begin.return_value.__enter__ = MagicMock(return_value=session)
+    mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+    patcher = patch(f"{MODULE}.sessionmaker", mock_sessionmaker)
     db_patcher = patch(f"{MODULE}.db")
     return patcher, db_patcher, session
 
@@ -61,7 +61,6 @@ class TestChangeStrategy:
 
         assert result is True
         session.add.assert_called_once()
-        session.commit.assert_called_once()
 
     def test_updates_existing_strategy(self):
         p1, p2, session = _patched_session()
@@ -86,7 +85,6 @@ class TestChangeStrategy:
         assert existing.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL
         assert existing.exclude_plugins == ["p1"]
         assert existing.include_plugins == ["p2"]
-        session.commit.assert_called_once()
 
 
 class TestExcludePlugin:
@@ -127,7 +125,6 @@ class TestExcludePlugin:
 
         assert result is True
         assert existing.exclude_plugins == ["p-existing", "p-new"]
-        session.commit.assert_called_once()
 
     def test_removes_from_include_list_in_partial_mode(self):
         p1, p2, session = _patched_session()

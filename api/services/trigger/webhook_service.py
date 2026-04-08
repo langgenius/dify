@@ -12,7 +12,7 @@ from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -912,7 +912,7 @@ class WebhookService:
                 logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
                 raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
 
-            with Session(db.engine) as session:
+            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
@@ -941,14 +941,12 @@ class WebhookService:
                     redis_client.set(
                         f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
                     )
-                session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-                session.commit()
         except Exception:
             logger.exception("Failed to sync webhook relationships for app %s", app.id)
             raise

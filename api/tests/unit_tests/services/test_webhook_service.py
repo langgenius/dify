@@ -617,6 +617,20 @@ class _SessionContext:
         return False
 
 
+class _SessionmakerContext:
+    def __init__(self, session: Any) -> None:
+        self._session = session
+
+    def begin(self) -> "_SessionmakerContext":
+        return self
+
+    def __enter__(self) -> Any:
+        return self._session
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+
 @pytest.fixture
 def flask_app() -> Flask:
     return Flask(__name__)
@@ -625,6 +639,7 @@ def flask_app() -> Flask:
 def _patch_session(monkeypatch: pytest.MonkeyPatch, session: Any) -> None:
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=MagicMock(), session=MagicMock()))
     monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext(session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda *args, **kwargs: _SessionmakerContext(session))
 
 
 def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
@@ -1241,7 +1256,6 @@ def test_sync_webhook_relationships_should_create_missing_records_and_delete_sta
     # Assert
     assert len(fake_session.added) == 1
     assert len(fake_session.deleted) == 1
-    assert fake_session.commit_count == 2
     redis_set_mock.assert_called_once()
     redis_delete_mock.assert_called_once()
     lock.release.assert_called_once()
