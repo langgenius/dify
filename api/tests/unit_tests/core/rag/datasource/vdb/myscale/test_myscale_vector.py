@@ -2,7 +2,7 @@ import importlib
 import sys
 import types
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -24,6 +24,7 @@ def _build_fake_clickhouse_connect_module():
     class Client:
         def __init__(self):
             self.command = MagicMock()
+            self.insert = MagicMock()
             self.query = MagicMock(return_value=QueryResult())
 
     client = Client()
@@ -58,9 +59,11 @@ def _config(module):
     )
 
 
-def test_escape_str_replaces_backslash_and_quote(myscale_module):
-    escaped = myscale_module.MyScaleVector.escape_str(r"text\with'special")
-    assert escaped == "text with special"
+def test_build_in_params_creates_named_placeholders(myscale_module):
+    placeholders, params = myscale_module.MyScaleVector._build_in_params("document_id", ["doc-1", "doc-2"])
+
+    assert placeholders == "%(document_id_0)s, %(document_id_1)s"
+    assert params == {"document_id_0": "doc-1", "document_id_1": "doc-2"}
 
 
 def test_search_raises_for_invalid_top_k(myscale_module):
@@ -172,9 +175,11 @@ def test_add_texts_inserts_rows_and_returns_ids(myscale_module, monkeypatch):
     ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
 
     assert ids == ["doc-a", "generated-uuid"]
-    sql = vector._client.command.call_args.args[0]
-    assert "INSERT INTO dify.collection_1" in sql
-    assert "te xt 1" in sql
+    vector._client.insert.assert_called_once()
+    insert_table, insert_rows = vector._client.insert.call_args.args[:2]
+    assert insert_table == "dify.collection_1"
+    assert insert_rows[0][1] == r"te'xt\1"
+    assert vector._client.insert.call_args.kwargs["column_names"] == ["id", "text", "vector", "metadata"]
 
 
 def test_text_exists_and_metadata_operations(myscale_module):
@@ -198,7 +203,22 @@ def test_search_delegation_methods(myscale_module):
 
     assert result_vector == ["result"]
     assert result_text == ["result"]
-    assert vector._search.call_count == 2
+    vector._search.assert_has_calls(
+        [
+            call(
+                "distance(vector, %(query_vector)s)",
+                vector._vec_order,
+                parameters={"query_vector": [0.1, 0.2]},
+                top_k=2,
+            ),
+            call(
+                "TextSearch('enable_nlq=false')(text, %(query)s)",
+                myscale_module.SortOrder.DESC,
+                parameters={"query": "hello"},
+                top_k=2,
+            ),
+        ]
+    )
 
 
 def test_search_with_document_filter_and_exception(myscale_module):
@@ -215,7 +235,10 @@ def test_search_with_document_filter_and_exception(myscale_module):
     )
     assert len(docs) == 1
     sql = vector._client.query.call_args.args[0]
-    assert "metadata['document_id'] in ('doc-1', 'doc-2')" in sql
+    assert "metadata['document_id'] IN (%(document_id_0)s, %(document_id_1)s)" in sql
+    query_params = vector._client.query.call_args.kwargs["parameters"]
+    assert query_params["document_id_0"] == "doc-1"
+    assert query_params["document_id_1"] == "doc-2"
 
     vector._client.query.side_effect = RuntimeError("boom")
     assert vector._search("distance(vector, [0.1])", myscale_module.SortOrder.ASC, top_k=1) == []
