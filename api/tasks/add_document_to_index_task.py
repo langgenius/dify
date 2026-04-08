@@ -31,7 +31,9 @@ def add_document_to_index_task(dataset_document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset_document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == dataset_document_id).limit(1))
+        dataset_document = session.scalar(
+            select(DatasetDocument).where(DatasetDocument.id == dataset_document_id).limit(1)
+        )
         if not dataset_document:
             logger.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
             return
