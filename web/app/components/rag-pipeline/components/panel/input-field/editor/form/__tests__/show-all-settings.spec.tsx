@@ -1,3 +1,4 @@
+import type { InputFieldFormProps } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useAppForm } from '@/app/components/base/form'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -16,7 +17,7 @@ describe('ShowAllSettings', () => {
 
   it('should render the summary and hidden field names', () => {
     const ShowAllSettingsHarness = () => {
-      const initialData = {
+      const initialData: InputFieldFormProps['initialData'] = {
         type: PipelineInputVarType.textInput,
       }
       const form = useAppForm({
@@ -39,7 +40,7 @@ describe('ShowAllSettings', () => {
   it('should call the click handler when the row is pressed', () => {
     const handleShowAllSettings = vi.fn()
     const ShowAllSettingsHarness = () => {
-      const initialData = {
+      const initialData: InputFieldFormProps['initialData'] = {
         type: PipelineInputVarType.textInput,
       }
       const form = useAppForm({

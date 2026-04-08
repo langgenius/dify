@@ -1,3 +1,4 @@
+import type { InputFieldFormProps } from '../types'
 import { render, screen } from '@testing-library/react'
 import { useAppForm } from '@/app/components/base/form'
 import HiddenFields from '../hidden-fields'
@@ -31,7 +32,7 @@ describe('HiddenFields', () => {
     ] as ReturnType<typeof useHiddenConfigurations>)
 
     const HiddenFieldsHarness = () => {
-      const initialData = {
+      const initialData: InputFieldFormProps['initialData'] = {
         variable: 'field_1',
         options: ['option-a', 'option-b'],
       }
@@ -57,7 +58,7 @@ describe('HiddenFields', () => {
     vi.mocked(useHiddenConfigurations).mockReturnValue([])
 
     const HiddenFieldsHarness = () => {
-      const initialData = { options: [] }
+      const initialData: InputFieldFormProps['initialData'] = { options: [] }
       const form = useAppForm({
         defaultValues: initialData,
         onSubmit: () => {},

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import NoPluginSelected from '../no-plugin-selected'
 import { AUTO_UPDATE_MODE } from '../types'
 

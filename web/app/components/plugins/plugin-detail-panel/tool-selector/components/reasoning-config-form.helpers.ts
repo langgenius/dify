@@ -10,6 +10,7 @@ import { VarType } from '@/app/components/workflow/types'
 export type ReasoningConfigInputValue = {
   type?: VarKindType
   value?: unknown
+  [key: string]: unknown
 } | null
 
 export type ReasoningConfigInput = {
