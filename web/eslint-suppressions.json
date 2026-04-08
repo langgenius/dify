@@ -7942,9 +7942,6 @@
   "app/components/tools/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/tools/workflow-tool/configure-button.tsx": {
