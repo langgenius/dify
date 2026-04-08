@@ -1,3 +1,4 @@
+from importlib import import_module
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -19,6 +20,8 @@ from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
+
+external_controller = import_module("controllers.console.datasets.external")
 
 
 def unwrap(func):
@@ -47,7 +50,8 @@ def current_user():
 @pytest.fixture(autouse=True)
 def mock_auth(monkeypatch, current_user):
     monkeypatch.setattr(
-        "controllers.console.datasets.external.current_account_with_tenant",
+        external_controller,
+        "current_account_with_tenant",
         lambda: (current_user, "tenant-1"),
     )
 
