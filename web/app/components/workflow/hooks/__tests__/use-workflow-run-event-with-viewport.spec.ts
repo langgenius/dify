@@ -109,7 +109,7 @@ describe('useWorkflowNodeStarted', () => {
 
     act(() => {
       result.current.handleWorkflowNodeStarted(
-        { data: { node_id: 'n1' } } as NodeStartedResponse,
+        { data: { id: 'trace-n1', node_id: 'n1' } } as NodeStartedResponse,
         containerParams,
       )
     })
@@ -138,7 +138,7 @@ describe('useWorkflowNodeStarted', () => {
 
     act(() => {
       result.current.handleWorkflowNodeStarted(
-        { data: { node_id: 'n2' } } as NodeStartedResponse,
+        { data: { id: 'trace-n2', node_id: 'n2' } } as NodeStartedResponse,
         containerParams,
       )
     })
@@ -157,8 +157,8 @@ describe('useWorkflowNodeStarted', () => {
       initialStoreState: {
         workflowRunningData: baseRunningData({
           tracing: [
-            { node_id: 'n0', status: NodeRunningStatus.Succeeded },
-            { node_id: 'n1', status: NodeRunningStatus.Succeeded },
+            { id: 'trace-0', node_id: 'n0', status: NodeRunningStatus.Succeeded },
+            { id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Succeeded },
           ],
         }),
       },
@@ -166,7 +166,7 @@ describe('useWorkflowNodeStarted', () => {
 
     act(() => {
       result.current.handleWorkflowNodeStarted(
-        { data: { node_id: 'n1' } } as NodeStartedResponse,
+        { data: { id: 'trace-1', node_id: 'n1' } } as NodeStartedResponse,
         containerParams,
       )
     })
@@ -174,6 +174,32 @@ describe('useWorkflowNodeStarted', () => {
     const tracing = store.getState().workflowRunningData!.tracing!
     expect(tracing).toHaveLength(2)
     expect(tracing[1].status).toBe(NodeRunningStatus.Running)
+  })
+
+  it('should append a new tracing entry when the same node starts a new execution id', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'trace-0', node_id: 'n0', status: NodeRunningStatus.Succeeded },
+            { id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Succeeded },
+          ],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(
+        { data: { id: 'trace-2', node_id: 'n1' } } as NodeStartedResponse,
+        containerParams,
+      )
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing).toHaveLength(3)
+    expect(tracing[2].id).toBe('trace-2')
+    expect(tracing[2].node_id).toBe('n1')
+    expect(tracing[2].status).toBe(NodeRunningStatus.Running)
   })
 })
 

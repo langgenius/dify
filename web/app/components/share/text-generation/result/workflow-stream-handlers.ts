@@ -5,6 +5,8 @@ import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse }
 import { produce } from 'immer'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { upsertTopLevelTracingNodeOnStart } from '@/app/components/workflow/utils/top-level-tracing'
+import { findTracingIndexByExecutionOrUniqueNodeId } from '@/app/components/workflow/utils/tracing-execution'
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning', message: string }) => void
@@ -49,6 +51,20 @@ const matchParallelTrace = (trace: WorkflowProcess['tracing'][number], data: Nod
       || trace.parallel_id === data.execution_metadata?.parallel_id)
 }
 
+const findParallelTraceIndex = (tracing: WorkflowProcess['tracing'], data: NodeTracing) => {
+  const parallelId = data.execution_metadata?.parallel_id
+  const matchedIndex = findTracingIndexByExecutionOrUniqueNodeId(tracing, {
+    executionId: data.id,
+    nodeId: data.node_id,
+    parallelId,
+  })
+
+  if (matchedIndex > -1)
+    return matchedIndex
+
+  return tracing.findIndex(trace => matchParallelTrace(trace, data))
+}
+
 const ensureParallelTraceDetails = (details?: NodeTracing['details']) => {
   return details?.length ? details : [[]]
 }
@@ -68,7 +84,8 @@ const appendParallelStart = (current: WorkflowProcess | undefined, data: NodeTra
 const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const trace = draft.tracing.find(item => matchParallelTrace(item, data))
+    const traceIndex = findParallelTraceIndex(draft.tracing, data)
+    const trace = draft.tracing[traceIndex]
     if (!trace)
       return
 
@@ -80,10 +97,13 @@ const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTrac
 const finishParallelTrace = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const traceIndex = draft.tracing.findIndex(item => matchParallelTrace(item, data))
+    const traceIndex = findParallelTraceIndex(draft.tracing, data)
     if (traceIndex > -1) {
+      const currentTrace = draft.tracing[traceIndex]
       draft.tracing[traceIndex] = {
+        ...currentTrace,
         ...data,
+        details: data.details ?? currentTrace.details,
         expand: !!data.error,
       }
     }
@@ -96,17 +116,13 @@ const upsertWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
 
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
     const nextTrace = {
       ...data,
       status: NodeRunningStatus.Running,
       expand: true,
     }
 
-    if (currentIndex > -1)
-      draft.tracing[currentIndex] = nextTrace
-    else
-      draft.tracing.push(nextTrace)
+    upsertTopLevelTracingNodeOnStart(draft.tracing, nextTrace)
   })
 }
 
@@ -115,7 +131,7 @@ const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
     return current
 
   return updateWorkflowProcess(current, (draft) => {
-    const currentIndex = draft.tracing.findIndex(trace => matchParallelTrace(trace, data))
+    const currentIndex = findParallelTraceIndex(draft.tracing, data)
     if (currentIndex > -1) {
       draft.tracing[currentIndex] = {
         ...(draft.tracing[currentIndex].extras

@@ -101,6 +101,7 @@ const createHumanInput = (overrides: Partial<HumanInputFormData> = {}): HumanInp
 describe('workflow-stream-handlers helpers', () => {
   it('should update tracing, result text, and human input state', () => {
     const parallelTrace = createTrace({
+      id: 'parallel-trace-1',
       node_id: 'parallel-node',
       execution_metadata: { parallel_id: 'parallel-1' },
       details: [[]],
@@ -109,11 +110,13 @@ describe('workflow-stream-handlers helpers', () => {
     let workflowProcessData = appendParallelStart(undefined, parallelTrace)
     workflowProcessData = appendParallelNext(workflowProcessData, parallelTrace)
     workflowProcessData = finishParallelTrace(workflowProcessData, createTrace({
+      id: 'parallel-trace-1',
       node_id: 'parallel-node',
       execution_metadata: { parallel_id: 'parallel-1' },
       error: 'failed',
     }))
     workflowProcessData = upsertWorkflowNode(workflowProcessData, createTrace({
+      id: 'node-trace-1',
       node_id: 'node-1',
       execution_metadata: { parallel_id: 'parallel-2' },
     }))!
@@ -160,6 +163,129 @@ describe('workflow-stream-handlers helpers', () => {
     expect(nextProcess.tracing[0]?.details).toEqual([[], []])
   })
 
+  it('should keep separate iteration and loop traces for repeated executions with different ids', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        id: 'iter-trace-1',
+        node_id: 'iter-1',
+        details: [[]],
+      }),
+      createTrace({
+        id: 'iter-trace-2',
+        node_id: 'iter-1',
+        details: [[]],
+      }),
+      createTrace({
+        id: 'loop-trace-1',
+        node_id: 'loop-1',
+        details: [[]],
+      }),
+      createTrace({
+        id: 'loop-trace-2',
+        node_id: 'loop-1',
+        details: [[]],
+      }),
+    ]
+
+    const iterNextProcess = appendParallelNext(process, createTrace({
+      id: 'iter-trace-2',
+      node_id: 'iter-1',
+    }))
+    const iterFinishedProcess = finishParallelTrace(iterNextProcess, createTrace({
+      id: 'iter-trace-2',
+      node_id: 'iter-1',
+      status: NodeRunningStatus.Succeeded,
+      details: undefined,
+    }))
+    const loopNextProcess = appendParallelNext(iterFinishedProcess, createTrace({
+      id: 'loop-trace-2',
+      node_id: 'loop-1',
+    }))
+    const loopFinishedProcess = finishParallelTrace(loopNextProcess, createTrace({
+      id: 'loop-trace-2',
+      node_id: 'loop-1',
+      status: NodeRunningStatus.Succeeded,
+      details: undefined,
+    }))
+
+    expect(loopFinishedProcess.tracing[0]).toEqual(expect.objectContaining({
+      id: 'iter-trace-1',
+      details: [[]],
+      status: NodeRunningStatus.Running,
+    }))
+    expect(loopFinishedProcess.tracing[1]).toEqual(expect.objectContaining({
+      id: 'iter-trace-2',
+      details: [[], []],
+      status: NodeRunningStatus.Succeeded,
+    }))
+    expect(loopFinishedProcess.tracing[2]).toEqual(expect.objectContaining({
+      id: 'loop-trace-1',
+      details: [[]],
+      status: NodeRunningStatus.Running,
+    }))
+    expect(loopFinishedProcess.tracing[3]).toEqual(expect.objectContaining({
+      id: 'loop-trace-2',
+      details: [[], []],
+      status: NodeRunningStatus.Succeeded,
+    }))
+  })
+
+  it('should append a new top-level trace when the same node starts with a different execution id', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        id: 'trace-1',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Succeeded,
+      }),
+    ]
+
+    const updatedProcess = upsertWorkflowNode(process, createTrace({
+      id: 'trace-2',
+      node_id: 'node-1',
+    }))!
+
+    expect(updatedProcess.tracing).toHaveLength(2)
+    expect(updatedProcess.tracing[1]).toEqual(expect.objectContaining({
+      id: 'trace-2',
+      node_id: 'node-1',
+      status: NodeRunningStatus.Running,
+    }))
+  })
+
+  it('should finish the matching top-level trace when the same node runs again with a new execution id', () => {
+    const process = createWorkflowProcess()
+    process.tracing = [
+      createTrace({
+        id: 'trace-1',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Succeeded,
+      }),
+      createTrace({
+        id: 'trace-2',
+        node_id: 'node-1',
+        status: NodeRunningStatus.Running,
+      }),
+    ]
+
+    const updatedProcess = finishWorkflowNode(process, createTrace({
+      id: 'trace-2',
+      node_id: 'node-1',
+      status: NodeRunningStatus.Succeeded,
+    }))!
+
+    expect(updatedProcess.tracing).toHaveLength(2)
+    expect(updatedProcess.tracing[0]).toEqual(expect.objectContaining({
+      id: 'trace-1',
+      status: NodeRunningStatus.Succeeded,
+    }))
+    expect(updatedProcess.tracing[1]).toEqual(expect.objectContaining({
+      id: 'trace-2',
+      status: NodeRunningStatus.Succeeded,
+    }))
+  })
+
   it('should leave tracing unchanged when a parallel next event has no matching trace', () => {
     const process = createWorkflowProcess()
     process.tracing = [
@@ -171,6 +297,7 @@ describe('workflow-stream-handlers helpers', () => {
     ]
 
     const nextProcess = appendParallelNext(process, createTrace({
+      id: 'trace-missing',
       node_id: 'missing-node',
       execution_metadata: { parallel_id: 'parallel-2' },
     }))
@@ -228,6 +355,7 @@ describe('workflow-stream-handlers helpers', () => {
       },
     }))
     const notFinished = finishParallelTrace(process, createTrace({
+      id: 'trace-missing',
       node_id: 'missing',
       execution_metadata: {
         parallel_id: 'parallel-missing',
@@ -243,6 +371,7 @@ describe('workflow-stream-handlers helpers', () => {
       loop_id: 'loop-1',
     }))
     const unmatchedFinish = finishWorkflowNode(process, createTrace({
+      id: 'trace-missing',
       node_id: 'missing',
       execution_metadata: {
         parallel_id: 'missing',

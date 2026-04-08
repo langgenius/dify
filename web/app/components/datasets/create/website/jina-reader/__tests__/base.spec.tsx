@@ -264,7 +264,7 @@ describe('UrlInput', () => {
 
       render(<UrlInput {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, longUrl)
+      fireEvent.change(input, { target: { value: longUrl } })
 
       expect(input).toHaveValue(longUrl)
     })
@@ -275,7 +275,7 @@ describe('UrlInput', () => {
 
       render(<UrlInput {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, unicodeUrl)
+      fireEvent.change(input, { target: { value: unicodeUrl } })
 
       expect(input).toHaveValue(unicodeUrl)
     })
@@ -285,7 +285,7 @@ describe('UrlInput', () => {
 
       render(<UrlInput {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://rapid.com', { delay: 1 })
+      fireEvent.change(input, { target: { value: 'https://rapid.com' } })
 
       expect(input).toHaveValue('https://rapid.com')
     })
@@ -297,7 +297,7 @@ describe('UrlInput', () => {
 
       render(<UrlInput {...props} />)
       const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://enter.com')
+      fireEvent.change(input, { target: { value: 'https://enter.com' } })
 
       // Focus button and press enter
       const button = screen.getByRole('button', { name: /run/i })

@@ -42,6 +42,12 @@ import {
 import { useHooksStore } from '../../hooks-store'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
+import { upsertTopLevelTracingNodeOnStart } from '../../utils/top-level-tracing'
+import {
+  findTracingIndexByExecutionOrUniqueNodeId,
+  mergeTracingNodePreservingExecutionMetadata,
+  upsertTracingNodeOnResumeStart,
+} from '../../utils/tracing-execution'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -468,10 +474,7 @@ export const useChat = (
         onIterationFinish: ({ data }) => {
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
-              ...data,
-            }
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data)
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -495,10 +498,7 @@ export const useChat = (
         onLoopFinish: ({ data }) => {
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
-              ...data,
-            }
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data)
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -508,19 +508,15 @@ export const useChat = (
           }
         },
         onNodeStarted: ({ data }) => {
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-          if (currentIndex > -1) {
-            responseItem.workflowProcess!.tracing![currentIndex] = {
-              ...data,
-              status: NodeRunningStatus.Running,
-            }
-          }
-          else {
-            responseItem.workflowProcess!.tracing!.push({
-              ...data,
-              status: NodeRunningStatus.Running,
-            })
-          }
+          if (params.loop_id)
+            return
+
+          upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess!.tracing!, {
+            ...data,
+            status: NodeRunningStatus.Running,
+          }, {
+            reuseRunningNodeId: true,
+          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -539,12 +535,12 @@ export const useChat = (
           })
         },
         onNodeFinished: ({ data }) => {
+          if (params.loop_id)
+            return
+
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
-              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
-              ...data,
-            }
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess!.tracing[currentTracingIndex], data)
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -554,7 +550,10 @@ export const useChat = (
           }
         },
         onAgentLog: ({ data }) => {
-          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          const currentNodeIndex = findTracingIndexByExecutionOrUniqueNodeId(responseItem.workflowProcess!.tracing!, {
+            executionId: data.node_execution_id,
+            nodeId: data.node_id,
+          })
           if (currentNodeIndex > -1) {
             const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
 
@@ -769,7 +768,8 @@ export const useChat = (
             return
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
-          responseItem.workflowProcess.tracing.push({
+
+          upsertTracingNodeOnResumeStart(responseItem.workflowProcess.tracing, {
             ...iterationStartedData,
             status: WorkflowRunningStatus.Running,
           })
@@ -780,12 +780,14 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const iterationIndex = tracing.findIndex(item => item.node_id === iterationFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === iterationFinishedData.execution_metadata?.parallel_id || item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id))!
+          const iterationIndex = findTracingIndexByExecutionOrUniqueNodeId(tracing, {
+            executionId: iterationFinishedData.id,
+            nodeId: iterationFinishedData.node_id,
+            parallelId: iterationFinishedData.execution_metadata?.parallel_id,
+          })
           if (iterationIndex > -1) {
             tracing[iterationIndex] = {
-              ...tracing[iterationIndex],
-              ...iterationFinishedData,
+              ...mergeTracingNodePreservingExecutionMetadata(tracing[iterationIndex], iterationFinishedData),
               status: WorkflowRunningStatus.Succeeded,
             }
           }
@@ -798,22 +800,12 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
-          if (currentIndex > -1) {
-            responseItem.workflowProcess.tracing[currentIndex] = {
-              ...nodeStartedData,
-              status: NodeRunningStatus.Running,
-            }
-          }
-          else {
-            if (nodeStartedData.iteration_id)
-              return
-
-            responseItem.workflowProcess.tracing.push({
-              ...nodeStartedData,
-              status: WorkflowRunningStatus.Running,
-            })
-          }
+          upsertTopLevelTracingNodeOnStart(responseItem.workflowProcess.tracing, {
+            ...nodeStartedData,
+            status: NodeRunningStatus.Running,
+          }, {
+            reuseRunningNodeId: true,
+          })
         })
       },
       onNodeFinished: ({ data: nodeFinishedData }) => {
@@ -824,14 +816,17 @@ export const useChat = (
           if (nodeFinishedData.iteration_id)
             return
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
-            if (!item.execution_metadata?.parallel_id)
-              return item.id === nodeFinishedData.id
+          if (nodeFinishedData.loop_id)
+            return
 
-            return item.id === nodeFinishedData.id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
+          const currentIndex = findTracingIndexByExecutionOrUniqueNodeId(responseItem.workflowProcess.tracing, {
+            executionId: nodeFinishedData.id,
+            nodeId: nodeFinishedData.node_id,
+            parallelId: nodeFinishedData.execution_metadata?.parallel_id,
           })
-          if (currentIndex > -1)
-            responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+          if (currentIndex > -1) {
+            responseItem.workflowProcess.tracing[currentIndex] = mergeTracingNodePreservingExecutionMetadata(responseItem.workflowProcess.tracing[currentIndex], nodeFinishedData) as any
+          }
         })
       },
       onLoopStart: ({ data: loopStartedData }) => {
@@ -840,7 +835,8 @@ export const useChat = (
             return
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
-          responseItem.workflowProcess.tracing.push({
+
+          upsertTracingNodeOnResumeStart(responseItem.workflowProcess.tracing, {
             ...loopStartedData,
             status: WorkflowRunningStatus.Running,
           })
@@ -851,12 +847,14 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          const loopIndex = findTracingIndexByExecutionOrUniqueNodeId(tracing, {
+            executionId: loopFinishedData.id,
+            nodeId: loopFinishedData.node_id,
+            parallelId: loopFinishedData.execution_metadata?.parallel_id,
+          })
           if (loopIndex > -1) {
             tracing[loopIndex] = {
-              ...tracing[loopIndex],
-              ...loopFinishedData,
+              ...mergeTracingNodePreservingExecutionMetadata(tracing[loopIndex], loopFinishedData),
               status: WorkflowRunningStatus.Succeeded,
             }
           }
