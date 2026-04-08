@@ -7968,12 +7968,6 @@
   "app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 13
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/tools/workflow-tool/method-selector.tsx": {
