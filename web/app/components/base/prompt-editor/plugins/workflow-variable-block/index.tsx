@@ -1,4 +1,4 @@
-import type { WorkflowVariableBlockType } from '../../types'
+import type { GetVarType, WorkflowVariableBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
