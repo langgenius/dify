@@ -1,6 +1,6 @@
 import enum
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
@@ -149,7 +149,7 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
         except ValueError:
             value_of = getattr(self._enum_class, "value_of", None)
             if callable(value_of):
-                return value_of(value)
+                return cast(T, value_of(value))
             raise
 
     def compare_values(self, x: T | None, y: T | None) -> bool:
