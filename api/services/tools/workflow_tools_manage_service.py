@@ -205,7 +205,7 @@ class WorkflowToolManageService:
                 # skip deleted tools
                 logger.exception("Failed to load workflow tool provider %s", provider.id)
 
-        labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
+        labels = ToolLabelManager.get_tools_labels([tool for tool in tools if isinstance(tool, ToolProviderController)])
 
         result = []
 
