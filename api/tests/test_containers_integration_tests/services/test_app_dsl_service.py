@@ -778,9 +778,7 @@ class TestAppDslService:
     def test_create_or_update_app_chat_creates_model_config_and_sends_event(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         app.app_model_config_id = None
         db_session_with_containers.commit()
 
