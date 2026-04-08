@@ -614,11 +614,11 @@ class TestWorkflowGenerateTaskPipeline:
         calls = {"enter": 0, "exit_exc": None}
 
         class _BeginContext:
-            def __enter__(self_inner):
+            def __enter__(self):
                 calls["enter"] += 1
                 return MagicMock()
 
-            def __exit__(self_inner, exc_type, exc, tb):
+            def __exit__(self, exc_type, exc, tb):
                 calls["exit_exc"] = exc_type
                 return False
 
