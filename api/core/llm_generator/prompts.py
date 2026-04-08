@@ -446,10 +446,22 @@ Requirements:
 4. If images are included, describe their key information
 5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
 6. Write directly without extra words
-7. If there is not enough content to generate a meaningful summary, 
+7. If there is not enough content to generate a meaningful summary,
    return an empty string without any explanation or prompt
 
 Output only the summary text. Start summarizing now:
 
 """
 )
+
+HISTORY_COMPRESSION_SUMMARY_PROMPT = """You are a conversation summarizer. Summarize the following \
+conversation history concisely, preserving all key information, context, and important details that \
+would be needed to continue the conversation.
+Conversation history:
+{conversation}
+Provide a concise summary that captures:
+1. The main topics discussed
+2. Key questions asked and answers given
+3. Important information and facts exchanged
+4. Any decisions or conclusions reached
+Output only the summary without any preamble or explanation:"""
