@@ -459,7 +459,7 @@ class ApiToolManageService:
                 .limit(1)
             )
 
-        if provider is not None:
+        if provider is None:
             # create a fake db provider
             provider = ApiToolProvider(
                 tenant_id="",
