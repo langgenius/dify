@@ -106,7 +106,7 @@ const ViewHistory = ({
             )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[12]">
+        <PortalToFollowElemContent className="z-12">
           <div
             className="ml-2 flex w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
             style={{

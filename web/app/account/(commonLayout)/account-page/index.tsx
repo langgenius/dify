@@ -7,13 +7,12 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -43,7 +42,6 @@ export default function AccountPage() {
   const userProfile = userProfileResp?.profile
   const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: commonQueryKeys.userProfile })
   const { isEducationAccount } = useProviderContext()
-  const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
   const [editing, setEditing] = useState(false)
@@ -68,22 +66,19 @@ export default function AccountPage() {
     try {
       setEditing(true)
       await updateUserProfile({ url: 'account/name', body: { name: editName } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       mutateUserProfile()
       setEditNameModalVisible(false)
       setEditing(false)
     }
     catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
       setEditing(false)
     }
   }
 
   const showErrorMessage = (message: string) => {
-    notify({
-      type: 'error',
-      message,
-    })
+    toast.error(message)
   }
   const valid = () => {
     if (!password.trim()) {
@@ -119,14 +114,14 @@ export default function AccountPage() {
           repeat_new_password: confirmPassword,
         },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       mutateUserProfile()
       setEditPasswordModalVisible(false)
       resetPasswordForm()
       setEditing(false)
     }
     catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
       setEditPasswordModalVisible(false)
       setEditing(false)
     }
@@ -221,119 +216,112 @@ export default function AccountPage() {
       </div>
       {
         editNameModalVisible && (
-          <Modal
-            isShow
-            onClose={() => setEditNameModalVisible(false)}
-            className="!w-[420px] !p-6"
-          >
-            <div className="mb-6 text-text-primary title-2xl-semi-bold">{t('account.editName', { ns: 'common' })}</div>
-            <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
-            <Input
-              className="mt-2"
-              value={editName}
-              onChange={e => setEditName(e.target.value)}
-            />
-            <div className="mt-10 flex justify-end">
-              <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>{t('operation.cancel', { ns: 'common' })}</Button>
-              <Button
-                disabled={editing || !editName}
-                variant="primary"
-                onClick={handleSaveName}
-              >
-                {t('operation.save', { ns: 'common' })}
-              </Button>
-            </div>
-          </Modal>
+          <Dialog open={editNameModalVisible} onOpenChange={open => !open && setEditNameModalVisible(false)}>
+            <DialogContent className="w-[420px]! p-6!">
+              <div className="mb-6 text-text-primary title-2xl-semi-bold">{t('account.editName', { ns: 'common' })}</div>
+              <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
+              <Input
+                className="mt-2"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+              />
+              <div className="mt-10 flex justify-end">
+                <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>{t('operation.cancel', { ns: 'common' })}</Button>
+                <Button
+                  disabled={editing || !editName}
+                  variant="primary"
+                  onClick={handleSaveName}
+                >
+                  {t('operation.save', { ns: 'common' })}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )
       }
       {
         editPasswordModalVisible && (
-          <Modal
-            isShow
-            onClose={() => {
-              setEditPasswordModalVisible(false)
-              resetPasswordForm()
-            }}
-            className="!w-[420px] !p-6"
-          >
-            <div className="mb-6 text-text-primary title-2xl-semi-bold">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
-            {userProfile.is_password_set && (
-              <>
-                <div className={titleClassName}>{t('account.currentPassword', { ns: 'common' })}</div>
-                <div className="relative mt-2">
-                  <Input
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                  />
+          <Dialog open={editPasswordModalVisible} onOpenChange={open => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}>
+            <DialogContent className="w-[420px]! p-6!">
+              <div className="mb-6 text-text-primary title-2xl-semi-bold">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
+              {userProfile.is_password_set && (
+                <>
+                  <div className={titleClassName}>{t('account.currentPassword', { ns: 'common' })}</div>
+                  <div className="relative mt-2">
+                    <Input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                    />
 
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    >
-                      {showCurrentPassword ? '👀' : '😝'}
-                    </Button>
+                    <div className="absolute inset-y-0 right-0 flex items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      >
+                        {showCurrentPassword ? '👀' : '😝'}
+                      </Button>
+                    </div>
                   </div>
+                </>
+              )}
+              <div className="mt-8 text-text-secondary system-sm-semibold">
+                {userProfile.is_password_set ? t('account.newPassword', { ns: 'common' }) : t('account.password', { ns: 'common' })}
+              </div>
+              <div className="relative mt-2">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? '👀' : '😝'}
+                  </Button>
                 </div>
-              </>
-            )}
-            <div className="mt-8 text-text-secondary system-sm-semibold">
-              {userProfile.is_password_set ? t('account.newPassword', { ns: 'common' }) : t('account.password', { ns: 'common' })}
-            </div>
-            <div className="relative mt-2">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center">
+              </div>
+              <div className="mt-8 text-text-secondary system-sm-semibold">{t('account.confirmPassword', { ns: 'common' })}</div>
+              <div className="relative mt-2">
+                <Input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? '👀' : '😝'}
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-10 flex justify-end">
                 <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="mr-2"
+                  onClick={() => {
+                    setEditPasswordModalVisible(false)
+                    resetPasswordForm()
+                  }}
                 >
-                  {showPassword ? '👀' : '😝'}
+                  {t('operation.cancel', { ns: 'common' })}
+                </Button>
+                <Button
+                  disabled={editing}
+                  variant="primary"
+                  onClick={handleSavePassword}
+                >
+                  {userProfile.is_password_set ? t('operation.reset', { ns: 'common' }) : t('operation.save', { ns: 'common' })}
                 </Button>
               </div>
-            </div>
-            <div className="mt-8 text-text-secondary system-sm-semibold">{t('account.confirmPassword', { ns: 'common' })}</div>
-            <div className="relative mt-2">
-              <Input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? '👀' : '😝'}
-                </Button>
-              </div>
-            </div>
-            <div className="mt-10 flex justify-end">
-              <Button
-                className="mr-2"
-                onClick={() => {
-                  setEditPasswordModalVisible(false)
-                  resetPasswordForm()
-                }}
-              >
-                {t('operation.cancel', { ns: 'common' })}
-              </Button>
-              <Button
-                disabled={editing}
-                variant="primary"
-                onClick={handleSavePassword}
-              >
-                {userProfile.is_password_set ? t('operation.reset', { ns: 'common' }) : t('operation.save', { ns: 'common' })}
-              </Button>
-            </div>
-          </Modal>
+            </DialogContent>
+          </Dialog>
         )
       }
       {

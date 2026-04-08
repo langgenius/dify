@@ -295,7 +295,7 @@ export default function ShortcutsPopupPlugin({
         refs.setFloating(node)
       }}
       className={cn(
-        useContainer ? '' : 'z-[999999]',
+        useContainer ? '' : 'z-999999',
         'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}

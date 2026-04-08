@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import qdrant_client
@@ -25,7 +25,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -40,8 +40,8 @@ if TYPE_CHECKING:
     from qdrant_client.conversions import common_types
     from qdrant_client.http import models as rest
 
-    DictFilter = dict[str, Union[str, int, bool, dict, list]]
-    MetadataFilter = Union[DictFilter, common_types.Filter]
+    type DictFilter = dict[str, str | int | bool | dict | list]
+    type MetadataFilter = DictFilter | common_types.Filter
 
 
 class TidbOnQdrantConfig(BaseModel):
@@ -91,8 +91,12 @@ class TidbOnQdrantVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.TIDB_ON_QDRANT
 
-    def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+    def to_index_struct(self) -> VectorIndexStructDict:
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
@@ -426,11 +430,10 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                     TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                 else:
-                    idle_tidb_auth_binding = (
-                        db.session.query(TidbAuthBinding)
+                    idle_tidb_auth_binding = db.session.scalar(
+                        select(TidbAuthBinding)
                         .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
-                        .one_or_none()
                     )
                     if idle_tidb_auth_binding:
                         idle_tidb_auth_binding.active = True

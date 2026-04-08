@@ -56,7 +56,7 @@ const ErrorHandleOnNode = ({
               id={id}
               data={data}
               handleId={ErrorHandleTypeEnum.failBranch}
-              handleClassName="!top-1/2 !-right-[21px] !-translate-y-1/2 after:!bg-workflow-link-line-failure-button-bg"
+              handleClassName="top-1/2! -right-[21px]! -translate-y-1/2! after:bg-workflow-link-line-failure-button-bg!"
             />
           )
         }

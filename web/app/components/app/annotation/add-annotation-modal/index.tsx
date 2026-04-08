@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Drawer from '@/app/components/base/drawer-plus'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import EditItem, { EditItemType } from './edit-item'
@@ -47,10 +47,7 @@ const AddAnnotationModal: FC<Props> = ({
       answer,
     }
     if (isValid(payload) !== true) {
-      Toast.notify({
-        type: 'error',
-        message: isValid(payload) as string,
-      })
+      toast.error(isValid(payload) as string)
       return
     }
 
@@ -75,7 +72,7 @@ const AddAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName="!max-w-[480px]"
+        maxWidthClassName="max-w-[480px]!"
         title={t('addModal.title', { ns: 'appAnnotation' }) as string}
         body={(
           <div className="space-y-6 p-6 pb-4">

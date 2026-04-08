@@ -3,12 +3,13 @@ import logging
 import uuid
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, ParamSpec, TypeVar
+from typing import Any, Concatenate
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -19,15 +20,12 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-T = TypeVar("T", bound="MatrixoneVector")
-
-
-def ensure_client(func: Callable[Concatenate[T, P], R]):
+def ensure_client[T: MatrixoneVector, **P, R](
+    func: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]:
     @wraps(func)
-    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         if self.client is None:
             self.client = self._get_client(None, False)
         return func(self, *args, **kwargs)
@@ -196,11 +194,7 @@ class MatrixoneVector(BaseVector):
 
         docs = []
         for result in results:
-            metadata = result.metadata
-            if isinstance(metadata, str):
-                import json
-
-                metadata = json.loads(metadata)
+            metadata = parse_metadata_json(result.metadata)
             score = 1 - result.distance
             if score >= score_threshold:
                 metadata["score"] = score

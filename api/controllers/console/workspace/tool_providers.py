@@ -7,7 +7,7 @@ from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -832,7 +832,8 @@ class ToolOAuthCallback(Resource):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
-        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
 
         oauth_handler = OAuthHandler()
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
@@ -1018,7 +1019,7 @@ class ToolProviderMCPApi(Resource):
 
         # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
         validation_data = None
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
                 tenant_id=current_tenant_id, provider_id=payload.provider_id
@@ -1033,7 +1034,7 @@ class ToolProviderMCPApi(Resource):
         )
 
         # Step 3: Perform database update in a transaction
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             service.update_provider(
                 tenant_id=current_tenant_id,
@@ -1060,7 +1061,7 @@ class ToolProviderMCPApi(Resource):
         payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
         _, current_tenant_id = current_account_with_tenant()
 
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             service.delete_provider(tenant_id=current_tenant_id, provider_id=payload.provider_id)
 
@@ -1078,7 +1079,7 @@ class ToolMCPAuthApi(Resource):
         provider_id = payload.provider_id
         _, tenant_id = current_account_with_tenant()
 
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
             if not db_provider:
@@ -1099,7 +1100,7 @@ class ToolMCPAuthApi(Resource):
                 sse_read_timeout=provider_entity.sse_read_timeout,
             ):
                 # Update credentials in new transaction
-                with Session(db.engine) as session, session.begin():
+                with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
                     service.update_provider_credentials(
                         provider_id=provider_id,
@@ -1117,17 +1118,17 @@ class ToolMCPAuthApi(Resource):
                     resource_metadata_url=e.resource_metadata_url,
                     scope_hint=e.scope_hint,
                 )
-                with Session(db.engine) as session, session.begin():
+                with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
                     response = service.execute_auth_actions(auth_result)
                     return response
             except MCPRefreshTokenError as e:
-                with Session(db.engine) as session, session.begin():
+                with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
                     service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
                 raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
         except (MCPError, ValueError) as e:
-            with Session(db.engine) as session, session.begin():
+            with sessionmaker(db.engine).begin() as session:
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
@@ -1140,7 +1141,7 @@ class ToolMCPDetailApi(Resource):
     @account_initialization_required
     def get(self, provider_id):
         _, tenant_id = current_account_with_tenant()
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
             return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
@@ -1154,7 +1155,7 @@ class ToolMCPListAllApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             # Skip sensitive data decryption for list view to improve performance
             tools = service.list_providers(tenant_id=tenant_id, include_sensitive=False)
@@ -1169,7 +1170,7 @@ class ToolMCPUpdateApi(Resource):
     @account_initialization_required
     def get(self, provider_id):
         _, tenant_id = current_account_with_tenant()
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             tools = service.list_provider_tools(
                 tenant_id=tenant_id,
@@ -1187,7 +1188,7 @@ class ToolMCPCallbackApi(Resource):
         authorization_code = query.code
 
         # Create service instance for handle_callback
-        with Session(db.engine) as session, session.begin():
+        with sessionmaker(db.engine).begin() as session:
             mcp_service = MCPToolManageService(session=session)
             # handle_callback now returns state data and tokens
             state_data, tokens = handle_callback(state_key, authorization_code)

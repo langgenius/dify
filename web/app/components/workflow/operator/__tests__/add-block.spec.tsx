@@ -128,7 +128,7 @@ describe('AddBlock', () => {
         availableBlocksTypes: mockAvailableNextBlocks,
         showStartTab: true,
         placement: 'right-start',
-        popupClassName: '!min-w-[256px]',
+        popupClassName: 'min-w-[256px]!',
       })
       expect(latestBlockSelectorProps?.offset).toEqual({
         mainAxis: 4,

@@ -56,7 +56,7 @@ const SelectMetadataModal: FC<Props> = ({
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         {step === Step.select
           ? (
               <SelectMetadata

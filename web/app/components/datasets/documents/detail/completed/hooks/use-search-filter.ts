@@ -3,13 +3,7 @@ import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type SearchFilterState = {
-  inputValue: string
-  searchValue: string
-  selectedStatus: boolean | 'all'
-}
-
-export type UseSearchFilterReturn = {
+type UseSearchFilterReturn = {
   inputValue: string
   searchValue: string
   selectedStatus: boolean | 'all'

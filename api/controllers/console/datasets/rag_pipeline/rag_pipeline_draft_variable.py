@@ -1,11 +1,12 @@
 import logging
+from collections.abc import Callable
 from typing import Any, NoReturn
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
 from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_schema_models
@@ -55,7 +56,7 @@ class WorkflowDraftVariablePatchPayload(BaseModel):
 register_schema_models(console_ns, WorkflowDraftVariablePatchPayload)
 
 
-def _api_prerequisite(f):
+def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -70,7 +71,7 @@ def _api_prerequisite(f):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
         return f(*args, **kwargs)
@@ -96,7 +97,7 @@ class RagPipelineVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -143,7 +144,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, pipeline: Pipeline, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -289,7 +290,7 @@ class RagPipelineVariableResetApi(Resource):
 
 
 def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )

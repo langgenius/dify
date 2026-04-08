@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from clickzetta.connector.v0.connection import Connection  # type: ignore
 
 from configs import dify_config
-from core.rag.datasource.vdb.field import Field
+from core.rag.datasource.vdb.field import Field, parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.embedding.embedding_base import Embeddings
@@ -357,18 +357,19 @@ class ClickzettaVector(BaseVector):
         """
         try:
             if raw_metadata:
-                metadata = json.loads(raw_metadata)
+                # First parse may yield a string (double-encoded JSON) so use json.loads
+                first_pass = json.loads(raw_metadata)
 
                 # Handle double-encoded JSON
-                if isinstance(metadata, str):
-                    metadata = json.loads(metadata)
-
-                # Ensure we have a dict
-                if not isinstance(metadata, dict):
+                if isinstance(first_pass, str):
+                    metadata = parse_metadata_json(first_pass)
+                elif isinstance(first_pass, dict):
+                    metadata = first_pass
+                else:
                     metadata = {}
             else:
                 metadata = {}
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, ValueError, TypeError):
             logger.exception("JSON parsing failed for metadata")
             # Fallback: extract document_id with regex
             doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', raw_metadata or "")
@@ -930,17 +931,18 @@ class ClickzettaVector(BaseVector):
                         # Parse metadata from JSON string (may be double-encoded)
                         try:
                             if row[2]:
-                                metadata = json.loads(row[2])
+                                # First parse may yield a string (double-encoded JSON)
+                                first_pass = json.loads(row[2])
 
-                                # If result is a string, it's double-encoded JSON - parse again
-                                if isinstance(metadata, str):
-                                    metadata = json.loads(metadata)
-
-                                if not isinstance(metadata, dict):
+                                if isinstance(first_pass, str):
+                                    metadata = parse_metadata_json(first_pass)
+                                elif isinstance(first_pass, dict):
+                                    metadata = first_pass
+                                else:
                                     metadata = {}
                             else:
                                 metadata = {}
-                        except (json.JSONDecodeError, TypeError):
+                        except (json.JSONDecodeError, ValueError, TypeError):
                             logger.exception("JSON parsing failed")
                             # Fallback: extract document_id with regex
 

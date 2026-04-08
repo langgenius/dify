@@ -7,12 +7,11 @@ import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -26,7 +25,7 @@ import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
 
-export type ICardViewProps = {
+type ICardViewProps = {
   appId: string
   isInPanel?: boolean
   className?: string
@@ -34,7 +33,6 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
@@ -90,10 +88,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     if (type === 'success')
       updateAppDetail()
 
-    notify({
-      type,
-      message: t(`actionMsg.${message}`, { ns: 'common' }) as string,
-    })
+    toast(t(`actionMsg.${message}`, { ns: 'common' }) as string, { type })
   }
 
   const onChangeSiteStatus = async (value: boolean) => {

@@ -160,11 +160,11 @@ const BaseNode: FC<BaseNodeProps> = ({
           !isContainerNode(data.type) && 'w-[240px] bg-workflow-block-bg',
           isContainerNode(data.type) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && '!border-state-accent-solid',
-          showSuccessBorder && '!border-state-success-solid',
-          showFailedBorder && '!border-state-destructive-solid',
-          showExceptionBorder && '!border-state-warning-solid',
-          data._isBundled && '!shadow-lg',
+          showRunningBorder && 'border-state-accent-solid!',
+          showSuccessBorder && 'border-state-success-solid!',
+          showFailedBorder && 'border-state-destructive-solid!',
+          showExceptionBorder && 'border-state-warning-solid!',
+          data._isBundled && 'shadow-lg!',
         )}
       >
         {
@@ -196,7 +196,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             <NodeTargetHandle
               id={id}
               data={data}
-              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleClassName="top-4! -left-[9px]! translate-y-0!"
               handleId="target"
             />
           )
@@ -206,7 +206,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             <NodeSourceHandle
               id={id}
               data={data}
-              handleClassName="!top-4 !-right-[9px] !translate-y-0"
+              handleClassName="top-4! -right-[9px]! translate-y-0!"
               handleId="source"
             />
           )

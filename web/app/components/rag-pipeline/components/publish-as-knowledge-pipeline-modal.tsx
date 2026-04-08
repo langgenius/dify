@@ -80,7 +80,7 @@ const PublishAsKnowledgePipelineModal = ({
       <Modal
         isShow
         onClose={noop}
-        className="relative !w-[520px] !p-0"
+        className="relative w-[520px]! p-0!"
       >
         <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
           {t('common.publishAs', { ns: 'pipeline' })}

@@ -35,7 +35,7 @@ const CreateMetadataModal: FC<Props> = ({
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
+      <PortalToFollowElemContent className="z-1000">
         <CreateContent {...createContentProps} onClose={() => setOpen(false)} onBack={() => setOpen(false)} />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

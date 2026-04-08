@@ -1,22 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, TypeAlias
+from typing import Any
 
 from graphon.file import File
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
-JSONValue: TypeAlias = Any
+from fields.base import ResponseModel
 
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+type JSONValue = Any
 
 
 class MessageFile(ResponseModel):

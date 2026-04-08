@@ -25,7 +25,7 @@ const Container = ({
 }: ContainerProps) => {
   return (
     <div className={cn(
-      'space-y-0.5 rounded-[10px] bg-background-section-burn p-0.5',
+      'space-y-0.5 radius-lg bg-background-section-burn p-0.5',
       isFailBranch && 'border-[0.5px] border-state-warning-hover-alt bg-state-warning-hover',
     )}
     >

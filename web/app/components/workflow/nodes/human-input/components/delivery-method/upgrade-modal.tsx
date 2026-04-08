@@ -26,7 +26,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     <Modal
       isShow={isShow}
       onClose={noop}
-      className="relative !w-[580px] !max-w-[580px] !p-8"
+      className="relative w-[580px]! max-w-[580px]! p-8!"
     >
       <div className="pb-6">
         <div
@@ -37,7 +37,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           <RiMailSendFill className="h-6 w-6 text-text-primary-on-surface" />
         </div>
         <p
-          className="title-3xl-semi-bold bg-[linear-gradient(271deg,_var(--components-input-border-active-prompt-1,_#155AEF)_-12.85%,_var(--components-input-border-active-prompt-2,_#0BA5EC)_95.4%)] bg-clip-text text-transparent"
+          className="title-3xl-semi-bold bg-[linear-gradient(271deg,var(--components-input-border-active-prompt-1,#155AEF)_-12.85%,var(--components-input-border-active-prompt-2,#0BA5EC)_95.4%)] bg-clip-text text-transparent"
         >
           {t('nodes.humanInput.deliveryMethod.upgradeTip', { ns: 'workflow' })}
         </p>
@@ -61,7 +61,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             setShowPricingModal()
           }}
         >
-          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
           <div className="system-sm-medium">
             <span className="p-1">
               {t('upgradeBtn.encourageShort', { ns: 'billing' })}
