@@ -82,7 +82,7 @@ export function Slider({
       step={step}
       disabled={disabled}
       name={name}
-      thumbAlignment="edge"
+      thumbAlignment="edge-client-only"
       className={cn(sliderRootClassName, className)}
     >
       <BaseSlider.Control className={sliderControlClassName}>
