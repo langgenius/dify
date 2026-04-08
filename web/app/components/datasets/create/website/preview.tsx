@@ -26,7 +26,7 @@ const WebsitePreview = ({
             <XMarkIcon className="h-4 w-4"></XMarkIcon>
           </div>
         </div>
-        <div className="title-sm-semi-bold break-words text-text-primary">
+        <div className="title-sm-semi-bold wrap-break-word text-text-primary">
           {payload.title}
         </div>
         <div className="system-xs-medium truncate text-text-tertiary" title={payload.source_url}>{payload.source_url}</div>

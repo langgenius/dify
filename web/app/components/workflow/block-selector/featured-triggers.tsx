@@ -3,7 +3,6 @@ import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { RiMoreLine } from '@remixicon/react'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
@@ -12,6 +11,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import Link from '@/next/link'
 import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -254,7 +254,7 @@ function FeaturedTriggerUninstalledItem({
       <Tooltip
         position="right"
         needsDelay={false}
-        popupClassName="!p-0 !px-3 !py-2.5 !w-[224px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
+        popupClassName="p-0! px-3! py-2.5! w-[224px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
         popupContent={(
           <div>
             <BlockIcon size="md" className="mb-2" type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />

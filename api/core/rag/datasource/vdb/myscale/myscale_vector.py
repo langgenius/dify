@@ -4,7 +4,7 @@ import uuid
 from enum import StrEnum
 from typing import Any
 
-from clickhouse_connect import get_client
+from clickhouse_connect import get_client  # type: ignore[import-untyped]
 from pydantic import BaseModel
 
 from configs import dify_config

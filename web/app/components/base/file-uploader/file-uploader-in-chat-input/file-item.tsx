@@ -55,7 +55,7 @@ const FileItem = ({
         {
           showDeleteAction && (
             <Button
-              className="absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
+              className="absolute -right-1.5 -top-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
               data-testid="delete-button"
             >

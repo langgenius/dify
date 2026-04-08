@@ -10,11 +10,12 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
+from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
-from dify_graph.file.models import ToolFile as ToolFilePydanticModel
+from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
 from models.model import MessageFile
 from models.tools import ToolFile
@@ -23,6 +24,21 @@ logger = logging.getLogger(__name__)
 
 
 class ToolFileManager:
+    @staticmethod
+    def _build_graph_file_reference(tool_file: ToolFile) -> File:
+        extension = guess_extension(tool_file.mimetype) or ".bin"
+        return File(
+            type=get_file_type_by_mime_type(tool_file.mimetype),
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            remote_url=tool_file.original_url,
+            reference=build_file_reference(record_id=str(tool_file.id)),
+            filename=tool_file.name,
+            extension=extension,
+            mime_type=tool_file.mimetype,
+            size=tool_file.size,
+            storage_key=tool_file.file_key,
+        )
+
     @staticmethod
     def sign_file(tool_file_id: str, extension: str) -> str:
         """
@@ -137,6 +153,7 @@ class ToolFileManager:
 
             session.add(tool_file)
             session.commit()
+            session.refresh(tool_file)
 
         return tool_file
 
@@ -208,9 +225,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(
-        self, tool_file_id: str
-    ) -> tuple[Generator | None, ToolFilePydanticModel | None]:
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
         """
         get file binary
 
@@ -232,11 +247,11 @@ class ToolFileManager:
 
         stream = storage.load_stream(tool_file.file_key)
 
-        return stream, ToolFilePydanticModel.model_validate(tool_file)
+        return stream, self._build_graph_file_reference(tool_file)
 
 
 # init tool_file_parser
-from dify_graph.file.tool_file_parser import set_tool_file_manager_factory
+from graphon.file.tool_file_parser import set_tool_file_manager_factory
 
 
 def _factory() -> ToolFileManager:

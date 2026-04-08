@@ -53,6 +53,7 @@ const TimePicker = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      /* v8 ignore next 2 -- outside-click closing is handled by PortalToFollowElem; this local ref guard is a defensive fallback. */
       if (containerRef.current && !containerRef.current.contains(event.target as Node))
         setIsOpen(false)
     }
@@ -199,7 +200,7 @@ const TimePicker = ({
   const inputElem = (
     <input
       className="flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1 text-components-input-text-filled
-            outline-none system-xs-regular placeholder:text-components-input-text-placeholder"
+            outline-hidden system-xs-regular placeholder:text-components-input-text-placeholder"
       readOnly
       value={isOpen ? '' : displayValue}
       placeholder={placeholderDate}
@@ -211,7 +212,7 @@ const TimePicker = ({
       onOpenChange={setIsOpen}
       placement={placement}
     >
-      <PortalToFollowElemTrigger className={triggerFullWidth ? '!block w-full' : undefined}>
+      <PortalToFollowElemTrigger className={triggerFullWidth ? 'block! w-full' : undefined}>
         {renderTrigger
           ? (renderTrigger({
               inputElem,

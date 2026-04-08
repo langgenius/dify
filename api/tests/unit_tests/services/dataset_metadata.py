@@ -401,10 +401,7 @@ class TestMetadataServiceCreateMetadata:
         metadata_args = MetadataTestDataFactory.create_metadata_args_mock(name="category", metadata_type="string")
 
         # Mock query to return None (no existing metadata with same name)
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = None
 
         # Mock BuiltInField enum iteration
         with patch("services.metadata_service.BuiltInField") as mock_builtin:
@@ -416,10 +413,6 @@ class TestMetadataServiceCreateMetadata:
         # Assert
         assert result is not None
         assert isinstance(result, DatasetMetadata)
-
-        # Verify query was made to check for duplicates
-        mock_db_session.query.assert_called()
-        mock_query.filter_by.assert_called()
 
         # Verify metadata was added and committed
         mock_db_session.add.assert_called_once()
@@ -468,10 +461,7 @@ class TestMetadataServiceCreateMetadata:
 
         # Mock existing metadata with same name
         existing_metadata = MetadataTestDataFactory.create_metadata_mock(name="category")
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = existing_metadata
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = existing_metadata
 
         # Act & Assert
         with pytest.raises(ValueError, match="Metadata name already exists"):
@@ -500,10 +490,7 @@ class TestMetadataServiceCreateMetadata:
         )
 
         # Mock query to return None (no duplicate in database)
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = None
 
         # Mock BuiltInField to include the conflicting name
         with patch("services.metadata_service.BuiltInField") as mock_builtin:
@@ -597,27 +584,11 @@ class TestMetadataServiceUpdateMetadataName:
 
         existing_metadata = MetadataTestDataFactory.create_metadata_mock(metadata_id=metadata_id, name="category")
 
-        # Mock query for duplicate check (no duplicate)
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = None
-        mock_db_session.query.return_value = mock_query
-
-        # Mock metadata retrieval
-        def query_side_effect(model):
-            if model == DatasetMetadata:
-                mock_meta_query = Mock()
-                mock_meta_query.filter_by.return_value = mock_meta_query
-                mock_meta_query.first.return_value = existing_metadata
-                return mock_meta_query
-            return mock_query
-
-        mock_db_session.query.side_effect = query_side_effect
+        # Mock scalar calls: first for duplicate check (None), second for metadata retrieval
+        mock_db_session.scalar.side_effect = [None, existing_metadata]
 
         # Mock no metadata bindings (no documents to update)
-        mock_binding_query = Mock()
-        mock_binding_query.filter_by.return_value = mock_binding_query
-        mock_binding_query.all.return_value = []
+        mock_db_session.scalars.return_value.all.return_value = []
 
         # Mock BuiltInField enum
         with patch("services.metadata_service.BuiltInField") as mock_builtin:
@@ -655,22 +626,8 @@ class TestMetadataServiceUpdateMetadataName:
         metadata_id = "non-existent-metadata"
         new_name = "updated_category"
 
-        # Mock query for duplicate check (no duplicate)
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = None
-        mock_db_session.query.return_value = mock_query
-
-        # Mock metadata retrieval to return None
-        def query_side_effect(model):
-            if model == DatasetMetadata:
-                mock_meta_query = Mock()
-                mock_meta_query.filter_by.return_value = mock_meta_query
-                mock_meta_query.first.return_value = None  # Not found
-                return mock_meta_query
-            return mock_query
-
-        mock_db_session.query.side_effect = query_side_effect
+        # Mock scalar calls: first for duplicate check (None), second for metadata retrieval (None = not found)
+        mock_db_session.scalar.side_effect = [None, None]
 
         # Mock BuiltInField enum
         with patch("services.metadata_service.BuiltInField") as mock_builtin:
@@ -746,15 +703,10 @@ class TestMetadataServiceDeleteMetadata:
         existing_metadata = MetadataTestDataFactory.create_metadata_mock(metadata_id=metadata_id, name="category")
 
         # Mock metadata retrieval
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = existing_metadata
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = existing_metadata
 
         # Mock no metadata bindings (no documents to update)
-        mock_binding_query = Mock()
-        mock_binding_query.filter_by.return_value = mock_binding_query
-        mock_binding_query.all.return_value = []
+        mock_db_session.scalars.return_value.all.return_value = []
 
         # Act
         result = MetadataService.delete_metadata(dataset_id, metadata_id)
@@ -788,10 +740,7 @@ class TestMetadataServiceDeleteMetadata:
         metadata_id = "non-existent-metadata"
 
         # Mock metadata retrieval to return None
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="Metadata not found"):
@@ -1013,10 +962,7 @@ class TestMetadataServiceGetDatasetMetadatas:
         )
 
         # Mock usage count queries
-        mock_query = Mock()
-        mock_query.filter_by.return_value = mock_query
-        mock_query.count.return_value = 5  # 5 documents use this metadata
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = 5  # 5 documents use this metadata
 
         # Act
         result = MetadataService.get_dataset_metadatas(dataset)

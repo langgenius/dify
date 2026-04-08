@@ -3,7 +3,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { useEffect, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastProvider } from '@/app/components/base/toast'
+import { ToastHost } from '@/app/components/base/ui/toast'
 import AgentLogModal from '.'
 
 const MOCK_RESPONSE: AgentLogDetailResponse = {
@@ -109,7 +109,8 @@ const AgentLogModalDemo = ({
   }, [setAppDetail])
 
   return (
-    <ToastProvider>
+    <>
+      <ToastHost />
       <div className="relative min-h-[540px] w-full bg-background-default-subtle p-6">
         <AgentLogModal
           currentLogItem={MOCK_CHAT_ITEM}
@@ -119,7 +120,7 @@ const AgentLogModalDemo = ({
           }}
         />
       </div>
-    </ToastProvider>
+    </>
   )
 }
 

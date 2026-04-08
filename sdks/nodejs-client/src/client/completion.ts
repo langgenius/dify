@@ -1,6 +1,11 @@
 import { DifyClient } from "./base";
 import type { CompletionRequest, CompletionResponse } from "../types/completion";
-import type { DifyResponse, DifyStream } from "../types/common";
+import type {
+  DifyResponse,
+  DifyStream,
+  JsonObject,
+  SuccessResponse,
+} from "../types/common";
 import { ensureNonEmptyString } from "./validation";
 
 const warned = new Set<string>();
@@ -17,16 +22,16 @@ export class CompletionClient extends DifyClient {
     request: CompletionRequest
   ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>>;
   createCompletionMessage(
-    inputs: Record<string, unknown>,
+    inputs: JsonObject,
     user: string,
     stream?: boolean,
-    files?: Array<Record<string, unknown>> | null
+    files?: CompletionRequest["files"]
   ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>>;
   createCompletionMessage(
-    inputOrRequest: CompletionRequest | Record<string, unknown>,
+    inputOrRequest: CompletionRequest | JsonObject,
     user?: string,
     stream = false,
-    files?: Array<Record<string, unknown>> | null
+    files?: CompletionRequest["files"]
   ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>> {
     let payload: CompletionRequest;
     let shouldStream = stream;
@@ -37,7 +42,7 @@ export class CompletionClient extends DifyClient {
     } else {
       ensureNonEmptyString(user, "user");
       payload = {
-        inputs: inputOrRequest as Record<string, unknown>,
+        inputs: inputOrRequest,
         user,
         files,
         response_mode: stream ? "streaming" : "blocking",
@@ -64,10 +69,10 @@ export class CompletionClient extends DifyClient {
   stopCompletionMessage(
     taskId: string,
     user: string
-  ): Promise<DifyResponse<CompletionResponse>> {
+  ): Promise<DifyResponse<SuccessResponse>> {
     ensureNonEmptyString(taskId, "taskId");
     ensureNonEmptyString(user, "user");
-    return this.http.request<CompletionResponse>({
+    return this.http.request<SuccessResponse>({
       method: "POST",
       path: `/completion-messages/${taskId}/stop`,
       data: { user },
@@ -77,15 +82,15 @@ export class CompletionClient extends DifyClient {
   stop(
     taskId: string,
     user: string
-  ): Promise<DifyResponse<CompletionResponse>> {
+  ): Promise<DifyResponse<SuccessResponse>> {
     return this.stopCompletionMessage(taskId, user);
   }
 
   runWorkflow(
-    inputs: Record<string, unknown>,
+    inputs: JsonObject,
     user: string,
     stream = false
-  ): Promise<DifyResponse<Record<string, unknown>> | DifyStream<Record<string, unknown>>> {
+  ): Promise<DifyResponse<JsonObject> | DifyStream<JsonObject>> {
     warnOnce(
       "CompletionClient.runWorkflow is deprecated. Use WorkflowClient.run instead."
     );
@@ -96,13 +101,13 @@ export class CompletionClient extends DifyClient {
       response_mode: stream ? "streaming" : "blocking",
     };
     if (stream) {
-      return this.http.requestStream<Record<string, unknown>>({
+      return this.http.requestStream<JsonObject>({
         method: "POST",
         path: "/workflows/run",
         data: payload,
       });
     }
-    return this.http.request<Record<string, unknown>>({
+    return this.http.request<JsonObject>({
       method: "POST",
       path: "/workflows/run",
       data: payload,

@@ -2,6 +2,8 @@ import concurrent.futures
 import logging
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from services.summary_index_service import SummaryIndexService
 from tasks.generate_summary_index_task import generate_summary_index_task
@@ -11,12 +13,16 @@ logger = logging.getLogger(__name__)
 
 class SummaryIndex:
     def generate_and_vectorize_summary(
-        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict | None = None
+        self,
+        dataset_id: str,
+        document_id: str,
+        is_preview: bool,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
     ) -> None:
         if is_preview:
             with session_factory.create_session() as session:
                 dataset = session.query(Dataset).filter_by(id=dataset_id).first()
-                if not dataset or dataset.indexing_technique != "high_quality":
+                if not dataset or dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                     return
 
                 if summary_index_setting is None:

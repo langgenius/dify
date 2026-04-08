@@ -6,7 +6,14 @@ on:
       - "main"
     paths:
       - api/Dockerfile
+      - web/docker/**
       - web/Dockerfile
+      - packages/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
+      - .nvmrc
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
@@ -14,26 +21,31 @@ concurrency:
 
 jobs:
   build-docker:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
         include:
           - service_name: "api-amd64"
             platform: linux/amd64
-            context: "api"
+            runs_on: ubuntu-latest
+            context: "{{defaultContext}}:api"
+            file: "Dockerfile"
           - service_name: "api-arm64"
             platform: linux/arm64
-            context: "api"
+            runs_on: ubuntu-24.04-arm
+            context: "{{defaultContext}}:api"
+            file: "Dockerfile"
           - service_name: "web-amd64"
             platform: linux/amd64
-            context: "web"
+            runs_on: ubuntu-latest
+            context: "{{defaultContext}}"
+            file: "web/Dockerfile"
           - service_name: "web-arm64"
             platform: linux/arm64
-            context: "web"
+            runs_on: ubuntu-24.04-arm
+            context: "{{defaultContext}}"
+            file: "web/Dockerfile"
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
@@ -41,8 +53,8 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           push: false
-          context: "{{defaultContext}}:${{ matrix.context }}"
-          file: "${{ matrix.file }}"
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

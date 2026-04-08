@@ -91,11 +91,15 @@ const getFileIndexingEstimateParamsForFile = ({
   processRule,
   dataset_id,
 }: GetFileIndexingEstimateParamsOptionFile): IndexingEstimateParams => {
+  const fileIds = files
+    .map(file => file.id)
+    .filter((id): id is string => Boolean(id))
+
   return {
     info_list: {
       data_source_type: dataSourceType,
       file_info_list: {
-        file_ids: files.map(file => file.id) as string[],
+        file_ids: fileIds,
       },
     },
     indexing_technique: indexingTechnique,

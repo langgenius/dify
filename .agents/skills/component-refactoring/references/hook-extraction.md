@@ -155,48 +155,14 @@ const Configuration: FC = () => {
 
 ## Common Hook Patterns in Dify
 
-### 1. Data Fetching Hook (React Query)
+### 1. Data Fetching / Mutation Hooks
 
-```typescript
-// Pattern: Use @tanstack/react-query for data fetching
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { get } from '@/service/base'
-import { useInvalid } from '@/service/use-base'
+When hook extraction touches query or mutation code, do not use this reference as the source of truth for data-layer patterns.
 
-const NAME_SPACE = 'appConfig'
-
-// Query keys for cache management
-export const appConfigQueryKeys = {
-  detail: (appId: string) => [NAME_SPACE, 'detail', appId] as const,
-}
-
-// Main data hook
-export const useAppConfig = (appId: string) => {
-  return useQuery({
-    enabled: !!appId,
-    queryKey: appConfigQueryKeys.detail(appId),
-    queryFn: () => get<AppDetailResponse>(`/apps/${appId}`),
-    select: data => data?.model_config || null,
-  })
-}
-
-// Invalidation hook for refreshing data
-export const useInvalidAppConfig = () => {
-  return useInvalid([NAME_SPACE])
-}
-
-// Usage in component
-const Component = () => {
-  const { data: config, isLoading, error, refetch } = useAppConfig(appId)
-  const invalidAppConfig = useInvalidAppConfig()
-  
-  const handleRefresh = () => {
-    invalidAppConfig() // Invalidates cache and triggers refetch
-  }
-  
-  return <div>...</div>
-}
-```
+- Follow `web/AGENTS.md` first.
+- Use `frontend-query-mutation` for contracts, query shape, data-fetching wrappers, query/mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
+- Do not introduce deprecated `useInvalid` / `useReset`.
+- Do not extract thin passthrough `useQuery` hooks; only extract orchestration hooks.
 
 ### 2. Form State Hook
 

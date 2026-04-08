@@ -10,6 +10,7 @@ from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +28,18 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session, session.begin():
-        document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+        document = session.scalar(
+            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+        )
 
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
 
-        document.indexing_status = "parsing"
+        document.indexing_status = IndexingStatus.PARSING
         document.processing_started_at = naive_utc_now()
 
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             return
 

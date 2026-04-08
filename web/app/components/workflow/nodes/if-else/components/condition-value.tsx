@@ -76,14 +76,14 @@ const ConditionValue = ({
   }, [isSelect, t, value])
 
   return (
-    <div className="flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1">
+    <div className="flex flex-wrap items-center rounded-md bg-workflow-block-parma-bg">
       <VariableLabelInText
-        className="w-0 grow"
+        className="flex min-w-0 shrink-0 items-center border-none bg-transparent shadow-none"
         variables={variableSelector}
         nodeTitle={node?.data.title}
         nodeType={node?.data.type}
         isExceptionVariable={isException}
-        notShowFullPath
+        notShowFullPath={false}
       />
       <div
         className="mx-1 shrink-0 text-xs font-medium text-text-primary"
@@ -93,7 +93,7 @@ const ConditionValue = ({
       </div>
       {
         !notHasValue && (
-          <div className="shrink-[3] truncate text-xs text-text-secondary" title={formatValue}>{isSelect ? selectName : formatValue}</div>
+          <div className="grow truncate px-1.5 text-xs leading-6 text-text-secondary" title={formatValue}>{isSelect ? selectName : formatValue}</div>
         )
       }
     </div>

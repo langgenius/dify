@@ -2,7 +2,7 @@ import type { AfterResponseHook, BeforeRequestHook, Hooks } from 'ky'
 import type { IOtherOptions } from './base'
 import Cookies from 'js-cookie'
 import ky, { HTTPError } from 'ky'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -23,7 +23,7 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, any> | null
 }
 
-const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
+const afterResponse204: AfterResponseHook = async ({ response }) => {
   if (response.status === 204) {
     return new Response(JSON.stringify({ result: 'success' }), {
       status: 200,
@@ -39,7 +39,7 @@ export type ResponseError = {
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async (_request, _options, response) => {
+  return async ({ response }) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
       const errorData = await response.clone()
         .json()
@@ -48,7 +48,7 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
       if (shouldNotifyError)
-        Toast.notify({ type: 'error', message: errorData.message })
+        toast.error(errorData.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
@@ -78,7 +78,7 @@ const resolveShareCode = () => {
   }
 }
 
-const beforeRequestPublicWithCode = (request: Request) => {
+const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   const accessToken = getWebAppAccessToken()
   if (accessToken)
     request.headers.set('Authorization', `Bearer ${accessToken}`)

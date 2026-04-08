@@ -1,8 +1,8 @@
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { toast, ToastHost } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
-import Toast from '../../../../../base/toast'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../../config'
 import { SelfHostedPlan } from '../../../../type'
 import SelfHostedPlanItem from '../index'
@@ -14,12 +14,6 @@ vi.mock('../list', () => ({
       {plan}
     </div>
   ),
-}))
-
-vi.mock('../../../../../base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -35,10 +29,18 @@ vi.mock('../../../assets', () => ({
 }))
 
 const mockUseAppContext = useAppContext as Mock
-const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
+
+const renderWithToastHost = (ui: React.ReactNode) => {
+  return render(
+    <>
+      <ToastHost timeout={0} />
+      {ui}
+    </>,
+  )
+}
 
 beforeAll(() => {
   Object.defineProperty(window, 'location', {
@@ -56,6 +58,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  toast.dismiss()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   assignedHref = ''
 })
@@ -90,13 +93,10 @@ describe('SelfHostedPlanItem', () => {
     it('should show toast when non-manager tries to proceed', () => {
       mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
 
-      render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
+      renderWithToastHost(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
       fireEvent.click(screen.getByRole('button', { name: /billing\.plans\.premium\.btnText/ }))
 
-      expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'billing.buyPermissionDeniedTip',
-      }))
+      expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
     })
 
     it('should redirect to community url when community plan button clicked', () => {

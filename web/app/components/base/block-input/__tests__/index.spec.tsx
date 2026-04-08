@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import BlockInput, { getInputKeys } from '../index'
 
 vi.mock('@/utils/var', () => ({
@@ -14,7 +14,7 @@ vi.mock('@/utils/var', () => ({
 describe('BlockInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(Toast, 'notify')
+    vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     cleanup()
   })
 
@@ -138,7 +138,7 @@ describe('BlockInput', () => {
       fireEvent.change(textarea, { target: { value: '{{invalid}}' } })
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalled()
+        expect(toast.error).toHaveBeenCalled()
       })
       expect(onConfirm).not.toHaveBeenCalled()
     })
@@ -150,6 +150,43 @@ describe('BlockInput', () => {
       fireEvent.click(contentArea)
 
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('should handle change when onConfirm is not provided', async () => {
+      render(<BlockInput value="Hello" />)
+
+      const contentArea = screen.getByText('Hello')
+      fireEvent.click(contentArea)
+
+      const textarea = await screen.findByRole('textbox')
+      fireEvent.change(textarea, { target: { value: 'Hello World' } })
+
+      expect(textarea).toHaveValue('Hello World')
+    })
+
+    it('should enter edit mode when clicked with empty value', async () => {
+      render(<BlockInput value="" />)
+      const contentArea = screen.getByTestId('block-input').firstChild as Element
+      fireEvent.click(contentArea)
+
+      const textarea = await screen.findByRole('textbox')
+      expect(textarea).toBeInTheDocument()
+    })
+
+    it('should exit edit mode on blur-sm', async () => {
+      render(<BlockInput value="Hello" />)
+
+      const contentArea = screen.getByText('Hello')
+      fireEvent.click(contentArea)
+
+      const textarea = await screen.findByRole('textbox')
+      expect(textarea).toBeInTheDocument()
+
+      fireEvent.blur(textarea)
+
+      await waitFor(() => {
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      })
     })
   })
 
@@ -168,8 +205,9 @@ describe('BlockInput', () => {
     })
 
     it('should handle newlines in value', () => {
-      render(<BlockInput value="line1\nline2" />)
+      const { container } = render(<BlockInput value={`line1\nline2`} />)
       expect(screen.getByText(/line1/)).toBeInTheDocument()
+      expect(container.querySelector('br')).toBeInTheDocument()
     })
 
     it('should handle multiple same variables', () => {

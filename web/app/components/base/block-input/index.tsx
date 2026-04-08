@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 import VarHighlight from '../../app/configuration/base/var-highlight'
-import Toast from '../toast'
+import { toast } from '../ui/toast'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -29,7 +29,7 @@ export const getInputKeys = (value: string) => {
   return res
 }
 
-export type IBlockInputProps = {
+type IBlockInputProps = {
   value: string
   className?: string // wrapper class
   highLightClassName?: string // class for the highlighted text default is text-blue-500
@@ -92,10 +92,7 @@ const BlockInput: FC<IBlockInputProps> = ({
       const keys = getInputKeys(value)
       const result = checkKeys(keys)
       if (!result.isValid) {
-        Toast.notify({
-          type: 'error',
-          message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
-        })
+        toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
         return
       }
       onConfirm(value, keys)
@@ -118,7 +115,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   }
 
   const placeholder = ''
-  const editAreaClassName = 'focus:outline-none bg-transparent text-sm'
+  const editAreaClassName = 'focus:outline-hidden bg-transparent text-sm'
 
   const textAreaContent = (
     <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>

@@ -47,7 +47,7 @@ vi.mock('@/service/share', () => ({
   audioToText: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(() => mockState.params),
   usePathname: vi.fn(() => mockState.pathname),
 }))

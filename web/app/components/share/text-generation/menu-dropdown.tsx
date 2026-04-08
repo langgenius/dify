@@ -5,7 +5,6 @@ import type { SiteInfo } from '@/models/share'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +17,7 @@ import {
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
+import { usePathname, useRouter } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
 import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
@@ -83,7 +83,7 @@ const MenuDropdown: FC<Props> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-50">
-          <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+          <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="p-1">
               <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
                 <div className="grow">{t('theme.theme', { ns: 'common' })}</div>

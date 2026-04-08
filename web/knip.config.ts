@@ -7,9 +7,9 @@ const config: KnipConfig = {
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
+    'tsslint.config.ts',
   ],
   ignore: [
-    'i18n/**',
     'public/**',
   ],
   ignoreBinaries: [
@@ -20,23 +20,24 @@ const config: KnipConfig = {
 
     '@storybook/addon-onboarding',
 
-    '@tsslint/compat-eslint',
-    '@tsslint/config',
   ],
+  /// keep-sorted
   rules: {
-    files: 'warn',
+    binaries: 'error',
+    catalog: 'error',
     dependencies: 'error',
     devDependencies: 'error',
+    duplicates: 'error',
+    enumMembers: 'error',
+    exports: 'error',
+    files: 'error',
+    namespaceMembers: 'error',
+    nsExports: 'error',
+    nsTypes: 'error',
     optionalPeerDependencies: 'error',
-    unlisted: 'warn',
-    unresolved: 'warn',
-    exports: 'warn',
-    nsExports: 'warn',
-    classMembers: 'warn',
-    types: 'warn',
-    nsTypes: 'warn',
-    enumMembers: 'warn',
-    duplicates: 'warn',
+    types: 'error',
+    unlisted: 'error',
+    unresolved: 'error',
   },
 }
 

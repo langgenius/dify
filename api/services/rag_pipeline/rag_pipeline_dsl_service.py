@@ -14,6 +14,12 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -22,18 +28,15 @@ from sqlalchemy.orm import Session
 from core.helper import ssrf_proxy
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
-from dify_graph.enums import NodeType
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
-from dify_graph.nodes.datasource.entities import DatasourceNodeData
-from dify_graph.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from dify_graph.nodes.llm.entities import LLMNodeData
-from dify_graph.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from dify_graph.nodes.question_classifier.entities import QuestionClassifierNodeData
-from dify_graph.nodes.tool.entities import ToolNodeData
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
+from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
@@ -287,7 +290,7 @@ class RagPipelineDslService:
             nodes = graph.get("nodes", [])
             dataset_id = None
             for node in nodes:
-                if node.get("data", {}).get("type") == "knowledge-index":
+                if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if (
                         dataset
@@ -309,20 +312,20 @@ class RagPipelineDslService:
                                 "icon_background": icon_background,
                                 "icon_url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.indexing_technique,
+                            indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
-                            runtime_mode="rag_pipeline",
+                            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
-                    if knowledge_configuration.indexing_technique == "high_quality":
+                    if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         dataset_collection_binding = (
                             self._session.query(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
-                                DatasetCollectionBinding.type == "dataset",
+                                DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
                             .first()
@@ -333,7 +336,7 @@ class RagPipelineDslService:
                                 provider_name=knowledge_configuration.embedding_model_provider,
                                 model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                                type="dataset",
+                                type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
                             self._session.commit()
@@ -341,7 +344,7 @@ class RagPipelineDslService:
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
-                    elif knowledge_configuration.indexing_technique == "economy":
+                    elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
@@ -428,7 +431,7 @@ class RagPipelineDslService:
             nodes = graph.get("nodes", [])
             dataset_id = None
             for node in nodes:
-                if node.get("data", {}).get("type") == "knowledge-index":
+                if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if not dataset:
                         dataset = Dataset(
@@ -441,25 +444,25 @@ class RagPipelineDslService:
                                 "icon_background": icon_background,
                                 "icon_url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.indexing_technique,
+                            indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
-                            runtime_mode="rag_pipeline",
+                            runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     else:
-                        dataset.indexing_technique = knowledge_configuration.indexing_technique
+                        dataset.indexing_technique = IndexTechniqueType(knowledge_configuration.indexing_technique)
                         dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
-                        dataset.runtime_mode = "rag_pipeline"
+                        dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
-                    if knowledge_configuration.indexing_technique == "high_quality":
+                    if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         dataset_collection_binding = (
                             self._session.query(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
-                                DatasetCollectionBinding.type == "dataset",
+                                DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
                             .first()
@@ -470,7 +473,7 @@ class RagPipelineDslService:
                                 provider_name=knowledge_configuration.embedding_model_provider,
                                 model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
-                                type="dataset",
+                                type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
                             self._session.commit()
@@ -478,7 +481,7 @@ class RagPipelineDslService:
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
                         dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
-                    elif knowledge_configuration.indexing_technique == "economy":
+                    elif knowledge_configuration.indexing_technique == IndexTechniqueType.ECONOMY:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
@@ -562,7 +565,7 @@ class RagPipelineDslService:
 
         graph = workflow_data.get("graph", {})
         for node in graph.get("nodes", []):
-            if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
+            if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     decrypted_id
@@ -696,17 +699,17 @@ class RagPipelineDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node["data"]["dataset_ids"] = [
                     self.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=pipeline.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL:
+            if not include_secret and data_type == BuiltinNodeTypes.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT:
+            if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
 
@@ -740,37 +743,37 @@ class RagPipelineDslService:
             try:
                 typ = node.get("data", {}).get("type")
                 match typ:
-                    case NodeType.TOOL:
+                    case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
-                    case NodeType.DATASOURCE:
+                    case BuiltinNodeTypes.DATASOURCE:
                         datasource_entity = DatasourceNodeData.model_validate(node["data"])
                         if datasource_entity.provider_type != "local_file":
                             dependencies.append(datasource_entity.plugin_id)
-                    case NodeType.LLM:
+                    case BuiltinNodeTypes.LLM:
                         llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER:
+                    case BuiltinNodeTypes.QUESTION_CLASSIFIER:
                         question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR:
+                    case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
                         parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_INDEX:
+                    case _ if typ == KNOWLEDGE_INDEX_NODE_TYPE:
                         knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
-                        if knowledge_index_entity.indexing_technique == "high_quality":
+                        if knowledge_index_entity.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                             if knowledge_index_entity.embedding_model_provider:
                                 dependencies.append(
                                     DependenciesAnalysisService.analyze_model_provider_dependency(
@@ -789,7 +792,7 @@ class RagPipelineDslService:
                                                 knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name
                                             ),
                                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                    case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:

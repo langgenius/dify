@@ -61,6 +61,11 @@ describe('CopyFeedbackNew', () => {
       expect(container.querySelector('.cursor-pointer')).toBeInTheDocument()
     })
 
+    it('renders with custom className', () => {
+      const { container } = render(<CopyFeedbackNew content="test content" className="test-class" />)
+      expect(container.querySelector('.test-class')).toBeInTheDocument()
+    })
+
     it('applies copied CSS class when copied is true', () => {
       mockCopied = true
       const { container } = render(<CopyFeedbackNew content="test content" />)

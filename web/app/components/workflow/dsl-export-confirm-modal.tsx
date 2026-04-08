@@ -45,8 +45,8 @@ const DSLExportConfirmModal = ({
         <table className="radius-md w-full border-separate border-spacing-0 border border-divider-regular shadow-xs">
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
-              <td width={220} className="h-7 border-b border-r border-divider-regular pl-3">NAME</td>
-              <td className="h-7 border-b border-divider-regular pl-3">VALUE</td>
+              <td width={220} className="h-7 border-b border-r border-divider-regular pl-3">{t('env.export.name', { ns: 'workflow' })}</td>
+              <td className="h-7 border-b border-divider-regular pl-3">{t('env.export.value', { ns: 'workflow' })}</td>
             </tr>
           </thead>
           <tbody>
@@ -56,7 +56,7 @@ const DSLExportConfirmModal = ({
                   <div className="flex w-[200px] items-center gap-1">
                     <Env className="h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
                     <div className="truncate text-text-primary">{env.name}</div>
-                    <div className="shrink-0 text-text-tertiary">Secret</div>
+                    <div className="shrink-0 text-text-tertiary">{t('env.export.secret', { ns: 'workflow' })}</div>
                     <RiLock2Line className="h-3 w-3 shrink-0 text-text-tertiary" />
                   </div>
                 </td>
