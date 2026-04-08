@@ -528,6 +528,7 @@ class DatasetService:
             raise ValueError("External knowledge id is required.")
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
+        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
