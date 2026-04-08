@@ -38,6 +38,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
+from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
@@ -66,7 +67,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
-from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
@@ -635,7 +635,7 @@ class WorkflowService:
             # If we can't determine the status, assume load balancing is not enabled
             return False
 
-    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict]:
+    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict[str, Any]]:
         """
         Get all load balancing configurations for a model.
 
@@ -659,7 +659,7 @@ class WorkflowService:
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
             )
-            all_configs = configs + custom_configs
+            all_configs = cast(list[dict[str, Any]], configs) + cast(list[dict[str, Any]], custom_configs)
 
             return [config for config in all_configs if config.get("credential_id")]
 
