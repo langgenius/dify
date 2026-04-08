@@ -147,8 +147,7 @@ class WorkflowToolManageService:
                     WorkflowToolProvider.tenant_id == tenant_id,
                     WorkflowToolProvider.name == name,
                     WorkflowToolProvider.id != workflow_tool_id,
-                )
-                .limit(1)
+                ).limit(1)
             )
 
         # if the name exists raise error
@@ -160,8 +159,10 @@ class WorkflowToolManageService:
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_tool_provider = _session.scalar(
                 select(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-                .limit(1)
+                .where(
+                    WorkflowToolProvider.tenant_id == tenant_id,
+                    WorkflowToolProvider.id == workflow_tool_id
+                ).limit(1)
             )
 
         # if not found raise error
@@ -172,7 +173,11 @@ class WorkflowToolManageService:
         app: App | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(
-                select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
+                select(App)
+                .where(
+                    App.id == workflow_tool_provider.app_id,
+                    App.tenant_id == tenant_id
+                ).limit(1)
             )
 
         # if not found raise error
@@ -189,25 +194,30 @@ class WorkflowToolManageService:
         # check if workflow configuration is synced
         WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
-        # update workflow tool provider
-        workflow_tool_provider.name = name
-        workflow_tool_provider.label = label
-        workflow_tool_provider.icon = json.dumps(icon)
-        workflow_tool_provider.description = description
-        workflow_tool_provider.parameter_configuration = json.dumps([p.model_dump() for p in parameters])
-        workflow_tool_provider.privacy_policy = privacy_policy
-        workflow_tool_provider.version = workflow.version
-        workflow_tool_provider.updated_at = datetime.now()
+        with sessionmaker(db.engine).begin() as _session:
+            _session.add(workflow_tool_provider)
 
-        try:
-            WorkflowToolProviderController.from_db(workflow_tool_provider)
-        except Exception as e:
-            raise ValueError(str(e))
+            # update workflow tool provider
+            workflow_tool_provider.name = name
+            workflow_tool_provider.label = label
+            workflow_tool_provider.icon = json.dumps(icon)
+            workflow_tool_provider.description = description
+            workflow_tool_provider.parameter_configuration = json.dumps([p.model_dump() for p in parameters])
+            workflow_tool_provider.privacy_policy = privacy_policy
+            workflow_tool_provider.version = workflow.version
+            workflow_tool_provider.updated_at = datetime.now()
 
-        if labels is not None:
-            ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
-            )
+            try:
+                WorkflowToolProviderController.from_db(workflow_tool_provider)
+            except Exception as e:
+                raise ValueError(str(e))
+
+            if labels is not None:
+                ToolLabelManager.update_tool_labels(
+                    ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
+                    labels,
+                    session=_session
+                )
 
         return {"result": "success"}
 

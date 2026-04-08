@@ -1,5 +1,5 @@
 from sqlalchemy import delete, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -20,12 +20,13 @@ class ToolLabelManager:
         return list(set(tool_labels))
 
     @classmethod
-    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str]) -> None:
+    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str], session: Session | None = None) -> None:
         """
         Update tool labels
 
         :param controller: tool provider controller
         :param labels: list of tool labels
+        :param session: database session, if None, a new session will be created
         :return: None
         """
 
@@ -36,16 +37,26 @@ class ToolLabelManager:
         else:
             raise ValueError("Unsupported tool type")
 
-        # keep the atomicity of delete and insert operations
-        with sessionmaker(db.engine).begin() as _session:
+        if session is not None:
             # delete old labels
-            _session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
+            session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
 
             # insert new labels
             for label in labels:
-                _session.add(
+                session.add(
                     ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label)
                 )
+
+        else:
+            with sessionmaker(db.engine).begin() as _session:
+                # delete old labels
+                _session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
+
+                # insert new labels
+                for label in labels:
+                    _session.add(
+                        ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label)
+                    )
 
     @classmethod
     def get_tool_labels(cls, controller: ToolProviderController) -> list[str]:
