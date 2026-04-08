@@ -1,4 +1,4 @@
-import type { GetVarType, WorkflowVariableBlockType } from '../../types'
+import type { WorkflowVariableBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -22,13 +22,6 @@ export type UpdateWorkflowNodesMapPayload = {
   availableVariables: NonNullable<WorkflowVariableBlockType['variables']>
 }
 export const UPDATE_WORKFLOW_NODES_MAP = createCommand<UpdateWorkflowNodesMapPayload>('UPDATE_WORKFLOW_NODES_MAP')
-
-export type WorkflowVariableBlockProps = {
-  getWorkflowNode: (nodeId: string) => Node
-  onInsert?: () => void
-  onDelete?: () => void
-  getVarType: GetVarType
-}
 const WorkflowVariableBlock = memo(({
   workflowNodesMap = {},
   variables: workflowAvailableVariables,
