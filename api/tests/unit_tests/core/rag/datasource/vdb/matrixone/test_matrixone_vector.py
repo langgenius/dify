@@ -79,7 +79,7 @@ def test_get_client_creates_full_text_index_when_cache_misses(matrixone_module, 
     monkeypatch.setattr(matrixone_module.redis_client, "set", MagicMock())
 
     vector = matrixone_module.MatrixoneVector("Collection_1", _valid_config(matrixone_module))
-    client = vector._get_client(dimension=3, create_table=True)
+    client = vector.get_client(dimension=3, create_table=True)
 
     assert client.kwargs["table_name"] == "collection_1"
     client.create_full_text_index.assert_called_once()
@@ -95,7 +95,7 @@ def test_get_client_skips_index_creation_when_cache_hits(matrixone_module, monke
     monkeypatch.setattr(matrixone_module.redis_client, "set", MagicMock())
 
     vector = matrixone_module.MatrixoneVector("Collection_1", _valid_config(matrixone_module))
-    client = vector._get_client(dimension=3, create_table=True)
+    client = vector.get_client(dimension=3, create_table=True)
 
     client.create_full_text_index.assert_not_called()
     matrixone_module.redis_client.set.assert_not_called()
@@ -106,12 +106,12 @@ def test_ensure_client_initializes_client_for_decorated_methods(matrixone_module
     vector.client = None
     fake_client = MagicMock()
     fake_client.get.return_value = [{"id": "seg-1"}]
-    vector._get_client = MagicMock(return_value=fake_client)
+    vector.get_client = MagicMock(return_value=fake_client)
 
     exists = vector.text_exists("seg-1")
 
     assert exists is True
-    vector._get_client.assert_called_once_with(None, False)
+    vector.get_client.assert_called_once_with(None, False)
 
 
 def test_search_by_full_text_parses_metadata_and_applies_threshold(matrixone_module):
@@ -134,7 +134,7 @@ def test_search_by_full_text_parses_metadata_and_applies_threshold(matrixone_mod
 def test_get_type_and_create_delegate_to_add_texts(matrixone_module):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     fake_client = MagicMock()
-    vector._get_client = MagicMock(return_value=fake_client)
+    vector.get_client = MagicMock(return_value=fake_client)
     vector.add_texts = MagicMock(return_value=["seg-1"])
     docs = [Document(page_content="hello", metadata={"doc_id": "seg-1"})]
 
@@ -142,7 +142,7 @@ def test_get_type_and_create_delegate_to_add_texts(matrixone_module):
 
     assert vector.get_type() == "matrixone"
     assert result == ["seg-1"]
-    vector._get_client.assert_called_once_with(2, True)
+    vector.get_client.assert_called_once_with(2, True)
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
@@ -159,7 +159,7 @@ def test_get_client_handles_full_text_index_creation_error(matrixone_module, mon
     monkeypatch.setattr(matrixone_module, "MoVectorClient", MagicMock(return_value=failing_client))
 
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
-    client = vector._get_client(dimension=3, create_table=True)
+    client = vector.get_client(dimension=3, create_table=True)
 
     assert client is failing_client
     matrixone_module.redis_client.set.assert_not_called()
