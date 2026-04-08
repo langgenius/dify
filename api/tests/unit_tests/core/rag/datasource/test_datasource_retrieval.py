@@ -236,7 +236,7 @@ class TestRetrievalServiceInternals:
         assert mock_retrieve.call_count == 2
 
     @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
-    @patch("core.rag.datasource.retrieval_service.MetadataCondition.model_validate")
+    @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
     @patch("core.rag.datasource.retrieval_service.db.session.scalar")
     def test_external_retrieve_with_metadata_conditions(self, mock_scalar, mock_validate, mock_fetch):
         mock_scalar.return_value = SimpleNamespace(tenant_id="tenant-1")

@@ -3,7 +3,7 @@ import secrets
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
@@ -20,33 +20,16 @@ from controllers.console.wraps import email_password_login_enabled, setup_requir
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
-from libs.password import hash_password, valid_password
+from libs.password import hash_password
 from services.account_service import AccountService, TenantService
+from services.entities.auth_entities import (
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordSendPayload,
+)
 from services.feature_service import FeatureService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-class ForgotPasswordSendPayload(BaseModel):
-    email: EmailStr = Field(...)
-    language: str | None = Field(default=None)
-
-
-class ForgotPasswordCheckPayload(BaseModel):
-    email: EmailStr = Field(...)
-    code: str = Field(...)
-    token: str = Field(...)
-
-
-class ForgotPasswordResetPayload(BaseModel):
-    token: str = Field(...)
-    new_password: str = Field(...)
-    password_confirm: str = Field(...)
-
-    @field_validator("new_password", "password_confirm")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        return valid_password(value)
 
 
 class ForgotPasswordEmailResponse(BaseModel):

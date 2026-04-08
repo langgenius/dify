@@ -26,6 +26,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
@@ -42,10 +43,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     NotionIcon,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     RerankingModel,
-    Rule,
-    Segmentation,
     WebsiteInfo,
     WeightKeywordSetting,
     WeightModel,

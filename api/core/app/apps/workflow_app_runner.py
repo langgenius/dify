@@ -66,7 +66,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
 from core.workflow.system_variables import (
     build_bootstrap_variables,
