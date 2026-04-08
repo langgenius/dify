@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Успешно. В случае успеха значение равно 1, в случае сбоя - 0.",
   "nodes.parameterExtractor.outputVars.usage": "Информация об использовании модели",
   "nodes.parameterExtractor.reasoningMode": "Режим рассуждения",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Вызов функции/инструмента",
+  "nodes.parameterExtractor.reasoningModePrompt": "Подсказка",
   "nodes.parameterExtractor.reasoningModeTip": "Вы можете выбрать соответствующий режим рассуждения, основываясь на способности модели реагировать на инструкции для вызова функций или подсказки.",
   "nodes.questionClassifiers.addClass": "Добавить класс",
   "nodes.questionClassifiers.advancedSetting": "Расширенные настройки",
