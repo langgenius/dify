@@ -43,37 +43,7 @@ export NEXT_PUBLIC_MAX_PARALLEL_LIMIT=${MAX_PARALLEL_LIMIT}
 export NEXT_PUBLIC_MAX_ITERATIONS_NUM=${MAX_ITERATIONS_NUM}
 export NEXT_PUBLIC_MAX_TREE_DEPTH=${MAX_TREE_DEPTH}
 
-build_target=next
-
-if [ -n "${EXPERIMENTAL_ENABLE_VINEXT:-}" ]; then
-  enable_vinext=$(printf '%s' "${EXPERIMENTAL_ENABLE_VINEXT}" | tr '[:upper:]' '[:lower:]')
-  case "${enable_vinext}" in
-    true|1|yes)
-      build_target=vinext
-      ;;
-    false|0|no|'')
-      build_target=next
-      ;;
-    *)
-      echo "Unsupported EXPERIMENTAL_ENABLE_VINEXT: ${EXPERIMENTAL_ENABLE_VINEXT}. Falling back to next." >&2
-      ;;
-  esac
-elif [ -n "${WEB_BUILD_TARGET:-}" ]; then
-  case "${WEB_BUILD_TARGET}" in
-    next)
-      echo "WEB_BUILD_TARGET is deprecated. Use EXPERIMENTAL_ENABLE_VINEXT=true to enable vinext." >&2
-      ;;
-    vinext)
-      echo "WEB_BUILD_TARGET is deprecated. Use EXPERIMENTAL_ENABLE_VINEXT=true to enable vinext." >&2
-      build_target=vinext
-      ;;
-    *)
-      echo "Unsupported WEB_BUILD_TARGET: ${WEB_BUILD_TARGET}. Falling back to next." >&2
-      ;;
-  esac
-fi
-
-if [ "${build_target}" = "vinext" ]; then
+if [ "${EXPERIMENTAL_ENABLE_VINEXT:-}" = "true" ]; then
   exec node /app/targets/vinext/server.js
 fi
 
