@@ -322,7 +322,6 @@ class WorkflowToolManageService:
         :return: the tool
         """
 
-        tool_provider: WorkflowToolProvider | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             tool_provider: WorkflowToolProvider | None = _session.scalar(
                 select(WorkflowToolProvider)
