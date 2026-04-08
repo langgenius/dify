@@ -1,3 +1,8 @@
+from core.errors.service_errors import MoreLikeThisDisabledError
+
+__all__ = ["MoreLikeThisDisabledError"]
+
+
 class WorkflowHashNotEqualError(Exception):
     pass
 

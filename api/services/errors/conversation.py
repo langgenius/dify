@@ -1,4 +1,4 @@
-from core.errors import (
+from core.errors.service_errors import (
     ConversationCompletedError,
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
