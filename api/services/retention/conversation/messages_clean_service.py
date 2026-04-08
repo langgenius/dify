@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 import sqlalchemy as sa
 from sqlalchemy import delete, select, tuple_
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -369,7 +369,7 @@ class MessagesCleanService:
             batch_deleted_messages = 0
 
             # Step 1: Fetch a batch of messages using cursor
-            with Session(db.engine, expire_on_commit=False) as session:
+            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                 fetch_messages_start = time.monotonic()
                 msg_stmt = (
                     select(Message.id, Message.app_id, Message.created_at)
@@ -477,7 +477,7 @@ class MessagesCleanService:
 
             # Step 4: Batch delete messages and their relations
             if not self._dry_run:
-                with Session(db.engine, expire_on_commit=False) as session:
+                with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                     delete_relations_start = time.monotonic()
                     # Delete related records first
                     self._batch_delete_message_relations(session, message_ids_to_delete)
@@ -489,9 +489,7 @@ class MessagesCleanService:
                     delete_result = cast(CursorResult, session.execute(delete_stmt))
                     messages_deleted = delete_result.rowcount
                     delete_messages_ms = int((time.monotonic() - delete_messages_start) * 1000)
-                    commit_start = time.monotonic()
-                    session.commit()
-                    commit_ms = int((time.monotonic() - commit_start) * 1000)
+                    commit_ms = 0
 
                     stats["total_deleted"] += messages_deleted
                     batch_deleted_messages = messages_deleted
