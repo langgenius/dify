@@ -78,7 +78,6 @@ class ApiProviderControllerItem(TypedDict):
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
-
 class WorkflowToolRuntimeSpec(Protocol):
     @property
     def provider_type(self) -> ToolProviderType: ...
