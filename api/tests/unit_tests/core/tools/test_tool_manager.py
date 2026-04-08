@@ -849,9 +849,12 @@ def test_get_tool_icon_plugin_error_returns_default():
             assert icon["background"] == "#252525"
 
 
-def test_get_tool_icon_invalid_provider_type_raises():
+def test_get_tool_icon_unsupported_provider_type_raises():
     with pytest.raises(ValueError, match="provider type"):
-        ToolManager.get_tool_icon("tenant-1", "invalid", "x")  # type: ignore[arg-type]
+        ToolManager.get_tool_icon("tenant-1", ToolProviderType.APP, "x")
+
+    with pytest.raises(ValueError, match="provider type"):
+        ToolManager.get_tool_icon("tenant-1", ToolProviderType.DATASET_RETRIEVAL, "x")
 
 
 def test_convert_tool_parameters_type_agent_and_workflow_branches():
