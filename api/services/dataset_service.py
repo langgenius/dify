@@ -15,7 +15,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -551,7 +551,7 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             external_knowledge_binding = (
                 session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
             )
@@ -559,14 +559,14 @@ class DatasetService:
             if not external_knowledge_binding:
                 raise ValueError("External knowledge binding not found.")
 
-        # Update binding if values have changed
-        if (
-            external_knowledge_binding.external_knowledge_id != external_knowledge_id
-            or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
-        ):
-            external_knowledge_binding.external_knowledge_id = external_knowledge_id
-            external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
-            db.session.add(external_knowledge_binding)
+            # Update binding if values have changed
+            if (
+                external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
+            ):
+                external_knowledge_binding.external_knowledge_id = external_knowledge_id
+                external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
+                session.add(external_knowledge_binding)
 
     @staticmethod
     def _update_internal_dataset(dataset, data, user):

@@ -4,16 +4,13 @@ from datetime import datetime
 from uuid import uuid4
 
 from graphon.file import File
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
+from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 
 type JSONValueType = JSONValue
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
 
 class SimpleFeedback(ResponseModel):
