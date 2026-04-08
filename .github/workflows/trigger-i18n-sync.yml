@@ -42,7 +42,7 @@ jobs:
           fi
 
           export BASE_SHA HEAD_SHA CHANGED_FILES
-          node .github/scripts/generate-i18n-changes.cjs
+          node .github/scripts/generate-i18n-changes.mjs
 
           if [ -n "$CHANGED_FILES" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"

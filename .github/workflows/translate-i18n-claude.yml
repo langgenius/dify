@@ -68,7 +68,7 @@ jobs:
           " web/i18n-config/languages.ts | sed 's/[[:space:]]*$//')
 
           generate_changes_json() {
-            node .github/scripts/generate-i18n-changes.cjs
+            node .github/scripts/generate-i18n-changes.mjs
           }
 
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
