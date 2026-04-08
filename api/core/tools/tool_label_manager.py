@@ -1,4 +1,3 @@
-from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import sessionmaker, Session
 
