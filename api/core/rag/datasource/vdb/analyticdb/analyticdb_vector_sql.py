@@ -1,5 +1,6 @@
 import json
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
@@ -74,7 +75,7 @@ class AnalyticdbVectorBySql:
         )
 
     @contextmanager
-    def _get_cursor(self):
+    def _get_cursor(self) -> Iterator[Any]:
         assert self.pool is not None, "Connection pool is not initialized"
         conn = self.pool.getconn()
         cur = conn.cursor()
@@ -130,7 +131,7 @@ class AnalyticdbVectorBySql:
             )
             cur.execute(f"CREATE SCHEMA IF NOT EXISTS {self.config.namespace}")
 
-    def _create_collection_if_not_exists(self, embedding_dimension: int):
+    def create_collection_if_not_exists(self, embedding_dimension: int):
         cache_key = f"vector_indexing_{self._collection_name}"
         lock_name = f"{cache_key}_lock"
         with redis_client.lock(lock_name, timeout=20):

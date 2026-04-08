@@ -26,7 +26,7 @@ from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()  # type: Any
+Base: Any = declarative_base()
 
 
 class RelytConfig(BaseModel):

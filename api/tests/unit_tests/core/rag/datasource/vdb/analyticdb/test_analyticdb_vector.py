@@ -71,7 +71,7 @@ def test_vector_methods_delegate_to_underlying_implementation():
     assert vector.search_by_full_text("hello", top_k=2) == runner.search_by_full_text.return_value
     vector.delete()
 
-    runner._create_collection_if_not_exists.assert_called_once_with(2)
+    runner.create_collection_if_not_exists.assert_called_once_with(2)
     runner.add_texts.assert_any_call(texts, [[0.1, 0.2]])
     runner.delete_by_ids.assert_called_once_with(["d1"])
     runner.delete_by_metadata_field.assert_called_once_with("document_id", "doc-1")
