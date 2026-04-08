@@ -55,6 +55,27 @@ _quota_commit_adapter = TypeAdapter(QuotaCommitResult)
 _quota_release_adapter = TypeAdapter(QuotaReleaseResult)
 
 
+class _TenantFeatureQuota(TypedDict):
+    usage: int
+    limit: int
+    reset_date: NotRequired[int]
+
+
+class TenantFeatureQuotaInfo(TypedDict):
+    """Response of /quota/info.
+
+    NOTE (hj24):
+    - Same convention as BillingInfo: billing may return int fields as str,
+      always keep non-strict mode to auto-coerce.
+    """
+
+    trigger_event: _TenantFeatureQuota
+    api_rate_limit: _TenantFeatureQuota
+
+
+_tenant_feature_quota_info_adapter = TypeAdapter(TenantFeatureQuotaInfo)
+
+
 class _BillingQuota(TypedDict):
     size: int
     limit: int
@@ -178,9 +199,11 @@ class BillingService:
         return usage_info
 
     @classmethod
-    def get_quota_info(cls, tenant_id: str):
+    def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
         params = {"tenant_id": tenant_id}
-        return cls._send_request("GET", "/quota/info", params=params)
+        return _tenant_feature_quota_info_adapter.validate_python(
+            cls._send_request("GET", "/quota/info", params=params)
+        )
 
     @classmethod
     def quota_reserve(
