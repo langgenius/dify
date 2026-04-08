@@ -39,9 +39,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
-from core.rag.entities import Condition
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
+from core.rag.entities import Condition, DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType

@@ -38,6 +38,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
+from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
@@ -66,7 +67,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
-from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,

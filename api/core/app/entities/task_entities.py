@@ -9,7 +9,7 @@ from graphon.nodes.human_input.entities import FormInput, UserAction
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 
 
 class AnnotationReplyAccount(BaseModel):

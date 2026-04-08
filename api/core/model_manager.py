@@ -17,6 +17,7 @@ from graphon.model_runtime.model_providers.__base.text_embedding_model import Te
 from graphon.model_runtime.model_providers.__base.tts_model import TTSModel
 
 from configs import dify_config
+from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
@@ -25,7 +26,6 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
-from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 

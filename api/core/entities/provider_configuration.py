@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
+from core.entities import PluginCredentialType
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import (
     CustomConfiguration,
@@ -46,7 +47,6 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 

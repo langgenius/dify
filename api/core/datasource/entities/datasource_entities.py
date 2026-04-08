@@ -9,7 +9,7 @@ from yarl import URL
 
 from configs import dify_config
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.oauth import OAuthSchema
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameter,
     PluginParameterOption,
