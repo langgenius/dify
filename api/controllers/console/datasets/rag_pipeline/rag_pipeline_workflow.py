@@ -5,8 +5,8 @@ from typing import Any, Literal, cast
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -186,29 +186,14 @@ class DraftRagPipelineApi(Resource):
 
         if "application/json" in content_type:
             payload_dict = console_ns.payload or {}
+            payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
         elif "text/plain" in content_type:
             try:
-                data = json.loads(request.data.decode("utf-8"))
-                if "graph" not in data or "features" not in data:
-                    raise ValueError("graph or features not found in data")
-
-                if not isinstance(data.get("graph"), dict):
-                    raise ValueError("graph is not a dict")
-
-                payload_dict = {
-                    "graph": data.get("graph"),
-                    "features": data.get("features"),
-                    "hash": data.get("hash"),
-                    "environment_variables": data.get("environment_variables"),
-                    "conversation_variables": data.get("conversation_variables"),
-                    "rag_pipeline_variables": data.get("rag_pipeline_variables"),
-                }
-            except json.JSONDecodeError:
+                payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
+            except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
         rag_pipeline_service = RagPipelineService()
 
         try:
@@ -608,19 +593,15 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
-            pipeline = session.merge(pipeline)
-            workflow = rag_pipeline_service.publish_workflow(
-                session=session,
-                pipeline=pipeline,
-                account=current_user,
-            )
-            pipeline.is_published = True
-            pipeline.workflow_id = workflow.id
-            session.add(pipeline)
-            workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
+        workflow = rag_pipeline_service.publish_workflow(
+            session=db.session,  # type: ignore[reportArgumentType,arg-type]
+            pipeline=pipeline,
+            account=current_user,
+        )
+        pipeline.is_published = True
+        pipeline.workflow_id = workflow.id
+        db.session.commit()
+        workflow_created_at = TimestampField().format(workflow.created_at)
 
         return {
             "result": "success",
@@ -695,7 +676,7 @@ class PublishedAllRagPipelineApi(Resource):
                 raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
                 pipeline=pipeline,
@@ -767,7 +748,7 @@ class RagPipelineByIdApi(Resource):
         rag_pipeline_service = RagPipelineService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -778,9 +759,6 @@ class RagPipelineByIdApi(Resource):
 
             if not workflow:
                 raise NotFound("Workflow not found")
-
-            # Commit the transaction in the controller
-            session.commit()
 
             return workflow
 
@@ -798,14 +776,13 @@ class RagPipelineByIdApi(Resource):
 
         workflow_service = WorkflowService()
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session,
                     workflow_id=workflow_id,
                     tenant_id=pipeline.tenant_id,
                 )
-                session.commit()
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
             except DraftWorkflowDeletionError as e:

@@ -17,8 +17,6 @@ import { cn } from '@/utils/classnames'
 
 export const ContextMenu = BaseContextMenu.Root
 export const ContextMenuTrigger = BaseContextMenu.Trigger
-export const ContextMenuPortal = BaseContextMenu.Portal
-export const ContextMenuBackdrop = BaseContextMenu.Backdrop
 export const ContextMenuSub = BaseContextMenu.SubmenuRoot
 export const ContextMenuGroup = BaseContextMenu.Group
 export const ContextMenuRadioGroup = BaseContextMenu.RadioGroup
@@ -74,7 +72,7 @@ function renderContextMenuPopup({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-[1002] outline-none', className)}
+        className={cn('z-1002 outline-hidden', className)}
         {...positionerProps}
       >
         <BaseContextMenu.Popup
@@ -175,26 +173,6 @@ export function ContextMenuCheckboxItem({
   )
 }
 
-type ContextMenuIndicatorProps = Omit<React.ComponentPropsWithoutRef<'span'>, 'children'> & {
-  children?: React.ReactNode
-}
-
-export function ContextMenuItemIndicator({
-  className,
-  children,
-  ...props
-}: ContextMenuIndicatorProps) {
-  return (
-    <span
-      aria-hidden
-      className={cn(menuIndicatorClassName, className)}
-      {...props}
-    >
-      {children ?? <span aria-hidden className="i-ri-check-line h-4 w-4" />}
-    </span>
-  )
-}
-
 export function ContextMenuCheckboxItemIndicator({
   className,
   ...props
@@ -239,7 +217,7 @@ export function ContextMenuSubTrigger({
       {...props}
     >
       {children}
-      <span aria-hidden className="i-ri-arrow-right-s-line ml-auto size-4 shrink-0 text-text-tertiary" />
+      <span aria-hidden className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
     </BaseContextMenu.SubmenuTrigger>
   )
 }

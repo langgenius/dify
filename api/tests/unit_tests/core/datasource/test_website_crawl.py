@@ -560,7 +560,10 @@ class TestWebsiteService:
 
         mock_response = Mock()
         mock_response.json.return_value = {"code": 200, "data": {"taskId": "task-789"}}
-        mock_httpx_post = mocker.patch("services.website_service.httpx.post", return_value=mock_response)
+        mock_httpx_post = mocker.patch(
+            "services.website_service._adaptive_http_client.post",
+            return_value=mock_response,
+        )
 
         from services.website_service import WebsiteCrawlApiRequest
 
@@ -1340,7 +1343,7 @@ class TestProviderSpecificFeatures:
                 "url": "https://example.com/page",
             },
         }
-        mocker.patch("services.website_service.httpx.get", return_value=mock_response)
+        mocker.patch("services.website_service._jina_http_client.get", return_value=mock_response)
 
         from services.website_service import WebsiteCrawlApiRequest
 

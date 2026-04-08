@@ -83,7 +83,7 @@ const MenuDropdown: FC<Props> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-50">
-          <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+          <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="p-1">
               <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
                 <div className="grow">{t('theme.theme', { ns: 'common' })}</div>

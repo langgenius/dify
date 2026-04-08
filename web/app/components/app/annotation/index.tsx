@@ -15,6 +15,7 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import Switch from '@/app/components/base/switch'
+import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
@@ -22,7 +23,6 @@ import { addAnnotation, delAnnotation, delAnnotations, fetchAnnotationConfig as 
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import EmptyElement from './empty-element'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
@@ -98,14 +98,14 @@ const Annotation: FC<Props> = (props) => {
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appDetail.id, payload)
-    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appDetail.id, id)
-    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -113,13 +113,13 @@ const Annotation: FC<Props> = (props) => {
   const handleBatchDelete = async () => {
     try {
       await delAnnotations(appDetail.id, selectedIds)
-      Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
     }
     catch (e: any) {
-      Toast.notify({ type: 'error', message: e.message || t('api.actionFailed', { ns: 'common' }) })
+      toast.error(e.message || t('api.actionFailed', { ns: 'common' }))
     }
   }
 
@@ -132,7 +132,7 @@ const Annotation: FC<Props> = (props) => {
     if (!currItem)
       return
     await editAnnotation(appDetail.id, currItem.id, { question, answer })
-    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -170,24 +170,21 @@ const Annotation: FC<Props> = (props) => {
                         const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.disable, annotationConfig?.embedding_model, annotationConfig?.score_threshold)
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
-                        Toast.notify({
-                          message: t('api.actionSuccess', { ns: 'common' }),
-                          type: 'success',
-                        })
+                        toast.success(t('api.actionSuccess', { ns: 'common' }))
                       }
                     }}
                   >
                   </Switch>
                   {annotationConfig?.enabled && (
                     <div className="flex items-center pl-1.5">
-                      <div className="mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle"></div>
+                      <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
                         <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                       </ActionButton>
                     </div>
                   )}
                 </div>
-                <div className="mx-3 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
+                <div className="mx-3 h-3.5 w-px shrink-0 bg-divider-regular"></div>
               </>
             )}
 
@@ -263,10 +260,7 @@ const Annotation: FC<Props> = (props) => {
                 await updateAnnotationScore(appDetail.id, annotationId, score)
 
               await fetchAnnotationConfig()
-              Toast.notify({
-                message: t('api.actionSuccess', { ns: 'common' }),
-                type: 'success',
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               setIsShowEdit(false)
             }}
             annotationConfig={annotationConfig!}

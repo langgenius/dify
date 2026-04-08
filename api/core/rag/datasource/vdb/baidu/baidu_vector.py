@@ -29,7 +29,8 @@ from pymochow.model.table import AnnSearch, BM25SearchRequest, HNSWSearchParams,
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field as VDBField
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.field import parse_metadata_json
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -84,8 +85,12 @@ class BaiduVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.BAIDU
 
-    def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+    def to_index_struct(self) -> VectorIndexStructDict:
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._create_table(len(embeddings[0]))
@@ -173,15 +178,9 @@ class BaiduVector(BaseVector):
             score = row.get("score", 0.0)
             meta = row_data.get(VDBField.METADATA_KEY, {})
 
-            # Handle both JSON string and dict formats for backward compatibility
-            if isinstance(meta, str):
-                try:
-                    import json
-
-                    meta = json.loads(meta)
-                except (json.JSONDecodeError, TypeError):
-                    meta = {}
-            elif not isinstance(meta, dict):
+            try:
+                meta = parse_metadata_json(meta)
+            except (ValueError, TypeError):
                 meta = {}
 
             if score >= score_threshold:
@@ -200,7 +199,11 @@ class BaiduVector(BaseVector):
                 raise
 
     def _init_client(self, config) -> MochowClient:
-        config = Configuration(credentials=BceCredentials(config.account, config.api_key), endpoint=config.endpoint)
+        config = Configuration(
+            credentials=BceCredentials(config.account, config.api_key),
+            endpoint=config.endpoint,
+            connection_timeout_in_mills=config.connection_timeout_in_mills,
+        )
         client = MochowClient(config)
         return client
 

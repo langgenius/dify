@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, cast
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -18,8 +18,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
-from typing_extensions import TypedDict
+from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -525,7 +524,7 @@ class App(Base):
         if not api_provider_ids and not builtin_provider_ids:
             return []
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             if api_provider_ids:
                 existing_api_providers = [
                     str(api_provider.id)

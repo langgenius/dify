@@ -9,7 +9,7 @@ import ItemOperation from '@/app/components/explore/item-operation'
 import { useRouter } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 
-export type IAppNavItemProps = {
+type IAppNavItemProps = {
   isMobile: boolean
   name: string
   id: string

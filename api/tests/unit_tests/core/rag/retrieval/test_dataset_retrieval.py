@@ -11,9 +11,6 @@ from graphon.model_runtime.entities.model_entities import ModelFeature
 from sqlalchemy import column
 
 from core.app.app_config.entities import (
-    Condition as AppCondition,
-)
-from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
 )
@@ -29,6 +26,7 @@ from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities import Condition as AppCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document

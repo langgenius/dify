@@ -8,7 +8,8 @@ from tests.unit_tests.oss.__mock.base import (
     BaseStorageTest,
     get_example_bucket,
 )
-from tests.unit_tests.oss.__mock.volcengine_tos import setup_volcengine_tos_mock
+
+pytest_plugins = ("tests.unit_tests.oss.__mock.volcengine_tos",)
 
 
 class TestVolcengineTos(BaseStorageTest):

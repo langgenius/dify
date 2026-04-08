@@ -5,7 +5,6 @@ import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
@@ -14,7 +13,7 @@ import Confirm from '@/app/components/base/confirm'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -37,7 +36,6 @@ type SwitchAppModalProps = {
 const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -68,7 +66,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         onSuccess()
       if (onClose)
         onClose()
-      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       if (inAppDetail)
         setAppDetail()
       if (removeOriginal)
@@ -84,7 +82,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       )
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 

@@ -1,7 +1,6 @@
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { VarType } from '@/app/components/workflow/types'
 import { VarInInspectType } from '@/types/workflow'
 import {
@@ -11,6 +10,25 @@ import {
   JsonEditorSection,
   TextEditorSection,
 } from '../value-content-sections'
+
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 
 vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor', () => ({
   default: ({ schema, onUpdate }: { schema: string, onUpdate: (value: string) => void }) => (
@@ -127,15 +145,13 @@ describe('value-content sections', () => {
 
   it('should render the file editor section', () => {
     render(
-      <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() }}>
-        <FileEditorSection
-          currentVar={createVar({ name: 'files', value_type: VarType.file })}
-          fileValue={[]}
-          fileUploadConfig={createFileUploadConfig()}
-          textEditorDisabled={false}
-          onChange={vi.fn()}
-        />
-      </ToastContext.Provider>,
+      <FileEditorSection
+        currentVar={createVar({ name: 'files', value_type: VarType.file })}
+        fileValue={[]}
+        fileUploadConfig={createFileUploadConfig()}
+        textEditorDisabled={false}
+        onChange={vi.fn()}
+      />,
     )
 
     expect(screen.getAllByRole('button').length).toBeGreaterThan(0)

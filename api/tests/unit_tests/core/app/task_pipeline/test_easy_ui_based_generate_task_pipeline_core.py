@@ -505,13 +505,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def __exit__(self, exc_type, exc, tb):
                 return False
 
-            def query(self, *args, **kwargs):
-                return self
-
-            def where(self, *args, **kwargs):
-                return self
-
-            def first(self):
+            def scalar(self, *args, **kwargs):
                 return agent_thought
 
         monkeypatch.setattr(
@@ -1182,13 +1176,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def __exit__(self, exc_type, exc, tb):
                 return False
 
-            def query(self, *args, **kwargs):
-                return self
-
-            def where(self, *args, **kwargs):
-                return self
-
-            def first(self):
+            def scalar(self, *args, **kwargs):
                 return None
 
         monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)

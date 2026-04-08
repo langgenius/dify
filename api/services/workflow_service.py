@@ -38,6 +38,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
+from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
@@ -66,7 +67,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
-from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
@@ -138,14 +138,14 @@ class WorkflowService:
         if workflow_id:
             return self.get_published_workflow_by_id(app_model, workflow_id)
         # fetch draft workflow by app_model
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
-            .first()
+            .limit(1)
         )
 
         # return draft workflow
@@ -155,14 +155,14 @@ class WorkflowService:
         """
         fetch published workflow by workflow_id
         """
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == workflow_id,
             )
-            .first()
+            .limit(1)
         )
         if not workflow:
             return None
@@ -182,14 +182,14 @@ class WorkflowService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == app_model.workflow_id,
             )
-            .first()
+            .limit(1)
         )
 
         return workflow
@@ -544,14 +544,14 @@ class WorkflowService:
 
             # Use the same fallback logic as runtime: get the first available credential
             # ordered by is_default DESC, created_at ASC (same as tool_manager.py)
-            default_provider = (
-                db.session.query(BuiltinToolProvider)
+            default_provider = db.session.scalar(
+                select(BuiltinToolProvider)
                 .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.provider == provider,
                 )
                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                .first()
+                .limit(1)
             )
 
             if not default_provider:
@@ -635,7 +635,7 @@ class WorkflowService:
             # If we can't determine the status, assume load balancing is not enabled
             return False
 
-    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict]:
+    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict[str, Any]]:
         """
         Get all load balancing configurations for a model.
 
@@ -659,7 +659,7 @@ class WorkflowService:
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
             )
-            all_configs = configs + custom_configs
+            all_configs = cast(list[dict[str, Any]], configs) + cast(list[dict[str, Any]], custom_configs)
 
             return [config for config in all_configs if config.get("credential_id")]
 
@@ -1417,16 +1417,17 @@ class WorkflowService:
                 self._validate_human_input_node_data(node_data)
 
     def validate_features_structure(self, app_model: App, features: dict):
-        if app_model.mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
-            )
-        elif app_model.mode == AppMode.WORKFLOW:
-            return WorkflowAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
-            )
-        else:
-            raise ValueError(f"Invalid app mode: {app_model.mode}")
+        match app_model.mode:
+            case AppMode.ADVANCED_CHAT:
+                return AdvancedChatAppConfigManager.config_validate(
+                    tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
+                )
+            case AppMode.WORKFLOW:
+                return WorkflowAppConfigManager.config_validate(
+                    tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
+                )
+            case _:
+                raise ValueError(f"Invalid app mode: {app_model.mode}")
 
     def _validate_human_input_node_data(self, node_data: dict) -> None:
         """

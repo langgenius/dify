@@ -53,7 +53,7 @@ function SliderDemo({
         onValueChange={setValue}
         aria-label="Demo slider"
       />
-      <div className="text-center text-text-secondary system-sm-medium">
+      <div className="text-center system-sm-medium text-text-secondary">
         {value}
       </div>
     </div>

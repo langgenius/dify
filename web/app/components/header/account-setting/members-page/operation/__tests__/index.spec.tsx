@@ -2,7 +2,6 @@ import type { Member } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Operation from '../index'
 
 const mockUpdateMemberRole = vi.fn()
@@ -37,9 +36,9 @@ const defaultMember: Member = {
 const renderOperation = (propsOverride: Partial<Member> = {}, operatorRole = 'owner', onOperate?: () => void) => {
   const mergedMember = { ...defaultMember, ...propsOverride }
   return render(
-    <ToastContext.Provider value={{ notify: vi.fn(), close: vi.fn() }}>
+    <>
       <Operation member={mergedMember} operatorRole={operatorRole} onOperate={onOperate ?? vi.fn()} />
-    </ToastContext.Provider>,
+    </>,
   )
 }
 

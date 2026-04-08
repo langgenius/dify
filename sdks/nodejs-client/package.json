@@ -1,6 +1,6 @@
 {
   "name": "dify-client",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,7 +15,8 @@
     "node": ">=18.0.0"
   },
   "files": [
-    "dist",
+    "dist/index.js",
+    "dist/index.d.ts",
     "README.md",
     "LICENSE"
   ],
@@ -44,17 +45,14 @@
   "homepage": "https://dify.ai",
   "license": "MIT",
   "scripts": {
-    "build": "tsup",
+    "build": "vp pack",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "vp test",
+    "test:coverage": "vp test --coverage",
     "publish:check": "./scripts/publish.sh --dry-run",
     "publish:npm": "./scripts/publish.sh"
-  },
-  "dependencies": {
-    "axios": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
@@ -63,8 +61,8 @@
     "@typescript-eslint/parser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
-    "tsup": "catalog:",
     "typescript": "catalog:",
+    "vite-plus": "catalog:",
     "vitest": "catalog:"
   }
 }

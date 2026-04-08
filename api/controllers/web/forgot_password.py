@@ -3,8 +3,7 @@ import secrets
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
 from controllers.console.auth.error import (
@@ -19,33 +18,15 @@ from controllers.console.error import EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
 from controllers.web import web_ns
 from extensions.ext_database import db
-from libs.helper import EmailStr, extract_remote_ip
-from libs.password import hash_password, valid_password
+from libs.helper import extract_remote_ip
+from libs.password import hash_password
 from models.account import Account
 from services.account_service import AccountService
-
-
-class ForgotPasswordSendPayload(BaseModel):
-    email: EmailStr
-    language: str | None = None
-
-
-class ForgotPasswordCheckPayload(BaseModel):
-    email: EmailStr
-    code: str
-    token: str = Field(min_length=1)
-
-
-class ForgotPasswordResetPayload(BaseModel):
-    token: str = Field(min_length=1)
-    new_password: str
-    password_confirm: str
-
-    @field_validator("new_password", "password_confirm")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        return valid_password(value)
-
+from services.entities.auth_entities import (
+    ForgotPasswordCheckPayload,
+    ForgotPasswordResetPayload,
+    ForgotPasswordSendPayload,
+)
 
 register_schema_models(web_ns, ForgotPasswordSendPayload, ForgotPasswordCheckPayload, ForgotPasswordResetPayload)
 
@@ -81,7 +62,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(request_email, session=session)
         token = None
         if account is None:
@@ -180,18 +161,17 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:
-                self._update_existing_account(account, password_hashed, salt, session)
+                self._update_existing_account(account, password_hashed, salt)
             else:
                 raise AuthenticationFailedError()
 
         return {"result": "success"}
 
-    def _update_existing_account(self, account: Account, password_hashed, salt, session):
+    def _update_existing_account(self, account: Account, password_hashed, salt):
         # Update existing account credentials
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
-        session.commit()

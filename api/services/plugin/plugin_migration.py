@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 from uuid import uuid4
 
 import click
@@ -14,7 +14,6 @@ import tqdm
 from flask import Flask, current_app
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
-from typing_extensions import TypedDict
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
@@ -41,6 +40,16 @@ class _TenantPluginRecord(TypedDict):
 
 
 _tenant_plugin_adapter: TypeAdapter[_TenantPluginRecord] = TypeAdapter(_TenantPluginRecord)
+
+
+class ExtractedPluginsDict(TypedDict):
+    plugins: dict[str, str]
+    plugin_not_exist: list[str]
+
+
+class PluginInstallResultDict(TypedDict):
+    success: list[str]
+    failed: list[str]
 
 
 class PluginMigration:
@@ -311,7 +320,7 @@ class PluginMigration:
         Path(output_file).write_text(json.dumps(cls.extract_unique_plugins(extracted_plugins)))
 
     @classmethod
-    def extract_unique_plugins(cls, extracted_plugins: str) -> Mapping[str, Any]:
+    def extract_unique_plugins(cls, extracted_plugins: str) -> ExtractedPluginsDict:
         plugins: dict[str, str] = {}
         plugin_ids = []
         plugin_not_exist = []
@@ -525,7 +534,7 @@ class PluginMigration:
     @classmethod
     def handle_plugin_instance_install(
         cls, tenant_id: str, plugin_identifiers_map: Mapping[str, str]
-    ) -> Mapping[str, Any]:
+    ) -> PluginInstallResultDict:
         """
         Install plugins for a tenant.
         """
