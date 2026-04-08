@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Literal
+from typing import Literal
 
 from dateutil.parser import isoparse
 from flask import request
@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -46,9 +47,7 @@ from services.workflow_app_service import WorkflowAppService
 logger = logging.getLogger(__name__)
 
 
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+class WorkflowRunPayload(WorkflowRunPayloadBase):
     response_mode: Literal["blocking", "streaming"] | None = None
 
 

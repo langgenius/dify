@@ -2,10 +2,10 @@ import logging
 
 from flask import request
 from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -31,14 +31,6 @@ from services.errors.audio import (
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
-
-
-class TextToAudioPayload(BaseModel):
-    message_id: str | None = None
-    voice: str | None = None
-    text: str | None = None
-    streaming: bool | None = Field(default=None, description="Enable streaming response")
-
 
 register_schema_model(console_ns, TextToAudioPayload)
 

@@ -6,6 +6,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.controller_schemas import MessageFeedbackPayload
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -51,11 +52,6 @@ class MessageListQuery(BaseModel):
         if value is None:
             return value
         return uuid_value(value)
-
-
-class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
-    content: str | None = Field(default=None, description="Feedback content")
 
 
 class MessageMoreLikeThisQuery(BaseModel):

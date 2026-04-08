@@ -1,11 +1,10 @@
 import logging
-from typing import Any
 
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.controller_schemas import WorkflowRunPayload
 from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -33,12 +32,6 @@ from services.errors.llm import InvokeRateLimitError
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
-
-
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
-
 
 register_schema_model(console_ns, WorkflowRunPayload)
 
