@@ -36,7 +36,8 @@
     "gmpy2",
     "sendgrid",
     "sendgrid.helpers.mail",
-    "holo_search_sdk.types"
+    "holo_search_sdk.types",
+    "iris"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",

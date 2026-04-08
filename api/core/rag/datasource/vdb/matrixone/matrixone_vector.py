@@ -27,7 +27,7 @@ def ensure_client[T: MatrixoneVector, **P, R](
     @wraps(func)
     def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         if self.client is None:
-            self.client = self._get_client(None, False)
+            self.client = self.get_client(None, False)
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -81,10 +81,10 @@ class MatrixoneVector(BaseVector):
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if self.client is None:
-            self.client = self._get_client(len(embeddings[0]), True)
+            self.client = self.get_client(len(embeddings[0]), True)
         return self.add_texts(texts, embeddings)
 
-    def _get_client(self, dimension: int | None = None, create_table: bool = False) -> MoVectorClient:
+    def get_client(self, dimension: int | None = None, create_table: bool = False) -> MoVectorClient:
         """
         Create a new client for the collection.
 
@@ -110,7 +110,7 @@ class MatrixoneVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         if self.client is None:
-            self.client = self._get_client(len(embeddings[0]), True)
+            self.client = self.get_client(len(embeddings[0]), True)
         assert self.client is not None
         ids = []
         for doc in documents:

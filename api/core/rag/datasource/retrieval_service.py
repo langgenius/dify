@@ -158,7 +158,7 @@ class RetrievalService:
                     )
 
             if futures:
-                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                for _ in concurrent.futures.as_completed(futures, timeout=3600):
                     if exceptions:
                         for f in futures:
                             f.cancel()

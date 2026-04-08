@@ -39,7 +39,7 @@ class HuaweiCloudVectorConfig(BaseModel):
         return values
 
     def to_elasticsearch_params(self) -> dict[str, Any]:
-        params = {
+        params: dict[str, Any] = {
             "hosts": self.hosts.split(","),
             "verify_certs": False,
             "ssl_show_warn": False,
