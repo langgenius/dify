@@ -20,14 +20,14 @@ const clientSchema = {
    */
   NEXT_PUBLIC_ALLOW_EMBED: coercedBoolean.default(false),
   /**
-   * Allow rendering unsafe URLs which have "data:" scheme.
-   */
-  NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: coercedBoolean.default(false),
-  /**
    * Allow inline style attributes in Markdown rendering.
    * Self-hosted opt-in for workflows using styled Jinja2 templates.
    */
   NEXT_PUBLIC_ALLOW_INLINE_STYLES: coercedBoolean.default(false),
+  /**
+   * Allow rendering unsafe URLs which have "data:" scheme.
+   */
+  NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: coercedBoolean.default(false),
   /**
    * The API key of amplitude
    */
@@ -158,8 +158,8 @@ export const env = createEnv({
   client: clientSchema,
   experimental__runtimeEnv: {
     NEXT_PUBLIC_ALLOW_EMBED: isServer ? process.env.NEXT_PUBLIC_ALLOW_EMBED : getRuntimeEnvFromBody('allowEmbed'),
-    NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_ALLOW_INLINE_STYLES: isServer ? process.env.NEXT_PUBLIC_ALLOW_INLINE_STYLES : getRuntimeEnvFromBody('allowInlineStyles'),
+    NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
     NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
     NEXT_PUBLIC_BASE_PATH: isServer ? process.env.NEXT_PUBLIC_BASE_PATH : getRuntimeEnvFromBody('basePath'),
