@@ -255,7 +255,9 @@ class ToolManager:
                 else:
                     builtin_provider = db.session.scalar(
                         select(BuiltinToolProvider)
-                        .where(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
+                        .where(
+                            BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id)
+                        )
                         .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                         .limit(1)
                     )
