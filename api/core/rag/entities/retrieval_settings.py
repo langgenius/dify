@@ -17,3 +17,12 @@ class KeywordSetting(BaseModel):
     """
 
     keyword_weight: float
+
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+
+    vector_setting: VectorSetting
+    keyword_setting: KeywordSetting
