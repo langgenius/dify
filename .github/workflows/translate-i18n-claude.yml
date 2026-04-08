@@ -188,7 +188,7 @@ jobs:
             Tool rules:
             - Use Read for repository files.
             - Use Edit for JSON updates.
-            - Use Bash only for `pnpm`.
+            - Use Bash only for `vp`.
             - Do not use Bash for `git`, `gh`, or branch management.
 
             Required execution plan:
@@ -210,7 +210,7 @@ jobs:
                - Read the current English JSON file for any file that still exists so wording, placeholders, and surrounding terminology stay accurate.
                - If `Structured change set available` is `false`, treat this as a scoped full sync and use the current English files plus scoped checks as the source of truth.
             4. Run a scoped pre-check before editing:
-               - `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
+               - `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - Use this command as the source of truth for missing and extra keys inside the current scope.
             5. Apply translations.
                - For every target language and scoped file:
@@ -218,19 +218,19 @@ jobs:
                  - If the locale file does not exist yet, create it with `Write` and then continue with `Edit` as needed.
                  - ADD missing keys.
                  - UPDATE stale translations when the English value changed.
-                 - DELETE removed keys. Prefer `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }} --auto-remove` for extra keys so deletions stay in scope.
+                 - DELETE removed keys. Prefer `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }} --auto-remove` for extra keys so deletions stay in scope.
                - Preserve placeholders exactly: `{{variable}}`, `${variable}`, HTML tags, component tags, and variable names.
                - Match the existing terminology and register used by each locale.
                - Prefer one Edit per file when stable, but prioritize correctness over batching.
             6. Verify only the edited files.
-               - Run `pnpm --dir ${{ github.workspace }}/web lint:fix --quiet -- <relative edited i18n file paths>`
-               - Run `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
+               - Run `vp run dify-web#lint:fix --quiet -- <relative edited i18n file paths under web/>`
+               - Run `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - If verification fails, fix the remaining problems before continuing.
             7. Stop after the scoped locale files are updated and verification passes.
                - Do not create branches, commits, or pull requests.
           claude_args: |
             --max-turns 120
-            --allowedTools "Read,Write,Edit,Bash(pnpm *),Bash(pnpm:*),Glob,Grep"
+            --allowedTools "Read,Write,Edit,Bash(vp *),Bash(vp:*),Glob,Grep"
 
       - name: Prepare branch metadata
         id: pr_meta
@@ -320,8 +320,8 @@ jobs:
             '',
             '## Verification',
             '',
-            `- \`pnpm --dir web run i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
-            `- \`pnpm --dir web lint:fix --quiet -- <edited i18n files>\``,
+            `- \`vp run dify-web#i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
+            `- \`vp run dify-web#lint:fix --quiet -- <edited i18n files under web/>\``,
             '',
             '## Notes',
             '',
