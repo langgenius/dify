@@ -83,7 +83,7 @@ describe('useStore', () => {
 
     expect(() => {
       renderHook(() => useStore(s => s.files))
-    }).toThrow('Missing FileContext.Provider in the tree')
+    }).toThrow('Missing File provider in the tree')
 
     consoleError.mockRestore()
   })
@@ -102,9 +102,10 @@ describe('useFileStore', () => {
     expect(result.current).toBe(store)
   })
 
-  it('should return null when no provider exists', () => {
-    const { result } = renderHook(() => useFileStore())
-    expect(result.current).toBeNull()
+  it('should throw error when used outside provider', () => {
+    expect(() => {
+      renderHook(() => useFileStore())
+    }).toThrow('Missing File provider in the tree')
   })
 })
 

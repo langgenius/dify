@@ -3,8 +3,8 @@ import type { LocalFileSliceShape } from './slices/local-file'
 import type { OnlineDocumentSliceShape } from './slices/online-document'
 import type { OnlineDriveSliceShape } from './slices/online-drive'
 import type { WebsiteCrawlSliceShape } from './slices/website-crawl'
-import { use } from 'react'
-import { createStore, useStore } from 'zustand'
+import { createStore } from 'zustand/vanilla'
+import { useContextStore, useContextStoreApi } from '@/stores/create-context-store'
 import { DataSourceContext } from './provider'
 import { createCommonSlice } from './slices/common'
 import { createLocalFileSlice } from './slices/local-file'
@@ -28,18 +28,10 @@ export const createDataSourceStore = () => {
   }))
 }
 
-export const useDataSourceStoreWithSelector = <T>(selector: (state: DataSourceShape) => T): T => {
-  const store = use(DataSourceContext)
-  if (!store)
-    throw new Error('Missing DataSourceContext.Provider in the tree')
-
-  return useStore(store, selector)
+export function useDataSourceStoreWithSelector<T>(selector: (state: DataSourceShape) => T): T {
+  return useContextStore(DataSourceContext, selector)
 }
 
-export const useDataSourceStore = () => {
-  const store = use(DataSourceContext)
-  if (!store)
-    throw new Error('Missing DataSourceContext.Provider in the tree')
-
-  return store
+export function useDataSourceStore() {
+  return useContextStoreApi(DataSourceContext)
 }

@@ -1,11 +1,8 @@
-import { createContext, useRef } from 'react'
+import type { DataSourceShape } from './'
+import { createStoreContext, useStoreRef } from '@/stores/create-context-store'
 import { createDataSourceStore } from './'
 
-type DataSourceStoreApi = ReturnType<typeof createDataSourceStore>
-
-type DataSourceContextType = DataSourceStoreApi | null
-
-export const DataSourceContext = createContext<DataSourceContextType>(null)
+export const DataSourceContext = createStoreContext<DataSourceShape>('DataSource')
 
 type DataSourceProviderProps = {
   children: React.ReactNode
@@ -14,13 +11,10 @@ type DataSourceProviderProps = {
 const DataSourceProvider = ({
   children,
 }: DataSourceProviderProps) => {
-  const storeRef = useRef<DataSourceStoreApi>(null)
-
-  if (!storeRef.current)
-    storeRef.current = createDataSourceStore()
+  const store = useStoreRef(() => createDataSourceStore())
 
   return (
-    <DataSourceContext.Provider value={storeRef.current!}>
+    <DataSourceContext.Provider value={store}>
       {children}
     </DataSourceContext.Provider>
   )

@@ -54,7 +54,7 @@ describe('useDataSourceStoreWithSelector', () => {
   it('should throw when used outside provider', () => {
     expect(() => {
       renderHook(() => useDataSourceStoreWithSelector(s => s.currentCredentialId))
-    }).toThrow('Missing DataSourceContext.Provider in the tree')
+    }).toThrow('Missing DataSource provider in the tree')
   })
 
   it('should return selected state when used inside provider', () => {
@@ -72,7 +72,7 @@ describe('useDataSourceStore', () => {
   it('should throw when used outside provider', () => {
     expect(() => {
       renderHook(() => useDataSourceStore())
-    }).toThrow('Missing DataSourceContext.Provider in the tree')
+    }).toThrow('Missing DataSource provider in the tree')
   })
 
   it('should return store when used inside provider', () => {

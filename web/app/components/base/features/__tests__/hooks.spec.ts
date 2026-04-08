@@ -25,7 +25,7 @@ describe('useFeatures', () => {
     // Act & Assert
     expect(() => {
       renderHook(() => useFeatures(s => s.features))
-    }).toThrow('Missing FeaturesContext.Provider in the tree')
+    }).toThrow('Missing Features provider in the tree')
   })
 
   it('should return undefined when feature does not exist', () => {
@@ -55,9 +55,9 @@ describe('useFeaturesStore', () => {
     expect(result.current).toBe(store)
   })
 
-  it('should return null when used outside provider', () => {
-    const { result } = renderHook(() => useFeaturesStore())
-
-    expect(result.current).toBeNull()
+  it('should throw error when used outside provider', () => {
+    expect(() => {
+      renderHook(() => useFeaturesStore())
+    }).toThrow('Missing Features provider in the tree')
   })
 })

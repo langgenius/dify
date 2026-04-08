@@ -1,26 +1,20 @@
 import type {
   FeaturesState,
-  FeaturesStore,
+  FeatureStoreState,
 } from './store'
-import {
-  createContext,
-  useRef,
-} from 'react'
+import { createStoreContext, useStoreRef } from '@/stores/create-context-store'
 import { createFeaturesStore } from './store'
 
-export const FeaturesContext = createContext<FeaturesStore | null>(null)
+export const FeaturesContext = createStoreContext<FeatureStoreState>('Features')
 
 type FeaturesProviderProps = {
   children: React.ReactNode
 } & Partial<FeaturesState>
-export const FeaturesProvider = ({ children, ...props }: FeaturesProviderProps) => {
-  const storeRef = useRef<FeaturesStore | undefined>(undefined)
-
-  if (!storeRef.current)
-    storeRef.current = createFeaturesStore(props)
+export function FeaturesProvider({ children, ...props }: FeaturesProviderProps) {
+  const store = useStoreRef(() => createFeaturesStore(props))
 
   return (
-    <FeaturesContext.Provider value={storeRef.current}>
+    <FeaturesContext.Provider value={store}>
       {children}
     </FeaturesContext.Provider>
   )
