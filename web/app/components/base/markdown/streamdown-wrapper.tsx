@@ -16,7 +16,7 @@ import {
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
-import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
@@ -117,6 +117,11 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   // with `user-content-`.  Form fields need the original `name`, and our form
   // component validates names with `isSafeName()`, so remove it.
   const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
+
+  if (ALLOW_INLINE_STYLES) {
+    const globalAttrs = mergedAttributes['*'] ?? []
+    mergedAttributes['*'] = [...globalAttrs, 'style']
+  }
 
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
