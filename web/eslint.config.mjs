@@ -1,7 +1,5 @@
 // @ts-check
 
-import './scripts/ensure-claude-md.mjs'
-
 import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
@@ -19,6 +17,8 @@ import {
   OVERLAY_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
+
+import './scripts/ensure-claude-md.mjs'
 
 // Enable Tailwind CSS IntelliSense mode for ESLint runs
 // See: tailwind-css-plugin.ts

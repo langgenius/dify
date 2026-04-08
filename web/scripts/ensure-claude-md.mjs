@@ -19,17 +19,21 @@ function ensureWebClaudeMd() {
       try {
         fs.statSync(claudeMd)
         return
-      } catch {
+      }
+      catch {
         fs.unlinkSync(claudeMd)
       }
-    } else if (st.isFile()) {
+    }
+    else if (st.isFile()) {
       return
     }
-  } catch {
+  }
+  catch {
     // missing
   }
 
-  if (fs.existsSync(agentsMd)) fs.copyFileSync(agentsMd, claudeMd)
+  if (fs.existsSync(agentsMd))
+    fs.copyFileSync(agentsMd, claudeMd)
 }
 
 ensureWebClaudeMd()
