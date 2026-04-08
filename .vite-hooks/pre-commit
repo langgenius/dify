@@ -81,8 +81,8 @@ if $web_modified; then
 
     if $web_ts_modified; then
         echo "Running TypeScript type-check:tsgo"
-        if ! pnpm run type-check:tsgo; then
-            echo "Type check failed. Please run 'pnpm run type-check:tsgo' to fix the errors."
+        if ! npm run type-check:tsgo; then
+            echo "Type check failed. Please run 'npm run type-check:tsgo' to fix the errors."
             exit 1
         fi
     else
@@ -90,8 +90,8 @@ if $web_modified; then
     fi
 
     echo "Running knip"
-    if ! pnpm run knip; then
-        echo "Knip check failed. Please run 'pnpm run knip' to fix the errors."
+    if ! npm run knip; then
+        echo "Knip check failed. Please run 'npm run knip' to fix the errors."
         exit 1
     fi
 
