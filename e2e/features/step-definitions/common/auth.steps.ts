@@ -9,3 +9,10 @@ Given('I am signed in as the default E2E admin', async function (this: DifyWorld
     'text/plain',
   )
 })
+
+Given('I am not signed in', async function (this: DifyWorld) {
+  this.attach(
+    'Using a clean browser context without the shared authenticated storage state.',
+    'text/plain',
+  )
+})

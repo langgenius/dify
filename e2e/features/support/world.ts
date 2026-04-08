@@ -25,12 +25,12 @@ export class DifyWorld extends World {
     this.pageErrors = []
   }
 
-  async startAuthenticatedSession(browser: Browser) {
+  async startSession(browser: Browser, authenticated: boolean) {
     this.resetScenarioState()
     this.context = await browser.newContext({
       baseURL,
       locale: defaultLocale,
-      storageState: authStatePath,
+      ...(authenticated ? { storageState: authStatePath } : {}),
     })
     this.context.setDefaultTimeout(30_000)
     this.page = await this.context.newPage()
@@ -42,6 +42,14 @@ export class DifyWorld extends World {
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
     })
+  }
+
+  async startAuthenticatedSession(browser: Browser) {
+    await this.startSession(browser, true)
+  }
+
+  async startUnauthenticatedSession(browser: Browser) {
+    await this.startSession(browser, false)
   }
 
   getPage() {

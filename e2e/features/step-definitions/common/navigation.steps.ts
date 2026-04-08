@@ -10,6 +10,10 @@ Then('I should stay on the apps console', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/apps(?:\?.*)?$/)
 })
 
+Then('I should be redirected to the signin page', async function (this: DifyWorld) {
+  await expect(this.getPage()).toHaveURL(/\/signin(?:\?.*)?$/)
+})
+
 Then('I should see the {string} button', async function (this: DifyWorld, label: string) {
   await expect(this.getPage().getByRole('button', { name: label })).toBeVisible()
 })
