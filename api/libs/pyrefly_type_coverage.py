@@ -72,26 +72,14 @@ def format_comparison_markdown(
     lines = [
         "| Metric | Base | PR | Delta |",
         "| --- | ---: | ---: | ---: |",
-        (
-            f"| **Type coverage** | {base['coverage']:.2f}% "
-            f"| {pr['coverage']:.2f}% "
-            f"| {_fmt_delta(coverage_delta)}% |"
-        ),
+        (f"| **Type coverage** | {base['coverage']:.2f}% | {pr['coverage']:.2f}% | {_fmt_delta(coverage_delta)}% |"),
         (
             f"| Strict coverage | {base['strict_coverage']:.2f}% "
             f"| {pr['strict_coverage']:.2f}% "
             f"| {_fmt_delta(strict_delta)}% |"
         ),
-        (
-            f"| Typed symbols | {base['n_typed']:,} "
-            f"| {pr['n_typed']:,} "
-            f"| {_fmt_delta(typed_delta, ',')} |"
-        ),
-        (
-            f"| Untyped symbols | {base['n_untyped']:,} "
-            f"| {pr['n_untyped']:,} "
-            f"| {_fmt_delta(untyped_delta, ',')} |"
-        ),
+        (f"| Typed symbols | {base['n_typed']:,} | {pr['n_typed']:,} | {_fmt_delta(typed_delta, ',')} |"),
+        (f"| Untyped symbols | {base['n_untyped']:,} | {pr['n_untyped']:,} | {_fmt_delta(untyped_delta, ',')} |"),
         (
             f"| Modules | {base['n_modules']} "
             f"| {pr['n_modules']} "
