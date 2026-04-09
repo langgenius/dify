@@ -1001,7 +1001,7 @@ class ToolManager:
                     mcp_provider = mcp_service.get_provider_entity(
                         provider_id=provider_id, tenant_id=tenant_id, by_server_id=True
                     )
-                    return mcp_provider.provider_icon
+                    return cast(EmojiIconDict | str, mcp_provider.provider_icon)
                 except ValueError:
                     raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
         except Exception:

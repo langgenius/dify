@@ -141,7 +141,7 @@ class MCPProviderEntity(BaseModel):
         )
 
     @property
-    def provider_icon(self) -> EmojiIconDict | str:
+    def provider_icon(self) -> dict[str, str] | str:
         """Get provider icon, handling both dict and string formats"""
         if isinstance(self.icon, dict):
             return self.icon
