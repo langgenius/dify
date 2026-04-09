@@ -1,13 +1,13 @@
 from typing import Any, Literal
-from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
+from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
@@ -15,7 +15,6 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
-    ConversationDelete,
     ConversationInfiniteScrollPagination,
     SimpleConversation,
 )
@@ -23,32 +22,21 @@ from fields.conversation_variable_fields import (
     build_conversation_variable_infinite_scroll_pagination_model,
     build_conversation_variable_model,
 )
+from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
 
 class ConversationListQuery(BaseModel):
-    last_id: UUID | None = Field(default=None, description="Last conversation ID for pagination")
+    last_id: UUIDStrOrEmpty | None = Field(default=None, description="Last conversation ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of conversations to return")
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort order for conversations"
     )
 
 
-class ConversationRenamePayload(BaseModel):
-    name: str | None = Field(default=None, description="New conversation name (required if auto_generate is false)")
-    auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
-
-    @model_validator(mode="after")
-    def validate_name_requirement(self):
-        if not self.auto_generate:
-            if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
-        return self
-
-
 class ConversationVariablesQuery(BaseModel):
-    last_id: UUID | None = Field(default=None, description="Last variable ID for pagination")
+    last_id: UUIDStrOrEmpty | None = Field(default=None, description="Last variable ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of variables to return")
     variable_name: str | None = Field(
         default=None, description="Filter variables by name", min_length=1, max_length=255
@@ -117,7 +105,7 @@ class ConversationApi(Resource):
         last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
@@ -163,7 +151,7 @@ class ConversationDetailApi(Resource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return ConversationDelete(result="success").model_dump(mode="json"), 204
+        return "", 204
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")

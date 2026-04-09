@@ -2,12 +2,10 @@
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
-import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import { cn } from '@/utils/classnames'
@@ -17,7 +15,7 @@ import ResultPanel from './result-panel'
 import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
 
-export type RunProps = {
+type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
@@ -33,7 +31,6 @@ const RunPanel: FC<RunProps> = ({
   tracingListUrl,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
@@ -56,12 +53,9 @@ const RunPanel: FC<RunProps> = ({
         getResultCallback(res)
     }
     catch (err) {
-      notify({
-        type: 'error',
-        message: `${err}`,
-      })
+      toast.error(`${err}`)
     }
-  }, [notify, getResultCallback, runDetailUrl])
+  }, [getResultCallback, runDetailUrl])
 
   const getTracingList = useCallback(async () => {
     try {
@@ -71,12 +65,9 @@ const RunPanel: FC<RunProps> = ({
       setList(nodeList)
     }
     catch (err) {
-      notify({
-        type: 'error',
-        message: `${err}`,
-      })
+      toast.error(`${err}`)
     }
-  }, [notify, tracingListUrl])
+  }, [tracingListUrl])
 
   const getData = useCallback(async () => {
     setLoading(true)
@@ -125,8 +116,8 @@ const RunPanel: FC<RunProps> = ({
         {!hideResult && (
           <div
             className={cn(
-              'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-              currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
+              currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
           >
@@ -135,8 +126,8 @@ const RunPanel: FC<RunProps> = ({
         )}
         <div
           className={cn(
-            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-            currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
+            currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
         >
@@ -144,8 +135,8 @@ const RunPanel: FC<RunProps> = ({
         </div>
         <div
           className={cn(
-            'system-sm-semibold-uppercase mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-            currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
+            currentTab === 'TRACING' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
         >
@@ -182,6 +173,7 @@ const RunPanel: FC<RunProps> = ({
             steps={runDetail.total_steps}
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
+            workflowRunId={runDetail.id}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (

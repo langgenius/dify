@@ -184,8 +184,8 @@ describe('useDocLink', () => {
       vi.mocked(getDocLanguage).mockReturnValue('ja')
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/api-reference/application/get-application-basic-information')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/アプリケーション情報/アプリケーションの基本情報を取得`)
+      const url = result.current('/api-reference/applications/get-app-info')
+      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/アプリケーション設定/アプリケーションの基本情報を取得`)
     })
 
     it('should not translate API reference path for English locale', () => {
@@ -196,19 +196,19 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/en/api-reference/annotations/create-annotation`)
+      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/annotations/create-annotation`)
     })
 
     it('should keep original path when no translation exists for non-English locale', () => {
       vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
+        i18n: { language: 'zh-Hans' },
       } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
 
       const { result } = renderHook(() => useDocLink())
       // This path has no Japanese translation
       const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/ja/api-reference/annotations/create-annotation`)
+      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/标注管理/创建标注`)
     })
 
     it('should remove language prefix when translation is applied', () => {

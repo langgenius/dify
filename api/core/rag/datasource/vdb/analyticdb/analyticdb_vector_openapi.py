@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, model_validator
 
@@ -8,8 +8,16 @@ _import_err_msg = (
     "please run `pip install alibabacloud_gpdb20160503 alibabacloud_tea_openapi`"
 )
 
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+
+
+class AnalyticdbClientParamsDict(TypedDict):
+    access_key_id: str
+    access_key_secret: str
+    region_id: str
+    read_timeout: int
 
 
 class AnalyticdbVectorOpenAPIConfig(BaseModel):
@@ -43,13 +51,14 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
             raise ValueError("config ANALYTICDB_NAMESPACE_PASSWORD is required")
         return values
 
-    def to_analyticdb_client_params(self):
-        return {
+    def to_analyticdb_client_params(self) -> AnalyticdbClientParamsDict:
+        result: AnalyticdbClientParamsDict = {
             "access_key_id": self.access_key_id,
             "access_key_secret": self.access_key_secret,
             "region_id": self.region_id,
             "read_timeout": self.read_timeout,
         }
+        return result
 
 
 class AnalyticdbVectorOpenAPI:
@@ -192,8 +201,8 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             metrics=self.config.metrics,
             include_values=True,
-            vector=None,  # ty: ignore [invalid-argument-type]
-            content=None,  # ty: ignore [invalid-argument-type]
+            vector=None,
+            content=None,
             top_k=1,
             filter=f"ref_doc_id='{id}'",
         )
@@ -211,7 +220,7 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,  # ty: ignore [invalid-argument-type]
+            collection_data=None,
             collection_data_filter=f"ref_doc_id IN {ids_str}",
         )
         self._client.delete_collection_data(request)
@@ -225,7 +234,7 @@ class AnalyticdbVectorOpenAPI:
             namespace=self.config.namespace,
             namespace_password=self.config.namespace_password,
             collection=self._collection_name,
-            collection_data=None,  # ty: ignore [invalid-argument-type]
+            collection_data=None,
             collection_data_filter=f"metadata_ ->> '{key}' = '{value}'",
         )
         self._client.delete_collection_data(request)
@@ -249,7 +258,7 @@ class AnalyticdbVectorOpenAPI:
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
             vector=query_vector,
-            content=None,  # ty: ignore [invalid-argument-type]
+            content=None,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
         )
@@ -257,7 +266,7 @@ class AnalyticdbVectorOpenAPI:
         documents = []
         for match in response.body.matches.match:
             if match.score >= score_threshold:
-                metadata = json.loads(match.metadata.get("metadata_"))
+                metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
@@ -285,7 +294,7 @@ class AnalyticdbVectorOpenAPI:
             collection=self._collection_name,
             include_values=kwargs.pop("include_values", True),
             metrics=self.config.metrics,
-            vector=None,  # ty: ignore [invalid-argument-type]
+            vector=None,
             content=query,
             top_k=kwargs.get("top_k", 4),
             filter=where_clause,
@@ -294,7 +303,7 @@ class AnalyticdbVectorOpenAPI:
         documents = []
         for match in response.body.matches.match:
             if match.score >= score_threshold:
-                metadata = json.loads(match.metadata.get("metadata_"))
+                metadata = parse_metadata_json(match.metadata.get("metadata_"))
                 metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),

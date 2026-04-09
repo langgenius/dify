@@ -19,7 +19,6 @@ import {
 } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import dynamic from 'next/dynamic'
 import {
   Fragment,
   memo,
@@ -43,6 +42,7 @@ import ReactFlow, {
 } from 'reactflow'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import dynamic from '@/next/dynamic'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -65,6 +65,7 @@ import {
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
+import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
@@ -291,12 +292,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
       handleCommentIconClick(target)
   }, [activeComment, handleCommentIconClick, visibleComments])
 
-  eventEmitter?.useSubscription((event) => {
-    const workflowEvent = event as unknown as WorkflowEvent
-    if (workflowEvent.type === WORKFLOW_DATA_UPDATE && isWorkflowDataUpdatePayload(workflowEvent.payload)) {
-      setNodes(workflowEvent.payload.nodes)
-      store.getState().setNodes(workflowEvent.payload.nodes)
-      setEdges(workflowEvent.payload.edges)
+  const store = useStoreApi()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === WORKFLOW_DATA_UPDATE) {
+      setNodes(v.payload.nodes)
+      store.getState().setNodes(v.payload.nodes)
+      setEdges(v.payload.edges)
+      workflowStore.setState({ edgeMenu: undefined })
 
       if (workflowEvent.payload.viewport)
         reactflow.setViewport(workflowEvent.payload.viewport)
@@ -465,6 +467,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgesChange,
+    handleEdgeContextMenu,
   } = useEdgesInteractions()
   const {
     handleSelectionStart,
@@ -563,6 +566,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />
+      <EdgeContextmenu />
       <SelectionContextmenu />
       <HelpLine />
       {!!showConfirm && (
@@ -656,6 +660,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onEdgeContextMenu={handleEdgeContextMenu}
         onSelectionStart={handleSelectionStart}
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}

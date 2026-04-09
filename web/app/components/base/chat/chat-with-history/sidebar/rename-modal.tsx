@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 
-export type IRenameModalProps = {
+type IRenameModalProps = {
   isShow: boolean
   saveLoading: boolean
   name: string
@@ -24,6 +24,7 @@ const RenameModal: FC<IRenameModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [tempName, setTempName] = useState(name)
+  const conversationNamePlaceholder = t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''
 
   return (
     <Modal
@@ -36,7 +37,7 @@ const RenameModal: FC<IRenameModalProps> = ({
         className="mt-2 h-10 w-full"
         value={tempName}
         onChange={e => setTempName(e.target.value)}
-        placeholder={t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''}
+        placeholder={conversationNamePlaceholder}
       />
 
       <div className="mt-10 flex justify-end">

@@ -53,6 +53,7 @@ const defaultProviderContext = {
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+  humanInputEmailDeliveryEnabled: false,
 }
 
 const defaultModalContext: ModalContextState = {
@@ -71,17 +72,17 @@ const defaultModalContext: ModalContextState = {
   setShowTriggerEventsLimitModal: noop,
 }
 
-export type MockOverrides = {
+type MockOverrides = {
   providerContext?: Partial<typeof defaultProviderContext>
   modalContext?: Partial<typeof defaultModalContext>
 }
 
-export type APIKeyInfoPanelRenderOptions = {
+type APIKeyInfoPanelRenderOptions = {
   mockOverrides?: MockOverrides
 } & Omit<RenderOptions, 'wrapper'>
 
 // Setup function to configure mocks
-export function setupMocks(overrides: MockOverrides = {}) {
+function setupMocks(overrides: MockOverrides = {}) {
   mockUseProviderContext.mockReturnValue({
     ...defaultProviderContext,
     ...overrides.providerContext,
@@ -94,7 +95,7 @@ export function setupMocks(overrides: MockOverrides = {}) {
 }
 
 // Custom render function
-export function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
+function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
   const { mockOverrides, ...renderOptions } = options
 
   setupMocks(mockOverrides)
@@ -209,4 +210,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { defaultModalContext, mockUseModalContext, mockUseProviderContext }
+export { defaultModalContext, mockUseModalContext }

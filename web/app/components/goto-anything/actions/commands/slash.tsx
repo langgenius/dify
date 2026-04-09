@@ -14,13 +14,17 @@ import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
 
-const i18n = getI18n()
-
 export const slashAction: ActionItem = {
   key: '/',
   shortcut: '/',
-  title: i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' }),
-  description: i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' }),
+  get title() {
+    const i18n = getI18n()
+    return i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' })
+  },
+  get description() {
+    const i18n = getI18n()
+    return i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' })
+  },
   action: (result) => {
     if (result.type !== 'command')
       return
@@ -28,13 +32,14 @@ export const slashAction: ActionItem = {
     executeCommand(command, args)
   },
   search: async (query, _searchTerm = '') => {
+    const i18n = getI18n()
     // Delegate all search logic to the command registry system
     return slashCommandRegistry.search(query, i18n.language)
   },
 }
 
 // Register/unregister default handlers for slash commands with external dependencies.
-export const registerSlashCommands = (deps: Record<string, any>) => {
+const registerSlashCommands = (deps: Record<string, any>) => {
   // Register command handlers to the registry system with their respective dependencies
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
@@ -45,7 +50,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(zenCommand, {})
 }
 
-export const unregisterSlashCommands = () => {
+const unregisterSlashCommands = () => {
   // Remove command handlers from registry system (automatically calls each command's unregister method)
   slashCommandRegistry.unregister('theme')
   slashCommandRegistry.unregister('language')

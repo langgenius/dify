@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
+import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import { cn } from '@/utils/classnames'
@@ -25,7 +26,7 @@ const ResultItem = ({
   payload,
 }: ResultItemProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, files } = payload
+  const { segment, score, child_chunks, files, summary } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
@@ -83,7 +84,7 @@ const ResultItem = ({
             {!isFold && (
               <div className="space-y-2">
                 {child_chunks.map(item => (
-                  <div key={item.id} className="ml-[7px] border-l-[2px] border-text-accent-secondary pl-[7px]">
+                  <div key={item.id} className="ml-[7px] border-l-2 border-text-accent-secondary pl-[7px]">
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>
                 ))}
@@ -97,6 +98,9 @@ const ResultItem = ({
               <Tag key={keyword} text={keyword} className="mr-2" />
             ))}
           </div>
+        )}
+        {summary && (
+          <SummaryLabel summary={summary} className="mt-2" />
         )}
       </div>
       {/* Foot */}

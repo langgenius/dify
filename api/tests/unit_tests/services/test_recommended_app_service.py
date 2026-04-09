@@ -134,8 +134,8 @@ def factory():
 class TestRecommendedAppServiceGetApps:
     """Test get_recommended_apps_and_categories operations."""
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_success_with_apps(self, mock_config, mock_factory_class, factory):
         """Test successful retrieval of recommended apps when apps are returned."""
         # Arrange
@@ -161,8 +161,8 @@ class TestRecommendedAppServiceGetApps:
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
         mock_retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_fallback_to_builtin_when_empty(self, mock_config, mock_factory_class, factory):
         """Test fallback to builtin when no recommended apps are returned."""
         # Arrange
@@ -199,8 +199,8 @@ class TestRecommendedAppServiceGetApps:
         # Verify fallback was called with en-US (hardcoded)
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_fallback_when_none_recommended_apps(self, mock_config, mock_factory_class, factory):
         """Test fallback when recommended_apps key is None."""
         # Arrange
@@ -232,8 +232,8 @@ class TestRecommendedAppServiceGetApps:
         assert result == builtin_response
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once()
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_with_different_languages(self, mock_config, mock_factory_class, factory):
         """Test retrieval with different language codes."""
         # Arrange
@@ -262,8 +262,8 @@ class TestRecommendedAppServiceGetApps:
             assert result["recommended_apps"][0]["id"] == f"app-{language}"
             mock_instance.get_recommended_apps_and_categories.assert_called_with(language)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommended_apps_uses_correct_factory_mode(self, mock_config, mock_factory_class, factory):
         """Test that correct factory is selected based on mode."""
         # Arrange
@@ -292,8 +292,8 @@ class TestRecommendedAppServiceGetApps:
 class TestRecommendedAppServiceGetDetail:
     """Test get_recommend_app_detail operations."""
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_success(self, mock_config, mock_factory_class, factory):
         """Test successful retrieval of app detail."""
         # Arrange
@@ -316,7 +316,7 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result == expected_detail
@@ -324,8 +324,8 @@ class TestRecommendedAppServiceGetDetail:
         assert result["name"] == "Productivity App"
         mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_with_different_modes(self, mock_config, mock_factory_class, factory):
         """Test app detail retrieval with different factory modes."""
         # Arrange
@@ -346,14 +346,14 @@ class TestRecommendedAppServiceGetDetail:
             mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
             # Act
-            result = RecommendedAppService.get_recommend_app_detail(app_id)
+            result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
             # Assert
             assert result["name"] == f"App from {mode}"
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_returns_none_when_not_found(self, mock_config, mock_factory_class, factory):
         """Test that None is returned when app is not found."""
         # Arrange
@@ -369,14 +369,14 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result is None
         mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_returns_empty_dict(self, mock_config, mock_factory_class, factory):
         """Test handling of empty dict response."""
         # Arrange
@@ -392,13 +392,13 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result == {}
 
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory")
-    @patch("services.recommended_app_service.dify_config")
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config", autospec=True)
     def test_get_recommend_app_detail_with_complex_model_config(self, mock_config, mock_factory_class, factory):
         """Test app detail with complex model configuration."""
         # Arrange
@@ -432,9 +432,197 @@ class TestRecommendedAppServiceGetDetail:
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
         # Act
-        result = RecommendedAppService.get_recommend_app_detail(app_id)
+        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
 
         # Assert
         assert result["model_config"] == complex_model_config
         assert len(result["workflows"]) == 2
         assert len(result["tools"]) == 3
+
+
+# === Merged from test_recommended_app_service_additional.py ===
+
+
+from types import SimpleNamespace
+from typing import Any, cast
+from unittest.mock import MagicMock
+
+import pytest
+
+from services import recommended_app_service as service_module
+from services.recommended_app_service import RecommendedAppService
+
+
+def _recommendation_detail(result: dict[str, Any] | None) -> dict[str, Any]:
+    return cast(dict[str, Any], result)
+
+
+@pytest.fixture
+def mocked_db_session(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    # Arrange
+    session = MagicMock()
+    monkeypatch.setattr(service_module, "db", SimpleNamespace(session=session))
+
+    # Assert
+    return session
+
+
+def _mock_factory_for_apps(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    mode: str,
+    result: dict[str, Any],
+    fallback_result: dict[str, Any] | None = None,
+) -> tuple[MagicMock, MagicMock]:
+    retrieval_instance = MagicMock()
+    retrieval_instance.get_recommended_apps_and_categories.return_value = result
+    retrieval_factory = MagicMock(return_value=retrieval_instance)
+    monkeypatch.setattr(service_module.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", mode, raising=False)
+    monkeypatch.setattr(
+        service_module.RecommendAppRetrievalFactory,
+        "get_recommend_app_factory",
+        MagicMock(return_value=retrieval_factory),
+    )
+
+    builtin_instance = MagicMock()
+    if fallback_result is not None:
+        builtin_instance.fetch_recommended_apps_from_builtin.return_value = fallback_result
+    monkeypatch.setattr(
+        service_module.RecommendAppRetrievalFactory,
+        "get_buildin_recommend_app_retrieval",
+        MagicMock(return_value=builtin_instance),
+    )
+    return retrieval_instance, builtin_instance
+
+
+def test_get_recommended_apps_and_categories_should_not_query_trial_table_when_trial_feature_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    mocked_db_session: MagicMock,
+) -> None:
+    # Arrange
+    expected = {"recommended_apps": [{"app_id": "app-1"}], "categories": ["all"]}
+    retrieval_instance, builtin_instance = _mock_factory_for_apps(
+        monkeypatch,
+        mode="remote",
+        result=expected,
+    )
+    monkeypatch.setattr(
+        service_module.FeatureService,
+        "get_system_features",
+        MagicMock(return_value=SimpleNamespace(enable_trial_app=False)),
+    )
+
+    # Act
+    result = RecommendedAppService.get_recommended_apps_and_categories("en-US")
+
+    # Assert
+    assert result == expected
+    retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
+    builtin_instance.fetch_recommended_apps_from_builtin.assert_not_called()
+    mocked_db_session.scalar.assert_not_called()
+
+
+def test_get_recommended_apps_and_categories_should_fallback_and_enrich_can_trial_when_trial_feature_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    mocked_db_session: MagicMock,
+) -> None:
+    # Arrange
+    remote_result = {"recommended_apps": [], "categories": []}
+    fallback_result = {"recommended_apps": [{"app_id": "app-1"}, {"app_id": "app-2"}], "categories": ["all"]}
+    _, builtin_instance = _mock_factory_for_apps(
+        monkeypatch,
+        mode="remote",
+        result=remote_result,
+        fallback_result=fallback_result,
+    )
+    monkeypatch.setattr(
+        service_module.FeatureService,
+        "get_system_features",
+        MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
+    )
+    mocked_db_session.scalar.side_effect = [SimpleNamespace(id="trial-app"), None]
+
+    # Act
+    result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP")
+
+    # Assert
+    builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
+    assert result["recommended_apps"][0]["can_trial"] is True
+    assert result["recommended_apps"][1]["can_trial"] is False
+    assert mocked_db_session.scalar.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("trial_query_result", "expected_can_trial"),
+    [
+        (SimpleNamespace(id="trial"), True),
+        (None, False),
+    ],
+)
+def test_get_recommend_app_detail_should_set_can_trial_when_trial_feature_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    mocked_db_session: MagicMock,
+    trial_query_result: Any,
+    expected_can_trial: bool,
+) -> None:
+    # Arrange
+    detail = {"id": "app-1", "name": "Test App"}
+    retrieval_instance = MagicMock()
+    retrieval_instance.get_recommend_app_detail.return_value = detail
+    retrieval_factory = MagicMock(return_value=retrieval_instance)
+    monkeypatch.setattr(service_module.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "remote", raising=False)
+    monkeypatch.setattr(
+        service_module.RecommendAppRetrievalFactory,
+        "get_recommend_app_factory",
+        MagicMock(return_value=retrieval_factory),
+    )
+    monkeypatch.setattr(
+        service_module.FeatureService,
+        "get_system_features",
+        MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
+    )
+    mocked_db_session.scalar.return_value = trial_query_result
+
+    # Act
+    result = cast(dict[str, Any], RecommendedAppService.get_recommend_app_detail("app-1"))
+
+    # Assert
+    assert result["id"] == "app-1"
+    assert result["can_trial"] is expected_can_trial
+    mocked_db_session.scalar.assert_called_once()
+
+
+def test_add_trial_app_record_should_increment_count_when_existing_record_found(
+    mocked_db_session: MagicMock,
+) -> None:
+    # Arrange
+    existing_record = SimpleNamespace(count=3)
+    mocked_db_session.scalar.return_value = existing_record
+
+    # Act
+    RecommendedAppService.add_trial_app_record("app-1", "account-1")
+
+    # Assert
+    assert existing_record.count == 4
+    mocked_db_session.scalar.assert_called_once()
+    mocked_db_session.commit.assert_called_once()
+    mocked_db_session.add.assert_not_called()
+
+
+def test_add_trial_app_record_should_create_new_record_when_no_existing_record(
+    mocked_db_session: MagicMock,
+) -> None:
+    # Arrange
+    mocked_db_session.scalar.return_value = None
+
+    # Act
+    RecommendedAppService.add_trial_app_record("app-2", "account-2")
+
+    # Assert
+    mocked_db_session.scalar.assert_called_once()
+    mocked_db_session.add.assert_called_once()
+    added = mocked_db_session.add.call_args.args[0]
+    assert added.app_id == "app-2"
+    assert added.account_id == "account-2"
+    assert added.count == 1
+    mocked_db_session.commit.assert_called_once()

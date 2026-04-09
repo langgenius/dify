@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { cn } from '@/utils/classnames'
 
-export type TimezoneLabelProps = {
+type TimezoneLabelProps = {
   /** IANA timezone identifier (e.g., 'Asia/Shanghai', 'America/New_York') */
   timezone: string
   /** Additional CSS classes to apply */
@@ -43,11 +43,12 @@ const TimezoneLabel: React.FC<TimezoneLabelProps> = ({
   return (
     <span
       className={cn(
-        'system-sm-regular text-text-tertiary',
+        'text-text-tertiary system-sm-regular',
         inline && 'text-text-quaternary',
         className,
       )}
       title={`Timezone: ${timezone} (${offsetStr})`}
+      data-testid="timezone-label"
     >
       {offsetStr}
     </span>

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import cast
 
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from langsmith import Client
 from langsmith.schemas import RunBase
 from sqlalchemy.orm import sessionmaker
@@ -28,7 +29,6 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -152,8 +152,8 @@ class LangSmithDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         for node_execution in workflow_node_executions:
@@ -163,7 +163,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs or {}
@@ -197,7 +197,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                         "ls_model_name": process_data.get("model_name", ""),
                     }
                 )
-            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 run_type = LangSmithRunType.retriever
             else:
                 run_type = LangSmithRunType.tool
@@ -259,9 +259,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         metadata["user_id"] = user_id
 
         if message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id

@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -24,7 +25,7 @@ def disable_segment_from_index_task(segment_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        segment = session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
+        segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
         if not segment:
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return
@@ -59,6 +60,18 @@ def disable_segment_from_index_task(segment_id: str):
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             index_processor.clean(dataset, [segment.index_node_id])
+
+            # Disable summary index for this segment
+            from services.summary_index_service import SummaryIndexService
+
+            try:
+                SummaryIndexService.disable_summaries_for_segments(
+                    dataset=dataset,
+                    segment_ids=[segment.id],
+                    disabled_by=segment.disabled_by,
+                )
+            except Exception as e:
+                logger.warning("Failed to disable summary for segment %s: %s", segment.id, str(e))
 
             end_at = time.perf_counter()
             logger.info(

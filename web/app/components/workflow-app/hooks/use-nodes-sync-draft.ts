@@ -1,6 +1,6 @@
+import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { produce } from 'immer'
-import { useParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -10,6 +10,7 @@ import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
@@ -19,7 +20,6 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const params = useParams()
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const getPostParams = useCallback(() => {
@@ -85,7 +85,7 @@ export const useNodesSyncDraft = () => {
         environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
-        _is_collaborative: isCollaborationEnabled,
+        ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
   }, [store, featuresStore, workflowStore, isCollaborationEnabled])
@@ -94,73 +94,72 @@ export const useNodesSyncDraft = () => {
     if (getNodesReadOnly())
       return
 
-    // Check leader status at sync time
-    const currentIsLeader = isCollaborationEnabled ? collaborationManager.getIsLeader() : true
+    const isFollower = isCollaborationEnabled
+      && collaborationManager.isConnected()
+      && !collaborationManager.getIsLeader()
 
-    // Only allow leader to sync data
-    if (isCollaborationEnabled && !currentIsLeader)
+    if (isFollower)
       return
 
     const postParams = getPostParams()
 
-    if (postParams) {
-      navigator.sendBeacon(
-        `${API_PREFIX}/apps/${params.appId}/workflows/draft`,
-        JSON.stringify(postParams.params),
-      )
-    }
-  }, [getPostParams, params.appId, getNodesReadOnly, isCollaborationEnabled])
+    if (postParams)
+      postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncDraftCallback,
   ) => {
     if (getNodesReadOnly())
       return
 
-    // Check leader status at sync time
-    const currentIsLeader = isCollaborationEnabled ? collaborationManager.getIsLeader() : true
+    const isFollower = isCollaborationEnabled
+      && collaborationManager.isConnected()
+      && !collaborationManager.getIsLeader()
 
-    // If not leader, request the leader to sync
-    if (isCollaborationEnabled && !currentIsLeader) {
-      if (isCollaborationEnabled)
-        collaborationManager.emitSyncRequest()
+    if (isFollower) {
+      collaborationManager.emitSyncRequest()
       callback?.onSettled?.()
       return
     }
-    const postParams = getPostParams()
 
-    if (postParams) {
-      const {
-        setSyncWorkflowDraftHash,
-        setDraftUpdatedAt,
-      } = workflowStore.getState()
+    const baseParams = getPostParams()
+    if (!baseParams)
+      return
 
-      try {
-        const res = await syncWorkflowDraft({
-          url: postParams.url,
-          params: postParams.params,
+    const {
+      setSyncWorkflowDraftHash,
+      setDraftUpdatedAt,
+    } = workflowStore.getState()
+
+    try {
+      const latestHash = workflowStore.getState().syncWorkflowDraftHash
+
+      const postParams = {
+        ...baseParams,
+        params: {
+          ...baseParams.params,
+          hash: latestHash || null,
+        },
+      }
+
+      const res = await syncWorkflowDraft(postParams)
+      setSyncWorkflowDraftHash(res.hash)
+      setDraftUpdatedAt(res.updated_at)
+      callback?.onSuccess?.()
+    }
+    catch (error: any) {
+      if (error && error.json && !error.bodyUsed) {
+        error.json().then((err: any) => {
+          if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(true)
         })
-        setSyncWorkflowDraftHash(res.hash)
-        setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess?.()
       }
-      catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
-        callback?.onError?.()
-      }
-      finally {
-        callback?.onSettled?.()
-      }
+      callback?.onError?.()
+    }
+    finally {
+      callback?.onSettled?.()
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled])
 

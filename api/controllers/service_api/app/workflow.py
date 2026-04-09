@@ -1,13 +1,17 @@
 import logging
-from typing import Any, Literal
+from typing import Literal
 
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from graphon.enums import WorkflowExecutionStatus
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -27,14 +31,13 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.enums import WorkflowExecutionStatus
-from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import OptionalTimestampField, TimestampField
 from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -44,9 +47,7 @@ from services.workflow_app_service import WorkflowAppService
 logger = logging.getLogger(__name__)
 
 
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+class WorkflowRunPayload(WorkflowRunPayloadBase):
     response_mode: Literal["blocking", "streaming"] | None = None
 
 
@@ -63,17 +64,32 @@ class WorkflowLogQuery(BaseModel):
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
 
+
+class WorkflowRunStatusField(fields.Raw):
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        return obj.status.value
+
+
+class WorkflowRunOutputsField(fields.Raw):
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        if obj.status == WorkflowExecutionStatus.PAUSED:
+            return {}
+
+        outputs = obj.outputs_dict
+        return outputs or {}
+
+
 workflow_run_fields = {
     "id": fields.String,
     "workflow_id": fields.String,
-    "status": fields.String,
+    "status": WorkflowRunStatusField,
     "inputs": fields.Raw,
-    "outputs": fields.Raw,
+    "outputs": WorkflowRunOutputsField,
     "error": fields.String,
     "total_steps": fields.Integer,
     "total_tokens": fields.Integer,
     "created_at": TimestampField,
-    "finished_at": TimestampField,
+    "finished_at": OptionalTimestampField,
     "elapsed_time": fields.Float,
 }
 
@@ -115,6 +131,8 @@ class WorkflowRunDetailApi(Resource):
             app_id=app_model.id,
             run_id=workflow_run_id,
         )
+        if not workflow_run:
+            raise NotFound("Workflow run not found.")
         return workflow_run
 
 
@@ -264,7 +282,7 @@ class WorkflowTaskStopApi(Resource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -295,7 +313,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,

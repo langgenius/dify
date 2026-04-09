@@ -1,4 +1,4 @@
-import type { NavIcon } from './navLink'
+import type { NavIcon } from './nav-link'
 import type { DataSet } from '@/models/datasets'
 import {
   RiMenuLine,
@@ -21,7 +21,7 @@ import Divider from '../base/divider'
 import Effect from '../base/effect'
 import ExtraInfo from '../datasets/extra-info'
 import Dropdown from './dataset-info/dropdown'
-import NavLink from './navLink'
+import NavLink from './nav-link'
 
 type DatasetSidebarDropdownProps = {
   navigation: Array<{
@@ -77,7 +77,7 @@ const DatasetSidebarDropdown = ({
           <PortalToFollowElemTrigger onClick={handleTrigger}>
             <div
               className={cn(
-                'flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-sm hover:bg-background-default-hover',
+                'flex cursor-pointer items-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover',
                 open && 'bg-background-default-hover',
               )}
             >
@@ -107,12 +107,12 @@ const DatasetSidebarDropdown = ({
                 </div>
                 <div className="flex flex-col gap-y-1 pb-0.5">
                   <div
-                    className="system-md-semibold truncate text-text-secondary"
+                    className="truncate text-text-secondary system-md-semibold"
                     title={dataset.name}
                   >
                     {dataset.name}
                   </div>
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">
+                  <div className="text-text-tertiary system-2xs-medium-uppercase">
                     {isExternalProvider && t('externalTag', { ns: 'dataset' })}
                     {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                       <div className="flex items-center gap-x-2">
@@ -123,7 +123,7 @@ const DatasetSidebarDropdown = ({
                   </div>
                 </div>
                 {!!dataset.description && (
-                  <p className="system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize">
+                  <p className="line-clamp-3 text-text-tertiary system-xs-regular first-letter:capitalize">
                     {dataset.description}
                   </p>
                 )}
@@ -132,7 +132,7 @@ const DatasetSidebarDropdown = ({
                 <Divider
                   type="horizontal"
                   bgStyle="gradient"
-                  className="my-0 h-px bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent"
+                  className="my-0 h-px bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent"
                 />
               </div>
               <nav className="flex min-h-[200px] grow flex-col gap-y-0.5 px-3 py-2">

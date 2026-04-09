@@ -8,55 +8,112 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useStoreApi } from 'reactflow'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
 import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
 import { useStore } from '@/app/components/workflow/store'
-import { updateEnvironmentVariables } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
+
+const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
+
+const formatSecret = (secret: string) => {
+  return secret.length > 8 ? `${secret.slice(0, 6)}************${secret.slice(-2)}` : '********************'
+}
+
+const sanitizeSecretValue = (env: EnvironmentVariable) => {
+  return env.value_type === 'secret'
+    ? { ...env, value: HIDDEN_SECRET_VALUE }
+    : env
+}
+
+const removeSecretFromMap = (secretMap: Record<string, string>, envId: string) => {
+  const nextSecretMap = { ...secretMap }
+  delete nextSecretMap[envId]
+  return nextSecretMap
+}
 
 const EnvPanel = () => {
   const { t } = useTranslation()
-  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const store = useStoreApi()
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
   const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
   const envSecrets = useStore(s => s.envSecrets)
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
   const setEnvSecrets = useStore(s => s.setEnvSecrets)
   const appId = useStore(s => s.appId) as string
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
 
-  const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
+  const [showRemoveVarConfirm, setShowRemoveVarConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
 
-  const formatSecret = (s: string) => {
-    return s.length > 8 ? `${s.slice(0, 6)}************${s.slice(-2)}` : '********************'
-  }
+  const emitVarsAndFeaturesUpdate = useCallback(async () => {
+    try {
+      const { webSocketClient } = await import('@/app/components/workflow/collaboration/core/websocket-manager')
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'vars_and_features_update',
+        })
+      }
+    }
+    catch (error) {
+      console.error('Failed to emit vars_and_features_update event:', error)
+    }
+  }, [appId])
 
-  const getEffectedNodes = useCallback((env: EnvironmentVariable) => {
-    const { nodes: allNodes } = collaborativeWorkflow.getState()
+  const getAffectedNodes = useCallback((env: EnvironmentVariable) => {
+    const allNodes = store.getState().getNodes()
     return findUsedVarNodes(
       ['env', env.name],
       allNodes,
     )
-  }, [collaborativeWorkflow])
+  }, [store])
 
   const removeUsedVarInNodes = useCallback((env: EnvironmentVariable) => {
-    const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const effectedNodes = getEffectedNodes(env)
-    const newNodes = nodes.map((node) => {
-      if (effectedNodes.find(n => n.id === node.id))
+    const { getNodes, setNodes } = store.getState()
+    const affectedNodes = getAffectedNodes(env)
+    const newNodes = getNodes().map((node) => {
+      if (affectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['env', env.name], [])
 
       return node
     })
     setNodes(newNodes)
-  }, [getEffectedNodes, collaborativeWorkflow])
+  }, [getAffectedNodes, store])
+
+  const renameUsedVarInNodes = useCallback((currentEnv: EnvironmentVariable, nextEnvName: string) => {
+    const { getNodes, setNodes } = store.getState()
+    const affectedNodes = getAffectedNodes(currentEnv)
+    const newNodes = getNodes().map((node) => {
+      if (affectedNodes.find(n => n.id === node.id))
+        return updateNodeVars(node, ['env', currentEnv.name], ['env', nextEnvName])
+
+      return node
+    })
+    setNodes(newNodes)
+  }, [getAffectedNodes, store])
+
+  const persistEnvironmentVariables = useCallback(async (nextEnvList: EnvironmentVariable[]) => {
+    try {
+      const { updateEnvironmentVariables } = await import('@/service/workflow')
+      await updateEnvironmentVariables({
+        appId,
+        environmentVariables: nextEnvList,
+      })
+      await emitVarsAndFeaturesUpdate()
+      return true
+    }
+    catch (error) {
+      console.error('Failed to update environment variables:', error)
+      return false
+    }
+  }, [appId, emitVarsAndFeaturesUpdate])
 
   const handleEdit = (env: EnvironmentVariable) => {
     setCurrentVar(env)
@@ -64,157 +121,89 @@ const EnvPanel = () => {
   }
 
   const handleDelete = useCallback(async (env: EnvironmentVariable) => {
-    removeUsedVarInNodes(env)
-    const newEnvList = envList.filter(e => e.id !== env.id)
-    updateEnvList(newEnvList)
+    const nextEnvList = envList.filter(e => e.id !== env.id)
+    const nextEnvSecrets = env.value_type === 'secret'
+      ? removeSecretFromMap(envSecrets, env.id)
+      : envSecrets
+
+    updateEnvList(nextEnvList)
+    setEnvSecrets(nextEnvSecrets)
     setCacheForDelete(undefined)
-    setShowRemoveConfirm(false)
+    setShowRemoveVarConfirm(false)
+    removeUsedVarInNodes(env)
+    const syncDraftPromise = doSyncWorkflowDraft()
+    await persistEnvironmentVariables(nextEnvList)
+    await syncDraftPromise
 
-    // Use new dedicated environment variables API instead of workflow draft sync
-    try {
-      await updateEnvironmentVariables({
-        appId,
-        environmentVariables: newEnvList,
-      })
-
-      // Emit update event to other connected clients
-      const socket = webSocketClient.getSocket(appId)
-      if (socket?.connected) {
-        socket.emit('collaboration_event', {
-          type: 'vars_and_features_update',
-          timestamp: Date.now(),
-        })
-      }
-    }
-    catch (error) {
-      console.error('Failed to update environment variables:', error)
-      // Revert local state on error
-      updateEnvList(envList)
-    }
-
-    if (env.value_type === 'secret') {
-      const newMap = { ...envSecrets }
-      delete newMap[env.id]
-      setEnvSecrets(newMap)
-    }
-  }, [envList, envSecrets, removeUsedVarInNodes, setEnvSecrets, updateEnvList, appId])
+    updateEnvList(nextEnvList.map(sanitizeSecretValue))
+  }, [doSyncWorkflowDraft, envList, envSecrets, persistEnvironmentVariables, removeUsedVarInNodes, setEnvSecrets, updateEnvList])
 
   const deleteCheck = useCallback((env: EnvironmentVariable) => {
-    const effectedNodes = getEffectedNodes(env)
-    if (effectedNodes.length > 0) {
+    const affectedNodes = getAffectedNodes(env)
+    if (affectedNodes.length > 0) {
       setCacheForDelete(env)
-      setShowRemoveConfirm(true)
+      setShowRemoveVarConfirm(true)
     }
     else {
       handleDelete(env)
     }
-  }, [getEffectedNodes, handleDelete])
+  }, [getAffectedNodes, handleDelete])
 
   const handleSave = useCallback(async (env: EnvironmentVariable) => {
-    // add env
     let newEnv = env
-    let newList: EnvironmentVariable[]
+    let nextEnvSecrets = { ...envSecrets }
 
     if (!currentVar) {
-      // Adding new environment variable
-      if (env.value_type === 'secret') {
-        setEnvSecrets({
-          ...envSecrets,
-          [env.id]: formatSecret(env.value),
-        })
-      }
-      newList = [env, ...envList]
-      updateEnvList(newList)
+      if (env.value_type === 'secret')
+        nextEnvSecrets[env.id] = formatSecret(String(env.value))
 
-      // Use new dedicated environment variables API
-      try {
-        await updateEnvironmentVariables({
-          appId,
-          environmentVariables: newList,
-        })
+      const nextEnvList = [env, ...envList]
+      updateEnvList(nextEnvList)
+      setEnvSecrets(nextEnvSecrets)
+      const syncDraftPromise = doSyncWorkflowDraft()
+      await persistEnvironmentVariables(nextEnvList)
+      await syncDraftPromise
 
-        const socket = webSocketClient.getSocket(appId)
-        if (socket) {
-          socket.emit('collaboration_event', {
-            type: 'vars_and_features_update',
-          })
-        }
-
-        // Hide secret values in UI
-        updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
-      }
-      catch (error) {
-        console.error('Failed to update environment variables:', error)
-        // Revert local state on error
-        updateEnvList(envList)
-      }
+      updateEnvList(nextEnvList.map(sanitizeSecretValue))
       return
     }
 
-    // Updating existing environment variable
     if (currentVar.value_type === 'secret') {
       if (env.value_type === 'secret') {
         if (envSecrets[currentVar.id] !== env.value) {
           newEnv = env
-          setEnvSecrets({
-            ...envSecrets,
-            [env.id]: formatSecret(env.value),
-          })
+          nextEnvSecrets[env.id] = formatSecret(String(env.value))
         }
         else {
-          newEnv = { ...env, value: '[__HIDDEN__]' }
+          newEnv = sanitizeSecretValue(env)
         }
       }
-    }
-    else {
-      if (env.value_type === 'secret') {
-        newEnv = env
-        setEnvSecrets({
-          ...envSecrets,
-          [env.id]: formatSecret(env.value),
-        })
+      else {
+        nextEnvSecrets = removeSecretFromMap(nextEnvSecrets, currentVar.id)
       }
     }
-
-    newList = envList.map(e => e.id === currentVar.id ? newEnv : e)
-    updateEnvList(newList)
-
-    // side effects of rename env
-    if (currentVar.name !== env.name) {
-      const { nodes, setNodes } = collaborativeWorkflow.getState()
-      const effectedNodes = getEffectedNodes(currentVar)
-      const newNodes = nodes.map((node) => {
-        if (effectedNodes.find(n => n.id === node.id))
-          return updateNodeVars(node, ['env', currentVar.name], ['env', env.name])
-
-        return node
-      })
-      setNodes(newNodes)
+    else if (env.value_type === 'secret') {
+      nextEnvSecrets[env.id] = formatSecret(String(env.value))
     }
 
-    // Use new dedicated environment variables API
-    try {
-      await updateEnvironmentVariables({
-        appId,
-        environmentVariables: newList,
-      })
+    const nextEnvList = envList.map(e => e.id === currentVar.id ? newEnv : e)
+    updateEnvList(nextEnvList)
+    setEnvSecrets(nextEnvSecrets)
 
-      const socket = webSocketClient.getSocket(appId)
-      if (socket) {
-        socket.emit('collaboration_event', {
-          type: 'vars_and_features_update',
-        })
-      }
+    const hasEnvNameChanged = currentVar.name !== env.name
+    if (hasEnvNameChanged)
+      renameUsedVarInNodes(currentVar, env.name)
 
-      // Hide secret values in UI
-      updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
-    }
-    catch (error) {
-      console.error('Failed to update environment variables:', error)
-      // Revert local state on error
-      updateEnvList(envList)
-    }
-  }, [currentVar, envList, envSecrets, getEffectedNodes, setEnvSecrets, collaborativeWorkflow, updateEnvList, appId])
+    const persisted = await persistEnvironmentVariables(nextEnvList)
+    if (!persisted || hasEnvNameChanged)
+      await doSyncWorkflowDraft()
+
+    updateEnvList(nextEnvList.map(sanitizeSecretValue))
+  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, persistEnvironmentVariables, renameUsedVarInNodes, setEnvSecrets, updateEnvList])
+
+  const handleVariableModalClose = () => {
+    setCurrentVar(undefined)
+  }
 
   return (
     <div
@@ -229,6 +218,7 @@ const EnvPanel = () => {
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
             onClick={() => setShowEnvPanel(false)}
           >
+            {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
@@ -240,7 +230,7 @@ const EnvPanel = () => {
           setOpen={setShowVariableModal}
           env={currentVar}
           onSave={handleSave}
-          onClose={() => setCurrentVar(undefined)}
+          onClose={handleVariableModalClose}
         />
       </div>
       <div className="grow overflow-y-auto rounded-b-2xl px-4">
@@ -255,7 +245,7 @@ const EnvPanel = () => {
       </div>
       <RemoveEffectVarConfirm
         isShow={showRemoveVarConfirm}
-        onCancel={() => setShowRemoveConfirm(false)}
+        onCancel={() => setShowRemoveVarConfirm(false)}
         onConfirm={() => cacheForDelete && handleDelete(cacheForDelete)}
       />
     </div>

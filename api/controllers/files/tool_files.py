@@ -10,7 +10,6 @@ from controllers.common.file_response import enforce_download_for_html
 from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from extensions.ext_database import db as global_db
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -57,32 +56,39 @@ class ToolFileApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            tool_file_manager = ToolFileManager(engine=global_db.engine)
+            tool_file_manager = ToolFileManager()
             stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 
             if not stream or not tool_file:
                 raise NotFound("file is not found")
+
+        except NotFound:
+            raise
+
         except Exception:
             raise UnsupportedFileTypeError()
 
+        mime_type = tool_file.mime_type
+        filename = tool_file.filename
+
         response = Response(
             stream,
-            mimetype=tool_file.mimetype,
+            mimetype=mime_type,
             direct_passthrough=True,
             headers={},
         )
         if tool_file.size > 0:
             response.headers["Content-Length"] = str(tool_file.size)
-        if args.as_attachment:
-            encoded_filename = quote(tool_file.name)
+        if args.as_attachment and filename:
+            encoded_filename = quote(filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         enforce_download_for_html(
             response,
-            mime_type=tool_file.mimetype,
-            filename=tool_file.name,
+            mime_type=mime_type,
+            filename=filename,
             extension=extension,
         )
 

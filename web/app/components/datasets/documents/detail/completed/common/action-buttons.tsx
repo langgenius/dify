@@ -4,7 +4,8 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../../context'
 
@@ -54,7 +55,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
       >
         <div className="flex items-center gap-x-1">
           <span className="system-sm-medium text-components-button-secondary-text">{t('operation.cancel', { ns: 'common' })}</span>
-          <span className="system-kbd rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-tertiary">ESC</span>
+          <ShortcutsName keys={['ESC']} textColor="secondary" />
         </div>
       </Button>
       {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk && showRegenerationButton)
@@ -76,10 +77,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
       >
         <div className="flex items-center gap-x-1">
           <span className="text-components-button-primary-text">{t('operation.save', { ns: 'common' })}</span>
-          <div className="flex items-center gap-x-0.5">
-            <span className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white capitalize text-text-primary-on-surface">{getKeyboardKeyNameBySystem('ctrl')}</span>
-            <span className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">S</span>
-          </div>
+          <ShortcutsName keys={['ctrl', 'S']} bgColor="white" />
         </div>
       </Button>
     </div>

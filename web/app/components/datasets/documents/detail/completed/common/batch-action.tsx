@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
+import { IS_CE_EDITION } from '@/config'
 import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
@@ -16,6 +18,7 @@ type IBatchActionProps = {
   onBatchDisable: () => void
   onBatchDownload?: () => void
   onBatchDelete: () => Promise<void>
+  onBatchSummary?: () => void
   onArchive?: () => void
   onEditMetadata?: () => void
   onBatchReIndex?: () => void
@@ -27,6 +30,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   selectedIds,
   onBatchEnable,
   onBatchDisable,
+  onBatchSummary,
   onBatchDownload,
   onArchive,
   onBatchDelete,
@@ -50,7 +54,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
-      <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+      <div className="pointer-events-auto flex items-center gap-x-1 radius-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
         <div className="inline-flex items-center gap-x-2 py-1 pl-2 pr-3">
           <span className="system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface">
             {selectedIds.length}
@@ -84,7 +88,16 @@ const BatchAction: FC<IBatchActionProps> = ({
             <span className="px-0.5">{t('metadata.metadata', { ns: 'dataset' })}</span>
           </Button>
         )}
-
+        {onBatchSummary && IS_CE_EDITION && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchSummary}
+          >
+            <SearchLinesSparkle className="size-4" />
+            <span className="px-0.5">{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+          </Button>
+        )}
         {onArchive && (
           <Button
             variant="ghost"

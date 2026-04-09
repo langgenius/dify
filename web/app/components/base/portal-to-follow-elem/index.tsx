@@ -1,4 +1,16 @@
 'use client'
+/**
+ * @deprecated Use semantic overlay primitives from `@/app/components/base/ui/` instead.
+ * This component will be removed after migration is complete.
+ * See: https://github.com/langgenius/dify/issues/32767
+ *
+ * Migration guide:
+ * - Tooltip → `@/app/components/base/ui/tooltip`
+ * - Menu/Dropdown → `@/app/components/base/ui/dropdown-menu`
+ * - Popover → `@/app/components/base/ui/popover`
+ * - Dialog/Modal → `@/app/components/base/ui/dialog`
+ * - Select → `@/app/components/base/ui/select`
+ */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
   autoUpdate,
@@ -33,7 +45,8 @@ export type PortalToFollowElemOptions = {
   triggerPopupSameWidth?: boolean
 }
 
-export function usePortalToFollowElem({
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
+function usePortalToFollowElem({
   placement = 'bottom',
   open: controlledOpen,
   offset: offsetValue = 0,
@@ -61,9 +74,12 @@ export function usePortalToFollowElem({
       }),
       shift({ padding: 5 }),
       size({
-        apply({ rects, elements }) {
-          if (triggerPopupSameWidth)
-            elements.floating.style.width = `${rects.reference.width}px`
+        apply({ rects, elements, availableHeight }) {
+          Object.assign(elements.floating.style, {
+            maxHeight: `${Math.max(0, availableHeight)}px`,
+            overflowY: 'auto',
+            ...(triggerPopupSameWidth && { width: `${rects.reference.width}px` }),
+          })
         },
       }),
     ],
@@ -98,7 +114,7 @@ type ContextType = ReturnType<typeof usePortalToFollowElem> | null
 
 const PortalToFollowElemContext = React.createContext<ContextType>(null)
 
-export function usePortalToFollowElemContext() {
+function usePortalToFollowElemContext() {
   const context = React.useContext(PortalToFollowElemContext)
 
   if (context == null)
@@ -107,6 +123,7 @@ export function usePortalToFollowElemContext() {
   return context
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export function PortalToFollowElem({
   children,
   ...options
@@ -121,6 +138,7 @@ export function PortalToFollowElem({
   )
 }
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export const PortalToFollowElemTrigger = (
   {
     ref: propRef,
@@ -161,6 +179,7 @@ export const PortalToFollowElemTrigger = (
 }
 PortalToFollowElemTrigger.displayName = 'PortalToFollowElemTrigger'
 
+/** @deprecated Use semantic overlay primitives instead. See #32767. */
 export const PortalToFollowElemContent = (
   {
     ref: propRef,

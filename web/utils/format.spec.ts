@@ -1,4 +1,4 @@
-import { downloadFile, formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
+import { formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
 
 describe('formatNumber', () => {
   it('should correctly format integers', () => {
@@ -82,49 +82,6 @@ describe('formatTime', () => {
     expect(formatTime(7200)).toBe('2.00 h')
   })
 })
-describe('downloadFile', () => {
-  it('should create a link and trigger a download correctly', () => {
-    // Mock data
-    const blob = new Blob(['test content'], { type: 'text/plain' })
-    const fileName = 'test-file.txt'
-    const mockUrl = 'blob:mockUrl'
-
-    // Mock URL.createObjectURL
-    const createObjectURLMock = vi.fn().mockReturnValue(mockUrl)
-    const revokeObjectURLMock = vi.fn()
-    Object.defineProperty(window.URL, 'createObjectURL', { value: createObjectURLMock })
-    Object.defineProperty(window.URL, 'revokeObjectURL', { value: revokeObjectURLMock })
-
-    // Mock createElement and appendChild
-    const mockLink = {
-      href: '',
-      download: '',
-      click: vi.fn(),
-      remove: vi.fn(),
-    }
-    const createElementMock = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
-    const appendChildMock = vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
-      return node
-    })
-
-    // Call the function
-    downloadFile({ data: blob, fileName })
-
-    // Assertions
-    expect(createObjectURLMock).toHaveBeenCalledWith(blob)
-    expect(createElementMock).toHaveBeenCalledWith('a')
-    expect(mockLink.href).toBe(mockUrl)
-    expect(mockLink.download).toBe(fileName)
-    expect(appendChildMock).toHaveBeenCalledWith(mockLink)
-    expect(mockLink.click).toHaveBeenCalled()
-    expect(mockLink.remove).toHaveBeenCalled()
-    expect(revokeObjectURLMock).toHaveBeenCalledWith(mockUrl)
-
-    // Clean up mocks
-    vi.restoreAllMocks()
-  })
-})
-
 describe('formatNumberAbbreviated', () => {
   it('should return number as string when less than 1000', () => {
     expect(formatNumberAbbreviated(0)).toBe('0')

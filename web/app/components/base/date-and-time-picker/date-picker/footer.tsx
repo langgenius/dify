@@ -27,7 +27,7 @@ const Footer: FC<DatePickerFooterProps> = ({
       {needTimePicker && (
         <button
           type="button"
-          className="system-xs-medium flex items-center gap-x-[1px] rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5
+          className="system-xs-medium flex items-center gap-x-px rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5
                       py-1 text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           onClick={handleClickTimePicker}
         >

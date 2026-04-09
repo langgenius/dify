@@ -23,8 +23,8 @@ const PAGE_SIZE = 20
 type Props = {
   value?: {
     app_id: string
-    inputs: Record<string, any>
-    files?: any[]
+    inputs: Record<string, unknown>
+    files?: unknown[]
   }
   scope?: string
   disabled?: boolean
@@ -32,8 +32,8 @@ type Props = {
   offset?: OffsetOptions
   onSelect: (app: {
     app_id: string
-    inputs: Record<string, any>
-    files?: any[]
+    inputs: Record<string, unknown>
+    files?: unknown[]
   }) => void
   supportAddCustomTool?: boolean
 }
@@ -47,9 +47,8 @@ const AppSelector: FC<Props> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [isShow, onShowChange] = useState(false)
+  const [isShow, setIsShow] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const {
     data,
@@ -63,12 +62,12 @@ const AppSelector: FC<Props> = ({
     name: searchText,
   })
 
-  const pages = data?.pages ?? []
   const displayedApps = useMemo(() => {
+    const pages = data?.pages ?? []
     if (!pages.length)
       return []
     return pages.flatMap(({ data: apps }) => apps)
-  }, [pages])
+  }, [data?.pages])
 
   // fetch selected app by id to avoid pagination gaps
   const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
@@ -97,25 +96,16 @@ const AppSelector: FC<Props> = ({
   const hasMore = hasNextPage ?? true
 
   const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || isFetchingNextPage || !hasMore)
+    if (isFetchingNextPage || !hasMore)
       return
 
-    setIsLoadingMore(true)
-    try {
-      await fetchNextPage()
-    }
-    finally {
-      // Add a small delay to ensure state updates are complete
-      setTimeout(() => {
-        setIsLoadingMore(false)
-      }, 300)
-    }
-  }, [isLoadingMore, isFetchingNextPage, hasMore, fetchNextPage])
+    await fetchNextPage()
+  }, [fetchNextPage, hasMore, isFetchingNextPage])
 
   const handleTriggerClick = () => {
     if (disabled)
       return
-    onShowChange(true)
+    setIsShow(true)
   }
 
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
@@ -130,7 +120,7 @@ const AppSelector: FC<Props> = ({
     setIsShowChooseApp(false)
   }
 
-  const handleFormChange = (inputs: Record<string, any>) => {
+  const handleFormChange = (inputs: Record<string, unknown>) => {
     const newFiles = inputs['#image#']
     delete inputs['#image#']
     const newValue = {
@@ -157,7 +147,7 @@ const AppSelector: FC<Props> = ({
         placement={placement}
         offset={offset}
         open={isShow}
-        onOpenChange={onShowChange}
+        onOpenChange={setIsShow}
       >
         <PortalToFollowElemTrigger
           className="w-full"
@@ -168,10 +158,10 @@ const AppSelector: FC<Props> = ({
             appDetail={currentAppInfo}
           />
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1000]">
-          <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+        <PortalToFollowElemContent className="z-1000">
+          <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="flex flex-col gap-1 px-4 py-3">
-              <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
+              <div className="flex h-6 items-center text-text-secondary system-sm-semibold">{t('appSelector.label', { ns: 'app' })}</div>
               <AppPicker
                 placement="bottom"
                 offset={offset}
@@ -187,7 +177,7 @@ const AppSelector: FC<Props> = ({
                 onSelect={handleSelectApp}
                 scope={scope || 'all'}
                 apps={appsForPicker}
-                isLoading={isLoading || isLoadingMore || isFetchingNextPage}
+                isLoading={isLoading || isFetchingNextPage}
                 hasMore={hasMore}
                 onLoadMore={handleLoadMore}
                 searchText={searchText}

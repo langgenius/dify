@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import SyncButton from './sync-button'
 
 const meta = {
@@ -38,7 +38,7 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   args: {
-    className: 'bg-white/80 shadow-sm backdrop-blur-sm',
+    className: 'bg-white/80 shadow-sm backdrop-blur-xs',
   },
 }
 

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from pydantic import Field
 from sqlalchemy.orm import Session
 
-from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.db.session_factory import session_factory
 from core.plugin.entities.parameters import PluginParameterOption
@@ -37,6 +37,7 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.CHECKBOX: ToolParameter.ToolParameterType.BOOLEAN,
     VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
     VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
+    VariableEntityType.JSON_OBJECT: ToolParameter.ToolParameterType.OBJECT,
 }
 
 

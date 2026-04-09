@@ -4,14 +4,16 @@ from typing import Any, Literal
 
 from flask import request, send_file
 from flask_restx import Resource
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import current_account_with_tenant, login_required
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
@@ -20,55 +22,10 @@ from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-@console_ns.route("/workspaces/current/plugin/debugging-key")
-class PluginDebuggingKeyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @plugin_permission_required(debug_required=True)
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
-        try:
-            return {
-                "key": PluginService.get_debugging_key(tenant_id),
-                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
-                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
-            }
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)
-
 
 class ParserList(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
-
-
-reg(ParserList)
-
-
-@console_ns.route("/workspaces/current/plugin/list")
-class PluginListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserList.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)
-
-        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 class ParserLatest(BaseModel):
@@ -180,23 +137,87 @@ class ParserReadme(BaseModel):
     language: str = Field(default="en-US")
 
 
-reg(ParserLatest)
-reg(ParserIcon)
-reg(ParserAsset)
-reg(ParserGithubUpload)
-reg(ParserPluginIdentifiers)
-reg(ParserGithubInstall)
-reg(ParserPluginIdentifierQuery)
-reg(ParserTasks)
-reg(ParserMarketplaceUpgrade)
-reg(ParserGithubUpgrade)
-reg(ParserUninstall)
-reg(ParserPermissionChange)
-reg(ParserDynamicOptions)
-reg(ParserDynamicOptionsWithCredentials)
-reg(ParserPreferencesChange)
-reg(ParserExcludePlugin)
-reg(ParserReadme)
+register_schema_models(
+    console_ns,
+    ParserList,
+    PluginAutoUpgradeSettingsPayload,
+    PluginPermissionSettingsPayload,
+    ParserLatest,
+    ParserIcon,
+    ParserAsset,
+    ParserGithubUpload,
+    ParserPluginIdentifiers,
+    ParserGithubInstall,
+    ParserPluginIdentifierQuery,
+    ParserTasks,
+    ParserMarketplaceUpgrade,
+    ParserGithubUpgrade,
+    ParserUninstall,
+    ParserPermissionChange,
+    ParserDynamicOptions,
+    ParserDynamicOptionsWithCredentials,
+    ParserPreferencesChange,
+    ParserExcludePlugin,
+    ParserReadme,
+)
+
+register_enum_models(
+    console_ns,
+    TenantPluginPermission.DebugPermission,
+    TenantPluginAutoUpgradeStrategy.UpgradeMode,
+    TenantPluginAutoUpgradeStrategy.StrategySetting,
+    TenantPluginPermission.InstallPermission,
+)
+
+
+def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
+    """
+    Read the uploaded file and validate its actual size before delegating to the plugin service.
+
+    FileStorage.content_length is not reliable for multipart test uploads and may be zero even when
+    content exists, so the controllers validate against the loaded bytes instead.
+    """
+    content = file.read()
+    if len(content) > max_size:
+        raise ValueError("File size exceeds the maximum allowed size")
+
+    return content
+
+
+@console_ns.route("/workspaces/current/plugin/debugging-key")
+class PluginDebuggingKeyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(debug_required=True)
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+
+        try:
+            return {
+                "key": PluginService.get_debugging_key(tenant_id),
+                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
+                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
+            }
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+
+@console_ns.route("/workspaces/current/plugin/list")
+class PluginListApi(Resource):
+    @console_ns.expect(console_ns.models[ParserList.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        try:
+            plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
@@ -211,7 +232,7 @@ class PluginListLatestVersionsApi(Resource):
         try:
             versions = PluginService.list_latest_versions(args.plugin_ids)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"versions": versions})
 
@@ -230,7 +251,7 @@ class PluginListInstallationsFromIdsApi(Resource):
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args.plugin_ids)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"plugins": plugins})
 
@@ -245,7 +266,7 @@ class PluginIconApi(Resource):
         try:
             icon_bytes, mimetype = PluginService.get_asset(args.tenant_id, args.filename)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
@@ -265,7 +286,7 @@ class PluginAssetApi(Resource):
             binary = PluginService.extract_asset(tenant_id, args.plugin_unique_identifier, args.file_name)
             return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
@@ -278,16 +299,11 @@ class PluginUploadFromPkgApi(Resource):
         _, tenant_id = current_account_with_tenant()
 
         file = request.files["pkg"]
-
-        # check file size
-        if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
-
-        content = file.read()
+        content = _read_upload_content(file, dify_config.PLUGIN_MAX_PACKAGE_SIZE)
         try:
             response = PluginService.upload_pkg(tenant_id, content)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -307,7 +323,7 @@ class PluginUploadFromGithubApi(Resource):
         try:
             response = PluginService.upload_pkg_from_github(tenant_id, args.repo, args.version, args.package)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -322,12 +338,7 @@ class PluginUploadFromBundleApi(Resource):
         _, tenant_id = current_account_with_tenant()
 
         file = request.files["bundle"]
-
-        # check file size
-        if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
-
-        content = file.read()
+        content = _read_upload_content(file, dify_config.PLUGIN_MAX_BUNDLE_SIZE)
         try:
             response = PluginService.upload_bundle(tenant_id, content)
         except PluginDaemonClientSideError as e:
@@ -350,7 +361,7 @@ class PluginInstallFromPkgApi(Resource):
         try:
             response = PluginService.install_from_local_pkg(tenant_id, args.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -376,7 +387,7 @@ class PluginInstallFromGithubApi(Resource):
                 args.package,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -396,7 +407,7 @@ class PluginInstallFromMarketplaceApi(Resource):
         try:
             response = PluginService.install_from_marketplace_pkg(tenant_id, args.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -422,7 +433,7 @@ class PluginFetchMarketplacePkgApi(Resource):
                 }
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
@@ -442,7 +453,7 @@ class PluginFetchManifestApi(Resource):
                 {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args.plugin_unique_identifier).model_dump()}
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks")
@@ -460,7 +471,7 @@ class PluginFetchInstallTasksApi(Resource):
         try:
             return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>")
@@ -475,7 +486,7 @@ class PluginFetchInstallTaskApi(Resource):
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete")
@@ -490,7 +501,7 @@ class PluginDeleteInstallTaskApi(Resource):
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/delete_all")
@@ -505,7 +516,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
@@ -520,7 +531,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
@@ -542,7 +553,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
                 )
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
@@ -569,7 +580,7 @@ class PluginUpgradeFromGithubApi(Resource):
                 )
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/uninstall")
@@ -587,7 +598,7 @@ class PluginUninstallApi(Resource):
         try:
             return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/permission/change")
@@ -663,7 +674,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 provider_type=args.provider_type,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"options": options})
 
@@ -694,7 +705,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 credentials=args.credentials,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"options": options})
 

@@ -1,14 +1,10 @@
-from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
+from core.rag.entities import Rule
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-
-
-class ParentMode(StrEnum):
-    FULL_DOC = "full-doc"
-    PARAGRAPH = "paragraph"
 
 
 class NotionIcon(BaseModel):
@@ -50,24 +46,6 @@ class InfoList(BaseModel):
 
 class DataSource(BaseModel):
     info_list: InfoList
-
-
-class PreProcessingRule(BaseModel):
-    id: str
-    enabled: bool
-
-
-class Segmentation(BaseModel):
-    separator: str = "\n"
-    max_tokens: int
-    chunk_overlap: int = 0
-
-
-class Rule(BaseModel):
-    pre_processing_rules: list[PreProcessingRule] | None = None
-    segmentation: Segmentation | None = None
-    parent_mode: Literal["full-doc", "paragraph"] | None = None
-    subchunk_segmentation: Segmentation | None = None
 
 
 class ProcessRule(BaseModel):
@@ -119,12 +97,25 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
+    summary_index_setting: dict | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     name: str | None = None
     is_multimodal: bool = False
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        valid_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
+        if value not in valid_forms:
+            raise ValueError("Invalid doc_form.")
+        return value
 
 
 class SegmentCreateArgs(BaseModel):
@@ -141,6 +132,7 @@ class SegmentUpdateArgs(BaseModel):
     regenerate_child_chunks: bool = False
     enabled: bool | None = None
     attachment_ids: list[str] | None = None
+    summary: str | None = None  # Summary content for summary index
 
 
 class ChildChunkUpdateArgs(BaseModel):

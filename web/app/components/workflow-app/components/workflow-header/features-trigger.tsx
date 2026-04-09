@@ -18,7 +18,7 @@ import AppPublisher from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useToastContext } from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import {
   useChecklist,
@@ -88,7 +88,6 @@ const FeaturesTrigger = () => {
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { notify } = useToastContext()
   const startNodeIds = useMemo(
     () => nodes.filter(node => node.data.type === BlockEnum.Start).map(node => node.id),
     [nodes],
@@ -111,6 +110,10 @@ const FeaturesTrigger = () => {
     }, 0)
     return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
   }, [nodes, plan.type, isFetchedPlan])
+
+  const hasHumanInputNode = useMemo(() => {
+    return nodes.some(node => node.data.type === BlockEnum.HumanInput)
+  }, [nodes])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -148,11 +151,7 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      console.warn('[workflow-header] publish blocked by checklist', {
-        appId: appID,
-        warningCount: needWarningNodes.length,
-      })
-      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
+      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
       throw new Error('Checklist has unresolved items')
     }
 
@@ -174,7 +173,7 @@ const FeaturesTrigger = () => {
         createdAt: res?.created_at,
       })
       if (res) {
-        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -186,7 +185,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -204,7 +203,7 @@ const FeaturesTrigger = () => {
         <Button
           className={cn(
             'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >
@@ -229,6 +228,7 @@ const FeaturesTrigger = () => {
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          hasHumanInputNode,
         }}
       />
     </>

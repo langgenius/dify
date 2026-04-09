@@ -54,7 +54,7 @@ export const TitleInput = memo(({
       onKeyDown={handleKeyDown}
       className={`
         system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
-        outline-none focus:shadow-xs
+        outline-hidden focus:shadow-xs
       `}
       placeholder={t('common.addTitle', { ns: 'workflow' }) || ''}
       onBlur={handleBlur}
@@ -85,7 +85,7 @@ export const DescriptionInput = memo(({
       className={`
         leading-0 group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg
         px-2 py-[5px]
-        ${focus && '!shadow-xs'}
+        ${focus && 'shadow-xs!'}
       `}
     >
       <Textarea
@@ -97,7 +97,7 @@ export const DescriptionInput = memo(({
         className={`
           w-full resize-none appearance-none bg-transparent text-xs
           leading-[18px] text-text-primary caret-[#295EFF]
-          outline-none placeholder:text-text-quaternary
+          outline-hidden placeholder:text-text-quaternary
         `}
         placeholder={t('common.addDescription', { ns: 'workflow' }) || ''}
       />

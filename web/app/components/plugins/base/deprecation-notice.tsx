@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import { useTranslation } from '#i18n'
 import { RiAlertFill } from '@remixicon/react'
 import { camelCase } from 'es-toolkit/string'
-import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Trans } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 
 type DeprecationNoticeProps = {
@@ -38,7 +38,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   iconWrapperClassName,
   textClassName,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('plugin')
 
   const deprecatedReasonKey = useMemo(() => {
     if (!deprecatedReason)

@@ -1,12 +1,13 @@
-from typing import Any, cast
+from typing import NotRequired, TypedDict, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
+from core.rag.entities import DocumentContext, RetrievalSourceMetadata
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -16,7 +17,19 @@ from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
-default_retrieval_model: dict[str, Any] = {
+
+class DefaultRetrievalModelDict(TypedDict):
+    search_method: RetrievalMethod
+    reranking_enable: bool
+    reranking_model: RerankingModelDict
+    reranking_mode: NotRequired[str]
+    weights: NotRequired[WeightsDict | None]
+    score_threshold: NotRequired[float]
+    top_k: int
+    score_threshold_enabled: bool
+
+
+default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -125,9 +138,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             if metadata_condition and not document_ids_filter:
                 return ""
             # get retrieval model , if the model is not setting , using default
-            retrieval_model: dict[str, Any] = dataset.retrieval_model or default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
             retrieval_resource_list: list[RetrievalSourceMetadata] = []
-            if dataset.indexing_technique == "economy":
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 # use keyword table query
                 documents = RetrievalService.retrieve(
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
@@ -160,7 +173,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 for hit_callback in self.hit_callbacks:
                     hit_callback.on_tool_end(documents)
                 document_score_list = {}
-                if dataset.indexing_technique != "economy":
+                if dataset.indexing_technique != IndexTechniqueType.ECONOMY:
                     for item in documents:
                         if item.metadata is not None and item.metadata.get("score"):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
@@ -169,25 +182,29 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 if records:
                     for record in records:
                         segment = record.segment
+                        # Build content: if summary exists, add it before the segment content
                         if segment.answer:
-                            document_context_list.append(
-                                DocumentContext(
-                                    content=f"question:{segment.get_sign_content()} answer:{segment.answer}",
-                                    score=record.score,
-                                )
-                            )
+                            segment_content = f"question:{segment.get_sign_content()} answer:{segment.answer}"
                         else:
-                            document_context_list.append(
-                                DocumentContext(
-                                    content=segment.get_sign_content(),
-                                    score=record.score,
-                                )
+                            segment_content = segment.get_sign_content()
+
+                        # If summary exists, prepend it to the content
+                        if record.summary:
+                            final_content = f"{record.summary}\n{segment_content}"
+                        else:
+                            final_content = segment_content
+
+                        document_context_list.append(
+                            DocumentContext(
+                                content=final_content,
+                                score=record.score,
                             )
+                        )
 
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
-                            dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                            dataset = db.session.get(Dataset, segment.dataset_id)
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
                                 DatasetDocument.enabled == True,
@@ -216,6 +233,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                                 else:
                                     source.content = segment.content
+                                # Add summary if this segment was retrieved via summary
+                                if hasattr(record, "summary") and record.summary:
+                                    source.summary = record.summary
                                 retrieval_resource_list.append(source)
 
             if self.return_resource and retrieval_resource_list:

@@ -249,15 +249,3 @@ export const fileIsUploaded = (file: FileEntity) => {
   if (file.transferMethod === TransferMethod.remote_url && file.progress === 100)
     return true
 }
-
-export const downloadFile = (url: string, filename: string) => {
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.style.display = 'none'
-  anchor.target = '_blank'
-  anchor.title = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  document.body.removeChild(anchor)
-}

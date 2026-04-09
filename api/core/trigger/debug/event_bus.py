@@ -1,6 +1,5 @@
 import hashlib
 import logging
-from typing import TypeVar
 
 from redis import RedisError
 
@@ -10,8 +9,6 @@ from extensions.ext_redis import redis_client
 logger = logging.getLogger(__name__)
 
 TRIGGER_DEBUG_EVENT_TTL = 300
-
-TTriggerDebugEvent = TypeVar("TTriggerDebugEvent", bound="BaseDebugEvent")
 
 
 class TriggerDebugEventBus:
@@ -23,8 +20,8 @@ class TriggerDebugEventBus:
     """
 
     # LUA_SELECT: Atomic poll or register for event
-    # KEYS[1] = trigger_debug_inbox:{tenant_id}:{address_id}
-    # KEYS[2] = trigger_debug_waiting_pool:{tenant_id}:...
+    # KEYS[1] = trigger_debug_inbox:{<tenant_id>}:<address_id>
+    # KEYS[2] = trigger_debug_waiting_pool:{<tenant_id>}:...
     # ARGV[1] = address_id
     LUA_SELECT = (
         "local v=redis.call('GET',KEYS[1]);"
@@ -35,7 +32,7 @@ class TriggerDebugEventBus:
     )
 
     # LUA_DISPATCH: Dispatch event to all waiting addresses
-    # KEYS[1] = trigger_debug_waiting_pool:{tenant_id}:...
+    # KEYS[1] = trigger_debug_waiting_pool:{<tenant_id>}:...
     # ARGV[1] = tenant_id
     # ARGV[2] = event_json
     LUA_DISPATCH = (
@@ -43,7 +40,7 @@ class TriggerDebugEventBus:
         "if #a==0 then return 0 end;"
         "redis.call('DEL',KEYS[1]);"
         "for i=1,#a do "
-        f"redis.call('SET','trigger_debug_inbox:'..ARGV[1]..':'..a[i],ARGV[2],'EX',{TRIGGER_DEBUG_EVENT_TTL});"
+        f"redis.call('SET','trigger_debug_inbox:{{'..ARGV[1]..'}}'..':'..a[i],ARGV[2],'EX',{TRIGGER_DEBUG_EVENT_TTL});"
         "end;"
         "return #a"
     )
@@ -81,15 +78,15 @@ class TriggerDebugEventBus:
             return 0
 
     @classmethod
-    def poll(
+    def poll[T: BaseDebugEvent](
         cls,
-        event_type: type[TTriggerDebugEvent],
+        event_type: type[T],
         pool_key: str,
         tenant_id: str,
         user_id: str,
         app_id: str,
         node_id: str,
-    ) -> TTriggerDebugEvent | None:
+    ) -> T | None:
         """
         Poll for an event or register to the waiting pool.
 
@@ -108,7 +105,7 @@ class TriggerDebugEventBus:
             Event object if available, None otherwise
         """
         address_id: str = hashlib.sha256(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
-        address: str = f"trigger_debug_inbox:{tenant_id}:{address_id}"
+        address: str = f"trigger_debug_inbox:{{{tenant_id}}}:{address_id}"
 
         try:
             event_data = redis_client.eval(

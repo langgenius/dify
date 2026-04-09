@@ -156,7 +156,7 @@ const Editor: FC<Props> = ({
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
-      <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent', isExpand && 'h-full', '!rounded-[9px] p-0.5', containerClassName)}>
+      <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent', isExpand && 'h-full', 'rounded-[9px]! p-0.5', containerClassName)}>
         <div className={cn(isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
           <div className={cn('flex items-center justify-between pl-3 pr-2 pt-1', headerClassName)}>
             <div className="flex gap-2">
@@ -196,7 +196,7 @@ const Editor: FC<Props> = ({
                       <Jinja className="h-3 w-6 text-text-quaternary" />
                       <Switch
                         size="sm"
-                        defaultValue={editionType === EditionType.jinja2}
+                        value={editionType === EditionType.jinja2}
                         onChange={(checked) => {
                           onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
                         }}
@@ -240,7 +240,7 @@ const Editor: FC<Props> = ({
           <div className={cn('pb-2', isExpand && 'flex grow flex-col')}>
             {!(isSupportJinja && editionType === EditionType.jinja2)
               ? (
-                  <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
+                  <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto px-3', editorContainerClassName)}>
                     <PromptEditor
                       key={controlPromptEditorRerenderKey}
                       placeholder={placeholder}
@@ -278,6 +278,9 @@ const Editor: FC<Props> = ({
                             width: node.width,
                             height: node.height,
                             position: node.position,
+                            ...(node.data.type === BlockEnum.LLM && {
+                              modelProvider: (node.data as { model?: ModelConfig }).model?.provider,
+                            }),
                           }
                           if (node.data.type === BlockEnum.Start) {
                             acc.sys = {
@@ -301,7 +304,7 @@ const Editor: FC<Props> = ({
                   </div>
                 )
               : (
-                  <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
+                  <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto px-3', editorContainerClassName)}>
                     <CodeEditor
                       availableVars={nodesOutputVars || []}
                       varList={varList}

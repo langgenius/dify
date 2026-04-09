@@ -1,16 +1,13 @@
 import type { ChangeEvent, FC } from 'react'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
-import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Modal from '@/app/components/base/modal'
-import { useToastContext } from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -43,7 +40,6 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useToastContext()
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
@@ -188,43 +184,41 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   }
 
   const handleSave = () => {
+    /* v8 ignore next -- UI-invariant guard: same condition is used in Save button disabled logic, so when true handleSave has no user-triggerable invocation path. @preserve */
     if (localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured)
       return
 
     if (!localeData.config?.inputs_config?.enabled && !localeData.config?.outputs_config?.enabled) {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.condition', { ns: 'appDebug' }) })
+      toast.error(t('feature.moderation.modal.content.condition', { ns: 'appDebug' }))
       return
     }
 
     if (localeData.type === 'keywords' && !localeData.config.keywords) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }) })
+      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }))
       return
     }
 
     if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
+      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
       return
     }
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
-          notify({
-            type: 'error',
-            message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
-          })
+          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }))
           return
         }
       }
     }
 
     if (localeData.config.inputs_config?.enabled && !localeData.config.inputs_config.preset_response && localeData.type !== 'api') {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
+      toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
     if (localeData.config.outputs_config?.enabled && !localeData.config.outputs_config.preset_response && localeData.type !== 'api') {
-      notify({ type: 'error', message: t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }) })
+      toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
@@ -235,11 +229,24 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     <Modal
       isShow
       onClose={noop}
-      className="!mt-14 !w-[600px] !max-w-none !p-6"
+      className="mt-14! w-[600px]! max-w-none! p-6!"
     >
       <div className="flex items-center justify-between">
-        <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
-        <div className="cursor-pointer p-1" onClick={onCancel}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+        <div className="text-text-primary title-2xl-semi-bold">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
+        <div
+          role="button"
+          tabIndex={0}
+          className="cursor-pointer p-1"
+          onClick={onCancel}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onCancel()
+            }
+          }}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
@@ -251,9 +258,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <div
                 key={provider.key}
                 className={cn(
-                  'system-sm-regular flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+                  'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary system-sm-regular',
                   localeData.type !== provider.key && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-                  localeData.type === provider.key && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
+                  localeData.type === provider.key && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs system-sm-medium',
                   localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
                 )}
                 onClick={() => handleDataTypeChange(provider.key)}
@@ -272,7 +279,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         {
           !isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
             <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
-              <InfoCircle className="mr-1 h-4 w-4 text-[#F79009]" />
+              <span className="i-custom-vender-line-general-info-circle mr-1 h-4 w-4 text-[#F79009]" />
               <div className="flex items-center text-xs font-medium text-gray-700">
                 {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
                 <span
@@ -298,7 +305,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <textarea
                 value={localeData.config?.keywords || ''}
                 onChange={handleDataKeywordsChange}
-                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-none"
+                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
                 placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
               />
               <div className="absolute bottom-2 right-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
@@ -324,7 +331,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                 rel="noopener noreferrer"
                 className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
               >
-                <BookOpen01 className="mr-1 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
+                <span className="i-custom-vender-line-education-book-open-01 mr-1 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
                 {t('apiBasedExtension.link', { ns: 'common' })}
               </a>
             </div>

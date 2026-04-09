@@ -12,6 +12,7 @@ import { cn } from '@/utils/classnames'
 import ImageList from '../../common/image-list'
 import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
+import SummaryText from '../../documents/detail/completed/common/summary-text'
 import ChildChunksItem from './child-chunks-item'
 import Mask from './mask'
 import Score from './score'
@@ -28,11 +29,11 @@ const ChunkDetailModal = ({
   onHide,
 }: ChunkDetailModalProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, files } = payload
+  const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
-  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
+  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,80vh)] overflow-y-auto' : 'h-[min(539px,80vh)] overflow-y-auto'
   const labelPrefix = isParentChildRetrieval ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
 
   const images = useMemo(() => {
@@ -56,7 +57,7 @@ const ChunkDetailModal = ({
       isShow
       closable
       onClose={onHide}
-      className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[800px]')}
+      className={cn(isParentChildRetrieval ? 'min-w-[1200px]!' : 'min-w-[800px]!')}
     >
       <div className="mt-4 flex">
         <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
@@ -80,7 +81,7 @@ const ChunkDetailModal = ({
           <div className="relative">
             {!answer && (
               <Markdown
-                className={cn('!mt-2 !text-text-secondary', heighClassName)}
+                className={cn('mt-2! text-text-secondary!', heighClassName)}
                 content={sign_content || content}
                 customDisallowedElements={['input']}
               />
@@ -104,10 +105,13 @@ const ChunkDetailModal = ({
             {/* Mask */}
             <Mask className="absolute inset-x-0 bottom-0" />
           </div>
-          {(showImages || showKeywords) && (
+          {(showImages || showKeywords || !!summary) && (
             <div className="flex flex-col gap-y-3 pt-3">
               {showImages && (
                 <ImageList images={images} size="md" className="py-1" />
+              )}
+              {!!summary && (
+                <SummaryText value={summary} disabled />
               )}
               {showKeywords && (
                 <div className="flex flex-col gap-y-1">

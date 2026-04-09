@@ -1,12 +1,12 @@
-import type { NavIcon } from './navLink'
+import type { NavIcon } from './nav-link'
 import { useHover, useKeyPress } from 'ahooks'
-import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { usePathname } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
@@ -14,10 +14,10 @@ import AppInfo from './app-info'
 import AppSidebarDropdown from './app-sidebar-dropdown'
 import DatasetInfo from './dataset-info'
 import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
-import NavLink from './navLink'
+import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
-export type IAppDetailNavProps = {
+type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   navigation: Array<{
     name: string
@@ -118,7 +118,7 @@ const AppDetailNav = ({
           className={cn(
             'my-0 h-px',
             expand
-              ? 'bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent'
+              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
               : 'bg-divider-subtle',
           )}
         />

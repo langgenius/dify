@@ -3,6 +3,8 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from graphon.model_runtime.entities.provider_entities import FormType
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -10,7 +12,6 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
@@ -367,16 +368,16 @@ class DatasourceProviderService:
         check if tenant oauth params is enabled
         """
         return (
-            db.session.query(DatasourceOauthTenantParamConfig)
-            .filter_by(
-                tenant_id=tenant_id,
-                provider=datasource_provider_id.provider_name,
-                plugin_id=datasource_provider_id.plugin_id,
-                enabled=True,
+            db.session.scalar(
+                select(func.count(DatasourceOauthTenantParamConfig.id)).where(
+                    DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
+                    DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
+                    DatasourceOauthTenantParamConfig.plugin_id == datasource_provider_id.plugin_id,
+                    DatasourceOauthTenantParamConfig.enabled == True,
+                )
             )
-            .count()
-            > 0
-        )
+            or 0
+        ) > 0
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
@@ -384,14 +385,14 @@ class DatasourceProviderService:
         """
         get tenant oauth client
         """
-        tenant_oauth_client_params = (
-            db.session.query(DatasourceOauthTenantParamConfig)
-            .filter_by(
-                tenant_id=tenant_id,
-                provider=datasource_provider_id.provider_name,
-                plugin_id=datasource_provider_id.plugin_id,
+        tenant_oauth_client_params = db.session.scalar(
+            select(DatasourceOauthTenantParamConfig)
+            .where(
+                DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
+                DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
+                DatasourceOauthTenantParamConfig.plugin_id == datasource_provider_id.plugin_id,
             )
-            .first()
+            .limit(1)
         )
         if tenant_oauth_client_params:
             encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
@@ -707,24 +708,27 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = (
-            db.session.query(DatasourceProvider)
+        datasource_providers: list[DatasourceProvider] = list(
+            db.session.scalars(
+                select(DatasourceProvider).where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.provider == provider,
+                    DatasourceProvider.plugin_id == plugin_id,
+                )
+            ).all()
+        )
+        if not datasource_providers:
+            return []
+        copy_credentials_list = []
+        default_provider = db.session.execute(
+            select(DatasourceProvider.id)
             .where(
                 DatasourceProvider.tenant_id == tenant_id,
                 DatasourceProvider.provider == provider,
                 DatasourceProvider.plugin_id == plugin_id,
             )
-            .all()
-        )
-        if not datasource_providers:
-            return []
-        copy_credentials_list = []
-        default_provider = (
-            db.session.query(DatasourceProvider.id)
-            .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
             .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
-            .first()
-        )
+        ).first()
         default_provider_id = default_provider.id if default_provider else None
         for datasource_provider in datasource_providers:
             encrypted_credentials = datasource_provider.encrypted_credentials
@@ -824,6 +828,7 @@ class DatasourceProviderService:
                 "langgenius/firecrawl_datasource",
                 "langgenius/notion_datasource",
                 "langgenius/jina_datasource",
+                "watercrawl/watercrawl_datasource",
             ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.list_datasource_credentials(
@@ -879,14 +884,14 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = (
-            db.session.query(DatasourceProvider)
-            .where(
-                DatasourceProvider.tenant_id == tenant_id,
-                DatasourceProvider.provider == provider,
-                DatasourceProvider.plugin_id == plugin_id,
-            )
-            .all()
+        datasource_providers: list[DatasourceProvider] = list(
+            db.session.scalars(
+                select(DatasourceProvider).where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.provider == provider,
+                    DatasourceProvider.plugin_id == plugin_id,
+                )
+            ).all()
         )
         if not datasource_providers:
             return []
@@ -986,10 +991,15 @@ class DatasourceProviderService:
         :param plugin_id: plugin id
         :return:
         """
-        datasource_provider = (
-            db.session.query(DatasourceProvider)
-            .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
-            .first()
+        datasource_provider = db.session.scalar(
+            select(DatasourceProvider)
+            .where(
+                DatasourceProvider.tenant_id == tenant_id,
+                DatasourceProvider.id == auth_id,
+                DatasourceProvider.provider == provider,
+                DatasourceProvider.plugin_id == plugin_id,
+            )
+            .limit(1)
         )
         if datasource_provider:
             db.session.delete(datasource_provider)

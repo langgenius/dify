@@ -8,9 +8,9 @@ import Button from '@/app/components/base/button'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
 import {
-  downloadFile,
   fileIsUploaded,
 } from '../utils'
 
@@ -43,7 +43,7 @@ const FileImageItem = ({
         {
           showDeleteAction && (
             <Button
-              className="absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
+              className="absolute -right-1.5 -top-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
               onClick={() => onRemove?.(id)}
             >
               <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
@@ -57,7 +57,7 @@ const FileImageItem = ({
         />
         {
           progress >= 0 && !fileIsUploaded(file) && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt">
+            <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-effects-image-frame bg-background-overlay-alt">
               <ProgressCircle
                 percentage={progress}
                 size={12}
@@ -70,7 +70,7 @@ const FileImageItem = ({
         }
         {
           progress === -1 && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive">
+            <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-state-destructive-border bg-background-overlay-destructive">
               <ReplayLine
                 className="h-5 w-5"
                 onClick={() => onReUpload?.(id)}
@@ -85,7 +85,7 @@ const FileImageItem = ({
                 className="absolute bottom-0.5 right-0.5  flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
                 onClick={(e) => {
                   e.stopPropagation()
-                  downloadFile(download_url || '', name)
+                  downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
               >
                 <RiDownloadLine className="h-4 w-4 text-text-tertiary" />

@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping
 
-from sqlalchemy import case
+from sqlalchemy import case, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -15,6 +15,25 @@ class EndUserService:
     """
     Service for managing end users.
     """
+
+    @classmethod
+    def get_end_user_by_id(cls, *, tenant_id: str, app_id: str, end_user_id: str) -> EndUser | None:
+        """Get an end user by primary key.
+
+        This is scoped to the provided tenant and app to prevent cross-tenant/app access
+        when an end-user ID is known.
+        """
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            return session.scalar(
+                select(EndUser)
+                .where(
+                    EndUser.id == end_user_id,
+                    EndUser.tenant_id == tenant_id,
+                    EndUser.app_id == app_id,
+                )
+                .limit(1)
+            )
 
     @classmethod
     def get_or_create_end_user(cls, app_model: App, user_id: str | None = None) -> EndUser:
@@ -38,8 +57,8 @@ class EndUserService:
         with Session(db.engine, expire_on_commit=False) as session:
             # Query with ORDER BY to prioritize exact type matches while maintaining backward compatibility
             # This single query approach is more efficient than separate queries
-            end_user = (
-                session.query(EndUser)
+            end_user = session.scalar(
+                select(EndUser)
                 .where(
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
@@ -49,7 +68,7 @@ class EndUserService:
                     # Prioritize records with matching type (0 = match, 1 = no match)
                     case((EndUser.type == type, 0), else_=1)
                 )
-                .first()
+                .limit(1)
             )
 
             if end_user:
@@ -118,15 +137,15 @@ class EndUserService:
 
         with Session(db.engine, expire_on_commit=False) as session:
             # Fetch existing end users for all target apps in a single query
-            existing_end_users: list[EndUser] = (
-                session.query(EndUser)
-                .where(
-                    EndUser.tenant_id == tenant_id,
-                    EndUser.app_id.in_(unique_app_ids),
-                    EndUser.session_id == user_id,
-                    EndUser.type == type,
-                )
-                .all()
+            existing_end_users: list[EndUser] = list(
+                session.scalars(
+                    select(EndUser).where(
+                        EndUser.tenant_id == tenant_id,
+                        EndUser.app_id.in_(unique_app_ids),
+                        EndUser.session_id == user_id,
+                        EndUser.type == type,
+                    )
+                ).all()
             )
 
             found_app_ids: set[str] = set()

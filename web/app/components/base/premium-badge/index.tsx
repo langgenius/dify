@@ -4,7 +4,6 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { Highlight } from '@/app/components/base/icons/src/public/common'
 import { cn } from '@/utils/classnames'
-import './index.css'
 
 const PremiumBadgeVariants = cva(
   'premium-badge',
@@ -67,4 +66,3 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
 PremiumBadge.displayName = 'PremiumBadge'
 
 export default PremiumBadge
-export { PremiumBadge, PremiumBadgeVariants }

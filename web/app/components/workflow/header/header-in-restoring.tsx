@@ -5,13 +5,14 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
-import Toast from '../../base/toast'
 import {
   useLeaderRestore,
+  useWorkflowRefreshDraft,
   useWorkflowRun,
 } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -47,6 +48,8 @@ const HeaderInRestoring = ({
     handleLoadBackupDraft,
   } = useWorkflowRun()
   const { requestRestore } = useLeaderRestore()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -55,7 +58,7 @@ const HeaderInRestoring = ({
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
   const handleRestore = useCallback(() => {
-    if (!currentVersion)
+    if (!canRestore || !currentVersion)
       return
 
     setShowWorkflowVersionHistoryPanel(false)
@@ -82,24 +85,19 @@ const HeaderInRestoring = ({
       conversationVariables,
     }, {
       onSuccess: () => {
-        Toast.notify({
-          type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
-        })
+        handleRefreshWorkflowDraft()
+        toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+        deleteAllInspectVars()
+        invalidAllLastRun()
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
-        })
+        toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
       },
       onSettled: () => {
         onRestoreSettled?.()
       },
     })
-    deleteAllInspectVars()
-    invalidAllLastRun()
-  }, [currentVersion, featuresStore, setShowWorkflowVersionHistoryPanel, workflowStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, workflowStore, featuresStore, requestRestore, userProfile, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>
@@ -109,11 +107,11 @@ const HeaderInRestoring = ({
       <div className=" flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
-          disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
+          disabled={!canRestore}
           variant="primary"
           className={cn(
             'rounded-lg border border-transparent',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
         >
           {t('common.restore', { ns: 'workflow' })}
@@ -122,7 +120,7 @@ const HeaderInRestoring = ({
           onClick={handleCancelRestore}
           className={cn(
             'rounded-lg border border-transparent text-components-button-secondary-accent-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
           )}
         >
           <div className="flex items-center gap-x-0.5">

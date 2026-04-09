@@ -35,6 +35,8 @@
   "error.emailEmpty": "Vui lòng nhập địa chỉ email",
   "error.emailInValid": "Vui lòng nhập một địa chỉ email hợp lệ",
   "error.invalidEmailOrPassword": "Email hoặc mật khẩu không hợp lệ.",
+  "error.invalidRedirectUrlOrAppCode": "URL chuyển hướng hoặc mã ứng dụng không hợp lệ",
+  "error.invalidSSOProtocol": "Giao thức SSO không hợp lệ",
   "error.nameEmpty": "Vui lòng nhập tên",
   "error.passwordEmpty": "Vui lòng nhập mật khẩu",
   "error.passwordInvalid": "Mật khẩu phải chứa cả chữ và số, và có độ dài ít nhất 8 ký tự",

@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import type { RelatedApp } from '@/models/datasets'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import Link from 'next/link'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
+import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 

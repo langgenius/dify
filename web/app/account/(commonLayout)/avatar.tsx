@@ -3,28 +3,28 @@ import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/r
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import Avatar from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useLogout } from '@/service/use-common'
-
-export type IAppSelector = {
-  isMobile: boolean
-}
+import { useRouter } from '@/next/navigation'
+import { useLogout, useUserProfile } from '@/service/use-common'
 
 export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const { data: userProfileResp } = useUserProfile()
+  const userProfile = userProfileResp?.profile
   const { isEducationAccount } = useProviderContext()
 
   const { mutateAsync: logout } = useLogout()
+
+  if (!userProfile)
+    return null
+
   const handleLogout = async () => {
     await logout()
 
@@ -44,13 +44,13 @@ export default function AppSelector() {
               <MenuButton
                 className={`
                     p-1x inline-flex
-                    items-center rounded-[20px] text-sm
+                    items-center radius-3xl text-sm
                     text-text-primary
                     mobile:px-1
                     ${open && 'bg-components-panel-bg-blur'}
                   `}
               >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
               </MenuButton>
             </div>
             <Transition
@@ -76,7 +76,7 @@ export default function AppSelector() {
                         <div className="system-md-medium break-all text-text-primary">
                           {userProfile.name}
                           {isEducationAccount && (
-                            <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
+                            <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
                               <RiGraduationCapFill className="mr-1 h-3 w-3" />
                               <span className="system-2xs-medium">EDU</span>
                             </PremiumBadge>
@@ -84,7 +84,7 @@ export default function AppSelector() {
                         </div>
                         <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
                       </div>
-                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
+                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
                     </div>
                   </div>
                 </MenuItem>

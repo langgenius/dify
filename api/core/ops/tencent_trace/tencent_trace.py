@@ -4,6 +4,10 @@ Tencent APM tracing implementation with separated concerns
 
 import logging
 
+from graphon.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+)
+from graphon.nodes import BuiltinNodeTypes
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -24,10 +28,6 @@ from core.ops.tencent_trace.entities.tencent_trace_entity import SpanData
 from core.ops.tencent_trace.span_builder import TencentSpanBuilder
 from core.ops.tencent_trace.utils import TencentTraceUtils
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-)
-from core.workflow.nodes import NodeType
 from extensions.ext_database import db
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
@@ -179,7 +179,7 @@ class TencentDataTrace(BaseTraceInstance):
                     if node_span:
                         self.trace_client.add_span(node_span)
 
-                        if node_execution.node_type == NodeType.LLM:
+                        if node_execution.node_type == BuiltinNodeTypes.LLM:
                             self._record_llm_metrics(node_execution)
                 except Exception:
                     logger.exception("[Tencent APM] Failed to process node execution: %s", node_execution.id)
@@ -192,15 +192,15 @@ class TencentDataTrace(BaseTraceInstance):
     ) -> SpanData | None:
         """Build span for different node types"""
         try:
-            if node_execution.node_type == NodeType.LLM:
+            if node_execution.node_type == BuiltinNodeTypes.LLM:
                 return TencentSpanBuilder.build_workflow_llm_span(
                     trace_id, workflow_span_id, trace_info, node_execution
                 )
-            elif node_execution.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_execution.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 return TencentSpanBuilder.build_workflow_retrieval_span(
                     trace_id, workflow_span_id, trace_info, node_execution
                 )
-            elif node_execution.node_type == NodeType.TOOL:
+            elif node_execution.node_type == BuiltinNodeTypes.TOOL:
                 return TencentSpanBuilder.build_workflow_tool_span(
                     trace_id, workflow_span_id, trace_info, node_execution
                 )
@@ -241,8 +241,10 @@ class TencentDataTrace(BaseTraceInstance):
                 if not service_account:
                     raise ValueError(f"Creator account not found for app {app_id}")
 
-                current_tenant = (
-                    session.query(TenantAccountJoin).filter_by(account_id=service_account.id, current=True).first()
+                current_tenant = session.scalar(
+                    select(TenantAccountJoin)
+                    .where(TenantAccountJoin.account_id == service_account.id, TenantAccountJoin.current.is_(True))
+                    .limit(1)
                 )
                 if not current_tenant:
                     raise ValueError(f"Current tenant not found for account {service_account.id}")
@@ -256,7 +258,7 @@ class TencentDataTrace(BaseTraceInstance):
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
-            executions = repository.get_by_workflow_run(workflow_run_id=trace_info.workflow_run_id)
+            executions = repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)
             return list(executions)
 
         except Exception:

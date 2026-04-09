@@ -1,6 +1,6 @@
 import enum
 import uuid
-from typing import Any, Generic, TypeVar
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
@@ -110,17 +110,14 @@ class AdjustedJSON(TypeDecorator[dict | list | None]):
         return value
 
 
-_E = TypeVar("_E", bound=enum.StrEnum)
-
-
-class EnumText(TypeDecorator[_E | None], Generic[_E]):
+class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
     impl = VARCHAR
     cache_ok = True
 
     _length: int
-    _enum_class: type[_E]
+    _enum_class: type[T]
 
-    def __init__(self, enum_class: type[_E], length: int | None = None):
+    def __init__(self, enum_class: type[T], length: int | None = None):
         self._enum_class = enum_class
         max_enum_value_len = max(len(e.value) for e in enum_class)
         if length is not None:
@@ -131,25 +128,31 @@ class EnumText(TypeDecorator[_E | None], Generic[_E]):
             # leave some rooms for future longer enum values.
             self._length = max(max_enum_value_len, 20)
 
-    def process_bind_param(self, value: _E | str | None, dialect: Dialect) -> str | None:
+    def process_bind_param(self, value: T | str | None, dialect: Dialect) -> str | None:
         if value is None:
             return value
         if isinstance(value, self._enum_class):
             return value.value
-        # Since _E is bound to StrEnum which inherits from str, at this point value must be str
+        # Since T is bound to StrEnum which inherits from str, at this point value must be str
         self._enum_class(value)
         return value
 
     def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         return dialect.type_descriptor(VARCHAR(self._length))
 
-    def process_result_value(self, value: str | None, dialect: Dialect) -> _E | None:
-        if value is None:
-            return value
-        # Type annotation guarantees value is str at this point
-        return self._enum_class(value)
+    def process_result_value(self, value: str | None, dialect: Dialect) -> T | None:
+        if value is None or value == "":
+            return None
+        try:
+            # Type annotation guarantees value is str at this point
+            return self._enum_class(value)
+        except ValueError:
+            value_of = getattr(self._enum_class, "value_of", None)
+            if callable(value_of):
+                return cast(T, value_of(value))
+            raise
 
-    def compare_values(self, x: _E | None, y: _E | None) -> bool:
+    def compare_values(self, x: T | None, y: T | None) -> bool:
         if x is None or y is None:
             return x is y
         return x == y

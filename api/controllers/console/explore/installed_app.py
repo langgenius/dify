@@ -2,16 +2,17 @@ import logging
 from typing import Any
 
 from flask import request
-from flask_restx import Resource, marshal_with
-from pydantic import BaseModel
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from controllers.common.schema import get_or_create_model
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
-from fields.installed_app_fields import installed_app_list_fields
+from fields.installed_app_fields import app_fields, installed_app_fields, installed_app_list_fields
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp
@@ -28,22 +29,37 @@ class InstalledAppUpdatePayload(BaseModel):
     is_pinned: bool | None = None
 
 
+class InstalledAppsListQuery(BaseModel):
+    app_id: str | None = Field(default=None, description="App ID to filter by")
+
+
 logger = logging.getLogger(__name__)
+
+
+app_model = get_or_create_model("InstalledAppInfo", app_fields)
+
+installed_app_fields_copy = installed_app_fields.copy()
+installed_app_fields_copy["app"] = fields.Nested(app_model)
+installed_app_model = get_or_create_model("InstalledApp", installed_app_fields_copy)
+
+installed_app_list_fields_copy = installed_app_list_fields.copy()
+installed_app_list_fields_copy["installed_apps"] = fields.List(fields.Nested(installed_app_model))
+installed_app_list_model = get_or_create_model("InstalledAppList", installed_app_list_fields_copy)
 
 
 @console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
-    @marshal_with(installed_app_list_fields)
+    @marshal_with(installed_app_list_model)
     def get(self):
-        app_id = request.args.get("app_id", default=None, type=str)
+        query = InstalledAppsListQuery.model_validate(request.args.to_dict())
         current_user, current_tenant_id = current_account_with_tenant()
 
-        if app_id:
+        if query.app_id:
             installed_apps = db.session.scalars(
                 select(InstalledApp).where(
-                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id)
+                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == query.app_id)
                 )
             ).all()
         else:
@@ -117,13 +133,15 @@ class InstalledAppsListApi(Resource):
     def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
 
-        recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).first()
+        recommended_app = db.session.scalar(
+            select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).limit(1)
+        )
         if recommended_app is None:
             raise NotFound("Recommended app not found")
 
         _, current_tenant_id = current_account_with_tenant()
 
-        app = db.session.query(App).where(App.id == payload.app_id).first()
+        app = db.session.get(App, payload.app_id)
 
         if app is None:
             raise NotFound("App entity not found")
@@ -131,10 +149,10 @@ class InstalledAppsListApi(Resource):
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
 
-        installed_app = (
-            db.session.query(InstalledApp)
+        installed_app = db.session.scalar(
+            select(InstalledApp)
             .where(and_(InstalledApp.app_id == payload.app_id, InstalledApp.tenant_id == current_tenant_id))
-            .first()
+            .limit(1)
         )
 
         if installed_app is None:

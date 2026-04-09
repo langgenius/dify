@@ -1,12 +1,6 @@
 import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
 
-export type Item = {
-  value: number | string
-  name: string
-  example: string
-}
-
 export type I18nText = Record<typeof LanguagesSupported[number], string>
 
 export const languages = data.languages
@@ -46,6 +40,7 @@ export const localeMap: Record<Locale, string> = {
   'it-IT': 'it',
   'th-TH': 'th',
   'id-ID': 'id',
+  'nl-NL': 'nl',
   'uk-UA': 'uk',
   'vi-VN': 'vi',
   'ro-RO': 'ro',

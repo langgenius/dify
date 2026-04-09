@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 class AppGenerateHandler(SpanHandler):
     """Span handler for ``AppGenerateService.generate``."""
 
-    def wrapper(
+    def wrapper[T](
         self,
         tracer: Any,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> Any:
+        wrapped: Callable[..., T],
+        args: tuple[object, ...],
+        kwargs: Mapping[str, object],
+    ) -> T:
         try:
             arguments = self._extract_arguments(wrapped, args, kwargs)
             if not arguments:

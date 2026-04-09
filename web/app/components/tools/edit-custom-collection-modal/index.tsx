@@ -13,7 +13,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { cn } from '@/utils/classnames'
@@ -160,10 +160,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.schema', { ns: 'tools' }) })
 
     if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      toast.error(errorMessage)
       return
     }
 
@@ -199,10 +196,10 @@ const EditCustomCollectionModal: FC<Props> = ({
         onHide={onHide}
         title={t(`createTool.${isAdd ? 'title' : 'editTitle'}`, { ns: 'tools' })!}
         dialogClassName={dialogClassName}
-        panelClassName="mt-2 !w-[640px]"
-        maxWidthClassName="!max-w-[640px]"
+        panelClassName="mt-2 w-[640px]!"
+        maxWidthClassName="max-w-[640px]!"
         height="calc(100vh - 16px)"
-        headerClassName="!border-b-divider-regular"
+        headerClassName="border-b-divider-regular!"
         body={(
           <div className="flex h-full flex-col">
             <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">

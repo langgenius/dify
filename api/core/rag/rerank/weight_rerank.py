@@ -2,9 +2,9 @@ import math
 from collections import Counter
 
 import numpy as np
+from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.doc_type import DocType
@@ -25,7 +25,6 @@ class WeightRerankRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -34,7 +33,6 @@ class WeightRerankRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
-        :param user: unique user id if needed
 
         :return:
         """
@@ -163,7 +161,7 @@ class WeightRerankRunner(BaseRerankRunner):
         """
         query_vector_scores = []
 
-        model_manager = ModelManager()
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=tenant_id,

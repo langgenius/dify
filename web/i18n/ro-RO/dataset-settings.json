@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Setări de recuperare",
   "form.save": "Salvare",
   "form.searchModel": "Căutare model",
+  "form.summaryAutoGen": "Generare Automată Rezumat",
+  "form.summaryAutoGenEnableTip": "Odată activat, rezumatele vor fi generate automat pentru documentele nou adăugate. Documentele existente pot fi încă rezumate manual.",
+  "form.summaryAutoGenTip": "Rezumatele sunt generate automat pentru documentele nou adăugate. Documentele existente pot fi încă rezumate manual.",
+  "form.summaryInstructions": "Instrucțiuni",
+  "form.summaryInstructionsPlaceholder": "Descrieți regulile sau stilul pentru rezumatele generate automat…",
+  "form.summaryModel": "Model Rezumat",
   "form.upgradeHighQualityTip": "După ce faceți upgrade la modul Înaltă calitate, revenirea la modul Economic nu este disponibilă",
   "title": "Setări de cunoștințe"
 }

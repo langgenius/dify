@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import qdrant_client
 from flask import current_app
@@ -22,7 +22,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -36,8 +36,8 @@ if TYPE_CHECKING:
     from qdrant_client.conversions import common_types
     from qdrant_client.http import models as rest
 
-    DictFilter = dict[str, Union[str, int, bool, dict, list]]
-    MetadataFilter = Union[DictFilter, common_types.Filter]
+    type DictFilter = dict[str, str | int | bool | dict | list]
+    type MetadataFilter = DictFilter | common_types.Filter
 
 
 class PathQdrantParams(BaseModel):
@@ -94,8 +94,12 @@ class QdrantVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.QDRANT
 
-    def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+    def to_index_struct(self) -> VectorIndexStructDict:
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
@@ -391,46 +395,78 @@ class QdrantVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        """Return docs most similar by bm25.
+        """Return docs most similar by full-text search.
+
+        Searches each keyword separately and merges results to ensure documents
+        matching ANY keyword are returned (OR logic). Results are capped at top_k.
+
+        Args:
+            query: Search query text. Multi-word queries are split into keywords,
+                   with each keyword searched separately. Limited to 10 keywords.
+            **kwargs: Additional search parameters (top_k, document_ids_filter)
+
         Returns:
-            List of documents most similar to the query text and distance for each.
+            List of up to top_k unique documents matching any query keyword.
         """
         from qdrant_client.http import models
 
-        scroll_filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
-                ),
-                models.FieldCondition(
-                    key="page_content",
-                    match=models.MatchText(text=query),
-                ),
-            ]
-        )
+        # Build base must conditions (AND logic) for metadata filters
+        base_must_conditions: list = [
+            models.FieldCondition(
+                key="group_id",
+                match=models.MatchValue(value=self._group_id),
+            ),
+        ]
+
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            if scroll_filter.must:
-                scroll_filter.must.append(
-                    models.FieldCondition(
-                        key="metadata.document_id",
-                        match=models.MatchAny(any=document_ids_filter),
-                    )
+            base_must_conditions.append(
+                models.FieldCondition(
+                    key="metadata.document_id",
+                    match=models.MatchAny(any=document_ids_filter),
                 )
-        response = self._client.scroll(
-            collection_name=self._collection_name,
-            scroll_filter=scroll_filter,
-            limit=kwargs.get("top_k", 2),
-            with_payload=True,
-            with_vectors=True,
-        )
-        results = response[0]
-        documents = []
-        for result in results:
-            if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                documents.append(document)
+            )
+
+        # Split query into keywords, deduplicate and limit to prevent DoS
+        keywords = list(dict.fromkeys(kw.strip() for kw in query.strip().split() if kw.strip()))[:10]
+
+        if not keywords:
+            return []
+
+        top_k = kwargs.get("top_k", 2)
+        seen_ids: set[str | int] = set()
+        documents: list[Document] = []
+
+        # Search each keyword separately and merge results.
+        # This ensures each keyword gets its own search, preventing one keyword's
+        # results from completely overshadowing another's due to scroll ordering.
+        for keyword in keywords:
+            scroll_filter = models.Filter(
+                must=[
+                    *base_must_conditions,
+                    models.FieldCondition(
+                        key="page_content",
+                        match=models.MatchText(text=keyword),
+                    ),
+                ]
+            )
+
+            response = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=top_k,
+                with_payload=True,
+                with_vectors=True,
+            )
+            results = response[0]
+
+            for result in results:
+                if result and result.id not in seen_ids:
+                    seen_ids.add(result.id)
+                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                    documents.append(document)
+                    if len(documents) >= top_k:
+                        return documents
 
         return documents
 

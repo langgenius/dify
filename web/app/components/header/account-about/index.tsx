@@ -2,14 +2,14 @@
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { RiCloseLine } from '@remixicon/react'
 import dayjs from 'dayjs'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Modal from '@/app/components/base/modal'
 import { IS_CE_EDITION } from '@/config'
-
 import { useGlobalPublicStore } from '@/context/global-public-context'
+
+import Link from '@/next/link'
 
 type IAccountSettingProps = {
   langGeniusVersionInfo: LangGeniusVersionResponse
@@ -28,7 +28,7 @@ export default function AccountAbout({
     <Modal
       isShow
       onClose={onCancel}
-      className="!w-[480px] !max-w-[480px] !px-6 !py-4"
+      className="w-[480px]! max-w-[480px]! px-6! py-4!"
     >
       <div className="relative">
         <div className="absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
