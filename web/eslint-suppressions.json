@@ -9028,9 +9028,6 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     },
