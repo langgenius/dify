@@ -65,6 +65,8 @@ class ToolTransformService:
                 return icon
             case ToolProviderType.PLUGIN | ToolProviderType.APP | ToolProviderType.DATASET_RETRIEVAL:
                 return ""
+            case _:
+                return ""
 
     @staticmethod
     def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity, PluginDatasourceProviderEntity]):
