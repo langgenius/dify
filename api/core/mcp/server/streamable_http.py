@@ -187,15 +187,16 @@ def build_parameter_schema(
 
 def prepare_tool_arguments(app: App, arguments: dict[str, Any]) -> ToolArgumentsDict:
     """Prepare arguments based on app mode"""
-    if app.mode == AppMode.WORKFLOW:
-        return {"inputs": arguments}
-    elif app.mode == AppMode.COMPLETION:
-        return {"query": "", "inputs": arguments}
-    else:
-        # Chat modes - create a copy to avoid modifying original dict
-        args_copy = arguments.copy()
-        query = args_copy.pop("query", "")
-        return {"query": query, "inputs": args_copy}
+    match app.mode:
+        case AppMode.WORKFLOW:
+            return {"inputs": arguments}
+        case AppMode.COMPLETION:
+            return {"query": "", "inputs": arguments}
+        case _:
+            # Chat modes - create a copy to avoid modifying original dict
+            args_copy = arguments.copy()
+            query = args_copy.pop("query", "")
+            return {"query": query, "inputs": args_copy}
 
 
 def extract_answer_from_response(app: App, response: Any) -> str:
@@ -229,17 +230,13 @@ def process_streaming_response(response: RateLimitGenerator) -> str:
 
 def process_mapping_response(app: App, response: Mapping) -> str:
     """Process mapping response based on app mode"""
-    if app.mode in {
-        AppMode.ADVANCED_CHAT,
-        AppMode.COMPLETION,
-        AppMode.CHAT,
-        AppMode.AGENT_CHAT,
-    }:
-        return response.get("answer", "")
-    elif app.mode == AppMode.WORKFLOW:
-        return json.dumps(response["data"]["outputs"], ensure_ascii=False)
-    else:
-        raise ValueError("Invalid app mode: " + str(app.mode))
+    match app.mode:
+        case AppMode.ADVANCED_CHAT | AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT:
+            return response.get("answer", "")
+        case AppMode.WORKFLOW:
+            return json.dumps(response["data"]["outputs"], ensure_ascii=False)
+        case _:
+            raise ValueError("Invalid app mode: " + str(app.mode))
 
 
 def convert_input_form_to_parameters(
