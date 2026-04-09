@@ -70,6 +70,7 @@
   "metrics.custom.limitDescription": "Only one custom metric can be added.",
   "metrics.custom.mappingTitle": "Variable Mapping",
   "metrics.custom.mappingWarning": "Complete the workflow selection and each variable mapping to enable batch tests.",
+  "metrics.custom.outputTitle": "Output",
   "metrics.custom.sourcePlaceholder": "Source variable",
   "metrics.custom.targetPlaceholder": "Target variable",
   "metrics.custom.title": "Custom Evaluator",
