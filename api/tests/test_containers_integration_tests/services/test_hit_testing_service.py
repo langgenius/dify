@@ -142,9 +142,7 @@ class TestHitTestingService:
         after_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
         assert after_count == before_count + 1
 
-    def test_external_retrieve_should_return_empty_for_non_external_provider(
-        self, db_session_with_containers: Session
-    ):
+    def test_external_retrieve_should_return_empty_for_non_external_provider(self, db_session_with_containers: Session):
         dataset = _create_dataset(db_session_with_containers, provider="vendor")
         account = MagicMock()
 
