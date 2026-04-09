@@ -1,7 +1,6 @@
 """Integration tests for ChatMessageApi permission verification."""
 
 import uuid
-from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -13,8 +12,8 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource
-from models.model import AppMode
+from models.enums import AppStatus, ConversationFromSource, MessageStatus
+from models.model import AppMode, Conversation, Message
 from services.app_generate_service import AppGenerateService
 
 
@@ -28,7 +27,9 @@ class TestChatMessageApiPermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
+        app.enable_site = True
+        app.enable_api = True
         return app
 
     @pytest.fixture
@@ -144,62 +145,46 @@ class TestChatMessageApiPermissions:
         conversation_id = uuid.uuid4()
         created_at = naive_utc_now()
 
-        mock_conversation = SimpleNamespace(id=str(conversation_id), app_id=str(mock_app_model.id))
-        mock_message = SimpleNamespace(
-            id=str(uuid.uuid4()),
-            conversation_id=str(conversation_id),
-            inputs=[],
-            query="hello",
-            message=[{"text": "hello"}],
-            message_tokens=0,
-            re_sign_file_url_answer="",
-            answer_tokens=0,
-            provider_response_latency=0.0,
-            from_source=ConversationFromSource.CONSOLE,
-            from_end_user_id=None,
-            from_account_id=mock_account.id,
-            feedbacks=[],
-            workflow_run_id=None,
-            annotation=None,
-            annotation_hit_history=None,
-            created_at=created_at,
-            agent_thoughts=[],
-            message_files=[],
-            message_metadata_dict={},
-            status="normal",
-            error="",
-            parent_message_id=None,
-        )
+        mock_conversation = mock.MagicMock(spec=Conversation)
+        mock_conversation.id = str(conversation_id)
+        mock_conversation.app_id = str(mock_app_model.id)
 
-        class MockQuery:
-            def __init__(self, model):
-                self.model = model
-
-            def where(self, *args, **kwargs):
-                return self
-
-            def first(self):
-                if getattr(self.model, "__name__", "") == "Conversation":
-                    return mock_conversation
-                return None
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *_):
-                return self
-
-            def all(self):
-                if getattr(self.model, "__name__", "") == "Message":
-                    return [mock_message]
-                return []
+        mock_message = mock.MagicMock(spec=Message)
+        mock_message.id = str(uuid.uuid4())
+        mock_message.conversation_id = str(conversation_id)
+        mock_message.inputs = {}
+        mock_message.query = "hello"
+        mock_message.message = {"text": "hello"}
+        mock_message.message_tokens = 0
+        mock_message.re_sign_file_url_answer = ""
+        mock_message.answer_tokens = 0
+        mock_message.provider_response_latency = 0.0
+        mock_message.from_source = ConversationFromSource.CONSOLE
+        mock_message.from_end_user_id = None
+        mock_message.from_account_id = mock_account.id
+        mock_message.feedbacks = []
+        mock_message.workflow_run_id = None
+        mock_message.annotation = None
+        mock_message.annotation_hit_history = None
+        mock_message.created_at = created_at
+        mock_message.agent_thoughts = []
+        mock_message.message_files = []
+        mock_message.extra_contents = []
+        mock_message.message_metadata_dict = {}
+        mock_message.status = MessageStatus.NORMAL
+        mock_message.error = ""
+        mock_message.parent_message_id = None
 
         mock_session = mock.Mock()
-        mock_session.query.side_effect = MockQuery
-        mock_session.scalar.return_value = False
+        mock_session.scalar.return_value = mock_conversation
+        mock_scalars_result = mock.Mock()
+        mock_scalars_result.all.return_value = [mock_message]
+        mock_session.scalars.return_value = mock_scalars_result
 
-        monkeypatch.setattr(message_api, "db", SimpleNamespace(session=mock_session))
-        monkeypatch.setattr(message_api, "current_user", mock_account)
+        db_stub = mock.Mock()
+        db_stub.session = mock_session
+        monkeypatch.setattr(message_api, "db", db_stub)
+        monkeypatch.setattr(message_api, "attach_message_extra_contents", lambda *_args, **_kwargs: None)
 
         class DummyPagination:
             def __init__(self, data, limit, has_more):
