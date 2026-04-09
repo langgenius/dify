@@ -141,18 +141,6 @@ type WorkflowDataUpdatePayload = {
   environment_variables?: EnvironmentVariable[]
 }
 
-type WorkflowEvent = {
-  type?: string
-  payload?: unknown
-}
-
-const isWorkflowDataUpdatePayload = (payload: unknown): payload is WorkflowDataUpdatePayload => {
-  if (!payload || typeof payload !== 'object')
-    return false
-  const candidate = payload as WorkflowDataUpdatePayload
-  return Array.isArray(candidate.nodes) && Array.isArray(candidate.edges)
-}
-
 export type WorkflowProps = {
   nodes: Node[]
   edges: Edge[]
@@ -292,7 +280,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
       handleCommentIconClick(target)
   }, [activeComment, handleCommentIconClick, visibleComments])
 
-  const store = useStoreApi()
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
@@ -300,13 +287,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setEdges(v.payload.edges)
       workflowStore.setState({ edgeMenu: undefined })
 
-      if (workflowEvent.payload.viewport)
-        reactflow.setViewport(workflowEvent.payload.viewport)
+      if (v.payload.viewport)
+        reactflow.setViewport(v.payload.viewport)
 
-      if (workflowEvent.payload.hash)
-        setSyncWorkflowDraftHash(workflowEvent.payload.hash)
+      if (v.payload.hash)
+        setSyncWorkflowDraftHash(v.payload.hash)
 
-      onWorkflowDataUpdate?.(workflowEvent.payload)
+      onWorkflowDataUpdate?.(v.payload)
 
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
