@@ -14,6 +14,21 @@ from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
 
 
+def _create_dataset(db_session: Session, *, provider: str = "vendor", **kwargs: Any) -> Dataset:
+    tenant_id = str(uuid4())
+    created_by = str(uuid4())
+    ds = Dataset(
+        tenant_id=kwargs.get("tenant_id", tenant_id),
+        name=kwargs.get("name", "test-dataset"),
+        created_by=kwargs.get("created_by", created_by),
+        provider=provider,
+    )
+    db_session.add(ds)
+    db_session.commit()
+    db_session.refresh(ds)
+    return ds
+
+
 class TestHitTestingService:
     # ── Utility methods (pure logic, no DB) ────────────────────────────
 
@@ -58,9 +73,10 @@ class TestHitTestingService:
         assert cast(dict[str, Any], result["records"][0])["content"] == "formatted content"
         mock_format.assert_called_once_with([mock_doc])
 
-    def test_compact_external_retrieve_response_should_return_records_for_external_provider(self):
-        dataset = MagicMock(spec=Dataset)
-        dataset.provider = "external"
+    def test_compact_external_retrieve_response_should_return_records_for_external_provider(
+        self, db_session_with_containers: Session
+    ):
+        dataset = _create_dataset(db_session_with_containers, provider="external")
         documents = [
             {"content": "c1", "title": "t1", "score": 0.9, "metadata": {"m1": "v1"}},
             {"content": "c2", "title": "t2", "score": 0.8, "metadata": {"m2": "v2"}},
@@ -75,9 +91,10 @@ class TestHitTestingService:
         assert cast(dict[str, Any], result["records"][0])["content"] == "c1"
         assert cast(dict[str, Any], result["records"][1])["title"] == "t2"
 
-    def test_compact_external_retrieve_response_should_return_empty_for_non_external_provider(self):
-        dataset = MagicMock(spec=Dataset)
-        dataset.provider = "not_external"
+    def test_compact_external_retrieve_response_should_return_empty_for_non_external_provider(
+        self, db_session_with_containers: Session
+    ):
+        dataset = _create_dataset(db_session_with_containers, provider="vendor")
 
         result = cast(
             dict[str, Any],
@@ -93,11 +110,8 @@ class TestHitTestingService:
     def test_external_retrieve_should_succeed_for_external_provider(
         self, mock_ext_retrieve, db_session_with_containers: Session
     ):
-        dataset_id = str(uuid4())
+        dataset = _create_dataset(db_session_with_containers, provider="external")
         account_id = str(uuid4())
-        dataset = MagicMock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.provider = "external"
         account = MagicMock()
         account.id = account_id
         mock_ext_retrieve.return_value = [{"content": "ext content", "score": 1.0}]
@@ -118,7 +132,7 @@ class TestHitTestingService:
         assert cast(dict[str, Any], result["query"])["content"] == 'test "query"'
         assert cast(dict[str, Any], result["records"][0])["content"] == "ext content"
         mock_ext_retrieve.assert_called_once_with(
-            dataset_id=dataset_id,
+            dataset_id=dataset.id,
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},
             metadata_filtering_conditions={"key": "val"},
@@ -128,9 +142,10 @@ class TestHitTestingService:
         after_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
         assert after_count == before_count + 1
 
-    def test_external_retrieve_should_return_empty_for_non_external_provider(self, db_session_with_containers: Session):
-        dataset = MagicMock(spec=Dataset)
-        dataset.provider = "not_external"
+    def test_external_retrieve_should_return_empty_for_non_external_provider(
+        self, db_session_with_containers: Session
+    ):
+        dataset = _create_dataset(db_session_with_containers, provider="vendor")
         account = MagicMock()
 
         result = cast(dict[str, Any], HitTestingService.external_retrieve(dataset, "test query", account))
@@ -144,8 +159,7 @@ class TestHitTestingService:
     def test_retrieve_should_use_default_model_when_none_provided(
         self, mock_retrieve, db_session_with_containers: Session
     ):
-        dataset = MagicMock(spec=Dataset)
-        dataset.id = str(uuid4())
+        dataset = _create_dataset(db_session_with_containers)
         dataset.retrieval_model = None
         account = MagicMock()
         account.id = str(uuid4())
@@ -173,9 +187,7 @@ class TestHitTestingService:
     def test_retrieve_should_handle_metadata_filtering(
         self, mock_get_meta, mock_retrieve, db_session_with_containers: Session
     ):
-        dataset_id = str(uuid4())
-        dataset = MagicMock(spec=Dataset)
-        dataset.id = dataset_id
+        dataset = _create_dataset(db_session_with_containers)
         account = MagicMock()
         account.id = str(uuid4())
 
@@ -186,7 +198,7 @@ class TestHitTestingService:
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
-        mock_get_meta.return_value = ({dataset_id: ["doc_id1"]}, "condition_string")
+        mock_get_meta.return_value = ({dataset.id: ["doc_id1"]}, "condition_string")
         mock_retrieve.return_value = []
 
         HitTestingService.retrieve(
@@ -203,9 +215,10 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
-    def test_retrieve_should_return_empty_if_metadata_filtering_fails(self, mock_get_meta, mock_retrieve):
-        dataset = MagicMock(spec=Dataset)
-        dataset.id = str(uuid4())
+    def test_retrieve_should_return_empty_if_metadata_filtering_fails(
+        self, mock_get_meta, mock_retrieve, db_session_with_containers: Session
+    ):
+        dataset = _create_dataset(db_session_with_containers)
         account = MagicMock()
 
         retrieval_model = {
@@ -233,12 +246,9 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     def test_retrieve_should_handle_attachments(self, mock_retrieve, db_session_with_containers: Session):
-        dataset_id = str(uuid4())
-        account_id = str(uuid4())
-        dataset = MagicMock(spec=Dataset)
-        dataset.id = dataset_id
+        dataset = _create_dataset(db_session_with_containers)
         account = MagicMock()
-        account.id = account_id
+        account.id = str(uuid4())
         attachment_ids = ["att1", "att2"]
 
         retrieval_model = {
@@ -260,7 +270,7 @@ class TestHitTestingService:
 
         mock_retrieve.assert_called_once_with(
             retrieval_method=ANY,
-            dataset_id=dataset_id,
+            dataset_id=dataset.id,
             query="test query",
             attachment_ids=attachment_ids,
             top_k=4,
@@ -275,7 +285,7 @@ class TestHitTestingService:
         db_session_with_containers.expire_all()
         latest = db_session_with_containers.scalar(
             select(DatasetQuery)
-            .where(DatasetQuery.dataset_id == dataset_id)
+            .where(DatasetQuery.dataset_id == dataset.id)
             .order_by(DatasetQuery.created_at.desc())
             .limit(1)
         )
@@ -288,8 +298,7 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     def test_retrieve_should_handle_reranking_and_threshold(self, mock_retrieve, db_session_with_containers: Session):
-        dataset = MagicMock(spec=Dataset)
-        dataset.id = str(uuid4())
+        dataset = _create_dataset(db_session_with_containers)
         account = MagicMock()
         account.id = str(uuid4())
 
