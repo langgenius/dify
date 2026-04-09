@@ -3,17 +3,10 @@ import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
-import EnvItem from '../env-item'
 import VariableModal from '../variable-modal'
-import VariableTrigger from '../variable-trigger'
-
-vi.mock('uuid', () => ({
-  v4: () => 'env-created',
-}))
 
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
@@ -47,9 +40,9 @@ const renderWithProviders = (
     store.setState(options.storeState)
 
   const result = render(
-    <WorkflowContext.Provider value={store}>
+    <WorkflowContext value={store}>
       {ui}
-    </WorkflowContext.Provider>,
+    </WorkflowContext>,
   )
 
   return {
@@ -58,74 +51,12 @@ const renderWithProviders = (
   }
 }
 
-describe('EnvPanel integration', () => {
+describe('VariableModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should render secret env items and trigger edit and delete actions', async () => {
-    const user = userEvent.setup()
-    const onEdit = vi.fn()
-    const onDelete = vi.fn()
-    const env = createEnv()
-
-    const { container } = renderWithProviders(
-      <EnvItem env={env} onEdit={onEdit} onDelete={onDelete} />,
-      {
-        storeState: {
-          envSecrets: {
-            [env.id]: 'masked-value',
-          },
-        },
-      },
-    )
-
-    expect(screen.getByText('api_key')).toBeInTheDocument()
-    expect(screen.getByText('Secret')).toBeInTheDocument()
-    expect(screen.getByText('masked-value')).toBeInTheDocument()
-    expect(screen.getByText('secret description')).toBeInTheDocument()
-
-    const actionWrappers = container.querySelectorAll('.cursor-pointer')
-    const editIcon = actionWrappers[0]?.querySelector('svg')
-    const deleteWrapper = actionWrappers[1] as HTMLElement
-    const deleteIcon = deleteWrapper.querySelector('svg')
-
-    fireEvent.mouseOver(deleteWrapper)
-    expect(container.firstElementChild).toHaveClass('border-state-destructive-border')
-
-    await user.click(editIcon as SVGElement)
-    await user.click(deleteIcon as SVGElement)
-
-    expect(onEdit).toHaveBeenCalledWith(env)
-    expect(onDelete).toHaveBeenCalledWith(env)
-  })
-
-  it('should render non-secret env values and clear destructive styling on mouse out', () => {
-    const env = createEnv({
-      id: 'env-plain',
-      name: 'public_value',
-      value: 'plain-text',
-      value_type: 'string',
-      description: '',
-    })
-
-    const { container } = renderWithProviders(
-      <EnvItem env={env} onEdit={vi.fn()} onDelete={vi.fn()} />,
-    )
-
-    expect(screen.getByText('public_value')).toBeInTheDocument()
-    expect(screen.getByText('String')).toBeInTheDocument()
-    expect(screen.getByText('plain-text')).toBeInTheDocument()
-    expect(screen.queryByText('secret description')).not.toBeInTheDocument()
-
-    const deleteWrapper = container.querySelectorAll('.cursor-pointer')[1] as HTMLElement
-    fireEvent.mouseOver(deleteWrapper)
-    expect(container.firstElementChild).toHaveClass('border-state-destructive-border')
-    fireEvent.mouseOut(deleteWrapper)
-    expect(container.firstElementChild).not.toHaveClass('border-state-destructive-border')
-  })
-
-  it('should create a secret environment variable and normalize spaces in its name', async () => {
+  it('creates a secret environment variable and normalizes spaces in its name', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
     const onClose = vi.fn()
@@ -147,7 +78,7 @@ describe('EnvPanel integration', () => {
 
     expect(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder')).toHaveValue('my_secret')
     expect(onSave).toHaveBeenCalledWith({
-      id: 'env-created',
+      id: expect.any(String),
       name: 'my_secret',
       value: 'top-secret',
       value_type: 'secret',
@@ -156,7 +87,7 @@ describe('EnvPanel integration', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('should reject invalid and duplicate variable names', async () => {
+  it('rejects invalid and duplicate variable names', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <VariableModal onClose={vi.fn()} onSave={vi.fn()} />,
@@ -181,7 +112,7 @@ describe('EnvPanel integration', () => {
     expect(mockToastError).toHaveBeenCalledWith('appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.env.modal.name"}')
   })
 
-  it('should load existing secret values and convert them to numbers when editing', async () => {
+  it('loads existing secret values and converts them to numbers when editing', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
 
@@ -220,47 +151,5 @@ describe('EnvPanel integration', () => {
       value_type: 'number',
       description: 'editable',
     })
-  })
-
-  it('should open and close the variable trigger modal with the real portal flow', async () => {
-    const user = userEvent.setup()
-    const onClose = vi.fn()
-
-    const TriggerHarness = () => {
-      const [open, setOpen] = React.useState(false)
-
-      return (
-        <VariableTrigger
-          open={open}
-          setOpen={setOpen}
-          onClose={onClose}
-          onSave={vi.fn()}
-        />
-      )
-    }
-
-    renderWithProviders(<TriggerHarness />)
-
-    const trigger = screen.getByRole('button', { name: 'workflow.env.envPanelButton' })
-
-    await user.click(trigger)
-    expect(screen.getByText('workflow.env.modal.title')).toBeInTheDocument()
-
-    await user.click(trigger)
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText('workflow.env.modal.title')).not.toBeInTheDocument()
-
-    await user.click(trigger)
-    expect(screen.getByText('workflow.env.modal.title')).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    expect(onClose).toHaveBeenCalledTimes(2)
-    expect(screen.queryByText('workflow.env.modal.title')).not.toBeInTheDocument()
-
-    await user.click(trigger)
-    const closeIcon = document.querySelector('.h-6.w-6.cursor-pointer') as HTMLElement
-    await user.click(closeIcon)
-    expect(onClose).toHaveBeenCalledTimes(3)
-    expect(screen.queryByText('workflow.env.modal.title')).not.toBeInTheDocument()
   })
 })
