@@ -384,6 +384,9 @@ catalogs:
     lexical:
       specifier: 0.42.0
       version: 0.42.0
+    loro-crdt:
+      specifier: 1.10.8
+      version: 1.10.8
     mermaid:
       specifier: 11.14.0
       version: 11.14.0
@@ -832,6 +835,9 @@ importers:
       lexical:
         specifier: 'catalog:'
         version: 0.42.0
+      loro-crdt:
+        specifier: 'catalog:'
+        version: 1.10.8
       mermaid:
         specifier: 'catalog:'
         version: 11.14.0
@@ -6608,6 +6614,9 @@ packages:
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
+
+  loro-crdt@1.10.8:
+    resolution: {integrity: sha512-GvH8fSJST1VDHRGzlQml80pBYoFbIP4ULeV1S8fD4ffmA8m+icoPORyVUW2AkJBY3dxKIcMMn0WqaJmpCmnbkQ==}
 
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
@@ -14310,6 +14319,8 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  loro-crdt@1.10.8: {}
 
   loupe@3.2.1: {}
 
