@@ -232,6 +232,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           floatingAnchorElem={floatingAnchorElem}
           onEditorChange={handleEditorChange}
         />
+        <ValueSyncPlugin value={value} />
       </div>
     </LexicalComposer>
   )
