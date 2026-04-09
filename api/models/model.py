@@ -666,13 +666,17 @@ class AppModelConfig(TypeBase):
     def app(self) -> App | None:
         return db.session.scalar(select(App).where(App.id == self.app_id))
 
+    @staticmethod
+    def _load_json_or_default[T](value: str | None, default: T) -> T:
+        return cast(T, json.loads(value)) if value else default
+
     @property
     def model_dict(self) -> ModelConfig:
-        return cast(ModelConfig, json.loads(self.model) if self.model else {})
+        return self._load_json_or_default(self.model, {})
 
     @property
     def suggested_questions_list(self) -> list[str]:
-        return json.loads(self.suggested_questions) if self.suggested_questions else []
+        return self._load_json_or_default(self.suggested_questions, [])
 
     @property
     def suggested_questions_after_answer_dict(self) -> EnabledConfig:
@@ -726,40 +730,29 @@ class AppModelConfig(TypeBase):
 
     @property
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
-        return cast(
-            SensitiveWordAvoidanceConfig,
-            json.loads(self.sensitive_word_avoidance)
-            if self.sensitive_word_avoidance
-            else {"enabled": False, "type": "", "config": {}},
-        )
+        return self._load_json_or_default(self.sensitive_word_avoidance, {"enabled": False, "type": "", "config": {}})
 
     @property
     def external_data_tools_list(self) -> list[ExternalDataToolConfig]:
-        return json.loads(self.external_data_tools) if self.external_data_tools else []
+        return self._load_json_or_default(self.external_data_tools, [])
 
     @property
     def user_input_form_list(self) -> list[UserInputFormItem]:
-        return json.loads(self.user_input_form) if self.user_input_form else []
+        return self._load_json_or_default(self.user_input_form, [])
 
     @property
     def agent_mode_dict(self) -> AgentModeConfig:
-        return cast(
-            AgentModeConfig,
-            json.loads(self.agent_mode)
-            if self.agent_mode
-            else {"enabled": False, "strategy": None, "tools": [], "prompt": None},
+        return self._load_json_or_default(
+            self.agent_mode, {"enabled": False, "strategy": None, "tools": [], "prompt": None}
         )
 
     @property
     def chat_prompt_config_dict(self) -> ChatPromptConfig:
-        return cast(ChatPromptConfig, json.loads(self.chat_prompt_config) if self.chat_prompt_config else {})
+        return self._load_json_or_default(self.chat_prompt_config, {})
 
     @property
     def completion_prompt_config_dict(self) -> CompletionPromptConfig:
-        return cast(
-            CompletionPromptConfig,
-            json.loads(self.completion_prompt_config) if self.completion_prompt_config else {},
-        )
+        return self._load_json_or_default(self.completion_prompt_config, {})
 
     @property
     def dataset_configs_dict(self) -> DatasetConfigs:
@@ -775,11 +768,9 @@ class AppModelConfig(TypeBase):
 
     @property
     def file_upload_dict(self) -> FileUploadConfig:
-        return cast(
-            FileUploadConfig,
-            json.loads(self.file_upload)
-            if self.file_upload
-            else {
+        return self._load_json_or_default(
+            self.file_upload,
+            {
                 "image": {
                     "enabled": False,
                     "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
