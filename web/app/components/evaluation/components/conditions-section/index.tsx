@@ -3,10 +3,10 @@
 import type { EvaluationResourceProps } from '../../types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import { useEvaluationResource, useEvaluationStore } from '../../store'
-import { buildConditionMetricOptions } from '../../utils'
+import { useEvaluationResource } from '../../store'
+import { buildConditionMetricOptions, groupConditionMetricOptions } from '../../utils'
 import { InlineSectionHeader } from '../section-header'
+import AddConditionSelect from './add-condition-select'
 import ConditionGroup from './condition-group'
 
 const ConditionsSection = ({
@@ -15,8 +15,8 @@ const ConditionsSection = ({
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
   const resource = useEvaluationResource(resourceType, resourceId)
-  const addCondition = useEvaluationStore(state => state.addCondition)
   const conditionMetricOptions = useMemo(() => buildConditionMetricOptions(resource.metrics), [resource.metrics])
+  const groupedConditionMetricOptions = useMemo(() => groupConditionMetricOptions(conditionMetricOptions), [conditionMetricOptions])
   const canAddCondition = conditionMetricOptions.length > 0
 
   return (
@@ -37,18 +37,12 @@ const ConditionsSection = ({
             resourceId={resourceId}
           />
         )}
-        <button
-          type="button"
-          className={cn(
-            'inline-flex items-center system-sm-medium text-text-accent',
-            !canAddCondition && 'cursor-not-allowed text-components-button-secondary-accent-text-disabled',
-          )}
+        <AddConditionSelect
+          resourceType={resourceType}
+          resourceId={resourceId}
+          metricOptionGroups={groupedConditionMetricOptions}
           disabled={!canAddCondition}
-          onClick={() => addCondition(resourceType, resourceId)}
-        >
-          <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-          {t('conditions.addCondition')}
-        </button>
+        />
       </div>
     </section>
   )

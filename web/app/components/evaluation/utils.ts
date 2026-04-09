@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import type {
   ComparisonOperator,
   ConditionMetricOption,
+  ConditionMetricOptionGroup,
   ConditionMetricValueType,
   EvaluationMetric,
 } from './types'
@@ -69,9 +70,8 @@ export const buildConditionMetricOptions = (metrics: EvaluationMetric[]): Condit
       return (metric.nodeInfoList ?? []).map((nodeInfo) => {
         return {
           id: `${nodeInfo.node_id}:${metric.optionId}`,
-          group: nodeInfo.title,
-          label: metric.label,
-          description: nodeInfo.type,
+          groupLabel: metric.label,
+          itemLabel: nodeInfo.title || nodeInfo.node_id,
           valueType: metric.valueType,
           variableSelector: [nodeInfo.node_id, metric.optionId] as [string, string],
         }
@@ -86,14 +86,37 @@ export const buildConditionMetricOptions = (metrics: EvaluationMetric[]): Condit
     return customConfig.outputs.map((output) => {
       return {
         id: `${customConfig.workflowId}:${output.id}`,
-        group: customConfig.workflowName ?? metric.label,
-        label: output.id,
-        description: customConfig.workflowName ?? metric.label,
+        groupLabel: customConfig.workflowName ?? metric.label,
+        itemLabel: output.id,
         valueType: getMetricValueType(output.valueType),
         variableSelector: [customConfig.workflowId, output.id] as [string, string],
       }
     })
   })
+}
+
+export const groupConditionMetricOptions = (metricOptions: ConditionMetricOption[]): ConditionMetricOptionGroup[] => {
+  const groups = metricOptions.reduce<Map<string, ConditionMetricOption[]>>((acc, option) => {
+    acc.set(option.groupLabel, [...(acc.get(option.groupLabel) ?? []), option])
+    return acc
+  }, new Map())
+
+  return Array.from(groups.entries()).map(([label, options]) => ({
+    label,
+    options,
+  }))
+}
+
+const conditionMetricValueTypeTranslationKeys = {
+  string: 'conditions.valueTypes.string',
+  number: 'conditions.valueTypes.number',
+  boolean: 'conditions.valueTypes.boolean',
+} as const
+
+export const getConditionMetricValueTypeTranslationKey = (
+  valueType: ConditionMetricValueType,
+) => {
+  return conditionMetricValueTypeTranslationKeys[valueType]
 }
 
 export const serializeVariableSelector = (value: [string, string] | null | undefined) => {

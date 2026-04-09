@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import Evaluation from '..'
+import ConditionsSection from '../components/conditions-section'
 import { useEvaluationStore } from '../store'
 
 const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
@@ -148,6 +149,50 @@ describe('Evaluation', () => {
     })
 
     expect(screen.queryByPlaceholderText('evaluation.conditions.valuePlaceholder')).not.toBeInTheDocument()
+  })
+
+  it('should add a condition from grouped metric dropdown items', () => {
+    const resourceType = 'apps'
+    const resourceId = 'app-conditions-dropdown'
+    const store = useEvaluationStore.getState()
+
+    act(() => {
+      store.ensureResource(resourceType, resourceId)
+      store.setJudgeModel(resourceType, resourceId, 'openai::gpt-4o-mini')
+      store.addBuiltinMetric(resourceType, resourceId, 'faithfulness', [
+        { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+      ])
+      store.addCustomMetric(resourceType, resourceId)
+
+      const customMetric = useEvaluationStore.getState().resources['apps:app-conditions-dropdown'].metrics.find(metric => metric.kind === 'custom-workflow')!
+      store.setCustomMetricWorkflow(resourceType, resourceId, customMetric.id, {
+        workflowId: 'workflow-1',
+        workflowAppId: 'workflow-app-1',
+        workflowName: 'Review Workflow',
+      })
+      store.syncCustomMetricOutputs(resourceType, resourceId, customMetric.id, [{
+        id: 'reason',
+        valueType: 'string',
+      }])
+    })
+
+    render(<ConditionsSection resourceType={resourceType} resourceId={resourceId} />)
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'evaluation.conditions.addCondition' }))
+
+    expect(screen.getByText('Faithfulness')).toBeInTheDocument()
+    expect(screen.getByText('Review Workflow')).toBeInTheDocument()
+    expect(screen.getByText('Retriever Node')).toBeInTheDocument()
+    expect(screen.getByText('reason')).toBeInTheDocument()
+    expect(screen.getByText('evaluation.conditions.valueTypes.number')).toBeInTheDocument()
+    expect(screen.getByText('evaluation.conditions.valueTypes.string')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option', { name: /reason/i }))
+
+    const condition = useEvaluationStore.getState().resources['apps:app-conditions-dropdown'].judgmentConfig.conditions[0]
+
+    expect(condition.variableSelector).toEqual(['workflow-1', 'reason'])
+    expect(screen.getAllByText('Review Workflow').length).toBeGreaterThan(0)
   })
 
   it('should render the metric no-node empty state', () => {

@@ -330,8 +330,17 @@ export function createCustomMetric(): EvaluationMetric {
   }
 }
 
-export const buildConditionItem = (metrics: EvaluationMetric[]): JudgmentConditionItem => {
-  const metricOption = buildConditionMetricOptions(metrics)[0]
+export const buildConditionItem = (
+  metrics: EvaluationMetric[],
+  variableSelector?: [string, string] | null,
+): JudgmentConditionItem => {
+  const metricOptions = buildConditionMetricOptions(metrics)
+  const metricOption = variableSelector
+    ? metricOptions.find(option =>
+      option.variableSelector[0] === variableSelector[0]
+      && option.variableSelector[1] === variableSelector[1],
+    ) ?? metricOptions[0]
+    : metricOptions[0]
   const comparisonOperator = metricOption ? getDefaultComparisonOperator(metricOption.valueType) : 'is'
 
   return {

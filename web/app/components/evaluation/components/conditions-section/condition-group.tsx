@@ -24,6 +24,8 @@ import { getAllowedOperators, requiresConditionValue, useEvaluationResource, use
 import {
   buildConditionMetricOptions,
   getComparisonOperatorLabel,
+  getConditionMetricValueTypeTranslationKey,
+  groupConditionMetricOptions,
   isSelectorEqual,
   serializeVariableSelector,
 } from '../../utils'
@@ -75,9 +77,9 @@ const ConditionMetricLabel = ({
     <div className="flex min-w-0 items-center gap-2 px-1">
       <div className="inline-flex h-6 min-w-0 items-center gap-1 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] shadow-xs">
         <span className={cn(getMetricValueTypeIconClassName(metric.valueType), 'h-3 w-3 shrink-0 text-text-secondary')} />
-        <span className="truncate system-xs-medium text-text-secondary">{metric.label}</span>
+        <span className="truncate system-xs-medium text-text-secondary">{metric.itemLabel}</span>
       </div>
-      <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.group}</span>
+      <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.groupLabel}</span>
     </div>
   )
 }
@@ -88,11 +90,9 @@ const ConditionMetricSelect = ({
   placeholder,
   onChange,
 }: ConditionMetricSelectProps) => {
+  const { t } = useTranslation('evaluation')
   const groupedMetricOptions = useMemo(() => {
-    return Object.entries(metricOptions.reduce<Record<string, ConditionMetricOption[]>>((acc, option) => {
-      acc[option.group] = [...(acc[option.group] ?? []), option]
-      return acc
-    }, {}))
+    return groupConditionMetricOptions(metricOptions)
   }, [metricOptions])
 
   return (
@@ -108,15 +108,17 @@ const ConditionMetricSelect = ({
         <ConditionMetricLabel metric={metric} placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent popupClassName="w-[360px]">
-        {groupedMetricOptions.map(([groupName, options]) => (
-          <SelectGroup key={groupName}>
-            <SelectGroupLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{groupName}</SelectGroupLabel>
-            {options.map(option => (
+        {groupedMetricOptions.map(group => (
+          <SelectGroup key={group.label}>
+            <SelectGroupLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{group.label}</SelectGroupLabel>
+            {group.options.map(option => (
               <SelectItem key={option.id} value={serializeVariableSelector(option.variableSelector)}>
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className={cn(getMetricValueTypeIconClassName(option.valueType), 'h-3.5 w-3.5 shrink-0 text-text-tertiary')} />
-                  <span className="truncate">{option.label}</span>
-                  <span className="shrink-0 text-text-quaternary">{option.description}</span>
+                  <span className="truncate">{option.itemLabel}</span>
+                  <span className="ml-auto shrink-0 system-xs-medium text-text-quaternary">
+                    {t(getConditionMetricValueTypeTranslationKey(option.valueType))}
+                  </span>
                 </div>
               </SelectItem>
             ))}

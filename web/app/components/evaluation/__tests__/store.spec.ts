@@ -132,6 +132,35 @@ describe('evaluation store', () => {
     expect(getAllowedOperators(state.metrics, condition.variableSelector)).toEqual(['=', '≠', '>', '<', '≥', '≤', 'is null', 'is not null'])
   })
 
+  it('should add a condition from the selected custom metric output', () => {
+    const resourceType = 'apps'
+    const resourceId = 'app-condition-selector'
+    const store = useEvaluationStore.getState()
+    const config = getEvaluationMockConfig(resourceType)
+
+    store.ensureResource(resourceType, resourceId)
+    store.addCustomMetric(resourceType, resourceId)
+
+    const customMetric = useEvaluationStore.getState().resources['apps:app-condition-selector'].metrics.find(metric => metric.kind === 'custom-workflow')!
+    store.setCustomMetricWorkflow(resourceType, resourceId, customMetric.id, {
+      workflowId: config.workflowOptions[0].id,
+      workflowAppId: 'custom-workflow-app-id',
+      workflowName: config.workflowOptions[0].label,
+    })
+    store.syncCustomMetricOutputs(resourceType, resourceId, customMetric.id, [{
+      id: 'reason',
+      valueType: 'string',
+    }])
+
+    store.addCondition(resourceType, resourceId, [config.workflowOptions[0].id, 'reason'])
+
+    const condition = useEvaluationStore.getState().resources['apps:app-condition-selector'].judgmentConfig.conditions[0]
+
+    expect(condition.variableSelector).toEqual([config.workflowOptions[0].id, 'reason'])
+    expect(condition.comparisonOperator).toBe('contains')
+    expect(condition.value).toBeNull()
+  })
+
   it('should clear values for operators without values', () => {
     const resourceType = 'apps'
     const resourceId = 'app-3'

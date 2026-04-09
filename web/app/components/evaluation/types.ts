@@ -112,11 +112,15 @@ export type JudgmentConfig = {
 
 export type ConditionMetricOption = {
   id: string
-  group: string
-  label: string
-  description: string
+  groupLabel: string
+  itemLabel: string
   valueType: ConditionMetricValueType
   variableSelector: [string, string]
+}
+
+export type ConditionMetricOptionGroup = {
+  label: string
+  options: ConditionMetricOption[]
 }
 
 export type BatchTestRecord = {

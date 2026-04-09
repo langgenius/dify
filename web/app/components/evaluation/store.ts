@@ -61,7 +61,11 @@ type EvaluationStore = {
     patch: { inputVariableId?: string | null, outputVariableId?: string | null },
   ) => void
   setConditionLogicalOperator: (resourceType: EvaluationResourceType, resourceId: string, logicalOperator: 'and' | 'or') => void
-  addCondition: (resourceType: EvaluationResourceType, resourceId: string) => void
+  addCondition: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    variableSelector?: [string, string] | null,
+  ) => void
   removeCondition: (resourceType: EvaluationResourceType, resourceId: string, conditionId: string) => void
   updateConditionMetric: (resourceType: EvaluationResourceType, resourceId: string, conditionId: string, variableSelector: [string, string]) => void
   updateConditionOperator: (resourceType: EvaluationResourceType, resourceId: string, conditionId: string, operator: ComparisonOperator) => void
@@ -270,13 +274,13 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
-  addCondition: (resourceType, resourceId) => {
+  addCondition: (resourceType, resourceId, variableSelector) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
         judgmentConfig: {
           ...resource.judgmentConfig,
-          conditions: [...resource.judgmentConfig.conditions, buildConditionItem(resource.metrics)],
+          conditions: [...resource.judgmentConfig.conditions, buildConditionItem(resource.metrics, variableSelector)],
         },
       })),
     }))
