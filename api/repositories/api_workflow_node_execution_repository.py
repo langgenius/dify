@@ -25,7 +25,7 @@ class WorkflowNodeExecutionSnapshot:
     """
     Minimal snapshot of workflow node execution for stream recovery.
 
-    Only includes fields required by snapshot events.
+    Only includes fields required by snapshot message_events.
     """
 
     execution_id: str  # Unique execution identifier (node_execution_id or row id).

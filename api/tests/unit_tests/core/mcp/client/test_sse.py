@@ -114,7 +114,7 @@ def test_sse_client_connection_validation():
             mock_event_source.response.raise_for_status.return_value = None
             mock_sse_connect.return_value.__enter__.return_value = mock_event_source
 
-            # Mock SSE events
+            # Mock SSE message_events
             class MockSSEEvent:
                 def __init__(self, event_type: str, data: str):
                     self.event = event_type
@@ -762,7 +762,7 @@ class TestReadMessages:
         mock_client.events.return_value = [mock_sse_event]
 
         results = list(read_messages(mock_client))
-        # Non-message events produce no output
+        # Non-message message_events produce no output
         assert results == []
 
     def test_outer_exception_yields_exc(self):

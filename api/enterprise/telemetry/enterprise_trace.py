@@ -65,7 +65,7 @@ class EnterpriseOtelTrace:
     """Duck-typed enterprise trace handler.
 
     ``*_trace`` methods emit spans (workflow/node only) or structured logs
-    (all other events), plus metrics at 100 % accuracy.
+    (all other message_events), plus metrics at 100 % accuracy.
     """
 
     def __init__(self) -> None:

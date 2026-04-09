@@ -342,7 +342,7 @@ class RagPipelineService:
         # commit db session changes
         db.session.commit()
 
-        # trigger  workflow events TODO
+        # trigger  workflow message_events TODO
         # app_draft_workflow_was_synced.send(pipeline, synced_draft_workflow=workflow)
 
         # return draft workflow

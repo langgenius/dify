@@ -125,7 +125,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act
         with patch(
-            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            "message_events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
             result = DatasetService.delete_dataset(dataset.id, owner)
@@ -161,7 +161,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act
         with patch(
-            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            "message_events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
             result = DatasetService.delete_dataset(dataset.id, owner)
@@ -189,7 +189,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act
         with patch(
-            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            "message_events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
             result = DatasetService.delete_dataset(dataset.id, owner)
@@ -217,7 +217,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act
         with patch(
-            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            "message_events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
             result = DatasetService.delete_dataset(dataset.id, owner)
@@ -236,7 +236,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act
         with patch(
-            "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
+            "message_events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
             result = DatasetService.delete_dataset(missing_dataset_id, owner)

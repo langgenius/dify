@@ -359,7 +359,7 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data_truncated is False
 
     def test_iteration_and_loop_nodes_return_none(self):
-        """Test that iteration and loop nodes return None (no streaming events)."""
+        """Test that iteration and loop nodes return None (no streaming message_events)."""
         converter = self.create_workflow_response_converter()
 
         iteration_event = QueueNodeSucceededEvent(
@@ -695,7 +695,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         ],
     )
     def test_service_api_node_finish_event_no_truncation(self, event_type: QueueEvent):
-        """Test that Service API doesn't truncate node finish events."""
+        """Test that Service API doesn't truncate node finish message_events."""
         converter = self.create_test_converter(InvokeFrom.SERVICE_API)
         # Create test event with large data
         large_inputs = {"input1": "x" * 5000, "input2": list(range(2000))}
@@ -723,7 +723,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.outputs_truncated
 
     def test_service_api_node_retry_event_no_truncation(self):
-        """Test that Service API doesn't truncate node retry events."""
+        """Test that Service API doesn't truncate node retry message_events."""
         converter = self.create_test_converter(InvokeFrom.SERVICE_API)
 
         # Create test event with large data
@@ -784,7 +784,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.outputs_truncated
 
     def test_service_api_iteration_events_no_truncation(self):
-        """Test that Service API doesn't truncate iteration events."""
+        """Test that Service API doesn't truncate iteration message_events."""
         converter = self.create_test_converter(InvokeFrom.SERVICE_API)
 
         # Test iteration start event
@@ -812,7 +812,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.inputs_truncated
 
     def test_service_api_loop_events_no_truncation(self):
-        """Test that Service API doesn't truncate loop events."""
+        """Test that Service API doesn't truncate loop message_events."""
         converter = self.create_test_converter(InvokeFrom.SERVICE_API)
 
         # Test loop start event
@@ -840,7 +840,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.inputs_truncated
 
     def test_web_app_node_finish_event_truncation_works(self):
-        """Test that web app still truncates node finish events."""
+        """Test that web app still truncates node finish message_events."""
         converter = self.create_test_converter(InvokeFrom.WEB_APP)
 
         # Create test event with large data that should be truncated

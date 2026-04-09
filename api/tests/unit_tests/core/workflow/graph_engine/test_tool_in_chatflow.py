@@ -36,7 +36,7 @@ def test_tool_in_chatflow():
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
     assert len(success_events) > 0, "Workflow should complete successfully"
 
-    # Check for streaming events
+    # Check for streaming message_events
     stream_chunk_events = [e for e in events if isinstance(e, NodeRunStreamChunkEvent)]
     stream_chunk_count = len(stream_chunk_events)
 

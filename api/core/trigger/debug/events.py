@@ -14,7 +14,7 @@ class TriggerDebugPoolKey(StrEnum):
 
 
 class BaseDebugEvent(BaseModel):
-    """Base class for all debug events."""
+    """Base class for all debug message_events."""
 
     timestamp: int
 
@@ -35,7 +35,7 @@ class WebhookDebugEvent(BaseDebugEvent):
 
 
 def build_webhook_pool_key(tenant_id: str, app_id: str, node_id: str) -> str:
-    """Generate pool key for webhook events.
+    """Generate pool key for webhook message_events.
 
     Args:
         tenant_id: Tenant ID
@@ -56,7 +56,7 @@ class PluginTriggerDebugEvent(BaseDebugEvent):
 
 
 def build_plugin_pool_key(tenant_id: str, provider_id: str, subscription_id: str, name: str) -> str:
-    """Generate pool key for plugin trigger events.
+    """Generate pool key for plugin trigger message_events.
 
     Args:
         name: Event name

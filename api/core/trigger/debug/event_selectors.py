@@ -137,7 +137,7 @@ class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
     """
-    Poller for schedule trigger debug events.
+    Poller for schedule trigger debug message_events.
 
     This poller will simulate the schedule trigger event by creating a schedule debug runtime cache
     and calculating the next run at.

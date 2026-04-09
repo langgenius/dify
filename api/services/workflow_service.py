@@ -55,7 +55,7 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums.cloud_plan import CloudPlan
-from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from message_events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -285,7 +285,7 @@ class WorkflowService:
         # commit db session changes
         db.session.commit()
 
-        # trigger app workflow events
+        # trigger app workflow message_events
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
 
         # return draft workflow
@@ -389,7 +389,7 @@ class WorkflowService:
         # commit db session changes
         session.add(workflow)
 
-        # trigger app workflow events
+        # trigger app workflow message_events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow

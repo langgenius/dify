@@ -1,5 +1,5 @@
 from configs import dify_config
-from events.tenant_event import tenant_was_created
+from message_events.tenant_event import tenant_was_created
 from services.enterprise.workspace_sync import WorkspaceSyncService
 
 

@@ -80,7 +80,7 @@ def ssrf_proxy_sse_connect(url: str, **kwargs) -> AbstractContextManager[httpx_s
 
     Returns:
         AbstractContextManager[httpx_sse.EventSource]: A context manager that yields an EventSource
-        object for SSE streaming. The EventSource provides access to server-sent events.
+        object for SSE streaming. The EventSource provides access to server-sent message_events.
 
     Example:
         ```python

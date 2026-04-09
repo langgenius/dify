@@ -121,7 +121,7 @@ class PluginTriggerProviderController:
 
     def get_events(self) -> list[EventEntity]:
         """
-        Get all events for this provider
+        Get all message_events for this provider
 
         :return: List of event entities
         """

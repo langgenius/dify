@@ -10,7 +10,7 @@ This test suite covers complete integration scenarios including:
 - Actual file upload and retrieval through storage
 - Workflow status transitions in database
 - Error handling with real database constraints
-- Multiple pause events in sequence
+- Multiple pause message_events in sequence
 - Integration with real ReadOnlyGraphRuntimeState implementations
 
 These tests use TestContainers to spin up real services for integration testing,
@@ -533,7 +533,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id
 
     def test_layer_ignores_non_pause_events(self, db_session_with_containers):
-        """Test that layer ignores non-pause events."""
+        """Test that layer ignores non-pause message_events."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
         graph_runtime_state = self._create_graph_runtime_state()
@@ -548,7 +548,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             GraphRunSucceededEvent,
         )
 
-        # Act - Send non-pause events
+        # Act - Send non-pause message_events
         layer.on_event(GraphRunStartedEvent())
         layer.on_event(GraphRunSucceededEvent(outputs={"result": "success"}))
         layer.on_event(GraphRunFailedEvent(error="test error", exceptions_count=1))
@@ -565,7 +565,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert len(pause_states) == 0
 
     def test_layer_requires_initialization(self, db_session_with_containers):
-        """Test that layer requires proper initialization before handling events."""
+        """Test that layer requires proper initialization before handling message_events."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
         # Don't initialize - graph_runtime_state should be uninitialized

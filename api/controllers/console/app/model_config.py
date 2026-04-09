@@ -10,7 +10,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_model_config_was_updated
+from message_events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required

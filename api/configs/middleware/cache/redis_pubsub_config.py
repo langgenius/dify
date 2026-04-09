@@ -31,7 +31,7 @@ class RedisPubSubConfig(BaseSettings):
     PUBSUB_REDIS_URL: str | None = Field(
         validation_alias=AliasChoices("EVENT_BUS_REDIS_URL", "PUBSUB_REDIS_URL"),
         description=(
-            "Redis connection URL for streaming events between API and celery worker; "
+            "Redis connection URL for streaming message_events between API and celery worker; "
             "defaults to URL constructed from `REDIS_*` configurations. Also accepts ENV: EVENT_BUS_REDIS_URL."
         ),
         default=None,

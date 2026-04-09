@@ -30,7 +30,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 
 
 class TestDataFactory:
-    """Factory helpers for constructing graph events used in tests."""
+    """Factory helpers for constructing graph message_events used in tests."""
 
     @staticmethod
     def create_graph_run_paused_event(outputs: dict[str, object] | None = None) -> GraphRunPausedEvent:

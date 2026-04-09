@@ -82,7 +82,7 @@ def build_workflow_event_stream(
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_run.workflow_id,
-        # NOTE(QuantumGhost): for events resumption, we only care about
+        # NOTE(QuantumGhost): for message_events resumption, we only care about
         # the execution records from `WORKFLOW_RUN`.
         #
         # Ideally filtering with `workflow_run_id` is enough. However,
@@ -429,7 +429,7 @@ def _start_buffering(subscription) -> BufferState:
                         continue
                     logger.warning("Dropped buffered workflow event, total_dropped=%s", dropped_count)
         except Exception:
-            logger.exception("Failed while buffering workflow events")
+            logger.exception("Failed while buffering workflow message_events")
         finally:
             buffer_state.done_event.set()
 

@@ -77,7 +77,7 @@ class ExceptionLoggingHandler(logging.Handler):
             # Record exception on the current span instead of creating a new one
             span.set_status(StatusCode.ERROR, record.getMessage())
 
-            # Add log context as span events/attributes
+            # Add log context as span message_events/attributes
             span.add_event(
                 "log.exception",
                 attributes={

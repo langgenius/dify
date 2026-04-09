@@ -117,13 +117,13 @@ class ConsoleHumanInputFormApi(Resource):
 
 @console_ns.route("/workflow/<string:workflow_run_id>/events")
 class ConsoleWorkflowEventsApi(Resource):
-    """Console API for getting workflow execution events after resume."""
+    """Console API for getting workflow execution message_events after resume."""
 
     @account_initialization_required
     @login_required
     def get(self, workflow_run_id: str):
         """
-        Get workflow execution events stream after resume.
+        Get workflow execution message_events stream after resume.
 
         GET /console/api/workflow/<workflow_run_id>/events
 

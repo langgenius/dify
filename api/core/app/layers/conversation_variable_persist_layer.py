@@ -1,9 +1,9 @@
 """
 Persist conversation-scoped variable updates emitted by the graph engine.
 
-The graph package emits generic variable update events and stays unaware of
+The graph package emits generic variable update message_events and stays unaware of
 conversation identity or storage concerns. This layer lives in the application
-core, listens to those generic events, and persists only the `conversation.*`
+core, listens to those generic message_events, and persists only the `conversation.*`
 scope updates that matter to chat applications.
 """
 

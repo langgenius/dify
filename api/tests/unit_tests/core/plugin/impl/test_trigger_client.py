@@ -13,7 +13,7 @@ from models.provider_ids import TriggerProviderID
 def _request() -> Request:
     environ = {
         "REQUEST_METHOD": "POST",
-        "PATH_INFO": "/events",
+        "PATH_INFO": "/message_events",
         "QUERY_STRING": "",
         "SERVER_NAME": "localhost",
         "SERVER_PORT": "80",
@@ -73,12 +73,12 @@ class TestPluginTriggerClient:
                     {
                         "plugin_id": "org/plugin",
                         "provider": "remote",
-                        "declaration": {"events": [{"identity": {"provider": "old"}}]},
+                        "declaration": {"message_events": [{"identity": {"provider": "old"}}]},
                     }
                 ]
             }
             transformed = transformer(payload)
-            assert transformed["data"][0]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/remote"
+            assert transformed["data"][0]["declaration"]["message_events"][0]["identity"]["provider"] == "org/plugin/remote"
             return [provider]
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -95,9 +95,9 @@ class TestPluginTriggerClient:
 
         def fake_request(*args, **kwargs):
             transformer = kwargs["transformer"]
-            payload = {"data": {"declaration": {"events": [{"identity": {"provider": "old"}}]}}}
+            payload = {"data": {"declaration": {"message_events": [{"identity": {"provider": "old"}}]}}}
             transformed = transformer(payload)
-            assert transformed["data"]["declaration"]["events"][0]["identity"]["provider"] == "org/plugin/provider"
+            assert transformed["data"]["declaration"]["message_events"][0]["identity"]["provider"] == "org/plugin/provider"
             return provider
 
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", side_effect=fake_request)

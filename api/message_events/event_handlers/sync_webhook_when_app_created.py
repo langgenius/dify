@@ -1,9 +1,9 @@
 import logging
 
-from events.app_event import app_draft_workflow_was_synced
+from message_events.app_event import app_draft_workflow_was_synced
 from models.model import App, AppMode
 from models.workflow import Workflow
-from services.trigger.trigger_service import TriggerService
+from services.trigger.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
 
@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 def handle(sender, synced_draft_workflow: Workflow, **kwargs):
     """
     While creating a workflow or updating a workflow, we may need to sync
-    its plugin trigger relationships in DB.
+    its webhook relationships in DB.
     """
     app: App = sender
     if app.mode != AppMode.WORKFLOW.value:
         # only handle workflow app, chatflow is not supported yet
         return
 
-    TriggerService.sync_plugin_trigger_relationships(app, synced_draft_workflow)
+    WebhookService.sync_webhook_relationships(app, synced_draft_workflow)

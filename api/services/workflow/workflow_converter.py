@@ -22,7 +22,7 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from events.app_event import app_was_created
+from message_events.app_event import app_was_created
 from extensions.ext_database import db
 from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint

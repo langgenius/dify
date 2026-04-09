@@ -1,6 +1,6 @@
 """Telemetry gateway contracts and data structures.
 
-This module defines the envelope format for telemetry events and the routing
+This module defines the envelope format for telemetry message_events and the routing
 configuration that determines how each event type is processed.
 """
 
@@ -51,7 +51,7 @@ class CaseRoute(BaseModel):
 
 
 class TelemetryEnvelope(BaseModel):
-    """Envelope for telemetry events.
+    """Envelope for telemetry message_events.
 
     Attributes:
         case: The telemetry case type.

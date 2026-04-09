@@ -65,8 +65,8 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker) -> No
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
-    generator_instance.generate.return_value = "raw-events"
-    generator_cls.convert_to_event_stream.return_value = "stream-events"
+    generator_instance.generate.return_value = "raw-message_events"
+    generator_cls.convert_to_event_stream.return_value = "stream-message_events"
 
     result = PipelineGenerateService.generate(
         pipeline=pipeline,
@@ -76,7 +76,7 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker) -> No
         streaming=True,
     )
 
-    assert result == "stream-events"
+    assert result == "stream-message_events"
     update_status_mock.assert_called_once_with("doc-1")
 
 

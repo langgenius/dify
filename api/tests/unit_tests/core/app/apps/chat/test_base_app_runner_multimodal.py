@@ -299,7 +299,7 @@ class TestBaseAppRunnerMultimodal:
                         queue_manager=mock_queue_manager,
                     )
 
-                    # Assert - should not create any files or publish events
+                    # Assert - should not create any files or publish message_events
                     mock_mgr_class.assert_not_called()
                     mock_msg_file_class.assert_not_called()
                     mock_session.add.assert_not_called()

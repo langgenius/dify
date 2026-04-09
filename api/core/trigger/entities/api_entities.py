@@ -59,7 +59,7 @@ class TriggerProviderApiEntity(BaseModel):
         default_factory=list,
         description="The subscription schema of the trigger provider",
     )
-    events: list[EventApiEntity] = Field(description="The events of the trigger provider")
+    events: list[EventApiEntity] = Field(description="The message_events of the trigger provider")
 
 
 class SubscriptionBuilderApiEntity(BaseModel):

@@ -1,6 +1,6 @@
 """Telemetry facade.
 
-Thin public API for emitting telemetry events.  All routing logic
+Thin public API for emitting telemetry message_events.  All routing logic
 lives in ``core.telemetry.gateway`` which is shared by both CE and EE.
 """
 

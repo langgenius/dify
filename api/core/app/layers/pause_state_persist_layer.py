@@ -96,11 +96,11 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         """
         Called for every event emitted by the engine.
 
-        This method receives all events generated during graph execution, including:
-        - Graph lifecycle events (start, success, failure)
-        - Node execution events (start, success, failure, retry)
-        - Stream events for response nodes
-        - Container events (iteration, loop)
+        This method receives all message_events generated during graph execution, including:
+        - Graph lifecycle message_events (start, success, failure)
+        - Node execution message_events (start, success, failure, retry)
+        - Stream message_events for response nodes
+        - Container message_events (iteration, loop)
 
         Args:
             event: The event emitted by the engine

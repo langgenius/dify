@@ -116,8 +116,8 @@ class SSETransport:
 
         Args:
             sse: The SSE event object.
-            read_queue: Queue for message events.
-            status_queue: Queue for status events.
+            read_queue: Queue for message message_events.
+            status_queue: Queue for status message_events.
         """
         match sse.event:
             case "endpoint":
@@ -128,7 +128,7 @@ class SSETransport:
                 logger.warning("Unknown SSE event: %s", sse.event)
 
     def sse_reader(self, event_source: EventSource, read_queue: ReadQueue, status_queue: StatusQueue):
-        """Read and process SSE events.
+        """Read and process SSE message_events.
 
         Args:
             event_source: The SSE event source.

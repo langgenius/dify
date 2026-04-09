@@ -176,7 +176,7 @@ def test_workflow_events_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None
     api = ConsoleWorkflowEventsApi()
     handler = _unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
+    with app.test_request_context("/console/api/workflow/run/message_events", method="GET"):
         with pytest.raises(NotFoundError):
             handler(api, workflow_run_id="run-1")
 
@@ -207,7 +207,7 @@ def test_workflow_events_requires_account(app, monkeypatch: pytest.MonkeyPatch) 
     api = ConsoleWorkflowEventsApi()
     handler = _unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
+    with app.test_request_context("/console/api/workflow/run/message_events", method="GET"):
         with pytest.raises(NotFoundError):
             handler(api, workflow_run_id="run-1")
 
@@ -238,7 +238,7 @@ def test_workflow_events_requires_creator(app, monkeypatch: pytest.MonkeyPatch) 
     api = ConsoleWorkflowEventsApi()
     handler = _unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
+    with app.test_request_context("/console/api/workflow/run/message_events", method="GET"):
         with pytest.raises(NotFoundError):
             handler(api, workflow_run_id="run-1")
 
@@ -286,7 +286,7 @@ def test_workflow_events_finished(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = ConsoleWorkflowEventsApi()
     handler = _unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
+    with app.test_request_context("/console/api/workflow/run/message_events", method="GET"):
         response = handler(api, workflow_run_id="run-1")
 
     assert response.mimetype == "text/event-stream"

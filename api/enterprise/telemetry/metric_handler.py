@@ -1,6 +1,6 @@
 """Enterprise metric/log event handler.
 
-This module processes metric and log telemetry events after they've been
+This module processes metric and log telemetry message_events after they've been
 dequeued from the enterprise_telemetry Celery queue. It handles case routing,
 idempotency checking, and payload rehydration.
 """
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class EnterpriseMetricHandler:
-    """Handler for enterprise metric and log telemetry events.
+    """Handler for enterprise metric and log telemetry message_events.
 
     Processes envelopes from the enterprise_telemetry queue, routing each
     case to the appropriate handler method. Implements idempotency checking
@@ -56,7 +56,7 @@ class EnterpriseMetricHandler:
         Args:
             envelope: The telemetry envelope to process.
         """
-        # Check for duplicate events
+        # Check for duplicate message_events
         if self._is_duplicate(envelope):
             logger.debug(
                 "Skipping duplicate event: tenant_id=%s, event_id=%s",

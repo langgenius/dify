@@ -158,7 +158,7 @@ class TestDatasetServiceDeleteDataset:
         This test ensures:
         - Method returns False when dataset not found
         - No permission checks are performed
-        - No events are sent
+        - No message_events are sent
         - No database operations are performed
         """
         # Arrange

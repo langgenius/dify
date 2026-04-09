@@ -105,7 +105,7 @@ class EndUserService:
         Creates end users in batch for the specified tenant and application IDs in O(1) time.
 
         This batch creation is necessary because trigger subscriptions can span multiple applications,
-        and trigger events may be dispatched to multiple applications simultaneously.
+        and trigger message_events may be dispatched to multiple applications simultaneously.
 
         For each app_id in app_ids, check if an `EndUser` with the given
         `user_id` (as session_id/external_user_id) already exists for the

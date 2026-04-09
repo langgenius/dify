@@ -311,7 +311,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
     mock_plugin_subscription: MockPluginSubscription,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Plugin trigger endpoint should dispatch events and generate debug events."""
+    """Plugin trigger endpoint should dispatch message_events and generate debug message_events."""
     endpoint_id = "1cc7fa12-3f7b-4f6a-9c8d-1234567890ab"
 
     debug_events: list[dict[str, Any]] = []
@@ -325,7 +325,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
             "provider_id": mock_plugin_subscription.provider_id,
             "subscription_id": mock_plugin_subscription.id,
             "timestamp": int(time.time()),
-            "events": ["created", "updated"],
+            "message_events": ["created", "updated"],
             "request_id": f"req-{_endpoint_id}",
         }
         trigger_processing_tasks.dispatch_triggered_workflows_async.delay(dispatch_data)
@@ -345,7 +345,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
     def _fake_delay(dispatch_data: dict[str, Any]) -> None:
         dispatched_payloads.append(dispatch_data)
         trigger_processing_tasks.dispatch_trigger_debug_event(
-            events=dispatch_data["events"],
+            events=dispatch_data["message_events"],
             user_id=dispatch_data["user_id"],
             timestamp=dispatch_data["timestamp"],
             request_id=dispatch_data["request_id"],
@@ -362,7 +362,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
 
     assert response.status_code == 202
     assert dispatched_payloads, "Plugin trigger should enqueue workflow dispatch payload"
-    assert debug_events, "Plugin trigger should dispatch debug events"
+    assert debug_events, "Plugin trigger should dispatch debug message_events"
     dispatched_event_names = {event["event"].name for event in debug_events}
     assert dispatched_event_names == {"created", "updated"}
 
@@ -766,7 +766,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
             "provider_id": provider_id,
             "subscription_id": subscription.id,
             "timestamp": int(time.time()),
-            "events": ["test_event"],
+            "message_events": ["test_event"],
             "request_id": f"req-{_endpoint_id}",
         }
         dispatched_data.append(dispatch_data)
@@ -782,7 +782,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
     assert response.status_code == 202
     assert dispatched_data, "Plugin trigger should dispatch event data"
     assert dispatched_data[0]["subscription_id"] == subscription.id
-    assert dispatched_data[0]["events"] == ["test_event"]
+    assert dispatched_data[0]["message_events"] == ["test_event"]
 
     # Verify database records exist
     db_session_with_containers.expire_all()
@@ -853,7 +853,7 @@ def test_plugin_debug_via_http_endpoint(
     )
     assert poller.poll() is None, "First poll should return None (waiting)"
 
-    # Track debug events dispatched
+    # Track debug message_events dispatched
     debug_events: list[dict[str, Any]] = []
     original_dispatch = TriggerDebugEventBus.dispatch
 

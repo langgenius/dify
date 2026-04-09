@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.workflow.nodes.trigger_schedule.entities import SchedulePlanUpdate
-from events.app_event import app_published_workflow_was_updated
+from message_events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode, Workflow, WorkflowSchedulePlan
 from services.trigger.schedule_service import ScheduleService

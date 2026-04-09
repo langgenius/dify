@@ -27,7 +27,7 @@ class PluginTriggerClient(BasePluginClient):
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
-                for event in declaration.get("events", []):
+                for event in declaration.get("message_events", []):
                     event["identity"]["provider"] = provider_id
 
             return json_response
@@ -57,7 +57,7 @@ class PluginTriggerClient(BasePluginClient):
         def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             data = json_response.get("data")
             if data:
-                for event in data.get("declaration", {}).get("events", []):
+                for event in data.get("declaration", {}).get("message_events", []):
                     event["identity"]["provider"] = str(provider_id)
 
             return json_response

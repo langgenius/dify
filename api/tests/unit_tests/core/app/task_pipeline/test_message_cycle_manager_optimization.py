@@ -377,7 +377,7 @@ class TestMessageCycleManagerOptimization:
         mock_logger.exception.assert_called_once()
 
     def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager):
-        """Populate task metadata from annotation reply events.
+        """Populate task metadata from annotation reply message_events.
 
         Args: message_cycle_manager with TaskStateMetadata and a mocked AppAnnotationService.
         Returns: The fetched annotation object.

@@ -385,7 +385,7 @@ class TableTestRunner:
                 ),
             )
 
-            # Execute and collect events
+            # Execute and collect message_events
             events: list[GraphEngineEvent] = []
             for event in engine.run():
                 events.append(event)
@@ -404,7 +404,7 @@ class TableTestRunner:
                 )
 
             if not (has_start and has_success):
-                # Workflow didn't complete, but we may still want to validate events
+                # Workflow didn't complete, but we may still want to validate message_events
                 success = False
                 if test_case.expected_event_sequence is not None:
                     # If event sequence was provided, use that for success determination
@@ -523,7 +523,7 @@ class TableTestRunner:
         self, expected_sequence: list[type[GraphEngineEvent]], actual_events: list[GraphEngineEvent]
     ) -> tuple[bool, str | None]:
         """
-        Validate that actual events match the expected event sequence.
+        Validate that actual message_events match the expected event sequence.
 
         Returns:
             tuple: (is_valid, error_message)
@@ -532,8 +532,8 @@ class TableTestRunner:
 
         if len(expected_sequence) != len(actual_event_types):
             return False, (
-                f"Event count mismatch. Expected {len(expected_sequence)} events, "
-                f"got {len(actual_event_types)} events.\n"
+                f"Event count mismatch. Expected {len(expected_sequence)} message_events, "
+                f"got {len(actual_event_types)} message_events.\n"
                 f"Expected: {[e.__name__ for e in expected_sequence]}\n"
                 f"Actual: {[e.__name__ for e in actual_event_types]}"
             )

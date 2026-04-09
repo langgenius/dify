@@ -24,13 +24,13 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
 class WorkflowEventsApi(WebApiResource):
-    """API for getting workflow execution events after resume."""
+    """API for getting workflow execution message_events after resume."""
 
     def get(self, app_model: App, end_user: EndUser, task_id: str):
         """
-        Get workflow execution events stream after resume.
+        Get workflow execution message_events stream after resume.
 
-        GET /api/workflow/<task_id>/events
+        GET /api/workflow/<task_id>/message_events
 
         Returns Server-Sent Events stream.
         """
@@ -109,4 +109,4 @@ class WorkflowEventsApi(WebApiResource):
 
 
 # Register the APIs
-api.add_resource(WorkflowEventsApi, "/workflow/<string:task_id>/events")
+api.add_resource(WorkflowEventsApi, "/workflow/<string:task_id>/message_events")

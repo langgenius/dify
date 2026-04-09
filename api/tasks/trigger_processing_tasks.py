@@ -469,7 +469,7 @@ def dispatch_triggered_workflows_async(
 
     try:
         logger.info(
-            "Starting trigger dispatching uid=%s, endpoint=%s, events=%s, req_id=%s, sub_id=%s, provider_id=%s",
+            "Starting trigger dispatching uid=%s, endpoint=%s, message_events=%s, req_id=%s, sub_id=%s, provider_id=%s",
             user_id,
             endpoint_id,
             events,

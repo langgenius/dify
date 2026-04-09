@@ -102,7 +102,7 @@ class TestWorkflowEntryRedisChannel:
         mock_redis_client = MagicMock()
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
-        # Mock events to be generated
+        # Mock message_events to be generated
         mock_event1 = MagicMock()
         mock_event2 = MagicMock()
 
@@ -131,7 +131,7 @@ class TestWorkflowEntryRedisChannel:
             # Run the workflow
             events = list(workflow_entry.run())
 
-            # Verify events were generated
+            # Verify message_events were generated
             assert len(events) == 2
             assert events[0] == mock_event1
             assert events[1] == mock_event2

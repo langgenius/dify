@@ -103,7 +103,7 @@ class TestTraceSpanWithMemoryExporter:
 
     @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_exception_is_recorded_in_span(self, tracer_provider_with_memory_exporter, memory_span_exporter):
-        """Test that exception details are recorded in span events."""
+        """Test that exception details are recorded in span message_events."""
 
         @trace_span()
         def test_func():

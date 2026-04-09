@@ -28,7 +28,7 @@ from controllers.console.wraps import (
     email_password_login_enabled,
     setup_required,
 )
-from events.tenant_event import tenant_was_created
+from message_events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
 from libs.login import current_account_with_tenant
 from libs.token import (

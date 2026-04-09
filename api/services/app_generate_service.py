@@ -41,7 +41,7 @@ class AppGenerateService:
         """
         Build a subscription callback that coordinates when the background task starts.
 
-        - streams transport: start immediately (events are durable; late subscribers can replay).
+        - streams transport: start immediately (message_events are durable; late subscribers can replay).
         - pubsub/sharded transport: start on first subscribe, with a short fallback timer so the task
           still runs if the client never connects.
         """
@@ -63,7 +63,7 @@ class AppGenerateService:
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
         if channel_type == "streams":
-            # With Redis Streams, we can safely start right away; consumers can read past events.
+            # With Redis Streams, we can safely start right away; consumers can read past message_events.
             _try_start()
 
             # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.

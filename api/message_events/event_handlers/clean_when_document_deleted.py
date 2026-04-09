@@ -1,4 +1,4 @@
-from events.document_event import document_was_deleted
+from message_events.document_event import document_was_deleted
 from tasks.clean_document_task import clean_document_task
 
 

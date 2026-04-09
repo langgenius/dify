@@ -45,7 +45,7 @@ def _make_collector(target: list):
 @pytest.mark.usefixtures("mock_db", "_mock_deps")
 class TestAppWasDeletedSignal:
     def test_sends_signal(self, app_model):
-        from events.app_event import app_was_deleted
+        from message_events.app_event import app_was_deleted
         from services.app_service import AppService
 
         received = []
@@ -59,7 +59,7 @@ class TestAppWasDeletedSignal:
         assert received == [app_model]
 
     def test_signal_fires_before_db_delete(self, app_model, mock_db):
-        from events.app_event import app_was_deleted
+        from message_events.app_event import app_was_deleted
         from services.app_service import AppService
 
         call_order: list[str] = []
@@ -81,7 +81,7 @@ class TestAppWasDeletedSignal:
 @pytest.mark.usefixtures("mock_db")
 class TestAppWasUpdatedSignal:
     def test_update_app(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []
@@ -108,7 +108,7 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
 
     def test_update_app_name(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []
@@ -124,7 +124,7 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
 
     def test_update_app_icon(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []
@@ -140,7 +140,7 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
 
     def test_update_app_site_status_sends_when_changed(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []
@@ -157,7 +157,7 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
 
     def test_update_app_site_status_skips_when_unchanged(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []
@@ -173,7 +173,7 @@ class TestAppWasUpdatedSignal:
         assert received == []
 
     def test_update_app_api_status_sends_when_changed(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []
@@ -190,7 +190,7 @@ class TestAppWasUpdatedSignal:
         assert received == [app_model]
 
     def test_update_app_api_status_skips_when_unchanged(self, app_model):
-        from events.app_event import app_was_updated
+        from message_events.app_event import app_was_updated
         from services.app_service import AppService
 
         received = []

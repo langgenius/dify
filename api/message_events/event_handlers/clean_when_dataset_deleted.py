@@ -1,4 +1,4 @@
-from events.dataset_event import dataset_was_deleted
+from message_events.dataset_event import dataset_was_deleted
 from models import Dataset
 from tasks.clean_dataset_task import clean_dataset_task
 

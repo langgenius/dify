@@ -7,7 +7,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from events.document_index_event import document_index_created
+from message_events.document_index_event import document_index_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document

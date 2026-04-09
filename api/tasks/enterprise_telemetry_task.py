@@ -1,4 +1,4 @@
-"""Celery worker for enterprise metric/log telemetry events.
+"""Celery worker for enterprise metric/log telemetry message_events.
 
 This module defines the Celery task that processes telemetry envelopes
 from the enterprise_telemetry queue. It deserializes envelopes and
@@ -21,7 +21,7 @@ def process_enterprise_telemetry(envelope_json: str) -> None:
     """Process enterprise metric/log telemetry envelope.
 
     This task is enqueued by the TelemetryGateway for metric/log-only
-    events. It deserializes the envelope and dispatches to the handler.
+    message_events. It deserializes the envelope and dispatches to the handler.
 
     Best-effort processing: logs errors but never raises, to avoid
     failing user requests due to telemetry issues.

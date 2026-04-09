@@ -1123,12 +1123,12 @@ class DraftWorkflowNodeLastRunApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
 class DraftWorkflowTriggerRunApi(Resource):
     """
-    Full workflow debug - Polling API for trigger events
+    Full workflow debug - Polling API for trigger message_events
     Path: /apps/<uuid:app_id>/workflows/draft/trigger/run
     """
 
     @console_ns.doc("poll_draft_workflow_trigger_run")
-    @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
+    @console_ns.doc(description="Poll for trigger message_events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(
         console_ns.model(
@@ -1148,7 +1148,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @edit_permission_required
     def post(self, app_model: App):
         """
-        Poll for trigger events and execute full workflow when event arrives
+        Poll for trigger message_events and execute full workflow when event arrives
         """
         current_user, _ = current_account_with_tenant()
         args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
@@ -1195,12 +1195,12 @@ class DraftWorkflowTriggerRunApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger/run")
 class DraftWorkflowTriggerNodeApi(Resource):
     """
-    Single node debug - Polling API for trigger events
+    Single node debug - Polling API for trigger message_events
     Path: /apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger/run
     """
 
     @console_ns.doc("poll_draft_workflow_trigger_node")
-    @console_ns.doc(description="Poll for trigger events and execute single node when event arrives")
+    @console_ns.doc(description="Poll for trigger message_events and execute single node when event arrives")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.response(200, "Trigger event received and node executed successfully")
     @console_ns.response(403, "Permission denied")
@@ -1212,7 +1212,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
-        Poll for trigger events and execute single node when event arrives
+        Poll for trigger message_events and execute single node when event arrives
         """
         current_user, _ = current_account_with_tenant()
 
@@ -1274,7 +1274,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run-all")
 class DraftWorkflowTriggerRunAllApi(Resource):
     """
-    Full workflow debug - Polling API for trigger events
+    Full workflow debug - Polling API for trigger message_events
     Path: /apps/<uuid:app_id>/workflows/draft/trigger/run-all
     """
 

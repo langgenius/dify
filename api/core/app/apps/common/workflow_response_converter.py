@@ -94,7 +94,7 @@ CreatedByDict = AccountCreatedByDict | EndUserCreatedByDict
 
 @dataclass(slots=True)
 class _NodeSnapshot:
-    """In-memory cache for node metadata between start and completion events."""
+    """In-memory cache for node metadata between start and completion message_events."""
 
     title: str
     index: int
@@ -147,11 +147,11 @@ class WorkflowResponseConverter:
         return dict(handled or {})
 
     def _ensure_workflow_run_id(self, workflow_run_id: str | None = None) -> str:
-        """Return the memoized workflow run id, optionally seeding it during start events."""
+        """Return the memoized workflow run id, optionally seeding it during start message_events."""
         if workflow_run_id is not None:
             self._workflow_execution_id = workflow_run_id
         if not self._workflow_execution_id:
-            raise ValueError("workflow_run_id missing before streaming workflow events")
+            raise ValueError("workflow_run_id missing before streaming workflow message_events")
         return self._workflow_execution_id
 
     # ------------------------------------------------------------------

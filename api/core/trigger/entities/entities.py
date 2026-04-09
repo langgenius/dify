@@ -149,7 +149,7 @@ class TriggerProviderEntity(BaseModel):
         default=None,
         description="The subscription constructor of the trigger provider",
     )
-    events: list[EventEntity] = Field(default_factory=list, description="The events of the trigger provider")
+    events: list[EventEntity] = Field(default_factory=list, description="The message_events of the trigger provider")
 
 
 class Subscription(BaseModel):
@@ -163,7 +163,7 @@ class Subscription(BaseModel):
         ..., description="The timestamp when the subscription will expire, this for refresh the subscription"
     )
 
-    endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving events")
+    endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving message_events")
     parameters: Mapping[str, Any] = Field(
         default_factory=dict, description="The parameters of the subscription constructor"
     )

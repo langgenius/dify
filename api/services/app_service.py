@@ -15,7 +15,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_was_created, app_was_deleted, app_was_updated
+from message_events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user

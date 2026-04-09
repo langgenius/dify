@@ -30,9 +30,9 @@ from grpc.experimental import gevent as grpc_gevent  # type: ignore
 def post_patch(event):
     # this function is only called for gevent worker.
     # from gevent docs (https://www.gevent.org/api/gevent.monkey.html):
-    # You can also subscribe to the events to provide additional patching beyond what gevent distributes, either for
-    # additional standard library modules, or for third-party packages. The suggested time to do this patching is in
-    # the subscriber for gevent.events.GeventDidPatchBuiltinModulesEvent.
+    # You can also subscribe to the message_events to provide additional patching beyond what gevent distributes, either
+    # for additional standard library modules, or for third-party packages. The suggested time to do this patching is in
+    # the subscriber for gevent.message_events.GeventDidPatchBuiltinModulesEvent.
     if not isinstance(event, gevent_events.GeventDidPatchBuiltinModulesEvent):
         return
     # grpc gevent

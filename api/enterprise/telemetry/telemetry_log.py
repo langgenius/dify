@@ -1,4 +1,4 @@
-"""Structured-log emitter for enterprise telemetry events.
+"""Structured-log emitter for enterprise telemetry message_events.
 
 Emits structured JSON log lines correlated with OTEL traces via trace_id.
 Picked up by ``StructuredJSONFormatter`` → stdout/Loki/Elastic.
@@ -68,7 +68,7 @@ def emit_telemetry_log(
     attributes:
         All event-specific attributes (already built by the caller).
     signal:
-        ``"metric_only"`` for events with no span, ``"span_detail"``
+        ``"metric_only"`` for message_events with no span, ``"span_detail"``
         for detail logs accompanying a slim span.
     trace_id_source:
         A UUID string (e.g. ``workflow_run_id``) used to derive a 32-hex

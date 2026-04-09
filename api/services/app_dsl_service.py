@@ -33,7 +33,7 @@ from core.trigger.constants import (
 )
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
-from events.app_event import app_model_config_was_updated, app_was_created
+from message_events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now

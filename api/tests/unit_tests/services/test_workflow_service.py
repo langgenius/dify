@@ -649,7 +649,7 @@ class TestWorkflowService:
 
         Workflows can be either:
         - User-initiated (with START node): User provides input to start execution
-        - Event-driven (with trigger nodes): External events trigger execution
+        - Event-driven (with trigger nodes): External message_events trigger execution
 
         These two patterns cannot be mixed in a single workflow.
         """

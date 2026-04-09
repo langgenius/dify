@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from sqlalchemy import delete, select
 
-from events.app_event import app_model_config_was_updated
+from message_events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import AppModelConfig

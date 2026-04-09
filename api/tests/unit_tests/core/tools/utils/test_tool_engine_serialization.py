@@ -402,7 +402,7 @@ class TestEndToEndSerialization:
                 "session_count": 42,
                 "total_time": Decimal("123.45"),
                 "metrics": np.array([1.1, 2.2, 3.3, 4.4, 5.5]),
-                "events": [
+                "message_events": [
                     {
                         "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=pytz.UTC),
                         "action": "login",

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 
-from events.app_event import app_was_created, app_was_deleted, app_was_updated
+from message_events.app_event import app_was_created, app_was_deleted, app_was_updated
 
 logger = logging.getLogger(__name__)
 

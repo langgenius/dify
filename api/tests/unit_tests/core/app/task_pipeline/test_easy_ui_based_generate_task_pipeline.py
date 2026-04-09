@@ -154,7 +154,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
 
     def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, mock_task_state):
-        """Test handling of LLM chunk events with text content."""
+        """Test handling of LLM chunk message_events with text content."""
         # Setup
         chunk = Mock()
         chunk.delta.message.content = "Hello, world!"
@@ -180,7 +180,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         assert mock_task_state.llm_result.message.content == "Hello, world!"
 
     def test_llm_chunk_event_with_list_content(self, pipeline, mock_message_cycle_manager, mock_task_state):
-        """Test handling of LLM chunk events with list content."""
+        """Test handling of LLM chunk message_events with list content."""
         # Setup
         text_content = Mock(spec=TextPromptMessageContent)
         text_content.data = "Hello"
@@ -209,7 +209,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         assert mock_task_state.llm_result.message.content == "Hello world!"
 
     def test_agent_message_event(self, pipeline, mock_message_cycle_manager, mock_task_state):
-        """Test handling of agent message events."""
+        """Test handling of agent message message_events."""
         # Setup
         chunk = Mock()
         chunk.delta.message.content = "Agent response"
@@ -235,7 +235,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         )
 
     def test_message_end_event(self, pipeline, mock_message_cycle_manager, mock_task_state):
-        """Test handling of message end events."""
+        """Test handling of message end message_events."""
         # Setup
         llm_result = Mock(spec=RuntimeLLMResult)
         llm_result.message = Mock()
@@ -265,7 +265,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._message_end_to_stream_response.assert_called_once()
 
     def test_error_event(self, pipeline):
-        """Test handling of error events."""
+        """Test handling of error message_events."""
         # Setup
         error_event = Mock(spec=QueueErrorEvent)
         error_event.error = Exception("Test error")
@@ -290,7 +290,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.error_to_stream_response.assert_called_once()
 
     def test_ping_event(self, pipeline):
-        """Test handling of ping events."""
+        """Test handling of ping message_events."""
         # Setup
         ping_event = Mock(spec=QueuePingEvent)
 
@@ -308,7 +308,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.ping_stream_response.assert_called_once()
 
     def test_file_event(self, pipeline, mock_message_cycle_manager):
-        """Test handling of file events."""
+        """Test handling of file message_events."""
         # Setup
         file_event = Mock(spec=QueueMessageFileEvent)
         file_event.message_file_id = "file-id"
@@ -375,7 +375,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._save_message.assert_called_once_with(session=ANY, trace_manager=trace_manager)
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, mock_task_state):
-        """Test handling multiple events in sequence."""
+        """Test handling multiple message_events in sequence."""
         # Setup
         chunk1 = Mock()
         chunk1.delta.message.content = "Hello"

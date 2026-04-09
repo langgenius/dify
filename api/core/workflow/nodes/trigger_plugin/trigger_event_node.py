@@ -41,7 +41,7 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
         """
         Run the plugin trigger node.
 
-        This node invokes the trigger to convert request data into events
+        This node invokes the trigger to convert request data into message_events
         and makes them available to downstream nodes.
         """
 

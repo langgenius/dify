@@ -33,7 +33,7 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = None
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
+        with app.test_request_context("/workflow/run-1/message_events"):
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
@@ -52,7 +52,7 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
+        with app.test_request_context("/workflow/run-1/message_events"):
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
@@ -73,7 +73,7 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
+        with app.test_request_context("/workflow/run-1/message_events"):
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
@@ -92,7 +92,7 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
+        with app.test_request_context("/workflow/run-1/message_events"):
             with pytest.raises(NotFoundError):
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
@@ -121,7 +121,7 @@ class TestWorkflowEventsApi:
         finish_response.event.value = "workflow_finished"
         mock_converter.workflow_run_result_to_finish_response.return_value = finish_response
 
-        with app.test_request_context("/workflow/run-1/events"):
+        with app.test_request_context("/workflow/run-1/message_events"):
             response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
         assert response.mimetype == "text/event-stream"

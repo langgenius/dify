@@ -9,7 +9,7 @@ class SentryConfig(BaseSettings):
 
     SENTRY_DSN: str | None = Field(
         description="Sentry Data Source Name (DSN)."
-        " This is the unique identifier of your Sentry project, used to send events to the correct project.",
+        " This is the unique identifier of your Sentry project, used to send message_events to the correct project.",
         default=None,
     )
 

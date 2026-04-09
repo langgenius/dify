@@ -1,6 +1,6 @@
 """Telemetry gateway — single routing layer for all editions.
 
-Maps ``TelemetryCase`` → ``CaseRoute`` and dispatches events to either
+Maps ``TelemetryCase`` → ``CaseRoute`` and dispatches message_events to either
 the CE/EE trace pipeline (``TraceQueueManager``) or the enterprise-only
 metric/log Celery queue.
 
@@ -156,11 +156,11 @@ def emit(
 ) -> None:
     """Route a telemetry event to the correct pipeline.
 
-    TRACE events are enqueued into ``TraceQueueManager`` (works in both CE
+    TRACE message_events are enqueued into ``TraceQueueManager`` (works in both CE
     and EE).  Enterprise-only traces are silently dropped when EE is
     disabled.
 
-    METRIC_LOG events are dispatched to the enterprise Celery queue;
+    METRIC_LOG message_events are dispatched to the enterprise Celery queue;
     silently dropped when enterprise telemetry is unavailable.
     """
     route = _get_case_routing().get(case)

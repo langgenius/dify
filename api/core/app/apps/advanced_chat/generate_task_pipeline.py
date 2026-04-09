@@ -337,11 +337,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             raise ValueError("workflow run not initialized.")
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
-        """Handle ping events."""
+        """Handle ping message_events."""
         yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
-        """Handle error events."""
+        """Handle error message_events."""
         with self._database_session() as session:
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline.error_to_stream_response(err)
@@ -351,7 +351,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueWorkflowStartedEvent,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle workflow started events."""
+        """Handle workflow started message_events."""
         runtime_state = self._resolve_graph_runtime_state()
         run_id = self._extract_workflow_run_id(runtime_state)
         self._workflow_run_id = run_id
@@ -373,7 +373,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         yield workflow_start_resp
 
     def _handle_node_retry_event(self, event: QueueNodeRetryEvent, **kwargs) -> Generator[StreamResponse, None, None]:
-        """Handle node retry events."""
+        """Handle node retry message_events."""
         self._ensure_workflow_initialized()
 
         node_retry_resp = self._workflow_response_converter.workflow_node_retry_to_stream_response(
@@ -387,7 +387,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_node_started_event(
         self, event: QueueNodeStartedEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle node started events."""
+        """Handle node started message_events."""
         self._ensure_workflow_initialized()
 
         node_start_resp = self._workflow_response_converter.workflow_node_start_to_stream_response(
@@ -401,7 +401,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_node_succeeded_event(
         self, event: QueueNodeSucceededEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle node succeeded events."""
+        """Handle node succeeded message_events."""
         # Record files if it's an answer node or end node
         if event.node_type in [BuiltinNodeTypes.ANSWER, BuiltinNodeTypes.END, BuiltinNodeTypes.LLM]:
             self._recorded_files.extend(
@@ -423,7 +423,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle various node failure events."""
+        """Handle various node failure message_events."""
         node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
@@ -443,7 +443,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle text chunk events."""
+        """Handle text chunk message_events."""
         delta_text = event.text
         if delta_text is None:
             return
@@ -473,7 +473,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_iteration_start_event(
         self, event: QueueIterationStartEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle iteration start events."""
+        """Handle iteration start message_events."""
         self._ensure_workflow_initialized()
 
         iter_start_resp = self._workflow_response_converter.workflow_iteration_start_to_stream_response(
@@ -486,7 +486,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_iteration_next_event(
         self, event: QueueIterationNextEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle iteration next events."""
+        """Handle iteration next message_events."""
         self._ensure_workflow_initialized()
 
         iter_next_resp = self._workflow_response_converter.workflow_iteration_next_to_stream_response(
@@ -499,7 +499,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_iteration_completed_event(
         self, event: QueueIterationCompletedEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle iteration completed events."""
+        """Handle iteration completed message_events."""
         self._ensure_workflow_initialized()
 
         iter_finish_resp = self._workflow_response_converter.workflow_iteration_completed_to_stream_response(
@@ -510,7 +510,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         yield iter_finish_resp
 
     def _handle_loop_start_event(self, event: QueueLoopStartEvent, **kwargs) -> Generator[StreamResponse, None, None]:
-        """Handle loop start events."""
+        """Handle loop start message_events."""
         self._ensure_workflow_initialized()
 
         loop_start_resp = self._workflow_response_converter.workflow_loop_start_to_stream_response(
@@ -521,7 +521,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         yield loop_start_resp
 
     def _handle_loop_next_event(self, event: QueueLoopNextEvent, **kwargs) -> Generator[StreamResponse, None, None]:
-        """Handle loop next events."""
+        """Handle loop next message_events."""
         self._ensure_workflow_initialized()
 
         loop_next_resp = self._workflow_response_converter.workflow_loop_next_to_stream_response(
@@ -534,7 +534,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_loop_completed_event(
         self, event: QueueLoopCompletedEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle loop completed events."""
+        """Handle loop completed message_events."""
         self._ensure_workflow_initialized()
 
         loop_finish_resp = self._workflow_response_converter.workflow_loop_completed_to_stream_response(
@@ -551,7 +551,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle workflow succeeded events."""
+        """Handle workflow succeeded message_events."""
         _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
@@ -574,7 +574,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle workflow partial success events."""
+        """Handle workflow partial success message_events."""
         _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
@@ -596,7 +596,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueWorkflowPausedEvent,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle workflow paused events."""
+        """Handle workflow paused message_events."""
         validated_state = self._ensure_graph_runtime_initialized()
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
@@ -628,7 +628,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle workflow failed events."""
+        """Handle workflow failed message_events."""
         _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
@@ -657,7 +657,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle stop events."""
+        """Handle stop message_events."""
         _ = trace_manager
         resolved_state = None
         if self._workflow_run_id:
@@ -695,7 +695,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         graph_runtime_state: GraphRuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle advanced chat message end events."""
+        """Handle advanced chat message end message_events."""
         resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
 
         output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
@@ -718,27 +718,27 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_retriever_resources_event(
         self, event: QueueRetrieverResourcesEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle retriever resources events."""
+        """Handle retriever resources message_events."""
         self._message_cycle_manager.handle_retriever_resources(event)
         yield from ()
 
     def _handle_annotation_reply_event(
         self, event: QueueAnnotationReplyEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle annotation reply events."""
+        """Handle annotation reply message_events."""
         self._message_cycle_manager.handle_annotation_reply(event)
         yield from ()
 
     def _handle_message_replace_event(
         self, event: QueueMessageReplaceEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle message replace events."""
+        """Handle message replace message_events."""
         yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text, reason=event.reason)
 
     def _handle_human_input_form_filled_event(
         self, event: QueueHumanInputFormFilledEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle human input form filled events."""
+        """Handle human input form filled message_events."""
         self._persist_human_input_extra_content(node_id=event.node_id)
         yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
@@ -747,7 +747,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_human_input_form_timeout_event(
         self, event: QueueHumanInputFormTimeoutEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle human input form timeout events."""
+        """Handle human input form timeout message_events."""
         yield self._workflow_response_converter.human_input_form_timeout_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
         )
@@ -795,7 +795,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return form.id
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
-        """Handle agent log events."""
+        """Handle agent log message_events."""
         yield self._workflow_response_converter.handle_agent_log(
             task_id=self._application_generate_entity.task_id, event=event
         )
@@ -803,31 +803,31 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _get_event_handlers(self) -> dict[type, Callable]:
         """Get mapping of event types to their handlers using fluent pattern."""
         return {
-            # Basic events
+            # Basic message_events
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
-            # Workflow events
+            # Workflow message_events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
             QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
             QueueWorkflowFailedEvent: self._handle_workflow_failed_event,
-            # Node events
+            # Node message_events
             QueueNodeRetryEvent: self._handle_node_retry_event,
             QueueNodeStartedEvent: self._handle_node_started_event,
             QueueNodeSucceededEvent: self._handle_node_succeeded_event,
-            # Iteration events
+            # Iteration message_events
             QueueIterationStartEvent: self._handle_iteration_start_event,
             QueueIterationNextEvent: self._handle_iteration_next_event,
             QueueIterationCompletedEvent: self._handle_iteration_completed_event,
-            # Loop events
+            # Loop message_events
             QueueLoopStartEvent: self._handle_loop_start_event,
             QueueLoopNextEvent: self._handle_loop_next_event,
             QueueLoopCompletedEvent: self._handle_loop_completed_event,
-            # Control events
+            # Control message_events
             QueueStopEvent: self._handle_stop_event,
-            # Message events
+            # Message message_events
             QueueRetrieverResourcesEvent: self._handle_retriever_resources_event,
             QueueAnnotationReplyEvent: self._handle_annotation_reply_event,
             QueueMessageReplaceEvent: self._handle_message_replace_event,
@@ -845,7 +845,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         trace_manager: TraceQueueManager | None = None,
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
     ) -> Generator[StreamResponse, None, None]:
-        """Dispatch events using elegant pattern matching."""
+        """Dispatch message_events using elegant pattern matching."""
         handlers = self._get_event_handlers()
         event_type = type(event)
 
@@ -859,7 +859,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             )
             return
 
-        # Handle node failure events with isinstance check
+        # Handle node failure message_events with isinstance check
         if isinstance(
             event,
             (
@@ -875,7 +875,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             )
             return
 
-        # For unhandled events, we continue (original behavior)
+        # For unhandled message_events, we continue (original behavior)
         return
 
     def _process_stream_response(
@@ -918,7 +918,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     yield from self._handle_stop_event(event, graph_runtime_state=None, trace_manager=trace_manager)
                     break
 
-                # Handle all other events through elegant dispatch
+                # Handle all other message_events through elegant dispatch
                 case _:
                     if responses := list(
                         self._dispatch_event(

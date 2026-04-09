@@ -127,7 +127,7 @@ def _patch_get_channel_pubsub(monkeypatch):
 
 
 def _publish_events(app_mode: AppMode, run_id: str, events: list[dict]):
-    # Publish events to the same topic used by MessageGenerator
+    # Publish message_events to the same topic used by MessageGenerator
     topic = MessageGenerator.get_response_topic(app_mode, run_id)
     for ev in events:
         topic.publish(json.dumps(ev).encode())
@@ -138,7 +138,7 @@ def test_streams_full_flow_prepublish_and_replay():
     app_mode = AppMode.WORKFLOW
     run_id = str(uuid.uuid4())
 
-    # Build start_task that publishes two events immediately
+    # Build start_task that publishes two message_events immediately
     events = [{"event": "workflow_started"}, {"event": "workflow_finished"}]
 
     def start_task():
@@ -152,7 +152,7 @@ def test_streams_full_flow_prepublish_and_replay():
     received = []
     for msg in gen:
         if isinstance(msg, str):
-            # skip ping events
+            # skip ping message_events
             continue
         received.append(msg)
         if msg.get("event") == "workflow_finished":
@@ -172,7 +172,7 @@ def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch):
     published_order: list[str] = []
 
     def start_task():
-        # When called (on subscribe), publish both events
+        # When called (on subscribe), publish both message_events
         events = [{"event": "workflow_started"}, {"event": "workflow_finished"}]
         _publish_events(app_mode, run_id, events)
         published_order.extend([e["event"] for e in events])
