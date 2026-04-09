@@ -22,7 +22,7 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
       snippet={snippet}
       section="evaluation"
     >
-      <Evaluation resourceType="snippet" resourceId={snippetId} />
+      <Evaluation resourceType="snippets" resourceId={snippetId} />
     </SnippetLayout>
   )
 }

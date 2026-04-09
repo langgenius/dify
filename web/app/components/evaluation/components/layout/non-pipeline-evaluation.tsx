@@ -1,13 +1,13 @@
 'use client'
 
-import type { EvaluationResourceProps } from '../types'
+import type { EvaluationResourceProps } from '../../types'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import BatchTestPanel from './batch-test-panel'
-import ConditionsSection from './conditions-section'
-import JudgeModelSelector from './judge-model-selector'
-import MetricSection from './metric-section'
-import SectionHeader, { InlineSectionHeader } from './section-header'
+import BatchTestPanel from '../batch-test-panel'
+import ConditionsSection from '../conditions-section'
+import JudgeModelSelector from '../judge-model-selector'
+import MetricSection from '../metric-section'
+import SectionHeader, { InlineSectionHeader } from '../section-header'
 
 const NonPipelineEvaluation = ({
   resourceType,

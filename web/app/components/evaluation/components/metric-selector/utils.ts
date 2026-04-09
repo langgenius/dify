@@ -2,8 +2,8 @@ import type { MetricOption } from '../../types'
 import type { MetricVisualTone } from './types'
 import type { EvaluationTargetType, NodeInfo } from '@/types/evaluation'
 
-export const toEvaluationTargetType = (resourceType: 'workflow' | 'snippet'): EvaluationTargetType => {
-  return resourceType === 'snippet' ? 'snippets' : 'app'
+export const toEvaluationTargetType = (resourceType: 'apps' | 'snippets'): EvaluationTargetType => {
+  return resourceType === 'snippets' ? 'snippets' : 'app'
 }
 
 const humanizeMetricId = (metricId: string) => {

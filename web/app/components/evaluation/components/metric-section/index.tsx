@@ -21,7 +21,7 @@ const MetricSection = ({
   const [nodeInfoMap, setNodeInfoMap] = useState<Record<string, NodeInfo[]>>({})
   const hasMetrics = resource.metrics.length > 0
   const hasBuiltinMetrics = resource.metrics.some(metric => metric.kind === 'builtin')
-  const shouldLoadNodeInfo = resourceType !== 'pipeline' && !!resourceId && hasBuiltinMetrics
+  const shouldLoadNodeInfo = resourceType !== 'datasets' && !!resourceId && hasBuiltinMetrics
   const { data: availableMetricsData } = useAvailableEvaluationMetrics(shouldLoadNodeInfo)
   const { mutate: loadNodeInfo } = useEvaluationNodeInfoMutation()
   const availableMetricIds = useMemo(() => availableMetricsData?.metrics ?? [], [availableMetricsData?.metrics])

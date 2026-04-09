@@ -1,6 +1,6 @@
 import type { NodeInfo } from '@/types/evaluation'
 
-export type EvaluationResourceType = 'workflow' | 'pipeline' | 'snippet'
+export type EvaluationResourceType = 'apps' | 'datasets' | 'snippets'
 
 export type EvaluationResourceProps = {
   resourceType: EvaluationResourceType

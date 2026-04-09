@@ -5,7 +5,7 @@ const Page = async (props: {
 }) => {
   const { datasetId } = await props.params
 
-  return <Evaluation resourceType="pipeline" resourceId={datasetId} />
+  return <Evaluation resourceType="datasets" resourceId={datasetId} />
 }
 
 export default Page

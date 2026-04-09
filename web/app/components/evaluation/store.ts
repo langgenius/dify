@@ -3,13 +3,14 @@ import type {
   EvaluationResourceState,
   EvaluationResourceType,
 } from './types'
-import type { NodeInfo } from '@/types/evaluation'
+import type { EvaluationConfig, NodeInfo } from '@/types/evaluation'
 import { create } from 'zustand'
 import { getDefaultOperator, getEvaluationMockConfig } from './mock'
 import {
   buildConditionItem,
   buildInitialState,
   buildResourceKey,
+  buildStateFromEvaluationConfig,
   createBatchTestRecord,
   createBuiltinMetric,
   createConditionGroup,
@@ -28,6 +29,7 @@ import {
 type EvaluationStore = {
   resources: Record<string, EvaluationResourceState>
   ensureResource: (resourceType: EvaluationResourceType, resourceId: string) => void
+  hydrateResource: (resourceType: EvaluationResourceType, resourceId: string, config: EvaluationConfig) => void
   setJudgeModel: (resourceType: EvaluationResourceType, resourceId: string, judgeModelId: string) => void
   addBuiltinMetric: (resourceType: EvaluationResourceType, resourceId: string, optionId: string, nodeInfoList?: NodeInfo[]) => void
   addCustomMetric: (resourceType: EvaluationResourceType, resourceId: string) => void
@@ -79,6 +81,19 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       resources: {
         ...state.resources,
         [resourceKey]: buildInitialState(resourceType),
+      },
+    }))
+  },
+  hydrateResource: (resourceType, resourceId, config) => {
+    set(state => ({
+      resources: {
+        ...state.resources,
+        [buildResourceKey(resourceType, resourceId)]: {
+          ...buildStateFromEvaluationConfig(resourceType, config),
+          activeBatchTab: state.resources[buildResourceKey(resourceType, resourceId)]?.activeBatchTab ?? 'input-fields',
+          uploadedFileName: state.resources[buildResourceKey(resourceType, resourceId)]?.uploadedFileName ?? null,
+          batchRecords: state.resources[buildResourceKey(resourceType, resourceId)]?.batchRecords ?? [],
+        },
       },
     }))
   },

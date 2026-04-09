@@ -5,7 +5,7 @@ const Page = async (props: {
 }) => {
   const { appId } = await props.params
 
-  return <Evaluation resourceType="workflow" resourceId={appId} />
+  return <Evaluation resourceType="apps" resourceId={appId} />
 }
 
 export default Page

@@ -4,6 +4,7 @@ import { getEvaluationMockConfig } from '../mock'
 import { useEvaluationStore } from '../store'
 
 const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
+const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
 const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -38,6 +39,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/service/use-evaluation', () => ({
+  useEvaluationConfig: (...args: unknown[]) => mockUseEvaluationConfig(...args),
   useAvailableEvaluationMetrics: (...args: unknown[]) => mockUseAvailableEvaluationMetrics(...args),
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
 }))
@@ -46,6 +48,9 @@ describe('Evaluation', () => {
   beforeEach(() => {
     useEvaluationStore.setState({ resources: {} })
     vi.clearAllMocks()
+    mockUseEvaluationConfig.mockReturnValue({
+      data: null,
+    })
 
     mockUseAvailableEvaluationMetrics.mockReturnValue({
       data: {
@@ -72,7 +77,7 @@ describe('Evaluation', () => {
   it('should search, select metric nodes, and create a batch history record', async () => {
     vi.useFakeTimers()
 
-    render(<Evaluation resourceType="workflow" resourceId="app-1" />)
+    render(<Evaluation resourceType="apps" resourceId="app-1" />)
 
     expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('openai:gpt-4o-mini')
 
@@ -113,7 +118,7 @@ describe('Evaluation', () => {
   })
 
   it('should render time placeholders and hide the value row for empty operators', () => {
-    const resourceType = 'workflow'
+    const resourceType = 'apps'
     const resourceId = 'app-2'
     const store = useEvaluationStore.getState()
     const config = getEvaluationMockConfig(resourceType)
@@ -126,7 +131,7 @@ describe('Evaluation', () => {
       store.ensureResource(resourceType, resourceId)
       store.setJudgeModel(resourceType, resourceId, 'openai::gpt-4o-mini')
 
-      const group = useEvaluationStore.getState().resources['workflow:app-2'].conditions[0]
+      const group = useEvaluationStore.getState().resources['apps:app-2'].conditions[0]
       groupId = group.id
       itemId = group.items[0].id
 
@@ -166,7 +171,7 @@ describe('Evaluation', () => {
       },
     })
 
-    render(<Evaluation resourceType="workflow" resourceId="app-3" />)
+    render(<Evaluation resourceType="apps" resourceId="app-3" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
 
@@ -181,7 +186,7 @@ describe('Evaluation', () => {
       isLoading: false,
     })
 
-    render(<Evaluation resourceType="workflow" resourceId="app-4" />)
+    render(<Evaluation resourceType="apps" resourceId="app-4" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
 
@@ -210,7 +215,7 @@ describe('Evaluation', () => {
       },
     })
 
-    render(<Evaluation resourceType="workflow" resourceId="app-5" />)
+    render(<Evaluation resourceType="apps" resourceId="app-5" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
 
@@ -224,7 +229,7 @@ describe('Evaluation', () => {
   })
 
   it('should render the pipeline-specific layout without auto-selecting a judge model', () => {
-    render(<Evaluation resourceType="pipeline" resourceId="dataset-1" />)
+    render(<Evaluation resourceType="datasets" resourceId="dataset-1" />)
 
     expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('empty')
     expect(screen.getByText('evaluation.history.title')).toBeInTheDocument()
@@ -236,7 +241,7 @@ describe('Evaluation', () => {
   })
 
   it('should enable pipeline batch actions after selecting a judge model and metric', () => {
-    render(<Evaluation resourceType="pipeline" resourceId="dataset-2" />)
+    render(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'select-model' }))
     fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))

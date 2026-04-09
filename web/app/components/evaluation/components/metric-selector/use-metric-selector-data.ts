@@ -13,7 +13,7 @@ import {
 type UseMetricSelectorDataOptions = {
   open: boolean
   query: string
-  resourceType: 'workflow' | 'pipeline' | 'snippet'
+  resourceType: 'apps' | 'datasets' | 'snippets'
   resourceId: string
   nodeInfoMap: Record<string, NodeInfo[]>
   setNodeInfoMap: (value: Record<string, NodeInfo[]>) => void
@@ -63,7 +63,7 @@ export const useMetricSelectorData = ({
     if (!open)
       return
 
-    if (resourceType === 'pipeline' || !resourceId || availableMetricIds.length === 0)
+    if (resourceType === 'datasets' || !resourceId || availableMetricIds.length === 0)
       return
 
     let isActive = true
@@ -107,7 +107,7 @@ export const useMetricSelectorData = ({
         || metric.label.toLowerCase().includes(keyword)
         || metric.description.toLowerCase().includes(keyword)
       const metricNodes = nodeInfoMap[metric.id] ?? []
-      const supportsNodeSelection = resourceType !== 'pipeline'
+      const supportsNodeSelection = resourceType !== 'datasets'
       const hasNoNodeInfo = supportsNodeSelection && metricNodes.length === 0
 
       if (hasNoNodeInfo) {

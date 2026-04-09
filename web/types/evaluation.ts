@@ -1,10 +1,38 @@
 export type EvaluationTargetType = 'app' | 'snippets'
 
+export type EvaluationMetricsConfig = {
+  default_metrics?: EvaluationDefaultMetric[]
+  customized_metrics?: EvaluationCustomizedMetric | null
+}
+
+export type EvaluationConditionValue = string | number | boolean | null
+
+export type EvaluationJudgementConditionItem = {
+  id?: string
+  fieldId?: string
+  field_id?: string
+  operator?: string
+  value?: EvaluationConditionValue
+}
+
+export type EvaluationJudgementConditionGroup = {
+  id?: string
+  logicalOperator?: 'and' | 'or'
+  logical_operator?: 'and' | 'or'
+  items?: EvaluationJudgementConditionItem[]
+}
+
+export type EvaluationJudgementConditions
+  = | EvaluationJudgementConditionGroup[]
+    | {
+      groups?: EvaluationJudgementConditionGroup[]
+    }
+
 export type EvaluationConfig = {
   evaluation_model: string | null
   evaluation_model_provider: string | null
-  metrics_config: Record<string, unknown> | null
-  judgement_conditions: Record<string, unknown> | null
+  metrics_config: EvaluationMetricsConfig | null
+  judgement_conditions: EvaluationJudgementConditions | null
 }
 
 export type NodeInfo = {
@@ -20,8 +48,8 @@ export type EvaluationDefaultMetric = {
 
 export type EvaluationCustomizedMetric = {
   evaluation_workflow_id?: string
-  input_fields?: Record<string, unknown>
-  output_fields?: Record<string, unknown>[]
+  input_fields?: Record<string, string | null | undefined>
+  output_fields?: Array<Record<string, string | null | undefined>>
 }
 
 export type EvaluationConfigData = {
@@ -29,7 +57,7 @@ export type EvaluationConfigData = {
   evaluation_model_provider?: string
   default_metrics?: EvaluationDefaultMetric[]
   customized_metrics?: EvaluationCustomizedMetric | null
-  judgment_config?: Record<string, unknown> | null
+  judgment_config?: EvaluationJudgementConditions | null
 }
 
 export type EvaluationRunRequest = EvaluationConfigData & {

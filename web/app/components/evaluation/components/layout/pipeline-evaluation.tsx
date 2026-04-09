@@ -1,6 +1,6 @@
 'use client'
 
-import type { EvaluationResourceProps, MetricOption } from '../types'
+import type { EvaluationResourceProps, MetricOption } from '../../types'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -11,10 +11,10 @@ import { toast } from '@/app/components/base/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
-import { getEvaluationMockConfig } from '../mock'
-import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../store'
-import JudgeModelSelector from './judge-model-selector'
-import SectionHeader, { InlineSectionHeader } from './section-header'
+import { getEvaluationMockConfig } from '../../mock'
+import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
+import JudgeModelSelector from '../judge-model-selector'
+import SectionHeader, { InlineSectionHeader } from '../section-header'
 
 type PipelineMetricItemProps = {
   metric: MetricOption

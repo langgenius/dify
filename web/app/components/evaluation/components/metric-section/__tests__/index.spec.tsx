@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import MetricSection from '..'
 import { useEvaluationStore } from '../../../store'
 
@@ -13,7 +13,7 @@ vi.mock('@/service/use-evaluation', () => ({
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
 }))
 
-const resourceType = 'workflow' as const
+const resourceType = 'apps' as const
 const resourceId = 'metric-section-resource'
 
 const renderMetricSection = () => {

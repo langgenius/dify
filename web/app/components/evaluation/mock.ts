@@ -160,7 +160,7 @@ export const getDefaultOperator = (fieldType: EvaluationFieldOption['type']): Co
 }
 
 export const getEvaluationMockConfig = (resourceType: EvaluationResourceType): EvaluationMockConfig => {
-  if (resourceType === 'pipeline') {
+  if (resourceType === 'datasets') {
     return {
       judgeModels,
       builtinMetrics: pipelineBuiltinMetrics,
@@ -176,7 +176,7 @@ export const getEvaluationMockConfig = (resourceType: EvaluationResourceType): E
     }
   }
 
-  if (resourceType === 'snippet') {
+  if (resourceType === 'snippets') {
     return {
       judgeModels,
       builtinMetrics,
