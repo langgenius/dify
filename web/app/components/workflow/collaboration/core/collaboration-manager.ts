@@ -20,7 +20,7 @@ import type {
 } from '../types/collaboration'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt/base64'
+import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
 import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
 import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
