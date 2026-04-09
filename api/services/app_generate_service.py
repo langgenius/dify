@@ -165,10 +165,11 @@ class AppGenerateService:
 
                         on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                         generator = AdvancedChatAppGenerator()
+                        subscribe_mode = AppMode.value_of(app_model.mode)
                         return rate_limit.generate(
                             generator.convert_to_event_stream(
                                 generator.retrieve_events(
-                                    AppMode.AGENT,
+                                    subscribe_mode,
                                     payload.workflow_run_id,
                                     on_subscribe=on_subscribe,
                                 ),

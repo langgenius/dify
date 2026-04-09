@@ -183,7 +183,13 @@ class _AppRunner:
         pause_state_config: PauseStateLayerConfig,
     ):
         exec_params = self._exec_params
-        if exec_params.app_mode in {AppMode.ADVANCED_CHAT, AppMode.AGENT}:
+        if exec_params.app_mode in {
+            AppMode.ADVANCED_CHAT,
+            AppMode.AGENT,
+            AppMode.CHAT,
+            AppMode.AGENT_CHAT,
+            AppMode.COMPLETION,
+        }:
             return AdvancedChatAppGenerator().generate(
                 app_model=app,
                 workflow=workflow,
