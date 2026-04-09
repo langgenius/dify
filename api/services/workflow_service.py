@@ -362,6 +362,7 @@ class WorkflowService:
 
         # commit db session changes
         db.session.commit()
+
     def restore_published_workflow_to_draft(
         self,
         *,

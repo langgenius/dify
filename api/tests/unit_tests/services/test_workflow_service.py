@@ -10,10 +10,9 @@ This test suite covers:
 """
 
 import json
-from unittest.mock import ANY, MagicMock, Mock, patch
 import uuid
 from typing import Any, cast
-
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from graphon.entities import WorkflowNodeExecution
