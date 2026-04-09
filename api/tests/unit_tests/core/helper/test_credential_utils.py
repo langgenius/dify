@@ -115,8 +115,8 @@ def test_is_credential_exists_by_type(
     expected: bool,
 ) -> None:
     mocker.patch("extensions.ext_database.db", new=SimpleNamespace(engine=object()))
-    session_cls = mocker.patch("sqlalchemy.orm.Session")
-    session = session_cls.return_value.__enter__.return_value
+    mock_sessionmaker = mocker.patch("sqlalchemy.orm.sessionmaker")
+    session = mock_sessionmaker.return_value.begin.return_value.__enter__.return_value
     session.scalar.return_value = scalar_result
 
     result = is_credential_exists("cred-1", credential_type)
@@ -129,8 +129,8 @@ def test_is_credential_exists_returns_false_for_unknown_type(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch("extensions.ext_database.db", new=SimpleNamespace(engine=object()))
-    session_cls = mocker.patch("sqlalchemy.orm.Session")
-    session = session_cls.return_value.__enter__.return_value
+    mock_sessionmaker = mocker.patch("sqlalchemy.orm.sessionmaker")
+    session = mock_sessionmaker.return_value.begin.return_value.__enter__.return_value
 
     result = is_credential_exists("cred-1", cast(PluginCredentialType, "unknown"))
 

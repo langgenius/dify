@@ -269,12 +269,12 @@ class TestRetrievalServiceInternals:
 
         assert results == []
 
-    @patch("core.rag.datasource.retrieval_service.Session")
-    def test_get_dataset_queries_by_id(self, mock_session_class):
+    @patch("core.rag.datasource.retrieval_service.sessionmaker")
+    def test_get_dataset_queries_by_id(self, mock_sessionmaker):
         expected_dataset = Mock(spec=Dataset)
         mock_session = Mock()
         mock_session.scalar.return_value = expected_dataset
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
         with patch.object(retrieval_service_module, "db", SimpleNamespace(engine=Mock())):
             result = RetrievalService._get_dataset("dataset-123")

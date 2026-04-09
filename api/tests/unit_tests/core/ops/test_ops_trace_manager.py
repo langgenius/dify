@@ -230,6 +230,24 @@ def patch_timer_and_current_app(monkeypatch):
 def patch_sqlalchemy_session(monkeypatch):
     monkeypatch.setattr("core.ops.ops_trace_manager.Session", DummySessionContext)
 
+    def _fake_sessionmaker(*args, **kwargs):
+        ctx = DummySessionContext(args[0] if args else None)
+
+        class _BeginContext:
+            def __enter__(self_ctx):
+                return ctx
+
+            def __exit__(self_ctx, *a):
+                return False
+
+        class _Factory:
+            def begin(self_factory):
+                return _BeginContext()
+
+        return _Factory()
+
+    monkeypatch.setattr("core.ops.ops_trace_manager.sessionmaker", _fake_sessionmaker)
+
 
 @pytest.fixture
 def encryption_mocks(monkeypatch):

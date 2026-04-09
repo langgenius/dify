@@ -69,7 +69,10 @@ def _build_args():
 
 
 def _patch_session(mocker, session):
-    mocker.patch.object(module, "Session", return_value=session)
+    factory = MagicMock()
+    factory.begin.return_value.__enter__ = MagicMock(return_value=session)
+    factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+    mocker.patch.object(module, "sessionmaker", return_value=factory)
     mocker.patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock())
 
 
@@ -80,12 +83,6 @@ def _dummy_preserve(*args, **kwargs):
 class DummySession:
     def __init__(self):
         self.scalar = MagicMock()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
 
 
 def test_generate_dataset_missing(generator, mocker):

@@ -432,13 +432,13 @@ class TestMCPClientWithAuthRetry:
         assert client._has_retried is False
 
     @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
+    @patch("core.mcp.auth_client.sessionmaker")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_success(
         self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
     ):
         mock_session = MagicMock(spec=Session)
-        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
 
         mock_service = mock_service_class.return_value
         new_provider = MagicMock(spec=MCPProviderEntity)
@@ -494,13 +494,13 @@ class TestMCPClientWithAuthRetry:
         assert exc_info.value == error
 
     @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
+    @patch("core.mcp.auth_client.sessionmaker")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_no_token(
         self, mock_service_class, mock_session_class, mock_db, auth_client, mock_provider
     ):
         """Test auth error handling when no token is received."""
-        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        mock_session_class.return_value.begin.return_value.__enter__.return_value = MagicMock()
         mock_service = mock_service_class.return_value
 
         new_provider = MagicMock(spec=MCPProviderEntity)
@@ -515,7 +515,7 @@ class TestMCPClientWithAuthRetry:
         assert "Authentication failed - no token received" in str(exc_info.value)
 
     @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
+    @patch("core.mcp.auth_client.sessionmaker")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_generic_exception(self, mock_service_class, mock_session_class, mock_db, auth_client):
         """Test auth error handling when a generic exception occurs."""
@@ -529,13 +529,13 @@ class TestMCPClientWithAuthRetry:
         assert "Authentication retry failed: DB error" in str(exc_info.value)
 
     @patch("core.mcp.auth_client.db")
-    @patch("core.mcp.auth_client.Session")
+    @patch("core.mcp.auth_client.sessionmaker")
     @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
     def test_handle_auth_error_mcp_auth_error_propagation(
         self, mock_service_class, mock_session_class, mock_db, auth_client
     ):
         """Test that MCPAuthError during refresh is propagated as is."""
-        mock_session_class.return_value.__enter__.return_value = MagicMock()
+        mock_session_class.return_value.begin.return_value.__enter__.return_value = MagicMock()
         mock_service = mock_service_class.return_value
         mock_service.auth_with_actions.side_effect = MCPAuthError("Refresh failed")
 

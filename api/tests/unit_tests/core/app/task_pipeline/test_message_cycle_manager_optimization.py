@@ -460,12 +460,12 @@ class TestMessageCycleManagerOptimization:
         session.scalar.return_value = message_file
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
+            patch("core.app.task_pipeline.message_cycle_manager.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign,
             patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
         ):
             mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = session
             mock_sign.return_value = "signed-url"
 
             response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="file-1"))
@@ -514,11 +514,11 @@ class TestMessageCycleManagerOptimization:
         session.scalar.return_value = message_file
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
+            patch("core.app.task_pipeline.message_cycle_manager.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
         ):
             mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = session
 
             response = message_cycle_manager.message_file_to_stream_response(
                 SimpleNamespace(message_file_id="file-http")
@@ -543,12 +543,12 @@ class TestMessageCycleManagerOptimization:
         session.scalar.return_value = message_file
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
+            patch("core.app.task_pipeline.message_cycle_manager.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file") as mock_sign,
             patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
         ):
             mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = session
             mock_sign.return_value = "signed-bin-url"
 
             response = message_cycle_manager.message_file_to_stream_response(
@@ -565,11 +565,11 @@ class TestMessageCycleManagerOptimization:
         session.scalar.return_value = None
 
         with (
-            patch("core.app.task_pipeline.message_cycle_manager.Session") as mock_session_cls,
+            patch("core.app.task_pipeline.message_cycle_manager.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_cycle_manager.db") as mock_db,
         ):
             mock_db.engine = Mock()
-            mock_session_cls.return_value.__enter__.return_value = session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = session
 
             response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="missing"))
 

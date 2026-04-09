@@ -94,13 +94,13 @@ class TestMessageEndStreamResponseFiles:
         # Arrange
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
 
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_session.scalars.return_value.all.return_value = []
 
             # Act
@@ -119,14 +119,14 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
 
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
             # Mock database queries
             # First query: MessageFile
@@ -183,12 +183,12 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
             # Mock database queries
             mock_scalars_result = Mock()
@@ -224,12 +224,12 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
             # Mock database queries
             mock_scalars_result = Mock()
@@ -258,14 +258,14 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
 
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
             # Mock database queries
             mock_scalars_result = Mock()
@@ -298,13 +298,13 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_tool]
             mock_session.scalars.return_value = mock_scalars_result
@@ -327,14 +327,14 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
 
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
             # Mock database queries
             # First query: MessageFile
@@ -379,14 +379,14 @@ class TestMessageEndStreamResponseFiles:
 
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker") as mock_sessionmaker,
             patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
             mock_engine = MagicMock()
             mock_db.engine = mock_engine
 
             mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
 
             # Mock database queries
             # First query: MessageFile

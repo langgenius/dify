@@ -405,9 +405,13 @@ class TestTencentDataTrace:
 
         with patch("core.ops.tencent_trace.tencent_trace.db") as mock_db:
             mock_db.engine = "engine"
-            with patch("core.ops.tencent_trace.tencent_trace.Session") as mock_session_ctx:
-                session = mock_session_ctx.return_value.__enter__.return_value
+            with patch("core.ops.tencent_trace.tencent_trace.sessionmaker") as mock_sessionmaker:
+                session = MagicMock()
                 session.scalar.side_effect = [app, account, tenant_join]
+                factory = MagicMock()
+                factory.begin.return_value.__enter__ = MagicMock(return_value=session)
+                factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                mock_sessionmaker.return_value = factory
 
                 with patch(
                     "core.ops.tencent_trace.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"
@@ -435,9 +439,13 @@ class TestTencentDataTrace:
         with patch("core.ops.tencent_trace.tencent_trace.db") as mock_db:
             mock_db.init_app = MagicMock()  # Ensure init_app is mocked
             mock_db.engine = "engine"
-            with patch("core.ops.tencent_trace.tencent_trace.Session") as mock_session_ctx:
-                session = mock_session_ctx.return_value.__enter__.return_value
+            with patch("core.ops.tencent_trace.tencent_trace.sessionmaker") as mock_sessionmaker:
+                session = MagicMock()
                 session.scalar.return_value = None
+                factory = MagicMock()
+                factory.begin.return_value.__enter__ = MagicMock(return_value=session)
+                factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                mock_sessionmaker.return_value = factory
 
                 with patch("core.ops.tencent_trace.tencent_trace.logger.exception") as mock_log:
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)

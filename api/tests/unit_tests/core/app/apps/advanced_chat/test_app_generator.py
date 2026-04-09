@@ -563,17 +563,16 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                self.scalar = MagicMock(return_value=None)
+        _mock_session = MagicMock()
+        _mock_session.scalar = MagicMock(return_value=None)
 
-            def __enter__(self):
-                return self
+        def _sessionmaker(*args, **kwargs):
+            factory = MagicMock()
+            factory.begin.return_value.__enter__ = MagicMock(return_value=_mock_session)
+            factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+            return factory
 
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
             SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
@@ -622,22 +621,21 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                self.scalar = MagicMock(
-                    side_effect=[
-                        SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
-                        None,
-                    ]
-                )
+        _mock_session = MagicMock()
+        _mock_session.scalar = MagicMock(
+            side_effect=[
+                SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
+                None,
+            ]
+        )
 
-            def __enter__(self):
-                return self
+        def _sessionmaker(*args, **kwargs):
+            factory = MagicMock()
+            factory.begin.return_value.__enter__ = MagicMock(return_value=_mock_session)
+            factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+            return factory
 
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
             SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
@@ -687,20 +685,19 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                self.scalar = MagicMock(
-                    side_effect=[
-                        SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
-                        SimpleNamespace(id="app"),
-                    ]
-                )
+        _mock_session = MagicMock()
+        _mock_session.scalar = MagicMock(
+            side_effect=[
+                SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
+                SimpleNamespace(id="app"),
+            ]
+        )
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
+        def _sessionmaker_factory(*args, **kwargs):
+            factory = MagicMock()
+            factory.begin.return_value.__enter__ = MagicMock(return_value=_mock_session)
+            factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+            return factory
 
         class _Runner:
             def __init__(self, **kwargs):
@@ -709,7 +706,7 @@ class TestAdvancedChatAppGeneratorInternals:
             def run(self):
                 raise GenerateTaskStoppedError()
 
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker_factory)
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
@@ -771,20 +768,19 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                self.scalar = MagicMock(
-                    side_effect=[
-                        SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
-                        SimpleNamespace(id="app"),
-                    ]
-                )
+        _mock_session = MagicMock()
+        _mock_session.scalar = MagicMock(
+            side_effect=[
+                SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
+                SimpleNamespace(id="app"),
+            ]
+        )
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
+        def _sessionmaker_factory(*args, **kwargs):
+            factory = MagicMock()
+            factory.begin.return_value.__enter__ = MagicMock(return_value=_mock_session)
+            factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+            return factory
 
         class _Runner:
             def __init__(self, **kwargs):
@@ -793,7 +789,7 @@ class TestAdvancedChatAppGeneratorInternals:
             def run(self):
                 raise validation_error
 
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker_factory)
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
@@ -870,7 +866,7 @@ class TestAdvancedChatAppGeneratorInternals:
                     return False
 
             monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
-            monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
+            monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker_factory)
             monkeypatch.setattr(
                 "core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner",
                 _make_runner(raised_error),
@@ -1050,23 +1046,22 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                self.scalar = MagicMock(
-                    side_effect=[
-                        SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
-                        SimpleNamespace(id="end-user-id", session_id="session-id"),
-                        SimpleNamespace(id="app"),
-                    ]
-                )
+        _mock_session = MagicMock()
+        _mock_session.scalar = MagicMock(
+            side_effect=[
+                SimpleNamespace(id="workflow-id", tenant_id="tenant", app_id="app"),
+                SimpleNamespace(id="end-user-id", session_id="session-id"),
+                SimpleNamespace(id="app"),
+            ]
+        )
 
-            def __enter__(self):
-                return self
+        def _sessionmaker_factory(*args, **kwargs):
+            factory = MagicMock()
+            factory.begin.return_value.__enter__ = MagicMock(return_value=_mock_session)
+            factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+            return factory
 
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker_factory)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
             SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from graphon.file import FileTransferMethod
@@ -42,6 +43,28 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AudioTrunk
 from models.model import AppMode
+
+
+def _make_sessionmaker_mock(session_obj):
+    """Create a sessionmaker mock that returns session_obj from begin() context."""
+    def _sessionmaker(*args, **kwargs):
+        factory = MagicMock()
+        factory.begin.return_value.__enter__ = MagicMock(return_value=session_obj)
+        factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+        return factory
+    return _sessionmaker
+
+
+def _patch_sessionmaker(monkeypatch, session_obj):
+    """Patch sessionmaker and db on easy_ui_based_generate_task_pipeline module."""
+    monkeypatch.setattr(
+        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker",
+        _make_sessionmaker_mock(session_obj),
+    )
+    monkeypatch.setattr(
+        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
+        SimpleNamespace(engine=object()),
+    )
 
 
 class _DummyModelConf:
@@ -187,27 +210,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         pipeline._message_end_to_stream_response = lambda: "end"
         pipeline._save_message = lambda **kwargs: None
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def commit(self):
-                return None
-
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, MagicMock())
 
         responses = list(pipeline._process_stream_response(publisher=None))
 
@@ -368,28 +371,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def all(self):
                 return self._items
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
+        class _FakeSession:
+            def __init__(self):
                 self.calls = 0
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
 
             def scalars(self, *args, **kwargs):
                 self.calls += 1
                 return _Result(message_files if self.calls == 1 else upload_files)
 
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, _FakeSession())
         monkeypatch.setattr(
             "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
             lambda **kwargs: "signed-url",
@@ -442,27 +432,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline.error_to_stream_response = lambda err: err
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def commit(self):
-                return None
-
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, MagicMock())
 
         responses = list(pipeline._process_stream_response(publisher=None))
 
@@ -495,27 +465,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             files=[],
         )
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def scalar(self, *args, **kwargs):
-                return agent_thought
-
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _fake_session = MagicMock()
+        _fake_session.scalar = MagicMock(return_value=agent_thought)
+        _patch_sessionmaker(monkeypatch, _fake_session)
 
         response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
 
@@ -776,24 +728,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         pipeline._save_message = lambda **kwargs: None
         pipeline._message_end_to_stream_response = lambda: "end"
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def commit(self):
-                return None
-
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, MagicMock())
 
         responses = list(pipeline._process_stream_response(publisher=None))
 
@@ -997,24 +932,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def all(self):
                 return []
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
+        class _FakeSession:
             def scalars(self, *args, **kwargs):
                 return _Result()
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, _FakeSession())
 
         response = pipeline._message_end_to_stream_response()
 
@@ -1036,24 +958,11 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def all(self):
                 return []
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
+        class _FakeSession:
             def scalars(self, *args, **kwargs):
                 return _Result()
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, _FakeSession())
 
         response = pipeline._message_end_to_stream_response()
 
@@ -1103,25 +1012,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def all(self):
                 return self._items
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
+        class _FakeSession:
+            def __init__(self):
                 self.calls = 0
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
 
             def scalars(self, *args, **kwargs):
                 self.calls += 1
                 return _Result(message_files if self.calls == 1 else [])
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _patch_sessionmaker(monkeypatch, _FakeSession())
         monkeypatch.setattr(
             "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
             lambda **kwargs: "local-fallback-signed",
@@ -1166,24 +1065,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             stream=True,
         )
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def scalar(self, *args, **kwargs):
-                return None
-
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            SimpleNamespace(engine=object()),
-        )
+        _fake_session = MagicMock()
+        _fake_session.scalar = MagicMock(return_value=None)
+        _patch_sessionmaker(monkeypatch, _fake_session)
 
         response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="missing"))
 

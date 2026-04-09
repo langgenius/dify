@@ -144,13 +144,15 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
                 ),
             ]
 
-        def __enter__(self):
-            return self
+    _fake_session = _FakeSession()
 
-        def __exit__(self, exc_type, exc, tb):
-            return False
+    def _fake_sessionmaker(*args, **kwargs):
+        factory = MagicMock()
+        factory.begin.return_value.__enter__ = MagicMock(return_value=_fake_session)
+        factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+        return factory
 
-    monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: _FakeSession())
+    monkeypatch.setattr(workflow_response_converter, "sessionmaker", _fake_sessionmaker)
     monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
 
     reason = HumanInputRequired(

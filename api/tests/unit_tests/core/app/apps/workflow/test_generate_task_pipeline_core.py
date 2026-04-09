@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
@@ -612,23 +613,22 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         calls = {"commit": 0, "rollback": 0}
 
-        class _Session:
-            def __init__(self, *args, **kwargs):
-                _ = args, kwargs
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
+        class _FakeSession:
             def commit(self):
                 calls["commit"] += 1
 
             def rollback(self):
                 calls["rollback"] += 1
 
-        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.Session", _Session)
+        _fake_session = _FakeSession()
+
+        def _sessionmaker(*args, **kwargs):
+            factory = MagicMock()
+            factory.begin.return_value.__enter__ = MagicMock(return_value=_fake_session)
+            factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+            return factory
+
+        monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.sessionmaker", _sessionmaker)
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.db", SimpleNamespace(engine=object()))
 
         with pytest.raises(RuntimeError, match="db error"):

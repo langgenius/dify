@@ -84,15 +84,14 @@ def build_runner():
 
 def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
+    _mock_session = MagicMock()
+    _mock_session.scalar = MagicMock(return_value=MagicMock())
+    _mock_factory = MagicMock()
+    _mock_factory.begin.return_value.__enter__ = MagicMock(return_value=_mock_session)
+    _mock_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
     return patch.multiple(
         "core.app.apps.advanced_chat.app_runner",
-        Session=MagicMock(
-            return_value=MagicMock(
-                __enter__=lambda s: s,
-                __exit__=lambda *a, **k: False,
-                scalar=lambda *a, **k: MagicMock(),
-            ),
-        ),
+        sessionmaker=MagicMock(return_value=_mock_factory),
         select=MagicMock(),
         db=MagicMock(engine=MagicMock()),
         RedisChannel=MagicMock(),
