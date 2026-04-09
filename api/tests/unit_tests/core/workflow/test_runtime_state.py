@@ -157,9 +157,7 @@ class TestBindGraphRuntimeStateToGraph:
         monkeypatch.setattr(
             "core.workflow.runtime_state.ResponseStreamCoordinator",
             lambda *, variable_pool, graph: (
-                coordinator
-                if variable_pool is runtime_state.variable_pool and graph is graph
-                else None
+                coordinator if variable_pool is runtime_state.variable_pool and graph is graph else None
             ),
         )
 
