@@ -63,11 +63,11 @@ def _workflow_yaml(*, version: str = app_dsl_service.CURRENT_DSL_VERSION) -> str
 
 
 def test_check_version_compatibility_invalid_version_returns_failed():
-    assert check_version_compatibility("not-a-version", "0.6.0") == ImportStatus.FAILED
+    assert check_version_compatibility("not-a-version", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.FAILED
 
 
 def test_check_version_compatibility_newer_version_returns_pending():
-    assert check_version_compatibility("99.0.0", "0.6.0") == ImportStatus.PENDING
+    assert check_version_compatibility("99.0.0", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
 
 def test_check_version_compatibility_major_older_returns_pending():
@@ -75,7 +75,10 @@ def test_check_version_compatibility_major_older_returns_pending():
 
 
 def test_check_version_compatibility_minor_older_returns_completed_with_warnings():
-    assert check_version_compatibility("0.5.0", "0.6.0") == ImportStatus.COMPLETED_WITH_WARNINGS
+    assert (
+        check_version_compatibility("0.5.0", app_dsl_service.CURRENT_DSL_VERSION)
+        == ImportStatus.COMPLETED_WITH_WARNINGS
+    )
 
 
 def test_check_version_compatibility_equal_returns_completed():
