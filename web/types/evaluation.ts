@@ -1,5 +1,18 @@
 export type EvaluationTargetType = 'apps' | 'snippets' | 'datasets'
 
+export type EvaluationJudgmentConditionValue = string | string[] | boolean
+
+export type EvaluationJudgmentCondition = {
+  variable_selector?: string[]
+  comparison_operator?: string
+  value?: EvaluationJudgmentConditionValue
+}
+
+export type EvaluationJudgmentConfig = {
+  logical_operator?: 'and' | 'or'
+  conditions?: EvaluationJudgmentCondition[]
+}
+
 export type EvaluationConditionValue = string | number | boolean | null
 
 export type EvaluationJudgementConditionItem = {
@@ -28,7 +41,8 @@ export type EvaluationConfig = {
   evaluation_model_provider: string | null
   default_metrics?: EvaluationDefaultMetric[] | null
   customized_metrics?: EvaluationCustomizedMetric | null
-  judgement_conditions: EvaluationJudgementConditions | null
+  judgment_config?: EvaluationJudgmentConfig | null
+  judgement_conditions?: EvaluationJudgementConditions | null
 }
 
 export type NodeInfo = {
@@ -57,7 +71,7 @@ export type EvaluationConfigData = {
   evaluation_model_provider?: string
   default_metrics?: EvaluationDefaultMetric[] | null
   customized_metrics?: EvaluationCustomizedMetric | null
-  judgment_config?: EvaluationJudgementConditions | null
+  judgment_config?: EvaluationJudgmentConfig | null
 }
 
 export type EvaluationRunRequest = EvaluationConfigData & {

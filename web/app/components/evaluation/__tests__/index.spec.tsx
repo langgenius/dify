@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import Evaluation from '..'
-import { getEvaluationMockConfig } from '../mock'
 import { useEvaluationStore } from '../store'
 
 const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
@@ -121,22 +120,19 @@ describe('Evaluation', () => {
     const resourceType = 'apps'
     const resourceId = 'app-2'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
-
-    const stringField = config.fieldOptions.find(field => field.type === 'string')!
-    let groupId = ''
-    let itemId = ''
+    let conditionId = ''
 
     act(() => {
       store.ensureResource(resourceType, resourceId)
       store.setJudgeModel(resourceType, resourceId, 'openai::gpt-4o-mini')
+      store.addBuiltinMetric(resourceType, resourceId, 'faithfulness', [
+        { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+      ])
+      store.addCondition(resourceType, resourceId)
 
-      const group = useEvaluationStore.getState().resources['apps:app-2'].conditions[0]
-      groupId = group.id
-      itemId = group.items[0].id
-
-      store.updateConditionField(resourceType, resourceId, groupId, itemId, stringField.id)
-      store.updateConditionOperator(resourceType, resourceId, groupId, itemId, 'contains')
+      const condition = useEvaluationStore.getState().resources['apps:app-2'].conditions.conditions[0]
+      conditionId = condition.id
+      store.updateConditionOperator(resourceType, resourceId, conditionId, '=')
     })
 
     let rerender: ReturnType<typeof render>['rerender']
@@ -147,7 +143,7 @@ describe('Evaluation', () => {
     expect(screen.getByPlaceholderText('evaluation.conditions.valuePlaceholder')).toBeInTheDocument()
 
     act(() => {
-      store.updateConditionOperator(resourceType, resourceId, groupId, itemId, 'is_empty')
+      store.updateConditionOperator(resourceType, resourceId, conditionId, 'is null')
       rerender(<Evaluation resourceType={resourceType} resourceId={resourceId} />)
     })
 
@@ -249,7 +245,7 @@ describe('Evaluation', () => {
           metric: 'context-precision',
         }],
         customized_metrics: null,
-        judgement_conditions: null,
+        judgment_config: null,
       },
     })
 

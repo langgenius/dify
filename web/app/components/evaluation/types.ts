@@ -13,17 +13,27 @@ export type BatchTestTab = 'input-fields' | 'history'
 
 export type FieldType = 'string' | 'number' | 'boolean' | 'enum'
 
+export type ConditionMetricValueType = 'string' | 'number' | 'boolean'
+
 export type ComparisonOperator
   = | 'contains'
-    | 'not_contains'
+    | 'not contains'
+    | 'start with'
+    | 'end with'
     | 'is'
-    | 'is_not'
-    | 'is_empty'
-    | 'is_not_empty'
-    | 'greater_than'
-    | 'less_than'
-    | 'greater_or_equal'
-    | 'less_or_equal'
+    | 'is not'
+    | 'empty'
+    | 'not empty'
+    | 'in'
+    | 'not in'
+    | '='
+    | '≠'
+    | '>'
+    | '<'
+    | '≥'
+    | '≤'
+    | 'is null'
+    | 'is not null'
 
 export type JudgeModelOption = {
   id: string
@@ -35,6 +45,7 @@ export type MetricOption = {
   id: string
   label: string
   description: string
+  valueType: ConditionMetricValueType
 }
 
 export type EvaluationWorkflowOption = {
@@ -69,6 +80,10 @@ export type CustomMetricConfig = {
   workflowAppId: string | null
   workflowName: string | null
   mappings: CustomMetricMapping[]
+  outputs: Array<{
+    id: string
+    valueType: string | null
+  }>
 }
 
 export type EvaluationMetric = {
@@ -77,6 +92,7 @@ export type EvaluationMetric = {
   kind: MetricKind
   label: string
   description: string
+  valueType: ConditionMetricValueType
   threshold?: number
   nodeInfoList?: NodeInfo[]
   customConfig?: CustomMetricConfig
@@ -84,15 +100,23 @@ export type EvaluationMetric = {
 
 export type JudgmentConditionItem = {
   id: string
-  fieldId: string | null
-  operator: ComparisonOperator
-  value: string | number | boolean | null
+  variableSelector: [string, string] | null
+  comparisonOperator: ComparisonOperator
+  value: string | string[] | boolean | null
 }
 
-export type JudgmentConditionGroup = {
-  id: string
+export type JudgmentConfig = {
   logicalOperator: 'and' | 'or'
-  items: JudgmentConditionItem[]
+  conditions: JudgmentConditionItem[]
+}
+
+export type ConditionMetricOption = {
+  id: string
+  group: string
+  label: string
+  description: string
+  valueType: ConditionMetricValueType
+  variableSelector: [string, string]
 }
 
 export type BatchTestRecord = {
@@ -106,7 +130,7 @@ export type BatchTestRecord = {
 export type EvaluationResourceState = {
   judgeModelId: string | null
   metrics: EvaluationMetric[]
-  conditions: JudgmentConditionGroup[]
+  conditions: JudgmentConfig
   activeBatchTab: BatchTestTab
   uploadedFileName: string | null
   batchRecords: BatchTestRecord[]

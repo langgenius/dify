@@ -73,6 +73,7 @@ const CustomMetricEditorCard = ({
   const { t } = useTranslation('evaluation')
   const setCustomMetricWorkflow = useEvaluationStore(state => state.setCustomMetricWorkflow)
   const syncCustomMetricMappings = useEvaluationStore(state => state.syncCustomMetricMappings)
+  const syncCustomMetricOutputs = useEvaluationStore(state => state.syncCustomMetricOutputs)
   const updateCustomMetricMapping = useEvaluationStore(state => state.updateCustomMetricMapping)
   const { data: selectedWorkflow } = useAppWorkflow(metric.customConfig?.workflowAppId ?? '')
   const { data: currentAppWorkflow } = useAppWorkflow(resourceType === 'apps' ? resourceId : '')
@@ -125,6 +126,23 @@ const CustomMetricEditorCard = ({
 
     syncCustomMetricMappings(resourceType, resourceId, metric.id, inputVariableIds)
   }, [inputVariableIds, metric.customConfig?.mappings, metric.customConfig?.workflowId, metric.id, resourceId, resourceType, syncCustomMetricMappings])
+
+  useEffect(() => {
+    if (!metric.customConfig?.workflowId)
+      return
+
+    const currentOutputs = metric.customConfig.outputs
+    if (
+      currentOutputs.length === workflowOutputs.length
+      && currentOutputs.every((output, index) =>
+        output.id === workflowOutputs[index]?.id && output.valueType === workflowOutputs[index]?.valueType,
+      )
+    ) {
+      return
+    }
+
+    syncCustomMetricOutputs(resourceType, resourceId, metric.id, workflowOutputs)
+  }, [metric.customConfig?.outputs, metric.customConfig?.workflowId, metric.id, resourceId, resourceType, syncCustomMetricOutputs, workflowOutputs])
 
   if (!metric.customConfig)
     return null

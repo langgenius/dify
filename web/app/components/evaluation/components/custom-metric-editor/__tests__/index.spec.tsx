@@ -156,6 +156,7 @@ const createMetric = (): EvaluationMetric => ({
   kind: 'custom-workflow',
   label: 'Custom Evaluator',
   description: 'Map workflow variables to your evaluation inputs.',
+  valueType: 'number',
   customConfig: {
     workflowId: 'workflow-1',
     workflowAppId: 'workflow-app-1',
@@ -169,6 +170,7 @@ const createMetric = (): EvaluationMetric => ({
       inputVariableId: 'retrieved_context',
       outputVariableId: 'current-node.score',
     }],
+    outputs: [],
   },
 })
 

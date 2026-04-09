@@ -2,24 +2,30 @@ import type {
   BatchTestRecord,
   ComparisonOperator,
   CustomMetricMapping,
-  EvaluationFieldOption,
   EvaluationMetric,
   EvaluationResourceState,
   EvaluationResourceType,
-  JudgmentConditionGroup,
+  JudgmentConditionItem,
+  JudgmentConfig,
   MetricOption,
 } from './types'
 import type {
-  EvaluationConditionValue,
   EvaluationConfig,
   EvaluationCustomizedMetric,
   EvaluationDefaultMetric,
-  EvaluationJudgementConditionGroup,
-  EvaluationJudgementConditionItem,
+  EvaluationJudgmentCondition,
+  EvaluationJudgmentConditionValue,
+  EvaluationJudgmentConfig,
   NodeInfo,
 } from '@/types/evaluation'
-import { getComparisonOperators, getDefaultOperator, getEvaluationMockConfig } from './mock'
-import { encodeModelSelection } from './utils'
+import { getEvaluationMockConfig } from './mock'
+import {
+  buildConditionMetricOptions,
+  encodeModelSelection,
+  getComparisonOperators,
+  getDefaultComparisonOperator,
+  requiresComparisonValue,
+} from './utils'
 
 type EvaluationStoreResources = Record<string, EvaluationResourceState>
 
@@ -41,6 +47,7 @@ const resolveMetricOption = (resourceType: EvaluationResourceType, metricId: str
     id: metricId,
     label: humanizeMetricId(metricId),
     description: '',
+    valueType: 'number',
   }
 }
 
@@ -91,14 +98,32 @@ const normalizeCustomMetricMappings = (
   if (!value)
     return []
 
-  const mappings = Object.entries(value)
+  return Object.entries(value)
     .filter((entry): entry is [string, string] => {
       const [, outputVariableId] = entry
       return typeof outputVariableId === 'string' && !!outputVariableId
     })
     .map(([inputVariableId, outputVariableId]) => createCustomMetricMapping(inputVariableId, outputVariableId))
+}
 
-  return mappings
+const normalizeCustomMetricOutputs = (
+  value: EvaluationCustomizedMetric['output_fields'],
+) => {
+  if (!value)
+    return []
+
+  return value
+    .map((output) => {
+      const id = typeof output.variable === 'string' ? output.variable : ''
+      if (!id)
+        return null
+
+      return {
+        id,
+        valueType: typeof output.value_type === 'string' ? output.value_type : null,
+      }
+    })
+    .filter((output): output is { id: string, valueType: string | null } => !!output)
 }
 
 const normalizeCustomMetric = (
@@ -120,92 +145,137 @@ const normalizeCustomMetric = (
           ...customMetric.customConfig,
           workflowId,
           mappings: normalizeCustomMetricMappings(value.input_fields),
+          outputs: normalizeCustomMetricOutputs(value.output_fields),
         }
       : customMetric.customConfig,
   }]
 }
 
+const normalizeVariableSelector = (value: string[] | undefined): [string, string] | null => {
+  if (!Array.isArray(value) || value.length < 2)
+    return null
+
+  const [scope, metricName] = value
+  return typeof scope === 'string' && !!scope && typeof metricName === 'string' && !!metricName
+    ? [scope, metricName]
+    : null
+}
+
+const getNormalizedConditionValue = (
+  operator: ComparisonOperator,
+  previousValue: EvaluationJudgmentConditionValue | string | number | boolean | null | undefined,
+) => {
+  if (!requiresComparisonValue(operator))
+    return null
+
+  if (Array.isArray(previousValue))
+    return previousValue.filter((item): item is string => typeof item === 'string' && !!item)
+
+  if (typeof previousValue === 'boolean')
+    return previousValue
+
+  if (typeof previousValue === 'number')
+    return String(previousValue)
+
+  return typeof previousValue === 'string' ? previousValue : null
+}
+
+const getRawJudgmentConfig = (config: EvaluationConfig): EvaluationJudgmentConfig | null | undefined => {
+  if (config.judgment_config)
+    return config.judgment_config
+
+  if (
+    config.judgement_conditions
+    && !Array.isArray(config.judgement_conditions)
+    && 'conditions' in config.judgement_conditions
+  ) {
+    return config.judgement_conditions as EvaluationJudgmentConfig
+  }
+
+  return null
+}
+
 const normalizeConditionItem = (
-  resourceType: EvaluationResourceType,
-  value: EvaluationJudgementConditionItem,
-): JudgmentConditionGroup['items'][number] => {
-  const fieldId = typeof value.fieldId === 'string'
-    ? value.fieldId
-    : typeof value.field_id === 'string'
-      ? value.field_id
-      : null
-  const operatorValue = typeof value.operator === 'string' ? value.operator : null
-  const field = getEvaluationMockConfig(resourceType).fieldOptions.find(option => option.id === fieldId)
-  const allowedOperators = field ? getComparisonOperators(field.type) : ['contains']
-  const operator = operatorValue && allowedOperators.includes(operatorValue as ComparisonOperator)
-    ? operatorValue as ComparisonOperator
-    : field
-      ? getDefaultOperator(field.type)
-      : 'contains'
-  const rawValue: EvaluationConditionValue = value.value ?? null
+  value: EvaluationJudgmentCondition,
+  metrics: EvaluationMetric[],
+): JudgmentConditionItem | null => {
+  const variableSelector = normalizeVariableSelector(value.variable_selector)
+  if (!variableSelector)
+    return null
+
+  const metricOption = buildConditionMetricOptions(metrics).find(option =>
+    option.variableSelector[0] === variableSelector[0] && option.variableSelector[1] === variableSelector[1],
+  )
+  if (!metricOption)
+    return null
+
+  const allowedOperators = getComparisonOperators(metricOption.valueType)
+  const rawOperator = typeof value.comparison_operator === 'string' ? value.comparison_operator : ''
+  const comparisonOperator = allowedOperators.includes(rawOperator as ComparisonOperator)
+    ? rawOperator as ComparisonOperator
+    : getDefaultComparisonOperator(metricOption.valueType)
 
   return {
-    id: typeof value.id === 'string' ? value.id : createId('condition'),
-    fieldId,
-    operator,
-    value: getConditionValue(field, operator, rawValue),
+    id: createId('condition'),
+    variableSelector,
+    comparisonOperator,
+    value: getConditionValue(metricOption.valueType, comparisonOperator, value.value),
   }
 }
 
-const normalizeConditionGroups = (
-  resourceType: EvaluationResourceType,
-  value: EvaluationConfig['judgement_conditions'],
-): JudgmentConditionGroup[] => {
-  const groupsValue: EvaluationJudgementConditionGroup[] = Array.isArray(value)
-    ? value
-    : Array.isArray(value?.groups)
-      ? value.groups
-      : []
+const createEmptyJudgmentConfig = (): JudgmentConfig => {
+  return {
+    logicalOperator: 'and',
+    conditions: [],
+  }
+}
 
-  const groups = groupsValue
-    .map((group) => {
-      const itemsValue = Array.isArray(group.items) ? group.items : []
-      const items = itemsValue
-        .map(item => normalizeConditionItem(resourceType, item))
+const normalizeJudgmentConfig = (
+  config: EvaluationConfig,
+  metrics: EvaluationMetric[],
+): JudgmentConfig => {
+  const rawJudgmentConfig = getRawJudgmentConfig(config)
 
-      if (items.length === 0)
-        return null
+  if (!rawJudgmentConfig)
+    return createEmptyJudgmentConfig()
 
-      return {
-        id: typeof group.id === 'string' ? group.id : createId('group'),
-        logicalOperator: group.logicalOperator === 'or' || group.logical_operator === 'or' ? 'or' : 'and',
-        items,
-      } satisfies JudgmentConditionGroup
-    })
-    .filter((group): group is JudgmentConditionGroup => !!group)
+  const conditions = (rawJudgmentConfig.conditions ?? [])
+    .map(condition => normalizeConditionItem(condition, metrics))
+    .filter((condition): condition is JudgmentConditionItem => !!condition)
 
-  return groups.length > 0 ? groups : [createConditionGroup(resourceType)]
+  return {
+    logicalOperator: rawJudgmentConfig.logical_operator === 'or' ? 'or' : 'and',
+    conditions,
+  }
 }
 
 export const buildResourceKey = (resourceType: EvaluationResourceType, resourceId: string) => `${resourceType}:${resourceId}`
 
-const conditionOperatorsWithoutValue: ComparisonOperator[] = ['is_empty', 'is_not_empty']
-
-export const requiresConditionValue = (operator: ComparisonOperator) => !conditionOperatorsWithoutValue.includes(operator)
+export const requiresConditionValue = (operator: ComparisonOperator) => {
+  return requiresComparisonValue(operator)
+}
 
 export function getConditionValue(
-  field: EvaluationFieldOption | undefined,
+  valueType: EvaluationMetric['valueType'] | undefined,
   operator: ComparisonOperator,
-  previousValue: string | number | boolean | null = null,
+  previousValue?: EvaluationJudgmentConditionValue | string | number | boolean | null,
 ) {
-  if (!field || !requiresConditionValue(operator))
+  if (!valueType || !requiresConditionValue(operator))
     return null
 
-  if (field.type === 'boolean')
+  if (valueType === 'boolean')
     return typeof previousValue === 'boolean' ? previousValue : null
 
-  if (field.type === 'enum')
-    return typeof previousValue === 'string' ? previousValue : null
+  if (operator === 'in' || operator === 'not in') {
+    if (Array.isArray(previousValue))
+      return previousValue.filter((item): item is string => typeof item === 'string' && !!item)
 
-  if (field.type === 'number')
-    return typeof previousValue === 'number' ? previousValue : null
+    return typeof previousValue === 'string' && previousValue
+      ? previousValue.split(',').map(item => item.trim()).filter(Boolean)
+      : []
+  }
 
-  return typeof previousValue === 'string' ? previousValue : null
+  return getNormalizedConditionValue(operator, previousValue)
 }
 
 export function createBuiltinMetric(
@@ -219,6 +289,7 @@ export function createBuiltinMetric(
     kind: 'builtin',
     label: metric.label,
     description: metric.description,
+    valueType: metric.valueType,
     threshold,
     nodeInfoList,
   }
@@ -263,40 +334,66 @@ export function createCustomMetric(): EvaluationMetric {
     kind: 'custom-workflow',
     label: 'Custom Evaluator',
     description: 'Map workflow variables to your evaluation inputs.',
+    valueType: 'number',
     customConfig: {
       workflowId: null,
       workflowAppId: null,
       workflowName: null,
       mappings: [],
+      outputs: [],
     },
   }
 }
 
-export const buildConditionItem = (resourceType: EvaluationResourceType) => {
-  const field = getEvaluationMockConfig(resourceType).fieldOptions[0]
-  const operator = field ? getDefaultOperator(field.type) : 'contains'
+export const buildConditionItem = (metrics: EvaluationMetric[]): JudgmentConditionItem => {
+  const metricOption = buildConditionMetricOptions(metrics)[0]
+  const comparisonOperator = metricOption ? getDefaultComparisonOperator(metricOption.valueType) : 'is'
 
   return {
     id: createId('condition'),
-    fieldId: field?.id ?? null,
-    operator,
-    value: getConditionValue(field, operator),
+    variableSelector: metricOption?.variableSelector ?? null,
+    comparisonOperator,
+    value: getConditionValue(metricOption?.valueType, comparisonOperator),
   }
 }
 
-export function createConditionGroup(resourceType: EvaluationResourceType): JudgmentConditionGroup {
+export const syncJudgmentConfigWithMetrics = (
+  judgmentConfig: JudgmentConfig,
+  metrics: EvaluationMetric[],
+): JudgmentConfig => {
+  const metricOptions = buildConditionMetricOptions(metrics)
+
   return {
-    id: createId('group'),
-    logicalOperator: 'and',
-    items: [buildConditionItem(resourceType)],
+    logicalOperator: judgmentConfig.logicalOperator,
+    conditions: judgmentConfig.conditions
+      .map((condition) => {
+        const metricOption = metricOptions.find(option =>
+          option.variableSelector[0] === condition.variableSelector?.[0]
+          && option.variableSelector[1] === condition.variableSelector?.[1],
+        )
+        if (!metricOption)
+          return null
+
+        const allowedOperators = getComparisonOperators(metricOption.valueType)
+        const comparisonOperator = allowedOperators.includes(condition.comparisonOperator)
+          ? condition.comparisonOperator
+          : getDefaultComparisonOperator(metricOption.valueType)
+
+        return {
+          ...condition,
+          comparisonOperator,
+          value: getConditionValue(metricOption.valueType, comparisonOperator, condition.value),
+        }
+      })
+      .filter((condition): condition is JudgmentConditionItem => !!condition),
   }
 }
 
-export const buildInitialState = (resourceType: EvaluationResourceType): EvaluationResourceState => {
+export const buildInitialState = (_resourceType: EvaluationResourceType): EvaluationResourceState => {
   return {
     judgeModelId: null,
     metrics: [],
-    conditions: [createConditionGroup(resourceType)],
+    conditions: createEmptyJudgmentConfig(),
     activeBatchTab: 'input-fields',
     uploadedFileName: null,
     batchRecords: [],
@@ -309,14 +406,15 @@ export const buildStateFromEvaluationConfig = (
 ): EvaluationResourceState => {
   const defaultMetrics = normalizeDefaultMetrics(resourceType, config.default_metrics)
   const customMetrics = normalizeCustomMetric(config.customized_metrics)
+  const metrics = [...defaultMetrics, ...customMetrics]
 
   return {
     ...buildInitialState(resourceType),
     judgeModelId: config.evaluation_model && config.evaluation_model_provider
       ? encodeModelSelection(config.evaluation_model_provider, config.evaluation_model)
       : null,
-    metrics: [...defaultMetrics, ...customMetrics],
-    conditions: normalizeConditionGroups(resourceType, config.judgement_conditions),
+    metrics,
+    conditions: normalizeJudgmentConfig(config, metrics),
   }
 }
 
@@ -353,12 +451,6 @@ export const updateMetric = (
   updater: (metric: EvaluationMetric) => EvaluationMetric,
 ) => metrics.map(metric => metric.id === metricId ? updater(metric) : metric)
 
-export const updateConditionGroup = (
-  groups: JudgmentConditionGroup[],
-  groupId: string,
-  updater: (group: JudgmentConditionGroup) => JudgmentConditionGroup,
-) => groups.map(group => group.id === groupId ? updater(group) : group)
-
 export const createBatchTestRecord = (
   resourceType: EvaluationResourceType,
   uploadedFileName: string | null | undefined,
@@ -389,14 +481,19 @@ export const isEvaluationRunnable = (state: EvaluationResourceState) => {
   return !!state.judgeModelId
     && state.metrics.length > 0
     && state.metrics.every(isCustomMetricConfigured)
-    && state.conditions.some(group => group.items.length > 0)
 }
 
-export const getAllowedOperators = (resourceType: EvaluationResourceType, fieldId: string | null) => {
-  const field = getEvaluationMockConfig(resourceType).fieldOptions.find(option => option.id === fieldId)
+export const getAllowedOperators = (
+  metrics: EvaluationMetric[],
+  variableSelector: [string, string] | null,
+) => {
+  const metricOption = buildConditionMetricOptions(metrics).find(option =>
+    option.variableSelector[0] === variableSelector?.[0]
+    && option.variableSelector[1] === variableSelector?.[1],
+  )
 
-  if (!field)
-    return ['contains'] as ComparisonOperator[]
+  if (!metricOption)
+    return ['is'] as ComparisonOperator[]
 
-  return getComparisonOperators(field.type)
+  return getComparisonOperators(metricOption.valueType)
 }

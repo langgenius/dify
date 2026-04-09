@@ -31,6 +31,11 @@ describe('evaluation store', () => {
       workflowName: config.workflowOptions[0].label,
     })
     store.syncCustomMetricMappings(resourceType, resourceId, initialMetric!.id, ['query'])
+    store.syncCustomMetricOutputs(resourceType, resourceId, initialMetric!.id, [{
+      id: 'score',
+      valueType: 'number',
+    }])
+
     const syncedMetric = useEvaluationStore.getState().resources['apps:app-1'].metrics.find(metric => metric.id === initialMetric!.id)
     store.updateCustomMetricMapping(resourceType, resourceId, initialMetric!.id, syncedMetric!.customConfig!.mappings[0].id, {
       outputVariableId: 'answer',
@@ -40,6 +45,7 @@ describe('evaluation store', () => {
     expect(isCustomMetricConfigured(configuredMetric!)).toBe(true)
     expect(configuredMetric!.customConfig!.workflowAppId).toBe('custom-workflow-app-id')
     expect(configuredMetric!.customConfig!.workflowName).toBe(config.workflowOptions[0].label)
+    expect(configuredMetric!.customConfig!.outputs).toEqual([{ id: 'score', valueType: 'number' }])
   })
 
   it('should only add one custom metric', () => {
@@ -77,7 +83,7 @@ describe('evaluation store', () => {
     expect(useEvaluationStore.getState().resources['apps:app-2'].metrics.some(metric => metric.id === addedMetric!.id)).toBe(false)
   })
 
-  it('should upsert builtin metric node selections', () => {
+  it('should upsert builtin metric node selections and prune stale conditions', () => {
     const resourceType = 'apps'
     const resourceId = 'app-4'
     const store = useEvaluationStore.getState()
@@ -88,63 +94,78 @@ describe('evaluation store', () => {
     store.addBuiltinMetric(resourceType, resourceId, metricId, [
       { node_id: 'node-1', title: 'Answer Node', type: 'answer' },
     ])
+    store.addCondition(resourceType, resourceId)
 
     store.addBuiltinMetric(resourceType, resourceId, metricId, [
       { node_id: 'node-2', title: 'Retriever Node', type: 'retriever' },
     ])
 
-    const metric = useEvaluationStore.getState().resources['apps:app-4'].metrics.find(item => item.optionId === metricId)
+    const state = useEvaluationStore.getState().resources['apps:app-4']
+    const metric = state.metrics.find(item => item.optionId === metricId)
 
     expect(metric?.nodeInfoList).toEqual([
       { node_id: 'node-2', title: 'Retriever Node', type: 'retriever' },
     ])
-    expect(useEvaluationStore.getState().resources['apps:app-4'].metrics.filter(item => item.optionId === metricId)).toHaveLength(1)
+    expect(state.metrics.filter(item => item.optionId === metricId)).toHaveLength(1)
+    expect(state.conditions.conditions).toHaveLength(0)
   })
 
-  it('should update condition groups and adapt operators to field types', () => {
-    const resourceType = 'datasets'
-    const resourceId = 'dataset-1'
+  it('should build numeric conditions from selected metrics', () => {
+    const resourceType = 'apps'
+    const resourceId = 'app-conditions'
     const store = useEvaluationStore.getState()
     const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
+    store.addBuiltinMetric(resourceType, resourceId, config.builtinMetrics[0].id, [
+      { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+    ])
+    store.setConditionLogicalOperator(resourceType, resourceId, 'or')
+    store.addCondition(resourceType, resourceId)
 
-    const initialGroup = useEvaluationStore.getState().resources['datasets:dataset-1'].conditions[0]
-    store.setConditionGroupOperator(resourceType, resourceId, initialGroup.id, 'or')
-    store.addConditionGroup(resourceType, resourceId)
+    const state = useEvaluationStore.getState().resources['apps:app-conditions']
+    const condition = state.conditions.conditions[0]
 
-    const booleanField = config.fieldOptions.find(field => field.type === 'boolean')!
-    const currentItem = useEvaluationStore.getState().resources['datasets:dataset-1'].conditions[0].items[0]
-    store.updateConditionField(resourceType, resourceId, initialGroup.id, currentItem.id, booleanField.id)
-
-    const updatedGroup = useEvaluationStore.getState().resources['datasets:dataset-1'].conditions[0]
-    expect(updatedGroup.logicalOperator).toBe('or')
-    expect(updatedGroup.items[0].operator).toBe('is')
-    expect(getAllowedOperators(resourceType, booleanField.id)).toEqual(['is', 'is_not'])
+    expect(state.conditions.logicalOperator).toBe('or')
+    expect(condition.variableSelector).toEqual(['node-answer', 'answer-correctness'])
+    expect(condition.comparisonOperator).toBe('=')
+    expect(getAllowedOperators(state.metrics, condition.variableSelector)).toEqual(['=', '≠', '>', '<', '≥', '≤', 'is null', 'is not null'])
   })
 
-  it('should clear values for empty operators', () => {
+  it('should clear values for operators without values', () => {
     const resourceType = 'apps'
     const resourceId = 'app-3'
     const store = useEvaluationStore.getState()
     const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
+    store.addCustomMetric(resourceType, resourceId)
 
-    const stringField = config.fieldOptions.find(field => field.type === 'string')!
-    const item = useEvaluationStore.getState().resources['apps:app-3'].conditions[0].items[0]
+    const customMetric = useEvaluationStore.getState().resources['apps:app-3'].metrics.find(metric => metric.kind === 'custom-workflow')!
+    store.setCustomMetricWorkflow(resourceType, resourceId, customMetric.id, {
+      workflowId: config.workflowOptions[0].id,
+      workflowAppId: 'custom-workflow-app-id',
+      workflowName: config.workflowOptions[0].label,
+    })
+    store.syncCustomMetricOutputs(resourceType, resourceId, customMetric.id, [{
+      id: 'reason',
+      valueType: 'string',
+    }])
+    store.addCondition(resourceType, resourceId)
 
-    store.updateConditionField(resourceType, resourceId, useEvaluationStore.getState().resources['apps:app-3'].conditions[0].id, item.id, stringField.id)
-    store.updateConditionOperator(resourceType, resourceId, useEvaluationStore.getState().resources['apps:app-3'].conditions[0].id, item.id, 'is_empty')
+    const condition = useEvaluationStore.getState().resources['apps:app-3'].conditions.conditions[0]
 
-    const updatedItem = useEvaluationStore.getState().resources['apps:app-3'].conditions[0].items[0]
+    store.updateConditionMetric(resourceType, resourceId, condition.id, [config.workflowOptions[0].id, 'reason'])
+    store.updateConditionValue(resourceType, resourceId, condition.id, 'needs follow-up')
+    store.updateConditionOperator(resourceType, resourceId, condition.id, 'empty')
 
-    expect(getAllowedOperators(resourceType, stringField.id)).toEqual(['contains', 'not_contains', 'is', 'is_not', 'is_empty', 'is_not_empty'])
-    expect(requiresConditionValue('is_empty')).toBe(false)
-    expect(updatedItem.value).toBeNull()
+    const updatedCondition = useEvaluationStore.getState().resources['apps:app-3'].conditions.conditions[0]
+
+    expect(requiresConditionValue('empty')).toBe(false)
+    expect(updatedCondition.value).toBeNull()
   })
 
-  it('should hydrate resource state from evaluation config', () => {
+  it('should hydrate resource state from judgment_config', () => {
     const resourceType = 'apps'
     const resourceId = 'app-5'
     const store = useEvaluationStore.getState()
@@ -162,15 +183,19 @@ describe('evaluation store', () => {
         input_fields: {
           query: 'answer',
         },
-      },
-      judgement_conditions: [{
-        logical_operator: 'or',
-        items: [{
-          field_id: 'system.has_context',
-          operator: 'is',
-          value: true,
+        output_fields: [{
+          variable: 'reason',
+          value_type: 'string',
         }],
-      }],
+      },
+      judgment_config: {
+        logical_operator: 'or',
+        conditions: [{
+          variable_selector: ['node-1', 'faithfulness'],
+          comparison_operator: '≥',
+          value: '0.9',
+        }],
+      },
     }
 
     store.ensureResource(resourceType, resourceId)
@@ -206,11 +231,12 @@ describe('evaluation store', () => {
     expect(hydratedState.metrics[1].customConfig?.workflowId).toBe('workflow-precision-review')
     expect(hydratedState.metrics[1].customConfig?.mappings[0].inputVariableId).toBe('query')
     expect(hydratedState.metrics[1].customConfig?.mappings[0].outputVariableId).toBe('answer')
-    expect(hydratedState.conditions[0].logicalOperator).toBe('or')
-    expect(hydratedState.conditions[0].items[0]).toMatchObject({
-      fieldId: 'system.has_context',
-      operator: 'is',
-      value: true,
+    expect(hydratedState.metrics[1].customConfig?.outputs).toEqual([{ id: 'reason', valueType: 'string' }])
+    expect(hydratedState.conditions.logicalOperator).toBe('or')
+    expect(hydratedState.conditions.conditions[0]).toMatchObject({
+      variableSelector: ['node-1', 'faithfulness'],
+      comparisonOperator: '≥',
+      value: '0.9',
     })
     expect(hydratedState.activeBatchTab).toBe('history')
     expect(hydratedState.uploadedFileName).toBe('batch.csv')

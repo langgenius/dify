@@ -1,5 +1,4 @@
 import type {
-  ComparisonOperator,
   EvaluationFieldOption,
   EvaluationMockConfig,
   EvaluationResourceType,
@@ -29,31 +28,37 @@ const builtinMetrics: MetricOption[] = [
     id: 'answer-correctness',
     label: 'Answer Correctness',
     description: 'Compares the response with the expected answer and scores factual alignment.',
+    valueType: 'number',
   },
   {
     id: 'faithfulness',
     label: 'Faithfulness',
     description: 'Checks whether the answer stays grounded in the retrieved evidence.',
+    valueType: 'number',
   },
   {
     id: 'relevance',
     label: 'Relevance',
     description: 'Evaluates how directly the answer addresses the original request.',
+    valueType: 'number',
   },
   {
     id: 'latency',
     label: 'Latency',
     description: 'Captures runtime responsiveness for the full execution path.',
+    valueType: 'number',
   },
   {
     id: 'token-usage',
     label: 'Token Usage',
     description: 'Tracks prompt and completion token consumption for the run.',
+    valueType: 'number',
   },
   {
     id: 'tool-success-rate',
     label: 'Tool Success Rate',
     description: 'Measures whether each required tool invocation finishes without failure.',
+    valueType: 'number',
   },
 ]
 
@@ -62,16 +67,19 @@ const pipelineBuiltinMetrics: MetricOption[] = [
     id: 'context-precision',
     label: 'Context Precision',
     description: 'Measures whether retrieved chunks stay tightly aligned to the request.',
+    valueType: 'number',
   },
   {
     id: 'context-recall',
     label: 'Context Recall',
     description: 'Checks whether the retrieval result includes the evidence needed to answer.',
+    valueType: 'number',
   },
   {
     id: 'context-relevance',
     label: 'Context Relevance',
     description: 'Scores how useful the retrieved context is for downstream generation.',
+    valueType: 'number',
   },
 ]
 
@@ -120,20 +128,6 @@ const snippetFields: EvaluationFieldOption[] = [
   { id: 'snippet.output.length', label: 'Output Length', group: 'Snippet Output', type: 'number' },
   { id: 'system.requires_review', label: 'Requires Review', group: 'System', type: 'boolean' },
 ]
-
-export const getComparisonOperators = (fieldType: EvaluationFieldOption['type']): ComparisonOperator[] => {
-  if (fieldType === 'number')
-    return ['is', 'is_not', 'greater_than', 'less_than', 'greater_or_equal', 'less_or_equal', 'is_empty', 'is_not_empty']
-
-  if (fieldType === 'boolean' || fieldType === 'enum')
-    return ['is', 'is_not']
-
-  return ['contains', 'not_contains', 'is', 'is_not', 'is_empty', 'is_not_empty']
-}
-
-export const getDefaultOperator = (fieldType: EvaluationFieldOption['type']): ComparisonOperator => {
-  return getComparisonOperators(fieldType)[0]
-}
 
 export const getEvaluationMockConfig = (resourceType: EvaluationResourceType): EvaluationMockConfig => {
   if (resourceType === 'datasets') {

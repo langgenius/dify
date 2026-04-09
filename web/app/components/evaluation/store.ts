@@ -5,7 +5,7 @@ import type {
 } from './types'
 import type { EvaluationConfig, NodeInfo } from '@/types/evaluation'
 import { create } from 'zustand'
-import { getDefaultOperator, getEvaluationMockConfig } from './mock'
+import { getEvaluationMockConfig } from './mock'
 import {
   buildConditionItem,
   buildInitialState,
@@ -13,7 +13,6 @@ import {
   buildStateFromEvaluationConfig,
   createBatchTestRecord,
   createBuiltinMetric,
-  createConditionGroup,
   createCustomMetric,
   getAllowedOperators as getAllowedOperatorsFromUtils,
   getConditionValue,
@@ -21,10 +20,11 @@ import {
   isEvaluationRunnable as isEvaluationRunnableFromUtils,
   requiresConditionValue as requiresConditionValueFromUtils,
   syncCustomMetricMappings as syncCustomMetricMappingsFromUtils,
-  updateConditionGroup,
+  syncJudgmentConfigWithMetrics,
   updateMetric,
   updateResourceState,
 } from './store-utils'
+import { buildConditionMetricOptions } from './utils'
 
 type EvaluationStore = {
   resources: Record<string, EvaluationResourceState>
@@ -47,6 +47,12 @@ type EvaluationStore = {
     metricId: string,
     inputVariableIds: string[],
   ) => void
+  syncCustomMetricOutputs: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    metricId: string,
+    outputs: Array<{ id: string, valueType: string | null }>,
+  ) => void
   updateCustomMetricMapping: (
     resourceType: EvaluationResourceType,
     resourceId: string,
@@ -54,19 +60,16 @@ type EvaluationStore = {
     mappingId: string,
     patch: { inputVariableId?: string | null, outputVariableId?: string | null },
   ) => void
-  addConditionGroup: (resourceType: EvaluationResourceType, resourceId: string) => void
-  removeConditionGroup: (resourceType: EvaluationResourceType, resourceId: string, groupId: string) => void
-  setConditionGroupOperator: (resourceType: EvaluationResourceType, resourceId: string, groupId: string, logicalOperator: 'and' | 'or') => void
-  addConditionItem: (resourceType: EvaluationResourceType, resourceId: string, groupId: string) => void
-  removeConditionItem: (resourceType: EvaluationResourceType, resourceId: string, groupId: string, itemId: string) => void
-  updateConditionField: (resourceType: EvaluationResourceType, resourceId: string, groupId: string, itemId: string, fieldId: string) => void
-  updateConditionOperator: (resourceType: EvaluationResourceType, resourceId: string, groupId: string, itemId: string, operator: ComparisonOperator) => void
+  setConditionLogicalOperator: (resourceType: EvaluationResourceType, resourceId: string, logicalOperator: 'and' | 'or') => void
+  addCondition: (resourceType: EvaluationResourceType, resourceId: string) => void
+  removeCondition: (resourceType: EvaluationResourceType, resourceId: string, conditionId: string) => void
+  updateConditionMetric: (resourceType: EvaluationResourceType, resourceId: string, conditionId: string, variableSelector: [string, string]) => void
+  updateConditionOperator: (resourceType: EvaluationResourceType, resourceId: string, conditionId: string, operator: ComparisonOperator) => void
   updateConditionValue: (
     resourceType: EvaluationResourceType,
     resourceId: string,
-    groupId: string,
-    itemId: string,
-    value: string | number | boolean | null,
+    conditionId: string,
+    value: string | string[] | boolean | null,
   ) => void
   setBatchTab: (resourceType: EvaluationResourceType, resourceId: string, tab: EvaluationResourceState['activeBatchTab']) => void
   setUploadedFileName: (resourceType: EvaluationResourceType, resourceId: string, uploadedFileName: string | null) => void
@@ -117,17 +120,22 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
 
     set((state) => {
       return {
-        resources: updateResourceState(state.resources, resourceType, resourceId, currentResource => ({
-          ...currentResource,
-          metrics: currentResource.metrics.some(metric => metric.optionId === optionId && metric.kind === 'builtin')
+        resources: updateResourceState(state.resources, resourceType, resourceId, (currentResource) => {
+          const metrics = currentResource.metrics.some(metric => metric.optionId === optionId && metric.kind === 'builtin')
             ? currentResource.metrics.map(metric => metric.optionId === optionId && metric.kind === 'builtin'
                 ? {
                     ...metric,
                     nodeInfoList,
                   }
                 : metric)
-            : [...currentResource.metrics, createBuiltinMetric(option, nodeInfoList)],
-        })),
+            : [...currentResource.metrics, createBuiltinMetric(option, nodeInfoList)]
+
+          return {
+            ...currentResource,
+            metrics,
+            conditions: syncJudgmentConfigWithMetrics(currentResource.conditions, metrics),
+          }
+        }),
       }
     })
   },
@@ -144,27 +152,36 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
   },
   addCustomMetric: (resourceType, resourceId) => {
     set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        metrics: resource.metrics.some(metric => metric.kind === 'custom-workflow')
+      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => {
+        const metrics = resource.metrics.some(metric => metric.kind === 'custom-workflow')
           ? resource.metrics
-          : [...resource.metrics, createCustomMetric()],
-      })),
+          : [...resource.metrics, createCustomMetric()]
+
+        return {
+          ...resource,
+          metrics,
+          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+        }
+      }),
     }))
   },
   removeMetric: (resourceType, resourceId, metricId) => {
     set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        metrics: resource.metrics.filter(metric => metric.id !== metricId),
-      })),
+      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => {
+        const metrics = resource.metrics.filter(metric => metric.id !== metricId)
+
+        return {
+          ...resource,
+          metrics,
+          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+        }
+      }),
     }))
   },
   setCustomMetricWorkflow: (resourceType, resourceId, metricId, workflow) => {
     set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        metrics: updateMetric(resource.metrics, metricId, metric => ({
+      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => {
+        const metrics = updateMetric(resource.metrics, metricId, metric => ({
           ...metric,
           customConfig: metric.customConfig
             ? {
@@ -176,10 +193,17 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
                   ...mapping,
                   outputVariableId: null,
                 })),
+                outputs: [],
               }
             : metric.customConfig,
-        })),
-      })),
+        }))
+
+        return {
+          ...resource,
+          metrics,
+          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+        }
+      }),
     }))
   },
   syncCustomMetricMappings: (resourceType, resourceId, metricId, inputVariableIds) => {
@@ -198,6 +222,27 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
+  syncCustomMetricOutputs: (resourceType, resourceId, metricId, outputs) => {
+    set(state => ({
+      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => {
+        const metrics = updateMetric(resource.metrics, metricId, metric => ({
+          ...metric,
+          customConfig: metric.customConfig
+            ? {
+                ...metric.customConfig,
+                outputs,
+              }
+            : metric.customConfig,
+        }))
+
+        return {
+          ...resource,
+          metrics,
+          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+        }
+      }),
+    }))
+  },
   updateCustomMetricMapping: (resourceType, resourceId, metricId, mappingId, patch) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
@@ -214,114 +259,101 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
-  addConditionGroup: (resourceType, resourceId) => {
+  setConditionLogicalOperator: (resourceType, resourceId, logicalOperator) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: [...resource.conditions, createConditionGroup(resourceType)],
-      })),
-    }))
-  },
-  removeConditionGroup: (resourceType, resourceId, groupId) => {
-    set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        conditions: resource.conditions.filter(group => group.id !== groupId),
-      })),
-    }))
-  },
-  setConditionGroupOperator: (resourceType, resourceId, groupId, logicalOperator) => {
-    set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        conditions: updateConditionGroup(resource.conditions, groupId, group => ({
-          ...group,
+        conditions: {
+          ...resource.conditions,
           logicalOperator,
-        })),
+        },
       })),
     }))
   },
-  addConditionItem: (resourceType, resourceId, groupId) => {
+  addCondition: (resourceType, resourceId) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: updateConditionGroup(resource.conditions, groupId, group => ({
-          ...group,
-          items: [...group.items, buildConditionItem(resourceType)],
-        })),
+        conditions: {
+          ...resource.conditions,
+          conditions: [...resource.conditions.conditions, buildConditionItem(resource.metrics)],
+        },
       })),
     }))
   },
-  removeConditionItem: (resourceType, resourceId, groupId, itemId) => {
+  removeCondition: (resourceType, resourceId, conditionId) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: updateConditionGroup(resource.conditions, groupId, group => ({
-          ...group,
-          items: group.items.filter(item => item.id !== itemId),
-        })),
+        conditions: {
+          ...resource.conditions,
+          conditions: resource.conditions.conditions.filter(condition => condition.id !== conditionId),
+        },
       })),
     }))
   },
-  updateConditionField: (resourceType, resourceId, groupId, itemId, fieldId) => {
-    const field = getEvaluationMockConfig(resourceType).fieldOptions.find(option => option.id === fieldId)
-
+  updateConditionMetric: (resourceType, resourceId, conditionId, variableSelector) => {
     set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        conditions: updateConditionGroup(resource.conditions, groupId, group => ({
-          ...group,
-          items: group.items.map((item) => {
-            if (item.id !== itemId)
-              return item
+      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => {
+        const allowedOperators = getAllowedOperatorsFromUtils(resource.metrics, variableSelector)
+        const comparisonOperator = allowedOperators[0]
+        const metricOption = buildConditionMetricOptions(resource.metrics).find(option =>
+          option.variableSelector[0] === variableSelector[0] && option.variableSelector[1] === variableSelector[1],
+        )
 
-            const nextOperator = field ? getDefaultOperator(field.type) : item.operator
-
-            return {
-              ...item,
-              fieldId,
-              operator: nextOperator,
-              value: getConditionValue(field, nextOperator),
-            }
-          }),
-        })),
-      })),
+        return {
+          ...resource,
+          conditions: {
+            ...resource.conditions,
+            conditions: resource.conditions.conditions.map(condition => condition.id === conditionId
+              ? {
+                  ...condition,
+                  variableSelector,
+                  comparisonOperator,
+                  value: getConditionValue(metricOption?.valueType, comparisonOperator),
+                }
+              : condition),
+          },
+        }
+      }),
     }))
   },
-  updateConditionOperator: (resourceType, resourceId, groupId, itemId, operator) => {
+  updateConditionOperator: (resourceType, resourceId, conditionId, operator) => {
     set((state) => {
-      const fieldOptions = getEvaluationMockConfig(resourceType).fieldOptions
-
       return {
         resources: updateResourceState(state.resources, resourceType, resourceId, currentResource => ({
           ...currentResource,
-          conditions: updateConditionGroup(currentResource.conditions, groupId, group => ({
-            ...group,
-            items: group.items.map((item) => {
-              if (item.id !== itemId)
-                return item
+          conditions: {
+            ...currentResource.conditions,
+            conditions: currentResource.conditions.conditions.map((condition) => {
+              if (condition.id !== conditionId)
+                return condition
 
-              const field = fieldOptions.find(option => option.id === item.fieldId)
+              const metricOption = buildConditionMetricOptions(currentResource.metrics)
+                .find(option =>
+                  option.variableSelector[0] === condition.variableSelector?.[0]
+                  && option.variableSelector[1] === condition.variableSelector?.[1],
+                )
 
               return {
-                ...item,
-                operator,
-                value: getConditionValue(field, operator, item.value),
+                ...condition,
+                comparisonOperator: operator,
+                value: getConditionValue(metricOption?.valueType, operator, condition.value),
               }
             }),
-          })),
+          },
         })),
       }
     })
   },
-  updateConditionValue: (resourceType, resourceId, groupId, itemId, value) => {
+  updateConditionValue: (resourceType, resourceId, conditionId, value) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: updateConditionGroup(resource.conditions, groupId, group => ({
-          ...group,
-          items: group.items.map(item => item.id === itemId ? { ...item, value } : item),
-        })),
+        conditions: {
+          ...resource.conditions,
+          conditions: resource.conditions.conditions.map(condition => condition.id === conditionId ? { ...condition, value } : condition),
+        },
       })),
     }))
   },
@@ -374,8 +406,11 @@ export const useEvaluationResource = (resourceType: EvaluationResourceType, reso
   return useEvaluationStore(state => state.resources[resourceKey] ?? (initialResourceCache[resourceKey] ??= buildInitialState(resourceType)))
 }
 
-export const getAllowedOperators = (resourceType: EvaluationResourceType, fieldId: string | null) => {
-  return getAllowedOperatorsFromUtils(resourceType, fieldId)
+export const getAllowedOperators = (
+  metrics: EvaluationResourceState['metrics'],
+  variableSelector: [string, string] | null,
+) => {
+  return getAllowedOperatorsFromUtils(metrics, variableSelector)
 }
 
 export const isCustomMetricConfigured = (metric: EvaluationResourceState['metrics'][number]) => {

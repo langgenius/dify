@@ -2,12 +2,12 @@
 
 import type {
   ComparisonOperator,
-  EvaluationFieldOption,
+  ConditionMetricOption,
   EvaluationResourceProps,
-  JudgmentConditionGroup,
+  JudgmentConditionItem,
 } from '../../types'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import {
@@ -20,79 +20,103 @@ import {
   SelectValue,
 } from '@/app/components/base/ui/select'
 import { cn } from '@/utils/classnames'
-import { getEvaluationMockConfig } from '../../mock'
-import { getAllowedOperators, requiresConditionValue, useEvaluationStore } from '../../store'
-import { getFieldTypeIconClassName, getOperatorLabel, groupFieldOptions } from '../../utils'
+import { getAllowedOperators, requiresConditionValue, useEvaluationResource, useEvaluationStore } from '../../store'
+import {
+  buildConditionMetricOptions,
+  getComparisonOperatorLabel,
+  isSelectorEqual,
+  serializeVariableSelector,
+} from '../../utils'
 
-type ConditionFieldLabelProps = {
-  field?: EvaluationFieldOption
+type ConditionMetricLabelProps = {
+  metric?: ConditionMetricOption
   placeholder: string
 }
 
-type ConditionFieldSelectProps = {
-  field?: EvaluationFieldOption
-  fieldOptions: EvaluationFieldOption[]
+type ConditionMetricSelectProps = {
+  metric?: ConditionMetricOption
+  metricOptions: ConditionMetricOption[]
   placeholder: string
-  onChange: (fieldId: string) => void
+  onChange: (variableSelector: [string, string]) => void
 }
 
 type ConditionOperatorSelectProps = {
-  field?: EvaluationFieldOption
   operator: ComparisonOperator
   operators: ComparisonOperator[]
   onChange: (operator: ComparisonOperator) => void
 }
 
-type FieldValueInputProps = {
-  field?: EvaluationFieldOption
-  operator: ComparisonOperator
-  value: string | number | boolean | null
-  onChange: (value: string | number | boolean | null) => void
+type ConditionValueInputProps = {
+  metric?: ConditionMetricOption
+  condition: JudgmentConditionItem
+  onChange: (value: string | string[] | boolean | null) => void
 }
 
-type ConditionGroupProps = EvaluationResourceProps & {
-  group: JudgmentConditionGroup
-  index: number
+type ConditionGroupProps = EvaluationResourceProps
+
+const getMetricValueTypeIconClassName = (valueType: ConditionMetricOption['valueType']) => {
+  if (valueType === 'number')
+    return 'i-ri-hashtag'
+
+  if (valueType === 'boolean')
+    return 'i-ri-checkbox-circle-line'
+
+  return 'i-ri-bar-chart-box-line'
 }
 
-const ConditionFieldLabel = ({
-  field,
+const ConditionMetricLabel = ({
+  metric,
   placeholder,
-}: ConditionFieldLabelProps) => {
-  if (!field)
+}: ConditionMetricLabelProps) => {
+  if (!metric)
     return <span className="px-1 system-sm-regular text-components-input-text-placeholder">{placeholder}</span>
 
   return (
     <div className="flex min-w-0 items-center gap-2 px-1">
       <div className="inline-flex h-6 min-w-0 items-center gap-1 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] shadow-xs">
-        <span className={cn(getFieldTypeIconClassName(field.type), 'h-3 w-3 shrink-0 text-text-secondary')} />
-        <span className="truncate system-xs-medium text-text-secondary">{field.label}</span>
+        <span className={cn(getMetricValueTypeIconClassName(metric.valueType), 'h-3 w-3 shrink-0 text-text-secondary')} />
+        <span className="truncate system-xs-medium text-text-secondary">{metric.label}</span>
       </div>
-      <span className="shrink-0 system-xs-regular text-text-tertiary">{field.type}</span>
+      <span className="shrink-0 system-xs-regular text-text-tertiary">{metric.group}</span>
     </div>
   )
 }
 
-const ConditionFieldSelect = ({
-  field,
-  fieldOptions,
+const ConditionMetricSelect = ({
+  metric,
+  metricOptions,
   placeholder,
   onChange,
-}: ConditionFieldSelectProps) => {
+}: ConditionMetricSelectProps) => {
+  const groupedMetricOptions = useMemo(() => {
+    return Object.entries(metricOptions.reduce<Record<string, ConditionMetricOption[]>>((acc, option) => {
+      acc[option.group] = [...(acc[option.group] ?? []), option]
+      return acc
+    }, {}))
+  }, [metricOptions])
+
   return (
-    <Select value={field?.id ?? ''} onValueChange={value => value && onChange(value)}>
+    <Select
+      value={serializeVariableSelector(metric?.variableSelector)}
+      onValueChange={(value) => {
+        const nextMetric = metricOptions.find(option => serializeVariableSelector(option.variableSelector) === value)
+        if (nextMetric)
+          onChange(nextMetric.variableSelector)
+      }}
+    >
       <SelectTrigger className="h-auto bg-transparent px-1 py-1 hover:bg-transparent focus-visible:bg-transparent">
-        <ConditionFieldLabel field={field} placeholder={placeholder} />
+        <ConditionMetricLabel metric={metric} placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent popupClassName="w-[320px]">
-        {groupFieldOptions(fieldOptions).map(([groupName, fields]) => (
+      <SelectContent popupClassName="w-[360px]">
+        {groupedMetricOptions.map(([groupName, options]) => (
           <SelectGroup key={groupName}>
             <SelectGroupLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{groupName}</SelectGroupLabel>
-            {fields.map(option => (
-              <SelectItem key={option.id} value={option.id}>
+            {options.map(option => (
+              <SelectItem key={option.id} value={serializeVariableSelector(option.variableSelector)}>
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className={cn(getFieldTypeIconClassName(option.type), 'h-3.5 w-3.5 shrink-0 text-text-tertiary')} />
+                  <span className={cn(getMetricValueTypeIconClassName(option.valueType), 'h-3.5 w-3.5 shrink-0 text-text-tertiary')} />
                   <span className="truncate">{option.label}</span>
+                  <span className="shrink-0 text-text-quaternary">{option.description}</span>
                 </div>
               </SelectItem>
             ))}
@@ -104,22 +128,21 @@ const ConditionFieldSelect = ({
 }
 
 const ConditionOperatorSelect = ({
-  field,
   operator,
   operators,
   onChange,
 }: ConditionOperatorSelectProps) => {
-  const { t } = useTranslation('evaluation')
+  const { t } = useTranslation()
 
   return (
     <Select value={operator} onValueChange={value => value && onChange(value as ComparisonOperator)}>
       <SelectTrigger className="h-8 w-auto min-w-[88px] gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
-        <span className="truncate system-xs-medium text-text-secondary">{getOperatorLabel(operator, field?.type, t)}</span>
+        <span className="truncate system-xs-medium text-text-secondary">{getComparisonOperatorLabel(operator, t)}</span>
       </SelectTrigger>
       <SelectContent className="z-[1002]" popupClassName="w-[240px] bg-components-panel-bg-blur backdrop-blur-[10px]">
         {operators.map(nextOperator => (
           <SelectItem key={nextOperator} value={nextOperator}>
-            {getOperatorLabel(nextOperator, field?.type, t)}
+            {getComparisonOperatorLabel(nextOperator, t)}
           </SelectItem>
         ))}
       </SelectContent>
@@ -127,21 +150,20 @@ const ConditionOperatorSelect = ({
   )
 }
 
-const FieldValueInput = ({
-  field,
-  operator,
-  value,
+const ConditionValueInput = ({
+  metric,
+  condition,
   onChange,
-}: FieldValueInputProps) => {
+}: ConditionValueInputProps) => {
   const { t } = useTranslation('evaluation')
 
-  if (!field || !requiresConditionValue(operator))
+  if (!metric || !requiresConditionValue(condition.comparisonOperator))
     return null
 
-  if (field.type === 'boolean') {
+  if (metric.valueType === 'boolean') {
     return (
       <div className="px-2 py-1.5">
-        <Select value={value === null ? '' : String(value)} onValueChange={nextValue => onChange(nextValue === 'true')}>
+        <Select value={condition.value === null ? '' : String(condition.value)} onValueChange={nextValue => onChange(nextValue === 'true')}>
           <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
             <SelectValue placeholder={t('conditions.selectValue')} />
           </SelectTrigger>
@@ -154,38 +176,27 @@ const FieldValueInput = ({
     )
   }
 
-  if (field.type === 'enum') {
-    return (
-      <div className="px-2 py-1.5">
-        <Select value={typeof value === 'string' ? value : ''} onValueChange={nextValue => onChange(nextValue)}>
-          <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
-            <SelectValue placeholder={t('conditions.selectValue')} />
-          </SelectTrigger>
-          <SelectContent>
-            {(field.options ?? []).map(option => (
-              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    )
-  }
+  const isMultiValue = condition.comparisonOperator === 'in' || condition.comparisonOperator === 'not in'
+  const inputValue = Array.isArray(condition.value)
+    ? condition.value.join(', ')
+    : typeof condition.value === 'boolean'
+      ? ''
+      : condition.value ?? ''
 
   return (
     <div className="px-2 py-1.5">
       <Input
-        type={field.type === 'number' ? 'number' : 'text'}
-        value={value === null || typeof value === 'boolean' ? '' : value}
+        type={metric.valueType === 'number' && !isMultiValue ? 'number' : 'text'}
+        value={inputValue}
         className="border-none bg-transparent shadow-none hover:border-none hover:bg-state-base-hover-alt focus:border-none focus:bg-state-base-hover-alt focus:shadow-none"
         placeholder={t('conditions.valuePlaceholder')}
         onChange={(e) => {
-          if (field.type === 'number') {
-            const nextValue = e.target.value
-            onChange(nextValue === '' ? null : Number(nextValue))
+          if (isMultiValue) {
+            onChange(e.target.value.split(',').map(item => item.trim()).filter(Boolean))
             return
           }
 
-          onChange(e.target.value)
+          onChange(e.target.value === '' ? null : e.target.value)
         }}
       />
     </div>
@@ -195,20 +206,17 @@ const FieldValueInput = ({
 const ConditionGroup = ({
   resourceType,
   resourceId,
-  group,
-  index,
 }: ConditionGroupProps) => {
   const { t } = useTranslation('evaluation')
-  const config = getEvaluationMockConfig(resourceType)
+  const resource = useEvaluationResource(resourceType, resourceId)
+  const metricOptions = useMemo(() => buildConditionMetricOptions(resource.metrics), [resource.metrics])
   const logicalLabels = {
     and: t('conditions.logical.and'),
     or: t('conditions.logical.or'),
   }
-  const removeConditionGroup = useEvaluationStore(state => state.removeConditionGroup)
-  const setConditionGroupOperator = useEvaluationStore(state => state.setConditionGroupOperator)
-  const addConditionItem = useEvaluationStore(state => state.addConditionItem)
-  const removeConditionItem = useEvaluationStore(state => state.removeConditionItem)
-  const updateConditionField = useEvaluationStore(state => state.updateConditionField)
+  const setConditionLogicalOperator = useEvaluationStore(state => state.setConditionLogicalOperator)
+  const removeCondition = useEvaluationStore(state => state.removeCondition)
+  const updateConditionMetric = useEvaluationStore(state => state.updateConditionMetric)
   const updateConditionOperator = useEvaluationStore(state => state.updateConditionOperator)
   const updateConditionValue = useEvaluationStore(state => state.updateConditionValue)
 
@@ -216,7 +224,6 @@ const ConditionGroup = ({
     <div className="rounded-2xl border border-divider-subtle bg-components-card-bg p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Badge>{t('conditions.groupLabel', { index: index + 1 })}</Badge>
           <div className="flex rounded-lg border border-divider-subtle bg-background-default-subtle p-1">
             {(['and', 'or'] as const).map(operator => (
               <button
@@ -224,65 +231,50 @@ const ConditionGroup = ({
                 type="button"
                 className={cn(
                   'rounded-md px-3 py-1.5 system-xs-medium-uppercase',
-                  group.logicalOperator === operator
+                  resource.conditions.logicalOperator === operator
                     ? 'bg-components-card-bg text-text-primary shadow-xs'
                     : 'text-text-tertiary',
                 )}
-                onClick={() => setConditionGroupOperator(resourceType, resourceId, group.id, operator)}
+                onClick={() => setConditionLogicalOperator(resourceType, resourceId, operator)}
               >
                 {logicalLabels[operator]}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="small" variant="ghost" onClick={() => addConditionItem(resourceType, resourceId, group.id)}>
-            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-            {t('conditions.addCondition')}
-          </Button>
-          <Button
-            size="small"
-            variant="ghost"
-            aria-label={t('conditions.removeGroup')}
-            onClick={() => removeConditionGroup(resourceType, resourceId, group.id)}
-          >
-            <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
-          </Button>
-        </div>
       </div>
+
       <div className="space-y-3">
-        {group.items.map((item) => {
-          const field = config.fieldOptions.find(option => option.id === item.fieldId)
-          const allowedOperators = getAllowedOperators(resourceType, item.fieldId)
-          const showValue = !!field && requiresConditionValue(item.operator)
+        {resource.conditions.conditions.map((condition) => {
+          const metric = metricOptions.find(option => isSelectorEqual(option.variableSelector, condition.variableSelector))
+          const allowedOperators = getAllowedOperators(resource.metrics, condition.variableSelector)
+          const showValue = !!metric && requiresConditionValue(condition.comparisonOperator)
 
           return (
-            <div key={item.id} className="flex items-start overflow-hidden rounded-lg">
+            <div key={condition.id} className="flex items-start overflow-hidden rounded-lg">
               <div className="min-w-0 flex-1 rounded-lg bg-components-input-bg-normal">
                 <div className="flex items-center gap-0 pr-1">
                   <div className="min-w-0 flex-1 py-1">
-                    <ConditionFieldSelect
-                      field={field}
-                      fieldOptions={config.fieldOptions}
+                    <ConditionMetricSelect
+                      metric={metric}
+                      metricOptions={metricOptions}
                       placeholder={t('conditions.fieldPlaceholder')}
-                      onChange={value => updateConditionField(resourceType, resourceId, group.id, item.id, value)}
+                      onChange={value => updateConditionMetric(resourceType, resourceId, condition.id, value)}
                     />
                   </div>
                   <div className="h-3 w-px bg-divider-regular" />
                   <ConditionOperatorSelect
-                    field={field}
-                    operator={item.operator}
+                    operator={condition.comparisonOperator}
                     operators={allowedOperators}
-                    onChange={value => updateConditionOperator(resourceType, resourceId, group.id, item.id, value)}
+                    onChange={value => updateConditionOperator(resourceType, resourceId, condition.id, value)}
                   />
                 </div>
                 {showValue && (
                   <div className="border-t border-divider-subtle">
-                    <FieldValueInput
-                      field={field}
-                      operator={item.operator}
-                      value={item.value}
-                      onChange={value => updateConditionValue(resourceType, resourceId, group.id, item.id, value)}
+                    <ConditionValueInput
+                      metric={metric}
+                      condition={condition}
+                      onChange={value => updateConditionValue(resourceType, resourceId, condition.id, value)}
                     />
                   </div>
                 )}
@@ -292,7 +284,7 @@ const ConditionGroup = ({
                   size="small"
                   variant="ghost"
                   aria-label={t('conditions.removeCondition')}
-                  onClick={() => removeConditionItem(resourceType, resourceId, group.id, item.id)}
+                  onClick={() => removeCondition(resourceType, resourceId, condition.id)}
                 >
                   <span aria-hidden="true" className="i-ri-close-line h-4 w-4" />
                 </Button>

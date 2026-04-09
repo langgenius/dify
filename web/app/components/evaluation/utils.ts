@@ -1,16 +1,16 @@
 import type { TFunction } from 'i18next'
-import type { ComparisonOperator, EvaluationFieldOption } from './types'
+import type {
+  ComparisonOperator,
+  ConditionMetricOption,
+  ConditionMetricValueType,
+  EvaluationMetric,
+} from './types'
 
 export const TAB_CLASS_NAME = 'flex-1 rounded-lg px-3 py-2 text-left system-sm-medium'
 
-const compactOperatorLabels: Partial<Record<ComparisonOperator, string>> = {
-  is: '=',
-  is_not: '!=',
-  greater_than: '>',
-  less_than: '<',
-  greater_or_equal: '>=',
-  less_or_equal: '<=',
-}
+const rawOperatorLabels = new Set<ComparisonOperator>(['=', '≠', '>', '<', '≥', '≤'])
+
+const noValueOperators = new Set<ComparisonOperator>(['empty', 'not empty', 'is null', 'is not null'])
 
 export const encodeModelSelection = (provider: string, model: string) => `${provider}::${model}`
 
@@ -25,33 +25,84 @@ export const decodeModelSelection = (judgeModelId: string | null) => {
   return { provider, model }
 }
 
-export const groupFieldOptions = (fieldOptions: EvaluationFieldOption[]) => {
-  return Object.entries(fieldOptions.reduce<Record<string, EvaluationFieldOption[]>>((acc, field) => {
-    acc[field.group] = [...(acc[field.group] ?? []), field]
-    return acc
-  }, {}))
-}
-
-export const getOperatorLabel = (
+export const getComparisonOperatorLabel = (
   operator: ComparisonOperator,
-  fieldType: EvaluationFieldOption['type'] | undefined,
-  t: TFunction<'evaluation'>,
+  t: TFunction,
 ) => {
-  if (fieldType === 'number' && compactOperatorLabels[operator])
-    return compactOperatorLabels[operator] as string
+  if (rawOperatorLabels.has(operator))
+    return operator
 
-  return t(`conditions.operators.${operator}` as const)
+  return t(`nodes.ifElse.comparisonOperator.${operator}` as never, { ns: 'workflow' } as never) as unknown as string
 }
 
-export const getFieldTypeIconClassName = (fieldType: EvaluationFieldOption['type']) => {
-  if (fieldType === 'number')
-    return 'i-ri-hashtag'
+export const requiresComparisonValue = (operator: ComparisonOperator) => {
+  return !noValueOperators.has(operator)
+}
 
-  if (fieldType === 'boolean')
-    return 'i-ri-checkbox-circle-line'
+const getMetricValueType = (valueType: string | null | undefined): ConditionMetricValueType => {
+  if (valueType === 'number' || valueType === 'integer')
+    return 'number'
 
-  if (fieldType === 'enum')
-    return 'i-ri-list-check-2'
+  if (valueType === 'boolean')
+    return 'boolean'
 
-  return 'i-ri-text'
+  return 'string'
+}
+
+export const getComparisonOperators = (valueType: ConditionMetricValueType): ComparisonOperator[] => {
+  if (valueType === 'number')
+    return ['=', '≠', '>', '<', '≥', '≤', 'is null', 'is not null']
+
+  if (valueType === 'boolean')
+    return ['is', 'is not', 'is null', 'is not null']
+
+  return ['contains', 'not contains', 'start with', 'end with', 'is', 'is not', 'empty', 'not empty', 'in', 'not in', 'is null', 'is not null']
+}
+
+export const getDefaultComparisonOperator = (valueType: ConditionMetricValueType): ComparisonOperator => {
+  return getComparisonOperators(valueType)[0]
+}
+
+export const buildConditionMetricOptions = (metrics: EvaluationMetric[]): ConditionMetricOption[] => {
+  return metrics.flatMap((metric) => {
+    if (metric.kind === 'builtin') {
+      return (metric.nodeInfoList ?? []).map((nodeInfo) => {
+        return {
+          id: `${nodeInfo.node_id}:${metric.optionId}`,
+          group: nodeInfo.title,
+          label: metric.label,
+          description: nodeInfo.type,
+          valueType: metric.valueType,
+          variableSelector: [nodeInfo.node_id, metric.optionId] as [string, string],
+        }
+      })
+    }
+
+    const customConfig = metric.customConfig
+
+    if (!customConfig?.workflowId)
+      return []
+
+    return customConfig.outputs.map((output) => {
+      return {
+        id: `${customConfig.workflowId}:${output.id}`,
+        group: customConfig.workflowName ?? metric.label,
+        label: output.id,
+        description: customConfig.workflowName ?? metric.label,
+        valueType: getMetricValueType(output.valueType),
+        variableSelector: [customConfig.workflowId, output.id] as [string, string],
+      }
+    })
+  })
+}
+
+export const serializeVariableSelector = (value: [string, string] | null | undefined) => {
+  return value ? JSON.stringify(value) : ''
+}
+
+export const isSelectorEqual = (
+  left: [string, string] | null | undefined,
+  right: [string, string] | null | undefined,
+) => {
+  return left?.[0] === right?.[0] && left?.[1] === right?.[1]
 }

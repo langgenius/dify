@@ -18,6 +18,7 @@ export const buildMetricOption = (metricId: string): MetricOption => ({
   id: metricId,
   label: humanizeMetricId(metricId),
   description: '',
+  valueType: 'number',
 })
 
 export const getMetricVisual = (metricId: string): { icon: string, tone: MetricVisualTone } => {
