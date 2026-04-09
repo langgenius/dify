@@ -578,26 +578,33 @@ class TestDatasetServiceCreationAndUpdate:
         binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
         session = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = binding
+        session.add = MagicMock()
         session_context = _make_session_context(session)
+
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = session_context
 
         with (
             patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.Session", return_value=session_context),
+            patch("services.dataset_service.sessionmaker", mock_sessionmaker),
         ):
             DatasetService._update_external_knowledge_binding("dataset-1", "new-knowledge", "new-api")
 
         assert binding.external_knowledge_id == "new-knowledge"
         assert binding.external_knowledge_api_id == "new-api"
-        mock_db.session.add.assert_called_once_with(binding)
+        session.add.assert_called_once_with(binding)
 
     def test_update_external_knowledge_binding_raises_for_missing_binding(self):
         session = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = None
         session_context = _make_session_context(session)
 
+        mock_sessionmaker = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value = session_context
+
         with (
             patch("services.dataset_service.db"),
-            patch("services.dataset_service.Session", return_value=session_context),
+            patch("services.dataset_service.sessionmaker", mock_sessionmaker),
         ):
             with pytest.raises(ValueError, match="External knowledge binding not found"):
                 DatasetService._update_external_knowledge_binding("dataset-1", "knowledge-1", "api-1")
@@ -1607,7 +1614,7 @@ class TestDatasetCollectionBindingService:
         binding = SimpleNamespace(id="binding-1")
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = binding
+            mock_db.session.scalar.return_value = binding
 
             result = DatasetCollectionBindingService.get_dataset_collection_binding("provider", "model")
 
@@ -1619,10 +1626,11 @@ class TestDatasetCollectionBindingService:
 
         with (
             patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.select"),
             patch("services.dataset_service.DatasetCollectionBinding", return_value=created_binding) as binding_cls,
             patch.object(Dataset, "gen_collection_name_by_id", return_value="generated-collection"),
         ):
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             result = DatasetCollectionBindingService.get_dataset_collection_binding("provider", "model", "dataset")
 
@@ -1638,7 +1646,7 @@ class TestDatasetCollectionBindingService:
 
     def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(self):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(ValueError, match="Dataset collection binding not found"):
                 DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type("binding-1")
@@ -1647,7 +1655,7 @@ class TestDatasetCollectionBindingService:
         binding = SimpleNamespace(id="binding-1")
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.order_by.return_value.first.return_value = binding
+            mock_db.session.scalar.return_value = binding
 
             result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type("binding-1")
 
@@ -1673,7 +1681,7 @@ class TestDatasetPermissionService:
                 [{"user_id": "user-1"}, {"user_id": "user-2"}],
             )
 
-        mock_db.session.query.return_value.where.return_value.delete.assert_called_once()
+        mock_db.session.execute.assert_called()
         mock_db.session.add_all.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
@@ -1744,12 +1752,12 @@ class TestDatasetPermissionService:
         with patch("services.dataset_service.db") as mock_db:
             DatasetPermissionService.clear_partial_member_list("dataset-1")
 
-        mock_db.session.query.return_value.where.return_value.delete.assert_called_once()
+        mock_db.session.execute.assert_called()
         mock_db.session.commit.assert_called_once()
 
     def test_clear_partial_member_list_rolls_back_on_exception(self):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.delete.side_effect = RuntimeError("boom")
+            mock_db.session.execute.side_effect = RuntimeError("boom")
 
             with pytest.raises(RuntimeError, match="boom"):
                 DatasetPermissionService.clear_partial_member_list("dataset-1")

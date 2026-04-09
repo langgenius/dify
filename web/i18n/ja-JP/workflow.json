@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "成功。成功した場合の値は 1、失敗した場合の値は 0 です。",
   "nodes.parameterExtractor.outputVars.usage": "モデル使用量",
   "nodes.parameterExtractor.reasoningMode": "推論モード",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "関数/ツール呼び出し",
+  "nodes.parameterExtractor.reasoningModePrompt": "プロンプト",
   "nodes.parameterExtractor.reasoningModeTip": "関数呼び出しやプロンプトの指示に応答するモデルの能力に基づいて、適切な推論モードを選択できます。",
   "nodes.questionClassifiers.addClass": "クラスを追加",
   "nodes.questionClassifiers.advancedSetting": "高度な設定",

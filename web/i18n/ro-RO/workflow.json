@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Este succes. În caz de succes valoarea este 1, în caz de eșec valoarea este 0.",
   "nodes.parameterExtractor.outputVars.usage": "Informații de utilizare a modelului",
   "nodes.parameterExtractor.reasoningMode": "Mod de raționament",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Funcție/Apel instrument",
+  "nodes.parameterExtractor.reasoningModePrompt": "Prompt",
   "nodes.parameterExtractor.reasoningModeTip": "Puteți alege modul de raționament potrivit în funcție de capacitatea modelului de a răspunde la instrucțiuni pentru apelarea funcțiilor sau prompturi.",
   "nodes.questionClassifiers.addClass": "Adăugați clasă",
   "nodes.questionClassifiers.advancedSetting": "Setare avansată",

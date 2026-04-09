@@ -1,6 +1,6 @@
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.entities.model_entities import ModelStatus
@@ -73,7 +73,7 @@ def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LL
                 pool_type="paid",
             )
         else:
-            with Session(db.engine) as session:
+            with sessionmaker(bind=db.engine).begin() as session:
                 stmt = (
                     update(Provider)
                     .where(
@@ -90,4 +90,3 @@ def deduct_llm_quota(*, tenant_id: str, model_instance: ModelInstance, usage: LL
                     )
                 )
                 session.execute(stmt)
-                session.commit()

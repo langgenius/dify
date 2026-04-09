@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Protocol, cast
+from typing import Protocol, TypedDict, cast
 
 import json_repair
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -47,6 +47,17 @@ class WorkflowServiceInterface(Protocol):
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
         pass
+
+
+class CodeGenerateResultDict(TypedDict):
+    code: str
+    language: str
+    error: str
+
+
+class StructuredOutputResultDict(TypedDict):
+    output: str
+    error: str
 
 
 class LLMGenerator:
@@ -293,7 +304,7 @@ class LLMGenerator:
         cls,
         tenant_id: str,
         args: RuleCodeGeneratePayload,
-    ):
+    ) -> CodeGenerateResultDict:
         if args.code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
         else:
@@ -362,7 +373,9 @@ class LLMGenerator:
         return answer.strip()
 
     @classmethod
-    def generate_structured_output(cls, tenant_id: str, args: RuleStructuredOutputPayload):
+    def generate_structured_output(
+        cls, tenant_id: str, args: RuleStructuredOutputPayload
+    ) -> StructuredOutputResultDict:
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
@@ -454,7 +467,7 @@ class LLMGenerator:
     ):
         session = db.session()
 
-        app: App | None = session.query(App).where(App.id == flow_id).first()
+        app: App | None = session.scalar(select(App).where(App.id == flow_id).limit(1))
         if not app:
             raise ValueError("App not found.")
         workflow = workflow_service.get_draft_workflow(app_model=app)

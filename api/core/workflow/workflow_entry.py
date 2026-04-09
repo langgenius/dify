@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
 from graphon.entities import GraphInitParams
 from graphon.entities.graph_config import NodeConfigDictAdapter
@@ -105,6 +105,26 @@ class _WorkflowChildEngineBuilder:
         )
         child_engine.layer(LLMQuotaLayer())
         return child_engine
+
+
+class _NodeConfigDict(TypedDict):
+    id: str
+    width: int
+    height: int
+    type: str
+    data: dict[str, Any]
+
+
+class _EdgeConfigDict(TypedDict):
+    source: str
+    target: str
+    sourceHandle: str
+    targetHandle: str
+
+
+class SingleNodeGraphDict(TypedDict):
+    nodes: list[_NodeConfigDict]
+    edges: list[_EdgeConfigDict]
 
 
 class WorkflowEntry:
@@ -318,7 +338,7 @@ class WorkflowEntry:
         node_data: dict[str, Any],
         node_width: int = 114,
         node_height: int = 514,
-    ) -> dict[str, Any]:
+    ) -> SingleNodeGraphDict:
         """
         Create a minimal graph structure for testing a single node in isolation.
 
@@ -328,14 +348,14 @@ class WorkflowEntry:
         :param node_height: height for UI layout (default: 100)
         :return: graph dictionary with start node and target node
         """
-        node_config = {
+        node_config: _NodeConfigDict = {
             "id": node_id,
             "width": node_width,
             "height": node_height,
             "type": "custom",
             "data": node_data,
         }
-        start_node_config = {
+        start_node_config: _NodeConfigDict = {
             "id": "start",
             "width": node_width,
             "height": node_height,
@@ -346,9 +366,9 @@ class WorkflowEntry:
                 "desc": "Start",
             },
         }
-        return {
-            "nodes": [start_node_config, node_config],
-            "edges": [
+        return SingleNodeGraphDict(
+            nodes=[start_node_config, node_config],
+            edges=[
                 {
                     "source": "start",
                     "target": node_id,
@@ -356,7 +376,7 @@ class WorkflowEntry:
                     "targetHandle": "target",
                 }
             ],
-        }
+        )
 
     @classmethod
     def run_free_node(
