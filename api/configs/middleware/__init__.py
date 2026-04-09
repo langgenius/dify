@@ -135,14 +135,12 @@ class DatabaseConfig(BaseSettings):
     )
 
     DIFY_DB_USER: str | None = Field(
-        description="Optional per-service database username override."
-        " Falls back to DB_USERNAME when unset.",
+        description="Optional per-service database username override. Falls back to DB_USERNAME when unset.",
         default=None,
     )
 
     DIFY_DB_PASS: str | None = Field(
-        description="Optional per-service database password override."
-        " Falls back to DB_PASSWORD when unset.",
+        description="Optional per-service database password override. Falls back to DB_PASSWORD when unset.",
         default=None,
     )
 
