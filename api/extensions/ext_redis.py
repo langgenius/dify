@@ -14,6 +14,7 @@ from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.retry import Retry
 from redis.sentinel import Sentinel
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -126,6 +127,35 @@ redis_client: RedisClientWrapper = RedisClientWrapper()
 _pubsub_redis_client: redis.Redis | RedisCluster | None = None
 
 
+class RedisSSLParamsDict(TypedDict):
+    ssl_cert_reqs: int
+    ssl_ca_certs: str | None
+    ssl_certfile: str | None
+    ssl_keyfile: str | None
+
+
+class RedisHealthParamsDict(TypedDict):
+    retry: Retry
+    socket_timeout: float | None
+    socket_connect_timeout: float | None
+    health_check_interval: int | None
+
+
+class RedisBaseParamsDict(TypedDict):
+    username: str | None
+    password: str | None
+    db: int
+    encoding: str
+    encoding_errors: str
+    decode_responses: bool
+    protocol: int
+    cache_config: CacheConfig | None
+    retry: Retry
+    socket_timeout: float | None
+    socket_connect_timeout: float | None
+    health_check_interval: int | None
+
+
 def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
     """Get SSL configuration for Redis connection."""
     if not dify_config.REDIS_USE_SSL:
@@ -171,14 +201,14 @@ def _get_retry_policy() -> Retry:
     )
 
 
-def _get_connection_health_params() -> dict[str, Any]:
+def _get_connection_health_params() -> RedisHealthParamsDict:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
-    return {
-        "retry": _get_retry_policy(),
-        "socket_timeout": dify_config.REDIS_SOCKET_TIMEOUT,
-        "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
-        "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
-    }
+    return RedisHealthParamsDict(
+        retry=_get_retry_policy(),
+        socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
+        socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
+        health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+    )
 
 
 def _get_cluster_connection_health_params() -> dict[str, Any]:
@@ -193,19 +223,19 @@ def _get_cluster_connection_health_params() -> dict[str, Any]:
     return {k: v for k, v in params.items() if k != "health_check_interval"}
 
 
-def _get_base_redis_params() -> dict[str, Any]:
+def _get_base_redis_params() -> RedisBaseParamsDict:
     """Get base Redis connection parameters including retry and health policy."""
-    return {
-        "username": dify_config.REDIS_USERNAME,
-        "password": dify_config.REDIS_PASSWORD or None,
-        "db": dify_config.REDIS_DB,
-        "encoding": "utf-8",
-        "encoding_errors": "strict",
-        "decode_responses": False,
-        "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
-        "cache_config": _get_cache_configuration(),
+    return RedisBaseParamsDict(
+        username=dify_config.REDIS_USERNAME,
+        password=dify_config.REDIS_PASSWORD or None,
+        db=dify_config.REDIS_DB,
+        encoding="utf-8",
+        encoding_errors="strict",
+        decode_responses=False,
+        protocol=dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        cache_config=_get_cache_configuration(),
         **_get_connection_health_params(),
-    }
+    )
 
 
 def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
