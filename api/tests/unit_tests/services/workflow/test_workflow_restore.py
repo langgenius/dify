@@ -1,10 +1,11 @@
 import json
-from types import SimpleNamespace
+from unittest.mock import Mock
 
+from models import Account
 from models.workflow import Workflow
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
-LEGACY_FEATURES = {
+LEGACY_FEATURES: dict[str, object] = {
     "file_upload": {
         "image": {
             "enabled": True,
@@ -21,7 +22,7 @@ LEGACY_FEATURES = {
     "text_to_speech": {"enabled": False, "language": "", "voice": ""},
 }
 
-NORMALIZED_FEATURES = {
+NORMALIZED_FEATURES: dict[str, object] = {
     "file_upload": {
         "enabled": True,
         "allowed_file_types": ["image"],
@@ -67,7 +68,7 @@ def test_apply_published_workflow_snapshot_to_draft_copies_serialized_features_w
         app_id="app-id",
         source_workflow=source_workflow,
         draft_workflow=None,
-        account=SimpleNamespace(id="account-id"),
+        account=Mock(spec=Account, id="account-id"),
         updated_at_factory=lambda: source_workflow.updated_at,
     )
 
