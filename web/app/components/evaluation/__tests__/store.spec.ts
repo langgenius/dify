@@ -41,6 +41,24 @@ describe('evaluation store', () => {
     expect(configuredMetric!.customConfig!.workflowName).toBe(config.workflowOptions[0].label)
   })
 
+  it('should only add one custom metric', () => {
+    const resourceType = 'apps'
+    const resourceId = 'app-custom-limit'
+    const store = useEvaluationStore.getState()
+
+    store.ensureResource(resourceType, resourceId)
+    store.addCustomMetric(resourceType, resourceId)
+    store.addCustomMetric(resourceType, resourceId)
+
+    expect(
+      useEvaluationStore
+        .getState()
+        .resources['apps:app-custom-limit']
+        .metrics
+        .filter(metric => metric.kind === 'custom-workflow'),
+    ).toHaveLength(1)
+  })
+
   it('should add and remove builtin metrics', () => {
     const resourceType = 'apps'
     const resourceId = 'app-2'

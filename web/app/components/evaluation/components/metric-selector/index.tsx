@@ -12,7 +12,7 @@ import {
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
 import { cn } from '@/utils/classnames'
-import { useEvaluationStore } from '../../store'
+import { useEvaluationResource, useEvaluationStore } from '../../store'
 import SelectorEmptyState from './selector-empty-state'
 import SelectorFooter from './selector-footer'
 import SelectorMetricSection from './selector-metric-section'
@@ -26,12 +26,14 @@ const MetricSelector = ({
   triggerStyle = 'button',
 }: MetricSelectorProps) => {
   const { t } = useTranslation('evaluation')
+  const resource = useEvaluationResource(resourceType, resourceId)
   const addCustomMetric = useEvaluationStore(state => state.addCustomMetric)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [nodeInfoMap, setNodeInfoMap] = useState<Record<string, Array<{ node_id: string, title: string, type: string }>>>({})
   const [collapsedMetricMap, setCollapsedMetricMap] = useState<Record<string, boolean>>({})
   const [expandedMetricNodesMap, setExpandedMetricNodesMap] = useState<Record<string, boolean>>({})
+  const hasCustomMetric = resource.metrics.some(metric => metric.kind === 'custom-workflow')
 
   const {
     builtinMetricMap,
@@ -134,7 +136,8 @@ const MetricSelector = ({
 
           <SelectorFooter
             title={t('metrics.custom.footerTitle')}
-            description={t('metrics.custom.footerDescription')}
+            description={hasCustomMetric ? t('metrics.custom.limitDescription') : t('metrics.custom.footerDescription')}
+            disabled={hasCustomMetric}
             onClick={() => {
               addCustomMetric(resourceType, resourceId)
               setOpen(false)

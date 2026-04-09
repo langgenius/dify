@@ -1,18 +1,21 @@
 type SelectorFooterProps = {
   title: string
   description: string
+  disabled?: boolean
   onClick: () => void
 }
 
 const SelectorFooter = ({
   title,
   description,
+  disabled = false,
   onClick,
 }: SelectorFooterProps) => {
   return (
     <button
       type="button"
-      className="relative flex items-center gap-3 overflow-hidden border-t border-divider-subtle bg-background-default-subtle px-4 py-5 text-left hover:bg-state-base-hover-alt"
+      disabled={disabled}
+      className="relative flex items-center gap-3 overflow-hidden border-t border-divider-subtle bg-background-default-subtle px-4 py-5 text-left enabled:hover:bg-state-base-hover-alt disabled:cursor-not-allowed disabled:opacity-60"
       onClick={onClick}
     >
       <div className="absolute -left-6 -top-6 h-28 w-28 rounded-full bg-util-colors-indigo-indigo-100 opacity-50 blur-2xl" />

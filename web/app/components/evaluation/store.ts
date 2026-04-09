@@ -142,7 +142,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        metrics: [...resource.metrics, createCustomMetric()],
+        metrics: resource.metrics.some(metric => metric.kind === 'custom-workflow')
+          ? resource.metrics
+          : [...resource.metrics, createCustomMetric()],
       })),
     }))
   },

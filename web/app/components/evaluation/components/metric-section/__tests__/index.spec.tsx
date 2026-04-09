@@ -210,5 +210,20 @@ describe('MetricSection', () => {
       expect(screen.getByText('evaluation.metrics.custom.workflowPlaceholder')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'evaluation.metrics.custom.addMapping' })).toBeInTheDocument()
     })
+
+    it('should disable adding another custom metric when one already exists', () => {
+      // Arrange
+      act(() => {
+        useEvaluationStore.getState().addCustomMetric(resourceType, resourceId)
+      })
+
+      // Act
+      renderMetricSection()
+      fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
+
+      // Assert
+      expect(screen.getByRole('button', { name: /evaluation.metrics.custom.footerTitle/i })).toBeDisabled()
+      expect(screen.getByText('evaluation.metrics.custom.limitDescription')).toBeInTheDocument()
+    })
   })
 })
