@@ -36,16 +36,21 @@ describe('DelimiterInput', () => {
 
   it('should suppress onChange during IME composition', () => {
     const onChange = vi.fn()
+    const finalValue = 'wu'
     render(<DelimiterInput value="" onChange={onChange} />)
     const input = screen.getByPlaceholderText(`${ns}.stepTwo.separatorPlaceholder`)
 
     fireEvent.compositionStart(input)
     fireEvent.change(input, { target: { value: 'w' } })
-    fireEvent.change(input, { target: { value: 'wu' } })
+    fireEvent.change(input, { target: { value: finalValue } })
     expect(onChange).not.toHaveBeenCalled()
 
-    fireEvent.compositionEnd(input, { currentTarget: input })
+    fireEvent.compositionEnd(input, {
+      target: { value: finalValue },
+      currentTarget: { value: finalValue },
+    })
     expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0][0].target.value).toBe(finalValue)
   })
 })
 
