@@ -85,6 +85,8 @@ class ChildChunkUpdatePayload(BaseModel):
 
 
 class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading documents as a zip archive."""
+
     document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
 
 
