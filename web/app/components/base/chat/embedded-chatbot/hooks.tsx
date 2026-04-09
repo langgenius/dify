@@ -146,7 +146,15 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     pinned: false,
     limit: 100,
   })
+<<<<<<< HEAD
   const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+=======
+  const {
+    data: appChatListData,
+    isLoading: appChatListDataLoading,
+    error: appChatListError,
+  } = useShareChatList({
+>>>>>>> 5a5dac45 (fix(webapp): recover from stale conversation ids after 404)
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
@@ -154,9 +162,28 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
+<<<<<<< HEAD
   const appPrevChatList = useMemo(() => (currentConversationId && appChatListData?.data.length)
     ? buildChatItemTree(getFormattedChatList(appChatListData.data))
     : [], [appChatListData, currentConversationId])
+=======
+  useEffect(() => {
+    const status = (appChatListError as { status?: number } | null)?.status
+    if (status === 404 && chatShouldReloadKey) {
+      // The conversation was removed remotely. Clear persisted id to avoid 404 retry loops.
+      handleConversationIdInfoChange('')
+      setNewConversationId('')
+      setClearChatList(true)
+    }
+  }, [appChatListError, chatShouldReloadKey, handleConversationIdInfoChange])
+  const appPrevChatList = useMemo(
+    () => (currentConversationId && appChatListData?.data.length)
+      ? buildChatItemTree(getFormattedChatList(appChatListData.data))
+      : [],
+    [appChatListData, currentConversationId],
+  )
+
+>>>>>>> 5a5dac45 (fix(webapp): recover from stale conversation ids after 404)
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []

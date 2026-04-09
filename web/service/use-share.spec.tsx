@@ -10,6 +10,7 @@ import {
 } from './share'
 import {
   shareQueryKeys,
+  shouldRetryShareChatListQuery,
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
@@ -214,6 +215,16 @@ describe('useShareChatList', () => {
     await waitFor(() => {
       expect(result2.current.data).toEqual(updatedResponse)
     })
+  })
+
+  it('should stop retrying on 404 errors for stale conversation ids', () => {
+    expect(shouldRetryShareChatListQuery(0, { status: 404 })).toBe(false)
+  })
+
+  it('should keep default retry behavior for non-404 errors', () => {
+    expect(shouldRetryShareChatListQuery(0, { status: 500 })).toBe(true)
+    expect(shouldRetryShareChatListQuery(2, { status: 500 })).toBe(true)
+    expect(shouldRetryShareChatListQuery(3, { status: 500 })).toBe(false)
   })
 })
 

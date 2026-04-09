@@ -43,6 +43,18 @@ type ShareQueryOptions = {
   refetchOnReconnect?: boolean
 }
 
+type QueryErrorWithStatus = {
+  status?: number
+}
+
+export const shouldRetryShareChatListQuery = (failureCount: number, error: unknown) => {
+  const status = (error as QueryErrorWithStatus | null)?.status
+  if (status === 404)
+    return false
+
+  return failureCount < 3
+}
+
 export const shareQueryKeys = {
   appAccessMode: (code: string | null) => [NAME_SPACE, 'appAccessMode', code] as const,
   appInfo: [NAME_SPACE, 'appInfo'] as const,
@@ -131,6 +143,7 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     // back to a conversation. This fixes issue where recent messages don't appear
     // until switching away and back again (GitHub issue #30378).
     staleTime: 0,
+    retry: shouldRetryShareChatListQuery,
   })
 }
 
