@@ -4,7 +4,8 @@ import copy
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from typing import Any, Literal
 
