@@ -220,7 +220,7 @@ catalog:
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
   uuid: 13.0.0
-  vinext: https://pkg.pr.new/vinext@adbf24d
+  vinext: 0.0.41
   vite: npm:@voidzero-dev/vite-plus-core@0.1.16
   vite-plugin-inspect: 12.0.0-beta.1
   vite-plus: 0.1.16
