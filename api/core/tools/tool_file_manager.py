@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import httpx
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
+from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -166,13 +167,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == id).limit(1))
 
         if not tool_file:
             return None
@@ -190,13 +185,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            message_file: MessageFile | None = (
-                session.query(MessageFile)
-                .where(
-                    MessageFile.id == id,
-                )
-                .first()
-            )
+            message_file: MessageFile | None = session.scalar(select(MessageFile).where(MessageFile.id == id).limit(1))
 
             # Check if message_file is not None
             if message_file is not None:
@@ -210,13 +199,7 @@ class ToolFileManager:
             else:
                 tool_file_id = None
 
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == tool_file_id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
 
         if not tool_file:
             return None
@@ -234,13 +217,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == tool_file_id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
 
         if not tool_file:
             return None, None

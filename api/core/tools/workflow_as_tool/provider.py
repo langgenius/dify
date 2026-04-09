@@ -4,6 +4,7 @@ from collections.abc import Mapping
 
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from pydantic import Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -96,10 +97,10 @@ class WorkflowToolProviderController(ToolProviderController):
         :param app: the app
         :return: the tool
         """
-        workflow: Workflow | None = (
-            session.query(Workflow)
+        workflow: Workflow | None = session.scalar(
+            select(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
-            .first()
+            .limit(1)
         )
 
         if not workflow:
@@ -217,13 +218,13 @@ class WorkflowToolProviderController(ToolProviderController):
             return self.tools
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            db_provider: WorkflowToolProvider | None = (
-                session.query(WorkflowToolProvider)
+            db_provider: WorkflowToolProvider | None = session.scalar(
+                select(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
                     WorkflowToolProvider.id == self.provider_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not db_provider:
