@@ -8415,9 +8415,6 @@
     }
   },
   "app/components/workflow/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -10968,11 +10965,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/version-history-panel/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/workflow/panel/version-history-panel/loading/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -11631,17 +11623,6 @@
       "count": 4
     }
   },
-  "contract/console/apps.ts": {
-    "style/eol-last": {
-      "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
-    "style/no-trailing-spaces": {
-      "count": 1
-    }
-  },
   "context/app-context-provider.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -11689,6 +11670,17 @@
   },
   "context/web-app-context.tsx": {
     "react-refresh/only-export-components": {
+      "count": 1
+    }
+  },
+  "contract/console/apps.ts": {
+    "style/eol-last": {
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
+    "style/no-trailing-spaces": {
       "count": 1
     }
   },
