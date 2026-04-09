@@ -1,0 +1,144 @@
+identity:
+  name: update_incident
+  author: Dify
+  label:
+    en_US: Update Incident
+    zh_Hans: 更新事件
+    pt_BR: Atualizar incidente
+description:
+  human:
+    en_US: Update an existing ServiceNow incident.
+    zh_Hans: 更新现有 ServiceNow 事件。
+    pt_BR: Atualize um incidente existente no ServiceNow.
+  llm: Update a ServiceNow incident by number or sys_id.
+parameters:
+  - name: incident_number_or_sys_id
+    type: string
+    required: true
+    label:
+      en_US: Incident Number or Sys ID
+      zh_Hans: 事件编号或 Sys ID
+      pt_BR: Número do incidente ou Sys ID
+    human_description:
+      en_US: Incident number (for example INC0010001) or sys_id.
+      zh_Hans: 事件编号（例如 INC0010001）或 sys_id。
+      pt_BR: Número do incidente (por exemplo INC0010001) ou sys_id.
+    llm_description: Incident number (INC...) or 32-character sys_id.
+    form: llm
+  - name: short_description
+    type: string
+    required: false
+    label:
+      en_US: Short Description
+      zh_Hans: 简短描述
+      pt_BR: Descrição curta
+    human_description:
+      en_US: Updated short description.
+      zh_Hans: 更新后的简短描述。
+      pt_BR: Descrição curta atualizada.
+    llm_description: Updated short description for the incident.
+    form: llm
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Description
+      zh_Hans: 详细描述
+      pt_BR: Descrição
+    human_description:
+      en_US: Updated detailed description.
+      zh_Hans: 更新后的详细描述。
+      pt_BR: Descrição detalhada atualizada.
+    llm_description: Updated detailed description for the incident.
+    form: llm
+  - name: state
+    type: string
+    required: false
+    label:
+      en_US: State
+      zh_Hans: 状态
+      pt_BR: Estado
+    human_description:
+      en_US: Incident state value.
+      zh_Hans: 事件状态值。
+      pt_BR: Valor de estado do incidente.
+    llm_description: Updated state value in ServiceNow incident.
+    form: llm
+  - name: urgency
+    type: string
+    required: false
+    label:
+      en_US: Urgency
+      zh_Hans: 紧急程度
+      pt_BR: Urgência
+    human_description:
+      en_US: Updated urgency level.
+      zh_Hans: 更新后的紧急程度。
+      pt_BR: Nível de urgência atualizado.
+    llm_description: Updated urgency value.
+    form: llm
+  - name: impact
+    type: string
+    required: false
+    label:
+      en_US: Impact
+      zh_Hans: 影响程度
+      pt_BR: Impacto
+    human_description:
+      en_US: Updated impact level.
+      zh_Hans: 更新后的影响程度。
+      pt_BR: Nível de impacto atualizado.
+    llm_description: Updated impact value.
+    form: llm
+  - name: assignment_group
+    type: string
+    required: false
+    label:
+      en_US: Assignment Group
+      zh_Hans: 指派组
+      pt_BR: Grupo de atribuição
+    human_description:
+      en_US: Updated assignment group identifier.
+      zh_Hans: 更新后的指派组标识。
+      pt_BR: Identificador atualizado do grupo de atribuição.
+    llm_description: Updated assignment group identifier.
+    form: llm
+  - name: assigned_to
+    type: string
+    required: false
+    label:
+      en_US: Assigned To
+      zh_Hans: 指派给
+      pt_BR: Atribuído para
+    human_description:
+      en_US: Updated assignee identifier.
+      zh_Hans: 更新后的处理人标识。
+      pt_BR: Identificador atualizado do responsável.
+    llm_description: Updated assignee identifier.
+    form: llm
+  - name: category
+    type: string
+    required: false
+    label:
+      en_US: Category
+      zh_Hans: 分类
+      pt_BR: Categoria
+    human_description:
+      en_US: Updated category value.
+      zh_Hans: 更新后的分类值。
+      pt_BR: Valor atualizado de categoria.
+    llm_description: Updated category value.
+    form: llm
+  - name: subcategory
+    type: string
+    required: false
+    label:
+      en_US: Subcategory
+      zh_Hans: 子分类
+      pt_BR: Subcategoria
+    human_description:
+      en_US: Updated subcategory value.
+      zh_Hans: 更新后的子分类值。
+      pt_BR: Valor atualizado de subcategoria.
+    llm_description: Updated subcategory value.
+    form: llm
