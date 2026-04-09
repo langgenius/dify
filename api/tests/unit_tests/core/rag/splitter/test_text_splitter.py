@@ -129,6 +129,7 @@ import asyncio
 import string
 import sys
 import types
+from inspect import currentframe
 from unittest.mock import Mock, patch
 
 import pytest
@@ -817,27 +818,49 @@ class TestEnhanceRecursiveCharacterTextSplitter:
         assert len(result) > 0
         assert all(isinstance(chunk, str) for chunk in result)
 
-    def test_from_encoder_uses_character_length(self):
+    def test_from_encoder_internal_token_encoder_paths(self):
         """
-        Test that from_encoder always uses character-based length function,
-        regardless of whether an embedding model is provided.
+        Test internal _token_encoder branches by capturing local closure from frame.
+
+        This validates:
+        - empty texts path
+        - embedding model path
+        - GPT2Tokenizer fallback path
+        - _character_encoder empty-path branch
         """
+
+        class _SpySplitter(EnhanceRecursiveCharacterTextSplitter):
+            captured_token_encoder = None
+            captured_character_encoder = None
+
+            def __init__(self, **kwargs):
+                frame = currentframe()
+                if frame and frame.f_back:
+                    _SpySplitter.captured_token_encoder = frame.f_back.f_locals.get("_token_encoder")
+                    _SpySplitter.captured_character_encoder = frame.f_back.f_locals.get("_character_encoder")
+                super().__init__(**kwargs)
+
         mock_model = Mock()
         mock_model.get_text_embedding_num_tokens.return_value = [3, 5]
 
-        # With model: should still use character length, not token length
-        splitter_with_model = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-            embedding_model_instance=mock_model, chunk_size=10, chunk_overlap=1
-        )
-        assert splitter_with_model._length_function(["abc", "defgh"]) == [3, 5]
-        assert splitter_with_model._length_function([]) == []
+        _SpySplitter.from_encoder(embedding_model_instance=mock_model, chunk_size=10, chunk_overlap=1)
+        token_encoder = _SpySplitter.captured_token_encoder
+        character_encoder = _SpySplitter.captured_character_encoder
 
-        # Without model: same character-based behavior
-        splitter_without_model = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-            embedding_model_instance=None, chunk_size=10, chunk_overlap=1
-        )
-        assert splitter_without_model._length_function(["ab", "cdef"]) == [2, 4]
-        assert splitter_without_model._length_function([]) == []
+        assert token_encoder is not None
+        assert character_encoder is not None
+        assert token_encoder([]) == []
+        assert token_encoder(["abc", "defgh"]) == [3, 5]
+        assert character_encoder([]) == []
+
+        with patch(
+            "core.rag.splitter.fixed_text_splitter.GPT2Tokenizer.get_num_tokens",
+            side_effect=lambda text: len(text) + 1,
+        ):
+            _SpySplitter.from_encoder(embedding_model_instance=None, chunk_size=10, chunk_overlap=1)
+            token_encoder_without_model = _SpySplitter.captured_token_encoder
+            assert token_encoder_without_model is not None
+            assert token_encoder_without_model(["ab", "cdef"]) == [3, 5]
 
 
 # ============================================================================

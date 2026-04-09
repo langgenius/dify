@@ -45,16 +45,19 @@ class UpstashVector(BaseVector):
         self.add_texts(texts, embeddings)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
-        ids = [str(uuid4()) for _ in documents]
-        vectors = [
-            Vector(
-                id=ids[i],
-                vector=embedding,
-                metadata=doc.metadata,
-                data=doc.page_content,
+        ids: list[str] = []
+        vectors: list[Vector] = []
+        for doc, embedding in zip(documents, embeddings):
+            uid = str(uuid4())
+            ids.append(uid)
+            vectors.append(
+                Vector(
+                    id=uid,
+                    vector=embedding,
+                    metadata=doc.metadata,
+                    data=doc.page_content,
+                )
             )
-            for i, (doc, embedding) in enumerate(zip(documents, embeddings))
-        ]
         self.index.upsert(vectors=vectors)
         return ids
 

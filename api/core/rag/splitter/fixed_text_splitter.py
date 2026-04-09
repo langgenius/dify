@@ -7,6 +7,8 @@ import re
 from collections.abc import Set as AbstractSet
 from typing import Any, Literal
 
+from graphon.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
+
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
 
@@ -24,7 +26,14 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
     ) -> T:
-        _ = embedding_model_instance
+        def _token_encoder(texts: list[str]) -> list[int]:
+            if not texts:
+                return []
+
+            if embedding_model_instance:
+                return embedding_model_instance.get_text_embedding_num_tokens(texts=texts)
+            else:
+                return [GPT2Tokenizer.get_num_tokens(text) for text in texts]
 
         def _character_encoder(texts: list[str]) -> list[int]:
             if not texts:
@@ -32,6 +41,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
 
             return [len(text) for text in texts]
 
+        _ = _token_encoder  # not yet wired as length_function, kept for future use
         return cls(length_function=_character_encoder, **kwargs)
 
 
