@@ -90,9 +90,9 @@ def init_app(app: DifyApp):
     app.register_blueprint(inner_api_bp)
     app.register_blueprint(mcp_bp)
 
-    # TODO: enable after full sandbox integration
-    # from controllers.cli_api import bp as cli_api_bp
-    # app.register_blueprint(cli_api_bp)
+    from controllers.cli_api import bp as cli_api_bp
+
+    app.register_blueprint(cli_api_bp)
 
     # Register trigger blueprint with CORS for webhook calls
     _apply_cors_once(

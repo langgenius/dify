@@ -41,7 +41,7 @@ from . import (
     init_validate,
     notification,
     ping,
-    # sandbox_files,  # TODO: enable after full sandbox integration
+    sandbox_files,
     setup,
     spec,
     version,
@@ -53,7 +53,7 @@ from .app import (
     agent,
     annotation,
     app,
-    # app_asset,  # TODO: enable after full sandbox integration
+    app_asset,
     audio,
     completion,
     conversation,
@@ -64,7 +64,7 @@ from .app import (
     model_config,
     ops_trace,
     site,
-    # skills,  # TODO: enable after full sandbox integration
+    skills,
     statistic,
     workflow,
     workflow_app_log,
@@ -133,7 +133,7 @@ from .workspace import (
     model_providers,
     models,
     plugin,
-    # sandbox_providers,  # TODO: enable after full sandbox integration
+    sandbox_providers,
     tool_providers,
     trigger_providers,
     workspace,

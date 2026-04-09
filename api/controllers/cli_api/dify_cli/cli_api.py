@@ -22,7 +22,7 @@ from core.session.cli_api import CliContext
 from core.skill.entities import ToolInvocationRequest
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
-from graphon.file.helpers import get_signed_file_url_for_plugin
+from graphon.file.helpers import get_signed_file_url
 from libs.helper import length_prefixed_response
 from models.account import Account
 from models.model import EndUser, Tenant
@@ -139,11 +139,9 @@ class CliUploadFileRequestApi(Resource):
         payload: RequestRequestUploadFile,
         cli_context: CliContext,
     ):
-        url = get_signed_file_url_for_plugin(
-            filename=payload.filename,
-            mimetype=payload.mimetype,
+        url = get_signed_file_url(
+            upload_file_id=f"{tenant_model.id}_{user_model.id}_{payload.filename}",
             tenant_id=tenant_model.id,
-            user_id=user_model.id,
         )
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
