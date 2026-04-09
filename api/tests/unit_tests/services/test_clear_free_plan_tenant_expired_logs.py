@@ -209,8 +209,22 @@ def _session_wrapper_for_no_autoflush(session: Mock) -> Mock:
     return wrapper
 
 
+def _sessionmaker_wrapper_for_begin(session: Mock) -> Mock:
+    """
+    ClearFreePlanTenantExpiredLogs.process uses: with sessionmaker(db.engine).begin() as session:
+    so sessionmaker(db.engine) must return an object with a begin() method that returns a context manager.
+    """
+    begin_cm = MagicMock()
+    begin_cm.__enter__.return_value = session
+    begin_cm.__exit__.return_value = None
+
+    sessionmaker_result = MagicMock()
+    sessionmaker_result.begin.return_value = begin_cm
+    return sessionmaker_result
+
+
 def _session_wrapper_for_direct(session: Mock) -> Mock:
-    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session:"""
+    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session: (for old code paths)"""
     wrapper = MagicMock()
     wrapper.__enter__.return_value = session
     wrapper.__exit__.return_value = None
@@ -261,48 +275,46 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     msg_session_1.query.side_effect = lambda model: (
         make_query_with_batches([[msg1], []]) if model == service_module.Message else MagicMock()
     )
-    msg_session_1.commit.return_value = None
-
     msg_session_2 = MagicMock()
     msg_session_2.query.side_effect = lambda model: (
         make_query_with_batches([[]]) if model == service_module.Message else MagicMock()
     )
-    msg_session_2.commit.return_value = None
 
     conv_session_1 = MagicMock()
     conv_session_1.query.side_effect = lambda model: (
         make_query_with_batches([[conv1], []]) if model == service_module.Conversation else MagicMock()
     )
-    conv_session_1.commit.return_value = None
 
     conv_session_2 = MagicMock()
     conv_session_2.query.side_effect = lambda model: (
         make_query_with_batches([[]]) if model == service_module.Conversation else MagicMock()
     )
-    conv_session_2.commit.return_value = None
 
     wal_session_1 = MagicMock()
     wal_session_1.query.side_effect = lambda model: (
         make_query_with_batches([[log1], []]) if model == service_module.WorkflowAppLog else MagicMock()
     )
-    wal_session_1.commit.return_value = None
 
     wal_session_2 = MagicMock()
     wal_session_2.query.side_effect = lambda model: (
         make_query_with_batches([[]]) if model == service_module.WorkflowAppLog else MagicMock()
     )
-    wal_session_2.commit.return_value = None
 
     session_wrappers = [
-        _session_wrapper_for_no_autoflush(msg_session_1),
-        _session_wrapper_for_no_autoflush(msg_session_2),
-        _session_wrapper_for_no_autoflush(conv_session_1),
-        _session_wrapper_for_no_autoflush(conv_session_2),
-        _session_wrapper_for_no_autoflush(wal_session_1),
-        _session_wrapper_for_no_autoflush(wal_session_2),
+        _sessionmaker_wrapper_for_begin(msg_session_1),
+        _sessionmaker_wrapper_for_begin(msg_session_2),
+        _sessionmaker_wrapper_for_begin(conv_session_1),
+        _sessionmaker_wrapper_for_begin(conv_session_2),
+        _sessionmaker_wrapper_for_begin(wal_session_1),
+        _sessionmaker_wrapper_for_begin(wal_session_2),
     ]
 
-    monkeypatch.setattr(service_module, "Session", lambda _engine: session_wrappers.pop(0))
+    def fake_sessionmaker(*args, **kwargs):
+        if kwargs.get("autoflush") is False:
+            return session_wrappers.pop(0)
+        return object()
+
+    monkeypatch.setattr(service_module, "sessionmaker", fake_sessionmaker)
 
     def fake_select(*_args, **_kwargs):
         stmt = MagicMock()
@@ -319,8 +331,6 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [[SimpleNamespace(id="wr-1", to_dict=lambda: {"id": "wr-1"})], []]
     run_repo.delete_runs_by_ids.return_value = 1
-
-    monkeypatch.setattr(service_module, "sessionmaker", lambda **_kwargs: object())
     monkeypatch.setattr(
         service_module.DifyAPIRepositoryFactory,
         "create_api_workflow_node_execution_repository",
@@ -348,7 +358,7 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: py
     count_query.count.return_value = 2
     count_session.query.return_value = count_query
 
-    monkeypatch.setattr(service_module, "Session", lambda _engine: _session_wrapper_for_direct(count_session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: _sessionmaker_wrapper_for_begin(count_session))
 
     # Avoid LocalProxy usage
     flask_app = service_module.Flask("test-app")
@@ -438,8 +448,8 @@ def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pyt
 
     batch_session.query.side_effect = [q1, q2, q3, q4, q_rs]
 
-    sessions = [_session_wrapper_for_direct(total_session), _session_wrapper_for_direct(batch_session)]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: sessions.pop(0))
+    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
@@ -457,7 +467,7 @@ def test_process_with_tenant_ids_emits_progress_every_100(monkeypatch: pytest.Mo
     count_query = MagicMock()
     count_query.count.return_value = 100
     count_session.query.return_value = count_query
-    monkeypatch.setattr(service_module, "Session", lambda _engine: _session_wrapper_for_direct(count_session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: _sessionmaker_wrapper_for_begin(count_session))
 
     flask_app = service_module.Flask("test-app")
     monkeypatch.setattr(service_module, "current_app", SimpleNamespace(_get_current_object=lambda: flask_app))
@@ -523,8 +533,8 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
 
     batch_session.query.side_effect = [*count_queries, q_rs]
 
-    sessions = [_session_wrapper_for_direct(total_session), _session_wrapper_for_direct(batch_session)]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: sessions.pop(0))
+    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
@@ -560,13 +570,18 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
     q_empty.limit.return_value = q_empty
     q_empty.all.return_value = []
     empty_session.query.return_value = q_empty
-    empty_session.commit.return_value = None
     session_wrappers = [
-        _session_wrapper_for_no_autoflush(empty_session),
-        _session_wrapper_for_no_autoflush(empty_session),
-        _session_wrapper_for_no_autoflush(empty_session),
+        _sessionmaker_wrapper_for_begin(empty_session),
+        _sessionmaker_wrapper_for_begin(empty_session),
+        _sessionmaker_wrapper_for_begin(empty_session),
     ]
-    monkeypatch.setattr(service_module, "Session", lambda _engine: session_wrappers.pop(0))
+
+    def fake_sessionmaker(*args, **kwargs):
+        if kwargs.get("autoflush") is False:
+            return session_wrappers.pop(0)
+        return object()
+
+    monkeypatch.setattr(service_module, "sessionmaker", fake_sessionmaker)
 
     def fake_select(*_args, **_kwargs):
         stmt = MagicMock()
@@ -592,8 +607,6 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
         [],
     ]
     run_repo.delete_runs_by_ids.return_value = 2
-
-    monkeypatch.setattr(service_module, "sessionmaker", lambda **_kwargs: object())
     monkeypatch.setattr(
         service_module.DifyAPIRepositoryFactory,
         "create_api_workflow_node_execution_repository",

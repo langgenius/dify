@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -92,22 +93,6 @@ class PublishedWorkflowRunPayload(DraftWorkflowRunPayload):
     is_preview: bool = False
     response_mode: Literal["streaming", "blocking"] = "streaming"
     original_document_id: str | None = None
-
-
-class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
-
-
-class WorkflowListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
-    named_only: bool = False
-
-
-class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=20)
-    marked_comment: str | None = Field(default=None, max_length=100)
 
 
 class NodeIdQuery(BaseModel):
@@ -361,89 +346,6 @@ class PublishedRagPipelineRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-# class RagPipelinePublishedDatasourceNodeRunStatusApi(Resource):
-#     @setup_required
-#     @login_required
-#     @account_initialization_required
-#     @get_rag_pipeline
-#     def post(self, pipeline: Pipeline, node_id: str):
-#         """
-#         Run rag pipeline datasource
-#         """
-#         # The role of the current user in the ta table must be admin, owner, or editor
-#         if not current_user.has_edit_permission:
-#             raise Forbidden()
-#
-#         if not isinstance(current_user, Account):
-#             raise Forbidden()
-#
-#         parser = (reqparse.RequestParser()
-#             .add_argument("job_id", type=str, required=True, nullable=False, location="json")
-#             .add_argument("datasource_type", type=str, required=True, location="json")
-#         )
-#         args = parser.parse_args()
-#
-#         job_id = args.get("job_id")
-#         if job_id == None:
-#             raise ValueError("missing job_id")
-#         datasource_type = args.get("datasource_type")
-#         if datasource_type == None:
-#             raise ValueError("missing datasource_type")
-#
-#         rag_pipeline_service = RagPipelineService()
-#         result = rag_pipeline_service.run_datasource_workflow_node_status(
-#             pipeline=pipeline,
-#             node_id=node_id,
-#             job_id=job_id,
-#             account=current_user,
-#             datasource_type=datasource_type,
-#             is_published=True
-#         )
-#
-#         return result
-
-
-# class RagPipelineDraftDatasourceNodeRunStatusApi(Resource):
-#     @setup_required
-#     @login_required
-#     @account_initialization_required
-#     @get_rag_pipeline
-#     def post(self, pipeline: Pipeline, node_id: str):
-#         """
-#         Run rag pipeline datasource
-#         """
-#         # The role of the current user in the ta table must be admin, owner, or editor
-#         if not current_user.has_edit_permission:
-#             raise Forbidden()
-#
-#         if not isinstance(current_user, Account):
-#             raise Forbidden()
-#
-#         parser = (reqparse.RequestParser()
-#             .add_argument("job_id", type=str, required=True, nullable=False, location="json")
-#             .add_argument("datasource_type", type=str, required=True, location="json")
-#         )
-#         args = parser.parse_args()
-#
-#         job_id = args.get("job_id")
-#         if job_id == None:
-#             raise ValueError("missing job_id")
-#         datasource_type = args.get("datasource_type")
-#         if datasource_type == None:
-#             raise ValueError("missing datasource_type")
-#
-#         rag_pipeline_service = RagPipelineService()
-#         result = rag_pipeline_service.run_datasource_workflow_node_status(
-#             pipeline=pipeline,
-#             node_id=node_id,
-#             job_id=job_id,
-#             account=current_user,
-#             datasource_type=datasource_type,
-#             is_published=False
-#         )
-#
-#         return result
-#
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])

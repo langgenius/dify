@@ -46,7 +46,11 @@ BeforeAll(async () => {
 Before(async function (this: DifyWorld, { pickle }) {
   if (!browser) throw new Error('Shared Playwright browser is not available.')
 
-  await this.startAuthenticatedSession(browser)
+  const isUnauthenticatedScenario = pickle.tags.some((tag) => tag.name === '@unauthenticated')
+
+  if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(browser)
+  else await this.startAuthenticatedSession(browser)
+
   this.scenarioStartedAt = Date.now()
 
   const tags = pickle.tags.map((tag) => tag.name).join(' ')
