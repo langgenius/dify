@@ -2,7 +2,7 @@ import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
-import { collaborationManager } from '@/app/components/workflow/collaboration'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'

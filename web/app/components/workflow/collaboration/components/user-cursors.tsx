@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types'
+import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types/collaboration'
 import { useViewport } from 'reactflow'
 import { getUserColor } from '../utils/user-color'
 
@@ -61,7 +61,7 @@ const UserCursors: FC<UserCursorsProps> = ({
             </svg>
 
             <div
-              className="absolute left-4 top-4 max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
+              className="absolute top-4 left-4 max-w-[120px] overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
               style={{
                 backgroundColor: userColor,
               }}

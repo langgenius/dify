@@ -1,5 +1,5 @@
 'use client'
-import type { OnlineUser } from '../collaboration/types'
+import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useReactFlow } from 'reactflow'

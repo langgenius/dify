@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import type {
   Viewport,
 } from 'reactflow'
-import type { CursorPosition, OnlineUser } from './collaboration/types'
+import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type {
@@ -52,8 +52,8 @@ import {
 import { fetchAllInspectVars } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import CandidateNode from './candidate-node'
-import { collaborationManager } from './collaboration'
 import UserCursors from './collaboration/components/user-cursors'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
 import CommentManager from './comment-manager'
 import {
