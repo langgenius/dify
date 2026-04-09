@@ -245,6 +245,10 @@ class AppModelConfigDict(TypedDict):
     provider: NotRequired[str | None]
 
 
+_enabled_config_adapter: TypeAdapter[EnabledConfig] = TypeAdapter(EnabledConfig)
+_chat_prompt_adapter: TypeAdapter[ChatPromptConfig] = TypeAdapter(ChatPromptConfig)
+
+
 class ConversationDict(TypedDict):
     id: str
     app_id: str
@@ -751,10 +755,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def chat_prompt_config_dict(self) -> ChatPromptConfig:
-        return cast(
-            ChatPromptConfig,
-            _dict_adapter.validate_json(self.chat_prompt_config) if self.chat_prompt_config else {},
-        )
+        return _chat_prompt_adapter.validate_json(self.chat_prompt_config) if self.chat_prompt_config else {}
 
     @property
     def completion_prompt_config_dict(self) -> CompletionPromptConfig:
