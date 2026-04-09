@@ -307,7 +307,9 @@ class WorkflowCommentMentionUsersApi(Resource):
     @console_ns.doc("workflow_comment_mention_users")
     @console_ns.doc(description="Get all users in current tenant for mentions")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Mentionable users retrieved successfully", console_ns.models[WorkflowCommentMentionUsersPayload.__name__])
+    @console_ns.response(
+        200, "Mentionable users retrieved successfully", console_ns.models[WorkflowCommentMentionUsersPayload.__name__]
+    )
     @login_required
     @setup_required
     @account_initialization_required
