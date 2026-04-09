@@ -8304,7 +8304,7 @@ packages:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
   vinext@https://pkg.pr.new/vinext@adbf24d:
-    resolution: {integrity: sha512-15CTf8xXG/HY86EBHU44lZxF9yVNtP69qXDFDUzA131p/c6gqLFASmOTIAv4a/cF8V4ZIoxhN4j5SLDdzh+FZg==, tarball: https://pkg.pr.new/vinext@adbf24d}
+    resolution: {tarball: https://pkg.pr.new/vinext@adbf24d}
     version: 0.0.5
     engines: {node: '>=22'}
     hasBin: true
@@ -13287,7 +13287,7 @@ snapshots:
       '@eslint-community/regexpp': 4.12.2
       comment-parser: 1.4.6
       eslint: 10.2.0(jiti@2.6.1)
-      jsdoc-type-pratt-parser: 7.1.1
+      jsdoc-type-pratt-parser: 7.2.0
       refa: 0.12.1
       regexp-ast-analysis: 0.7.1
       scslre: 0.3.0
