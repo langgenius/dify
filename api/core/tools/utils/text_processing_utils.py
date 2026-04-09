@@ -31,6 +31,6 @@ def remove_leading_symbols(text: str) -> str:
           | ["#$%&'()*+,./:;<=>?@^_`~]     # ASCII punctuation (excludes []【】)
         )+
         """,
-        re.X,
+        re.VERBOSE,
     )
     return re.sub(pattern, "", text)
