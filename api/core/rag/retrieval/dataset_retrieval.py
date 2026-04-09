@@ -15,7 +15,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage, Promp
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import and_, func, literal, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -884,7 +884,7 @@ class DatasetRetrieval:
                 self._send_trace_task(message_id, documents, timer)
                 return
 
-            with Session(db.engine) as session:
+            with sessionmaker(bind=db.engine).begin() as session:
                 # Collect all document_ids and batch fetch DatasetDocuments
                 document_ids = {
                     doc.metadata["document_id"]
@@ -975,7 +975,6 @@ class DatasetRetrieval:
                         {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
                         synchronize_session=False,
                     )
-                    session.commit()
 
             self._send_trace_task(message_id, documents, timer)
 
