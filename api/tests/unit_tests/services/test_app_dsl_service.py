@@ -17,9 +17,11 @@ from services import app_dsl_service
 from services.app_dsl_service import (
     AppDslService,
     CheckDependenciesPendingData,
+    ImportMode,
+    ImportStatus,
     PendingData,
+    _check_version_compatibility,
 )
-from services.entities.dsl_entities import ImportMode, ImportStatus, check_version_compatibility
 
 
 class _FakeHttpResponse:
@@ -63,29 +65,24 @@ def _workflow_yaml(*, version: str = app_dsl_service.CURRENT_DSL_VERSION) -> str
 
 
 def test_check_version_compatibility_invalid_version_returns_failed():
-    assert check_version_compatibility("not-a-version", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.FAILED
+    assert _check_version_compatibility("not-a-version") == ImportStatus.FAILED
 
 
 def test_check_version_compatibility_newer_version_returns_pending():
-    assert check_version_compatibility("99.0.0", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
+    assert _check_version_compatibility("99.0.0") == ImportStatus.PENDING
 
 
-def test_check_version_compatibility_major_older_returns_pending():
-    assert check_version_compatibility("0.9.9", "1.0.0") == ImportStatus.PENDING
+def test_check_version_compatibility_major_older_returns_pending(monkeypatch):
+    monkeypatch.setattr(app_dsl_service, "CURRENT_DSL_VERSION", "1.0.0")
+    assert _check_version_compatibility("0.9.9") == ImportStatus.PENDING
 
 
 def test_check_version_compatibility_minor_older_returns_completed_with_warnings():
-    assert (
-        check_version_compatibility("0.5.0", app_dsl_service.CURRENT_DSL_VERSION)
-        == ImportStatus.COMPLETED_WITH_WARNINGS
-    )
+    assert _check_version_compatibility("0.5.0") == ImportStatus.COMPLETED_WITH_WARNINGS
 
 
 def test_check_version_compatibility_equal_returns_completed():
-    assert (
-        check_version_compatibility(app_dsl_service.CURRENT_DSL_VERSION, app_dsl_service.CURRENT_DSL_VERSION)
-        == ImportStatus.COMPLETED
-    )
+    assert _check_version_compatibility(app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
 
 
 def test_import_app_invalid_import_mode_raises_value_error():

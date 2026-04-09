@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from controllers.console.app import app_import as app_import_module
-from services.entities.dsl_entities import ImportStatus
+from services.app_dsl_service import ImportStatus
 
 
 def _unwrap(func):

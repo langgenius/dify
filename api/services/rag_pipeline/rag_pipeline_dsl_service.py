@@ -19,6 +19,7 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
+from packaging import version
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -36,12 +37,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
-from services.entities.dsl_entities import (
-    CheckDependenciesResult,
-    ImportMode,
-    ImportStatus,
-    check_version_compatibility,
-)
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -66,6 +62,30 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
+
+
+def _check_version_compatibility(imported_version: str) -> ImportStatus:
+    """Determine import status based on version comparison"""
+    try:
+        current_ver = version.parse(CURRENT_DSL_VERSION)
+        imported_ver = version.parse(imported_version)
+    except version.InvalidVersion:
+        return ImportStatus.FAILED
+
+    # If imported version is newer than current, always return PENDING
+    if imported_ver > current_ver:
+        return ImportStatus.PENDING
+
+    # If imported version is older than current's major, return PENDING
+    if imported_ver.major < current_ver.major:
+        return ImportStatus.PENDING
+
+    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
+    if imported_ver.minor < current_ver.minor:
+        return ImportStatus.COMPLETED_WITH_WARNINGS
+
+    # If imported version equals or is older than current's micro, return COMPLETED
+    return ImportStatus.COMPLETED
 
 
 class RagPipelinePendingData(BaseModel):
@@ -175,7 +195,7 @@ class RagPipelineDslService:
             # check if imported_version is a float-like string
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
-            status = check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
+            status = _check_version_compatibility(imported_version)
 
             # Extract app data
             pipeline_data = data.get("rag_pipeline")

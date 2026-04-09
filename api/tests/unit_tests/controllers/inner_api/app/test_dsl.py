@@ -18,7 +18,7 @@ from controllers.inner_api.app.dsl import (
     InnerAppDSLImportPayload,
     _get_active_account,
 )
-from services.entities.dsl_entities import ImportStatus
+from services.app_dsl_service import ImportStatus
 
 
 class TestInnerAppDSLImportPayload:

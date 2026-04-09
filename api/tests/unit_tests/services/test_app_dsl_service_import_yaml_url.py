@@ -4,8 +4,7 @@ import httpx
 
 from models import Account
 from services import app_dsl_service
-from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import ImportMode, ImportStatus
+from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
 
 
 def _build_response(url: str, status_code: int, content: bytes = b"") -> httpx.Response:

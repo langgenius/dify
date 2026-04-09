@@ -14,7 +14,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     RagPipelineImportConfirmApi,
 )
 from models.dataset import Pipeline
-from services.entities.dsl_entities import ImportStatus
+from services.app_dsl_service import ImportStatus
 
 
 def unwrap(func):

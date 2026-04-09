@@ -7,9 +7,8 @@ from faker import Faker
 
 from models.model import App, AppModelConfig
 from services.account_service import AccountService, TenantService
-from services.app_dsl_service import AppDslService
+from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
 from services.app_service import AppService
-from services.entities.dsl_entities import ImportMode, ImportStatus
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
