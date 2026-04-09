@@ -88,7 +88,7 @@ class RagPipelineImportApi(Resource):
                 return result.model_dump(mode="json"), 400
             case ImportStatus.PENDING:
                 return result.model_dump(mode="json"), 202
-            case _:
+            case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
                 return result.model_dump(mode="json"), 200
 
 
