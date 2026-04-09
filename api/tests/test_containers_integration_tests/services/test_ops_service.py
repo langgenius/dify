@@ -272,6 +272,7 @@ class TestOpsService:
         # "project" is in other_keys for Arize; providing "" triggers default substitution
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.check_trace_config_is_effective.return_value = True
+            mock_otm.get_trace_config_project_url.side_effect = Exception("no url")
             mock_otm.encrypt_tracing_config.return_value = {}
 
             app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
