@@ -42,13 +42,7 @@ export function useClipboard({
 
   const copy = useCallback(async (valueToCopy: string) => {
     try {
-      if ('clipboard' in navigator) {
-        await navigator.clipboard.writeText(valueToCopy)
-        handleCopyResult(true)
-      }
-      else {
-        await writeTextToClipboard(valueToCopy)
-      }
+      await writeTextToClipboard(valueToCopy)
     }
     catch (e) {
       if (usePromptAsFallback) {
