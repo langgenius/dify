@@ -69,17 +69,19 @@ class TestOpsService:
         )
         return app, account
 
+    _SENTINEL = object()
+
     def _insert_trace_config(
         self,
         db_session: Session,
         app_id: str,
         provider: str,
-        tracing_config: dict | None = None,
+        tracing_config: dict | None | object = _SENTINEL,
     ) -> TraceAppConfig:
         trace_config = TraceAppConfig(
             app_id=app_id,
             tracing_provider=provider,
-            tracing_config=tracing_config if tracing_config is not None else {"some": "config"},
+            tracing_config=tracing_config if tracing_config is not self._SENTINEL else {"some": "config"},
         )
         db_session.add(trace_config)
         db_session.commit()
