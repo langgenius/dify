@@ -1625,21 +1625,22 @@ class WorkflowDraftVariable(Base):
         # Rebuild them through the file factory so tenant ownership, signed URLs,
         # and storage-backed metadata come from canonical records instead of the
         # serialized JSON blob.
-        if segment_type == SegmentType.FILE:
-            if isinstance(value, File):
-                return build_segment_with_type(segment_type, value)
-            elif isinstance(value, dict):
-                file = self._rebuild_file_types(value)
-                return build_segment_with_type(segment_type, file)
-            else:
-                raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
-        if segment_type == SegmentType.ARRAY_FILE:
-            if not isinstance(value, list):
-                raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
-            file_list = self._rebuild_file_types(value)
-            return build_segment_with_type(segment_type=segment_type, value=file_list)
-
-        return build_segment_with_type(segment_type=segment_type, value=value)
+        match segment_type:
+            case SegmentType.FILE:
+                if isinstance(value, File):
+                    return build_segment_with_type(segment_type, value)
+                elif isinstance(value, dict):
+                    file = self._rebuild_file_types(value)
+                    return build_segment_with_type(segment_type, file)
+                else:
+                    raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+            case SegmentType.ARRAY_FILE:
+                if not isinstance(value, list):
+                    raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
+                file_list = self._rebuild_file_types(value)
+                return build_segment_with_type(segment_type=segment_type, value=file_list)
+            case _:
+                return build_segment_with_type(segment_type=segment_type, value=value)
 
     @staticmethod
     def rebuild_file_types(value: Any):
@@ -1672,21 +1673,22 @@ class WorkflowDraftVariable(Base):
         # Extends `variable_factory.build_segment_with_type` functionality by
         # reconstructing `FileSegment`` or `ArrayFileSegment`` objects from
         # their serialized dictionary or list representations, respectively.
-        if segment_type == SegmentType.FILE:
-            if isinstance(value, File):
-                return build_segment_with_type(segment_type, value)
-            elif isinstance(value, dict):
-                file = cls.rebuild_file_types(value)
-                return build_segment_with_type(segment_type, file)
-            else:
-                raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
-        if segment_type == SegmentType.ARRAY_FILE:
-            if not isinstance(value, list):
-                raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
-            file_list = cls.rebuild_file_types(value)
-            return build_segment_with_type(segment_type=segment_type, value=file_list)
-
-        return build_segment_with_type(segment_type=segment_type, value=value)
+        match segment_type:
+            case SegmentType.FILE:
+                if isinstance(value, File):
+                    return build_segment_with_type(segment_type, value)
+                elif isinstance(value, dict):
+                    file = cls.rebuild_file_types(value)
+                    return build_segment_with_type(segment_type, file)
+                else:
+                    raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+            case SegmentType.ARRAY_FILE:
+                if not isinstance(value, list):
+                    raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
+                file_list = cls.rebuild_file_types(value)
+                return build_segment_with_type(segment_type=segment_type, value=file_list)
+            case _:
+                return build_segment_with_type(segment_type=segment_type, value=value)
 
     def get_value(self) -> Segment:
         """Decode the serialized value into its corresponding `Segment` object.
