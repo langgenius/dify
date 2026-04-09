@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select
@@ -92,11 +93,13 @@ class TestHitTestingService:
     def test_external_retrieve_should_succeed_for_external_provider(
         self, mock_ext_retrieve, db_session_with_containers: Session
     ):
+        dataset_id = str(uuid4())
+        account_id = str(uuid4())
         dataset = MagicMock(spec=Dataset)
-        dataset.id = "dataset_id"
+        dataset.id = dataset_id
         dataset.provider = "external"
         account = MagicMock()
-        account.id = "account_id"
+        account.id = account_id
         mock_ext_retrieve.return_value = [{"content": "ext content", "score": 1.0}]
 
         before_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
@@ -115,7 +118,7 @@ class TestHitTestingService:
         assert cast(dict[str, Any], result["query"])["content"] == 'test "query"'
         assert cast(dict[str, Any], result["records"][0])["content"] == "ext content"
         mock_ext_retrieve.assert_called_once_with(
-            dataset_id="dataset_id",
+            dataset_id=dataset_id,
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},
             metadata_filtering_conditions={"key": "val"},
@@ -142,10 +145,10 @@ class TestHitTestingService:
         self, mock_retrieve, db_session_with_containers: Session
     ):
         dataset = MagicMock(spec=Dataset)
-        dataset.id = "dataset_id"
+        dataset.id = str(uuid4())
         dataset.retrieval_model = None
         account = MagicMock()
-        account.id = "account_id"
+        account.id = str(uuid4())
         mock_retrieve.return_value = []
 
         before_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
@@ -171,9 +174,9 @@ class TestHitTestingService:
         self, mock_get_meta, mock_retrieve, db_session_with_containers: Session
     ):
         dataset = MagicMock(spec=Dataset)
-        dataset.id = "dataset_id"
+        dataset.id = str(uuid4())
         account = MagicMock()
-        account.id = "account_id"
+        account.id = str(uuid4())
 
         retrieval_model = {
             "search_method": "semantic_search",
@@ -201,7 +204,7 @@ class TestHitTestingService:
     @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
     def test_retrieve_should_return_empty_if_metadata_filtering_fails(self, mock_get_meta, mock_retrieve):
         dataset = MagicMock(spec=Dataset)
-        dataset.id = "dataset_id"
+        dataset.id = str(uuid4())
         account = MagicMock()
 
         retrieval_model = {
@@ -229,10 +232,12 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     def test_retrieve_should_handle_attachments(self, mock_retrieve, db_session_with_containers: Session):
+        dataset_id = str(uuid4())
+        account_id = str(uuid4())
         dataset = MagicMock(spec=Dataset)
-        dataset.id = "dataset_id"
+        dataset.id = dataset_id
         account = MagicMock()
-        account.id = "account_id"
+        account.id = account_id
         attachment_ids = ["att1", "att2"]
 
         retrieval_model = {
@@ -254,7 +259,7 @@ class TestHitTestingService:
 
         mock_retrieve.assert_called_once_with(
             retrieval_method=ANY,
-            dataset_id="dataset_id",
+            dataset_id=dataset_id,
             query="test query",
             attachment_ids=attachment_ids,
             top_k=4,
@@ -269,7 +274,7 @@ class TestHitTestingService:
         db_session_with_containers.expire_all()
         latest = db_session_with_containers.scalar(
             select(DatasetQuery)
-            .where(DatasetQuery.dataset_id == "dataset_id")
+            .where(DatasetQuery.dataset_id == dataset_id)
             .order_by(DatasetQuery.created_at.desc())
             .limit(1)
         )
@@ -283,9 +288,9 @@ class TestHitTestingService:
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     def test_retrieve_should_handle_reranking_and_threshold(self, mock_retrieve, db_session_with_containers: Session):
         dataset = MagicMock(spec=Dataset)
-        dataset.id = "dataset_id"
+        dataset.id = str(uuid4())
         account = MagicMock()
-        account.id = "account_id"
+        account.id = str(uuid4())
 
         retrieval_model = {
             "search_method": "hybrid_search",
