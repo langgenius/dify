@@ -29,7 +29,7 @@ class FileUploadNode(Node[FileUploadNodeData]):
     files, it generates storage-backed presigned URLs and lets sandbox download directly.
     """
 
-    node_type = BuiltinNodeTypes.FILE_UPLOAD
+    node_type = "file-upload"
 
     @classmethod
     def version(cls) -> str:

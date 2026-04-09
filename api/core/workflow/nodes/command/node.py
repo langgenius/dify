@@ -22,7 +22,7 @@ COMMAND_NODE_TIMEOUT_SECONDS = 60 * 10
 
 
 class CommandNode(Node[CommandNodeData]):
-    node_type = BuiltinNodeTypes.COMMAND
+    node_type = "command"
 
     def _render_template(self, template: str) -> str:
         parser = VariableTemplateParser(template=template)
