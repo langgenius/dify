@@ -12,7 +12,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, App, Workflow, AccountStatus, TenantStatus
+from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_service import WorkflowService

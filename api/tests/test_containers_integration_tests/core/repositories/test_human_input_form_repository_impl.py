@@ -18,7 +18,7 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,

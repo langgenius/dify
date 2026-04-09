@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.account import TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import AccountStatus, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import Account, Tenant
 from models.provider import LoadBalancingModelConfig, Provider, ProviderModelSetting
 from services.model_load_balancing_service import ModelLoadBalancingService

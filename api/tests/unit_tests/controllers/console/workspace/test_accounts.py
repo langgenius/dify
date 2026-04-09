@@ -29,8 +29,8 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
 )
-from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 from models.account import AccountStatus
+from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
 def unwrap(func):

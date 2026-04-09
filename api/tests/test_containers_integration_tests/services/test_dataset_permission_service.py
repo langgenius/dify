@@ -11,7 +11,7 @@ import pytest
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import (
     Dataset,
     DatasetPermission,

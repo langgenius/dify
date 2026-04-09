@@ -21,7 +21,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from models import Account, Tenant, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantStatus
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset
 from models.enums import DataSourceType, TagType
 from models.model import App, Tag, TagBinding

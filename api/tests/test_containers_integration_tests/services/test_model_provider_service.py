@@ -6,7 +6,7 @@ from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
 

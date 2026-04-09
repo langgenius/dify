@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code, send_deletion_success_task
 
 

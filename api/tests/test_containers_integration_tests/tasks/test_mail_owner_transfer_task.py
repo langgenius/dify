@@ -13,7 +13,7 @@ import pytest
 from faker import Faker
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_owner_transfer_task import (
     send_new_owner_transfer_notify_email_task,
     send_old_owner_transfer_notify_email_task,

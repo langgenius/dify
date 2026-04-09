@@ -7,7 +7,7 @@ from faker import Faker
 from core.entities.document_task import DocumentTask
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (

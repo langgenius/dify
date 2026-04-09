@@ -4,7 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_service import DatasetService

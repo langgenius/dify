@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask.views import MethodView
+
 from models.account import AccountStatus
 
 if not hasattr(builtins, "MethodView"):

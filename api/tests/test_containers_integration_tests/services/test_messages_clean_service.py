@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import (
     ConversationFromSource,
     DataSourceType,

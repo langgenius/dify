@@ -10,7 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from extensions.storage.storage_type import StorageType
-from models import Account, Tenant, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantStatus
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError

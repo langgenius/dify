@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from flask import Flask
+
 from models.account import TenantStatus
 
 

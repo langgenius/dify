@@ -12,7 +12,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Dataset, DocumentSegment, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Dataset, DocumentSegment, TenantStatus
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
 from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode, SegmentStatus

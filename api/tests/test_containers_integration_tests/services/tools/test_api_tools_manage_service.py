@@ -6,7 +6,7 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
-from models import Account, Tenant, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantStatus
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
 

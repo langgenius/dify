@@ -5,7 +5,7 @@ import pytest
 from flask import Flask, g
 
 from controllers.console.workspace.members import MemberInviteEmailApi
-from models.account import Account, TenantAccountRole, AccountStatus
+from models.account import Account, AccountStatus, TenantAccountRole
 
 
 @pytest.fixture

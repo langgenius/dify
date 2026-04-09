@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.orm import Session
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import (
     App,

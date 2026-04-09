@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 from faker import Faker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Dataset, Document, DocumentSegment, Tenant, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Dataset, Document, DocumentSegment, Tenant, TenantStatus
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 

@@ -6,7 +6,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.workspace_service import WorkspaceService
 
 

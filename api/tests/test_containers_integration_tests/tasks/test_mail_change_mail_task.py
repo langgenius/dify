@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_change_mail_task import send_change_mail_completed_notification_task, send_change_mail_task
 
 

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole, AccountStatus, TenantStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
