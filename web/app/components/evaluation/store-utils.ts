@@ -24,6 +24,8 @@ import { encodeModelSelection } from './utils'
 
 type EvaluationStoreResources = Record<string, EvaluationResourceState>
 
+export const DEFAULT_PIPELINE_METRIC_THRESHOLD = 0.85
+
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 
 const humanizeMetricId = (metricId: string) => {
@@ -213,7 +215,11 @@ export function getConditionValue(
   return typeof previousValue === 'string' ? previousValue : null
 }
 
-export function createBuiltinMetric(metric: MetricOption, nodeInfoList: NodeInfo[] = []): EvaluationMetric {
+export function createBuiltinMetric(
+  metric: MetricOption,
+  nodeInfoList: NodeInfo[] = [],
+  threshold = DEFAULT_PIPELINE_METRIC_THRESHOLD,
+): EvaluationMetric {
   return {
     id: createId('metric'),
     optionId: metric.id,
@@ -221,6 +227,7 @@ export function createBuiltinMetric(metric: MetricOption, nodeInfoList: NodeInfo
     label: metric.label,
     description: metric.description,
     badges: metric.badges,
+    threshold,
     nodeInfoList,
   }
 }

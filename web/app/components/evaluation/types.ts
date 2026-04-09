@@ -82,6 +82,7 @@ export type EvaluationMetric = {
   label: string
   description: string
   badges: string[]
+  threshold?: number
   nodeInfoList?: NodeInfo[]
   customConfig?: CustomMetricConfig
 }

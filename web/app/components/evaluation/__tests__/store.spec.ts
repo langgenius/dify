@@ -181,6 +181,7 @@ describe('evaluation store', () => {
     expect(hydratedState.judgeModelId).toBe('openai::gpt-4o-mini')
     expect(hydratedState.metrics).toHaveLength(2)
     expect(hydratedState.metrics[0].optionId).toBe('faithfulness')
+    expect(hydratedState.metrics[0].threshold).toBe(0.85)
     expect(hydratedState.metrics[0].nodeInfoList).toEqual([
       { node_id: 'node-1', title: 'Retriever', type: 'retriever' },
     ])

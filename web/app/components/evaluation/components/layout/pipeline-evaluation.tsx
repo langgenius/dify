@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useDocLink } from '@/context/i18n'
+import { useAvailableEvaluationMetrics } from '@/service/use-evaluation'
 import { getEvaluationMockConfig } from '../../mock'
 import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
 import JudgeModelSelector from '../judge-model-selector'
@@ -24,8 +25,10 @@ const PipelineEvaluation = ({
   const ensureResource = useEvaluationStore(state => state.ensureResource)
   const addBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore(state => state.removeMetric)
+  const updateMetricThreshold = useEvaluationStore(state => state.updateMetricThreshold)
   const setUploadedFileName = useEvaluationStore(state => state.setUploadedFileName)
   const runBatchTest = useEvaluationStore(state => state.runBatchTest)
+  const { data: availableMetricsData } = useAvailableEvaluationMetrics()
   const resource = useEvaluationResource(resourceType, resourceId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const config = getEvaluationMockConfig(resourceType)
@@ -34,6 +37,12 @@ const PipelineEvaluation = ({
       .filter(metric => metric.kind === 'builtin')
       .map(metric => [metric.optionId, metric]),
   ), [resource.metrics])
+  const availableMetricIds = useMemo(() => new Set(availableMetricsData?.metrics ?? []), [availableMetricsData?.metrics])
+  const availableBuiltinMetrics = useMemo(() => {
+    return config.builtinMetrics.filter(metric =>
+      availableMetricIds.has(metric.id) || builtinMetricMap.has(metric.id),
+    )
+  }, [availableMetricIds, builtinMetricMap, config.builtinMetrics])
   const isConfigReady = !!resource.judgeModelId && builtinMetricMap.size > 0
   const isRunnable = isEvaluationRunnable(resource)
 
@@ -107,15 +116,21 @@ const PipelineEvaluation = ({
             <section>
               <InlineSectionHeader title={t('metrics.title')} tooltip={t('metrics.description')} />
               <div className="mt-1 space-y-0.5">
-                {config.builtinMetrics.map(metric => (
-                  <PipelineMetricItem
-                    key={metric.id}
-                    metric={metric}
-                    selected={builtinMetricMap.has(metric.id)}
-                    disabledCondition
-                    onToggle={() => handleToggleMetric(metric.id)}
-                  />
-                ))}
+                {availableBuiltinMetrics.map((metric) => {
+                  const selectedMetric = builtinMetricMap.get(metric.id)
+
+                  return (
+                    <PipelineMetricItem
+                      key={metric.id}
+                      metric={metric}
+                      selected={!!selectedMetric}
+                      threshold={selectedMetric?.threshold}
+                      disabledCondition
+                      onToggle={() => handleToggleMetric(metric.id)}
+                      onThresholdChange={value => updateMetricThreshold(resourceType, resourceId, selectedMetric?.id ?? '', value)}
+                    />
+                  )
+                })}
               </div>
             </section>
 

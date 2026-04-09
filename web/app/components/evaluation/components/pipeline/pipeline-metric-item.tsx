@@ -1,15 +1,20 @@
 'use client'
 
 import type { MetricOption } from '../../types'
+import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
+import Input from '@/app/components/base/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
+import { DEFAULT_PIPELINE_METRIC_THRESHOLD } from '../../store-utils'
 
 type PipelineMetricItemProps = {
   metric: MetricOption
   selected: boolean
   onToggle: () => void
   disabledCondition: boolean
+  threshold?: number
+  onThresholdChange: (value: number) => void
 }
 
 const PipelineMetricItem = ({
@@ -17,7 +22,11 @@ const PipelineMetricItem = ({
   selected,
   onToggle,
   disabledCondition,
+  threshold = DEFAULT_PIPELINE_METRIC_THRESHOLD,
+  onThresholdChange,
 }: PipelineMetricItemProps) => {
+  const { t } = useTranslation('evaluation')
+
   return (
     <div className="flex items-center justify-between gap-3 px-1 py-1">
       <button
@@ -41,16 +50,38 @@ const PipelineMetricItem = ({
         </Tooltip>
       </button>
 
-      <button
-        type="button"
-        disabled={disabledCondition}
-        className={cn(
-          'system-xs-medium text-text-tertiary',
-          disabledCondition && 'cursor-not-allowed text-components-button-secondary-accent-text-disabled',
-        )}
-      >
-        + Condition
-      </button>
+      {selected
+        ? (
+            <div className="flex items-center gap-2">
+              <span className="system-xs-medium text-text-accent">{t('pipeline.passIf')}</span>
+              <div className="w-[52px]">
+                <Input
+                  value={String(threshold)}
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(event) => {
+                    const parsedValue = Number(event.target.value)
+                    if (!Number.isNaN(parsedValue))
+                      onThresholdChange(parsedValue)
+                  }}
+                />
+              </div>
+            </div>
+          )
+        : (
+            <button
+              type="button"
+              disabled={disabledCondition}
+              className={cn(
+                'system-xs-medium text-text-tertiary',
+                disabledCondition && 'cursor-not-allowed text-components-button-secondary-accent-text-disabled',
+              )}
+            >
+              + Condition
+            </button>
+          )}
     </div>
   )
 }

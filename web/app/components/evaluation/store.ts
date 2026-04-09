@@ -32,6 +32,7 @@ type EvaluationStore = {
   hydrateResource: (resourceType: EvaluationResourceType, resourceId: string, config: EvaluationConfig) => void
   setJudgeModel: (resourceType: EvaluationResourceType, resourceId: string, judgeModelId: string) => void
   addBuiltinMetric: (resourceType: EvaluationResourceType, resourceId: string, optionId: string, nodeInfoList?: NodeInfo[]) => void
+  updateMetricThreshold: (resourceType: EvaluationResourceType, resourceId: string, metricId: string, threshold: number) => void
   addCustomMetric: (resourceType: EvaluationResourceType, resourceId: string) => void
   removeMetric: (resourceType: EvaluationResourceType, resourceId: string, metricId: string) => void
   setCustomMetricWorkflow: (
@@ -125,6 +126,17 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         })),
       }
     })
+  },
+  updateMetricThreshold: (resourceType, resourceId, metricId, threshold) => {
+    set(state => ({
+      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
+        ...resource,
+        metrics: updateMetric(resource.metrics, metricId, metric => ({
+          ...metric,
+          threshold,
+        })),
+      })),
+    }))
   },
   addCustomMetric: (resourceType, resourceId) => {
     set(state => ({

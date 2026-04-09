@@ -92,6 +92,7 @@
   "metrics.showMore": "Show more",
   "metrics.title": "Metrics",
   "metrics.update": "Update",
+  "pipeline.passIf": "Pass if \u2265",
   "pipeline.uploadAndRun": "Upload & Run Test",
   "results.empty": "No evaluation results yet.",
   "title": "Evaluation"

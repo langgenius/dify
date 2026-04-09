@@ -54,7 +54,7 @@ describe('Evaluation', () => {
 
     mockUseAvailableEvaluationMetrics.mockReturnValue({
       data: {
-        metrics: ['answer-correctness', 'faithfulness'],
+        metrics: ['answer-correctness', 'faithfulness', 'context-precision', 'context-recall', 'context-relevance'],
       },
       isLoading: false,
     })
@@ -240,12 +240,34 @@ describe('Evaluation', () => {
     expect(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' })).toBeDisabled()
   })
 
+  it('should render selected pipeline metrics from config with the default threshold input', () => {
+    mockUseEvaluationConfig.mockReturnValue({
+      data: {
+        evaluation_model: null,
+        evaluation_model_provider: null,
+        metrics_config: {
+          default_metrics: [{
+            metric: 'context-precision',
+          }],
+          customized_metrics: null,
+        },
+        judgement_conditions: null,
+      },
+    })
+
+    render(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
+
+    expect(screen.getByText('Context Precision')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('0.85')).toBeInTheDocument()
+  })
+
   it('should enable pipeline batch actions after selecting a judge model and metric', () => {
     render(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'select-model' }))
     fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))
 
+    expect(screen.getByDisplayValue('0.85')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'evaluation.batch.downloadTemplate' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' })).toBeEnabled()
   })
