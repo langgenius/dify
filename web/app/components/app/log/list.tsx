@@ -13,6 +13,7 @@ import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { noop } from 'es-toolkit/function'
+import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +34,6 @@ import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
@@ -46,7 +46,6 @@ import {
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
-  buildConversationUrl,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
@@ -674,10 +673,7 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const conversationIdInUrl = searchParams.get('conversation_id') ?? undefined
+  const [conversationIdInUrl, setConversationIdInUrl] = useQueryState('conversation_id', parseAsString)
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -697,8 +693,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   const activeConversationId = conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 
-  const buildUrlWithConversation = useCallback((conversationId?: string) => buildConversationUrl(pathname, searchParams.toString(), conversationId), [pathname, searchParams])
-
   const handleRowClick = useCallback((log: ConversationListItem) => {
     if (conversationIdInUrl === log.id) {
       if (!showDrawer)
@@ -717,8 +711,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     if (currentConversation?.id !== log.id)
       setCurrentConversation(undefined)
 
-    router.push(buildUrlWithConversation(log.id), { scroll: false })
-  }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
+    void setConversationIdInUrl(log.id, { history: 'push' })
+  }, [conversationIdInUrl, currentConversation, setConversationIdInUrl, showDrawer])
 
   const currentConversationId = currentConversation?.id
 
@@ -755,7 +749,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
     if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
       pendingConversationCacheRef.current = undefined
-  }, [conversationIdInUrl, currentConversation, isChatMode, logs?.data, showDrawer])
+  }, [conversationIdInUrl, currentConversation, currentConversationId, logs?.data, showDrawer])
 
   const onCloseDrawer = useCallback(() => {
     onRefresh()
@@ -769,8 +763,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     closingConversationIdRef.current = conversationIdInUrl ?? null
 
     if (conversationIdInUrl)
-      router.replace(buildUrlWithConversation(), { scroll: false })
-  }, [buildUrlWithConversation, conversationIdInUrl, onRefresh, router, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
+      void setConversationIdInUrl(null, { history: 'replace' })
+  }, [conversationIdInUrl, onRefresh, setConversationIdInUrl, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
