@@ -97,6 +97,19 @@ class TestLLMGenerator:
         assert len(questions) == 2
         assert questions[0] == "Question 1?"
 
+    def test_generate_suggested_questions_after_answer_with_think_tags(self, mock_model_instance):
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            "<think>\nThe user asked about Python.\nI should suggest related questions.\n</think>\n"
+            '["What are Python decorators?", "How does async work in Python?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert len(questions) == 2
+        assert questions[0] == "What are Python decorators?"
+        assert questions[1] == "How does async work in Python?"
+
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
         with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")
