@@ -6,6 +6,7 @@ import { ChatVarType } from '../type'
 
 type MockWorkflowStoreState = {
   setShowChatVariablePanel: (value: boolean) => void
+  appId: string
   conversationVariables: ConversationVariable[]
   setConversationVariables: (value: ConversationVariable[]) => void
 }
@@ -17,10 +18,8 @@ type MockFlowStore = {
 
 const mockSetShowChatVariablePanel = vi.fn()
 const mockSetConversationVariables = vi.fn()
-const mockDoSyncWorkflowDraft = vi.fn((_sync: boolean, options?: { onSuccess?: () => void }) => {
-  options?.onSuccess?.()
-})
 const mockInvalidateConversationVarValues = vi.fn()
+const mockUpdateConversationVariables = vi.fn().mockResolvedValue(undefined)
 const mockFindUsedVarNodes = vi.fn<(selector: string[], nodes: Node[]) => Node[]>()
 const mockUpdateNodeVars = vi.fn<(node: Node, current: string[], next: string[]) => Node>()
 
@@ -62,15 +61,14 @@ vi.mock('reactflow', () => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: MockWorkflowStoreState) => T) => selector({
     setShowChatVariablePanel: mockSetShowChatVariablePanel,
+    appId: 'app-1',
     conversationVariables: mockConversationVariables,
     setConversationVariables: mockSetConversationVariables,
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
-  }),
+vi.mock('@/service/workflow', () => ({
+  updateConversationVariables: (...args: unknown[]) => mockUpdateConversationVariables(...args),
 }))
 
 vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
@@ -175,6 +173,7 @@ describe('ChatVariablePanel', () => {
     vi.clearAllMocks()
     mockConversationVariables = [createConversationVariable()]
     mockFlowNodes = [createNode('node-1'), createNode('node-2')]
+    mockUpdateConversationVariables.mockResolvedValue(undefined)
     mockFindUsedVarNodes.mockReturnValue([])
     mockUpdateNodeVars.mockImplementation((node: Node) => node)
   })
@@ -207,9 +206,15 @@ describe('ChatVariablePanel', () => {
         expect.objectContaining({ id: 'var-added', name: 'fresh_var' }),
         createConversationVariable(),
       ])
+      expect(mockUpdateConversationVariables).toHaveBeenCalledWith({
+        appId: 'app-1',
+        conversationVariables: [
+          expect.objectContaining({ id: 'var-added', name: 'fresh_var' }),
+          createConversationVariable(),
+        ],
+      })
+      expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
     })
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
   })
 
   it('should rename existing variables and update affected node references', async () => {

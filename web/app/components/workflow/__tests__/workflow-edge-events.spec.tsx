@@ -110,6 +110,12 @@ vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({
+    appId: 'app-1',
+  }),
+}))
+
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -254,6 +260,7 @@ vi.mock('../hooks', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
+  useLeaderRestoreListener: vi.fn(),
 }))
 
 vi.mock('../hooks/use-workflow-search', () => ({

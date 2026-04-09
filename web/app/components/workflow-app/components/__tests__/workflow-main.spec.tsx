@@ -59,11 +59,40 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useStore: <T,>(selector: (state: { appId: string }) => T) => selector({
+    appId: 'app-1',
+  }),
   useWorkflowStore: () => ({
     getState: () => ({
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
     }),
+  }),
+}))
+
+vi.mock('reactflow', () => ({
+  useReactFlow: () => ({
+    getNodes: () => [],
+    setNodes: vi.fn(),
+    getEdges: () => [],
+    setEdges: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
+  useCollaboration: () => ({
+    startCursorTracking: vi.fn(),
+    stopCursorTracking: vi.fn(),
+    onlineUsers: [],
+    cursors: {},
+    isConnected: false,
+    isEnabled: false,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
+  useWorkflowUpdate: () => ({
+    handleUpdateWorkflowCanvas: vi.fn(),
   }),
 }))
 
@@ -87,7 +116,7 @@ vi.mock('@/app/components/workflow', () => ({
         <button
           type="button"
           onClick={() => onWorkflowDataUpdate?.({
-            features: { file: { enabled: true } },
+            features: { file_upload: { enabled: true } },
             conversation_variables: [{ id: 'conversation-1' }],
             environment_variables: [{ id: 'env-1' }],
           })}
@@ -204,7 +233,9 @@ describe('WorkflowMain', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
 
-    expect(mockSetFeatures).toHaveBeenCalledWith({ file: { enabled: true } })
+    expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
+      file: expect.objectContaining({ enabled: true }),
+    }))
     expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-1' }])
     expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-1' }])
   })

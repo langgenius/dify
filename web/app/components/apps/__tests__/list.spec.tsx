@@ -386,7 +386,7 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = renderWithNuqs(<List />)
+      const { rerender, unmount } = renderWithNuqs(<List />)
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
       unmount()

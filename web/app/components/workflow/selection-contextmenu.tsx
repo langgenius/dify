@@ -324,7 +324,7 @@ const SelectionContextmenu = () => {
     if (alignType === AlignType.DistributeHorizontal || alignType === AlignType.DistributeVertical) {
       const distributedNodes = distributeNodes(nodesToAlign, nodes, alignType)
       if (distributedNodes) {
-        setNodes(distributeNodes)
+        setNodes(distributedNodes)
         handleSelectionContextmenuCancel()
 
         const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
