@@ -18,7 +18,8 @@ from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
 from models import Account, App
 from models.account import AccountStatus
-from services.app_dsl_service import AppDslService, ImportMode, ImportStatus
+from services.app_dsl_service import AppDslService
+from services.entities.dsl_entities import ImportMode, ImportStatus
 
 
 class InnerAppDSLImportPayload(BaseModel):
