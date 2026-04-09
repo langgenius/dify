@@ -3,18 +3,22 @@
 import type { FC, ReactNode } from 'react'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
-import { useParams } from 'next/navigation'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useParams } from '@/next/navigation'
 import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
@@ -133,7 +137,7 @@ const ThreadMessage: FC<{
           <span className="system-sm-medium text-text-primary">{authorName}</span>
           <span className="system-2xs-regular text-text-tertiary">{formatTimeFromNow(createdAt * 1000)}</span>
         </div>
-        <div className="system-sm-regular mt-1 whitespace-pre-wrap break-words text-text-secondary">
+        <div className="mt-1 system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
           {highlightedContent}
         </div>
       </div>
@@ -369,71 +373,75 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         <div className="flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3">
           <div
             id="comment-thread-title"
-            className="font-semibold uppercase text-text-primary"
+            className="font-semibold text-text-primary uppercase"
           >
             {t('comments.panelTitle', { ns: 'workflow' })}
           </div>
           <div className="flex items-center gap-1">
-            <Tooltip
-              popupContent={t('comments.aria.deleteComment', { ns: 'workflow' })}
-              position="top"
-              popupClassName="!px-2 !py-1.5"
-            >
-              <button
-                type="button"
-                disabled={loading}
-                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-                onClick={onDelete}
-                aria-label={t('comments.aria.deleteComment', { ns: 'workflow' })}
-              >
-                <RiDeleteBinLine className="h-4 w-4" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  type="button"
+                  disabled={loading}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                  onClick={onDelete}
+                  aria-label={t('comments.aria.deleteComment', { ns: 'workflow' })}
+                >
+                  <RiDeleteBinLine className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent placement="top" popupClassName="!px-2 !py-1.5">
+                {t('comments.aria.deleteComment', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
-            <Tooltip
-              popupContent={t('comments.aria.resolveComment', { ns: 'workflow' })}
-              position="top"
-              popupClassName="!px-2 !py-1.5"
-            >
-              <button
-                type="button"
-                disabled={comment.resolved || loading}
-                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-                onClick={onResolve}
-                aria-label={t('comments.aria.resolveComment', { ns: 'workflow' })}
-              >
-                {comment.resolved ? <RiCheckboxCircleFill className="h-4 w-4" /> : <RiCheckboxCircleLine className="h-4 w-4" />}
-              </button>
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  type="button"
+                  disabled={comment.resolved || loading}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                  onClick={onResolve}
+                  aria-label={t('comments.aria.resolveComment', { ns: 'workflow' })}
+                >
+                  {comment.resolved ? <RiCheckboxCircleFill className="h-4 w-4" /> : <RiCheckboxCircleLine className="h-4 w-4" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent placement="top" popupClassName="!px-2 !py-1.5">
+                {t('comments.aria.resolveComment', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
             <Divider type="vertical" className="h-3.5" />
-            <Tooltip
-              popupContent={t('comments.aria.previousComment', { ns: 'workflow' })}
-              position="top"
-              popupClassName="!px-2 !py-1.5"
-            >
-              <button
-                type="button"
-                disabled={!canGoPrev || loading}
-                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-                onClick={onPrev}
-                aria-label={t('comments.aria.previousComment', { ns: 'workflow' })}
-              >
-                <RiArrowUpSLine className="h-4 w-4" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  type="button"
+                  disabled={!canGoPrev || loading}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                  onClick={onPrev}
+                  aria-label={t('comments.aria.previousComment', { ns: 'workflow' })}
+                >
+                  <RiArrowUpSLine className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent placement="top" popupClassName="!px-2 !py-1.5">
+                {t('comments.aria.previousComment', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
-            <Tooltip
-              popupContent={t('comments.aria.nextComment', { ns: 'workflow' })}
-              position="top"
-              popupClassName="!px-2 !py-1.5"
-            >
-              <button
-                type="button"
-                disabled={!canGoNext || loading}
-                className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
-                onClick={onNext}
-                aria-label={t('comments.aria.nextComment', { ns: 'workflow' })}
-              >
-                <RiArrowDownSLine className="h-4 w-4" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger>
+                <button
+                  type="button"
+                  disabled={!canGoNext || loading}
+                  className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                  onClick={onNext}
+                  aria-label={t('comments.aria.nextComment', { ns: 'workflow' })}
+                >
+                  <RiArrowDownSLine className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent placement="top" popupClassName="!px-2 !py-1.5">
+                {t('comments.aria.nextComment', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
             <button
               type="button"
@@ -470,88 +478,78 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
                   >
                     {isOwnReply && !isReplyEditing && (
-                      <PortalToFollowElem
-                        placement="bottom-end"
-                        open={activeReplyMenuId === reply.id}
-                        onOpenChange={(open) => {
-                          if (!open) {
-                            setDeletingReplyId(null)
-                            setActiveReplyMenuId(null)
-                          }
-                        }}
+                      <div
+                        className={cn(
+                          'absolute top-1 right-1 gap-1',
+                          activeReplyMenuId === reply.id ? 'flex' : 'hidden group-hover:flex',
+                        )}
+                        data-reply-menu
                       >
-                        <div
-                          className={cn(
-                            'absolute right-1 top-1 gap-1',
-                            activeReplyMenuId === reply.id ? 'flex' : 'hidden group-hover:flex',
-                          )}
-                          data-reply-menu
+                        <DropdownMenu
+                          open={activeReplyMenuId === reply.id}
+                          onOpenChange={(open) => {
+                            if (!open)
+                              setDeletingReplyId(null)
+                            setActiveReplyMenuId(open ? reply.id : null)
+                          }}
                         >
-                          <PortalToFollowElemTrigger asChild>
-                            <button
-                              type="button"
-                              className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setDeletingReplyId(null)
-                                setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
-                              }}
-                              aria-label={t('comments.aria.replyActions', { ns: 'workflow' })}
-                            >
-                              <RiMoreFill className="h-4 w-4" />
-                            </button>
-                          </PortalToFollowElemTrigger>
-                        </div>
-                        <PortalToFollowElemContent
-                          className="z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
-                          data-reply-menu
-                        >
-                          {/* Menu buttons - hidden when showing delete confirm */}
-                          <div className={cn(deletingReplyId === reply.id ? 'hidden' : 'block')}>
-                            <button
-                              className="flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleStartEdit(reply)
-                              }}
-                            >
-                              {t('comments.actions.editReply', { ns: 'workflow' })}
-                            </button>
-                            <button
-                              className="text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                e.preventDefault()
-                                if (onReplyDeleteDirect) {
-                                  setDeletingReplyId(reply.id)
-                                }
-                                else {
-                                  setActiveReplyMenuId(null)
-                                  onReplyDelete?.(reply.id)
-                                }
-                              }}
-                            >
-                              {t('comments.actions.deleteReply', { ns: 'workflow' })}
-                            </button>
-                          </div>
+                          <DropdownMenuTrigger
+                            className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                            aria-label={t('comments.aria.replyActions', { ns: 'workflow' })}
+                          >
+                            <RiMoreFill className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            placement="bottom-end"
+                            sideOffset={4}
+                            popupClassName="z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                            data-reply-menu
+                          >
+                            <div className={cn(deletingReplyId === reply.id ? 'hidden' : 'block')}>
+                              <button
+                                className="flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleStartEdit(reply)
+                                }}
+                              >
+                                {t('comments.actions.editReply', { ns: 'workflow' })}
+                              </button>
+                              <button
+                                className="text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  e.preventDefault()
+                                  if (onReplyDeleteDirect) {
+                                    setDeletingReplyId(reply.id)
+                                  }
+                                  else {
+                                    setActiveReplyMenuId(null)
+                                    onReplyDelete?.(reply.id)
+                                  }
+                                }}
+                              >
+                                {t('comments.actions.deleteReply', { ns: 'workflow' })}
+                              </button>
+                            </div>
 
-                          {/* Delete confirmation - shown when deletingReplyId matches */}
-                          <div className={cn(deletingReplyId === reply.id ? 'block' : 'hidden')}>
-                            <InlineDeleteConfirm
-                              title={t('comments.actions.deleteReply', { ns: 'workflow' })}
-                              onConfirm={() => {
-                                setDeletingReplyId(null)
-                                setActiveReplyMenuId(null)
-                                onReplyDeleteDirect?.(reply.id)
-                              }}
-                              onCancel={() => {
-                                setDeletingReplyId(null)
-                              }}
-                              className="m-0 w-full border-0 shadow-none"
-                            />
-                          </div>
-                        </PortalToFollowElemContent>
-                      </PortalToFollowElem>
+                            <div className={cn(deletingReplyId === reply.id ? 'block' : 'hidden')}>
+                              <InlineDeleteConfirm
+                                title={t('comments.actions.deleteReply', { ns: 'workflow' })}
+                                onConfirm={() => {
+                                  setDeletingReplyId(null)
+                                  setActiveReplyMenuId(null)
+                                  onReplyDeleteDirect?.(reply.id)
+                                }}
+                                onCancel={() => {
+                                  setDeletingReplyId(null)
+                                }}
+                                className="m-0 w-full border-0 shadow-none"
+                              />
+                            </div>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     )}
                     {isReplyEditing
                       ? (
@@ -599,7 +597,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           )}
         </div>
         {loading && (
-          <div className="bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary">
+          <div className="inset-0 absolute z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
             {t('comments.loading', { ns: 'workflow' })}
           </div>
         )}

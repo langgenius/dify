@@ -136,8 +136,8 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
           className="relative shrink-0 cursor-move"
           onPointerDown={handleDragPointerDown}
         >
-          <div className="relative h-8 w-8 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-primary-500">
-            <div className="absolute inset-[2px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full bg-components-panel-bg-blur">
+          <div className="relative h-8 w-8 overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500">
+            <div className="absolute inset-[2px] overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur">
               <div className="flex h-full w-full items-center justify-center">
                 <div className="h-6 w-6 overflow-hidden rounded-full">
                   <Avatar
@@ -156,7 +156,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
             'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[4px] shadow-md',
           )}
         >
-          <div className="relative pl-[9px] pt-[4px]">
+          <div className="relative pt-[4px] pl-[9px]">
             <MentionInput
               value={content}
               onChange={setContent}

@@ -78,6 +78,11 @@
       "count": 1
     }
   },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view.tsx": {
+    "style/no-trailing-spaces": {
+      "count": 1
+    }
+  },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/chart-view.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -1366,9 +1371,17 @@
       "count": 1
     }
   },
+  "app/components/apps/__tests__/list.spec.tsx": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/apps/app-card.tsx": {
     "no-restricted-imports": {
       "count": 3
+    },
+    "perfectionist/sort-imports": {
+      "count": 1
     },
     "react/component-hook-factories": {
       "count": 1
@@ -8330,7 +8343,7 @@
   },
   "app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 25
+      "count": 29
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
@@ -8344,6 +8357,11 @@
   "app/components/workflow/hooks/use-dynamic-test-run-options.tsx": {
     "ts/no-explicit-any": {
       "count": 3
+    }
+  },
+  "app/components/workflow/hooks/use-edges-interactions.ts": {
+    "perfectionist/sort-imports": {
+      "count": 1
     }
   },
   "app/components/workflow/hooks/use-helpline.ts": {
@@ -9019,6 +9037,9 @@
     }
   },
   "app/components/workflow/nodes/_base/node.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
     },
@@ -11608,6 +11629,17 @@
   "app/signup/set-password/page.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
+    }
+  },
+  "contract/console/apps.ts": {
+    "style/eol-last": {
+      "count": 1
+    },
+    "style/no-multiple-empty-lines": {
+      "count": 1
+    },
+    "style/no-trailing-spaces": {
+      "count": 1
     }
   },
   "context/app-context-provider.tsx": {

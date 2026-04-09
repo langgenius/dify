@@ -1,6 +1,5 @@
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCheckLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
-import { useParams } from 'next/navigation'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -12,6 +11,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useParams } from '@/next/navigation'
 import { resolveWorkflowComment } from '@/service/workflow-comment'
 import { cn } from '@/utils/classnames'
 
@@ -68,7 +68,7 @@ const CommentsPanel = () => {
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className="flex items-center justify-between p-4 pb-2">
-        <div className="system-xl-semibold font-semibold leading-6 text-text-primary">{t('comments.panelTitle', { ns: 'workflow' })}</div>
+        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">{t('comments.panelTitle', { ns: 'workflow' })}</div>
         <div className="relative flex items-center gap-2">
           <button
             className={cn(
@@ -85,7 +85,7 @@ const CommentsPanel = () => {
             />
           </button>
           {showFilter && (
-            <div className="absolute right-10 top-9 z-50 min-w-[184px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
+            <div className="absolute top-9 right-10 z-50 min-w-[184px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
               <button
                 className={cn('flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', !showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
                 onClick={() => {
@@ -94,7 +94,7 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-text-secondary">All</span>
-                {!showOnlyMine && <RiCheckLine className="h-4 w-4 text-primary-600" />}
+                {!showOnlyMine && <RiCheckLine className="text-primary-600 h-4 w-4" />}
               </button>
               <button
                 className={cn('mt-1 flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-state-base-hover', showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
@@ -104,7 +104,7 @@ const CommentsPanel = () => {
                 }}
               >
                 <span className="text-text-secondary">Only your threads</span>
-                {showOnlyMine && <RiCheckLine className="h-4 w-4 text-primary-600" />}
+                {showOnlyMine && <RiCheckLine className="text-primary-600 h-4 w-4" />}
               </button>
               <Divider type="horizontal" className="my-1" />
               <div
@@ -116,7 +116,7 @@ const CommentsPanel = () => {
                 <span className="text-sm text-text-secondary">Show resolved</span>
                 <Switch
                   size="md"
-                  defaultValue={showResolvedComments}
+                  value={showResolvedComments}
                   onChange={(checked) => {
                     setShowResolvedComments(checked)
                   }}
@@ -172,14 +172,14 @@ const CommentsPanel = () => {
                 {/* Header row: creator + time */}
                 <div className="flex items-start">
                   <div className="flex min-w-0 items-center gap-2">
-                    <div className="system-sm-medium truncate text-text-primary">{c.created_by_account.name}</div>
-                    <div className="system-2xs-regular shrink-0 text-text-tertiary">
+                    <div className="truncate system-sm-medium text-text-primary">{c.created_by_account.name}</div>
+                    <div className="shrink-0 system-2xs-regular text-text-tertiary">
                       {formatTimeFromNow(c.updated_at * 1000)}
                     </div>
                   </div>
                 </div>
                 {/* Content */}
-                <div className="system-sm-regular mt-1 line-clamp-3 break-words text-text-secondary">{c.content}</div>
+                <div className="mt-1 line-clamp-3 system-sm-regular break-words text-text-secondary">{c.content}</div>
                 {/* Footer */}
                 {c.reply_count > 0 && (
                   <div className="mt-2 flex items-center justify-between">
@@ -195,7 +195,7 @@ const CommentsPanel = () => {
           )
         })}
         {!loading && filteredSorted.length === 0 && (
-          <div className="system-sm-regular mt-6 text-center text-text-tertiary">{t('comments.noComments', { ns: 'workflow' })}</div>
+          <div className="mt-6 text-center system-sm-regular text-text-tertiary">{t('comments.noComments', { ns: 'workflow' })}</div>
         )}
       </div>
     </div>

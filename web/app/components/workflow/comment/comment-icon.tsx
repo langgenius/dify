@@ -208,10 +208,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
           onMouseLeave={handleMouseLeave}
         >
           <div
-            className="relative h-10 rounded-br-full rounded-tl-full rounded-tr-full"
+            className="relative h-10 rounded-tl-full rounded-tr-full rounded-br-full"
             style={{ width: dynamicWidth }}
           >
-            <div className={`absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full border bg-components-panel-bg transition-shadow ${
+            <div className={`absolute inset-[6px] overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full border bg-components-panel-bg transition-shadow ${
               isActive
                 ? 'border-primary-500 ring-1 ring-primary-500'
                 : 'border-components-panel-border'

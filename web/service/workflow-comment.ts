@@ -1,31 +1,32 @@
 import type {
-  CreateCommentParams,
-  CreateReplyParams,
-  UpdateCommentParams,
-  WorkflowCommentCreateRes,
-  WorkflowCommentDetail,
-  WorkflowCommentList,
-  WorkflowCommentReply,
-  WorkflowCommentResolveRes,
-  WorkflowCommentUpdateRes,
+  CreateCommentParams as ContractCreateCommentParams,
+  CreateReplyParams as ContractCreateReplyParams,
+  UpdateCommentParams as ContractUpdateCommentParams,
+  UserProfile as ContractUserProfile,
+  WorkflowCommentCreateRes as ContractWorkflowCommentCreateRes,
+  WorkflowCommentDetail as ContractWorkflowCommentDetail,
+  WorkflowCommentDetailMention as ContractWorkflowCommentDetailMention,
+  WorkflowCommentDetailReply as ContractWorkflowCommentDetailReply,
+  WorkflowCommentList as ContractWorkflowCommentList,
+  WorkflowCommentReply as ContractWorkflowCommentReply,
+  WorkflowCommentResolveRes as ContractWorkflowCommentResolveRes,
+  WorkflowCommentUpdateRes as ContractWorkflowCommentUpdateRes,
 } from '@/contract/console/workflow-comment'
 import type { CommonResponse } from '@/models/common'
 import { consoleClient } from './client'
 
-export type {
-  CreateCommentParams,
-  CreateReplyParams,
-  UpdateCommentParams,
-  UserProfile,
-  WorkflowCommentCreateRes,
-  WorkflowCommentDetail,
-  WorkflowCommentDetailMention,
-  WorkflowCommentDetailReply,
-  WorkflowCommentList,
-  WorkflowCommentReply,
-  WorkflowCommentResolveRes,
-  WorkflowCommentUpdateRes,
-} from '@/contract/console/workflow-comment'
+export type CreateCommentParams = ContractCreateCommentParams
+export type CreateReplyParams = ContractCreateReplyParams
+export type UpdateCommentParams = ContractUpdateCommentParams
+export type UserProfile = ContractUserProfile
+export type WorkflowCommentCreateRes = ContractWorkflowCommentCreateRes
+export type WorkflowCommentDetail = ContractWorkflowCommentDetail
+export type WorkflowCommentDetailMention = ContractWorkflowCommentDetailMention
+export type WorkflowCommentDetailReply = ContractWorkflowCommentDetailReply
+export type WorkflowCommentList = ContractWorkflowCommentList
+export type WorkflowCommentReply = ContractWorkflowCommentReply
+export type WorkflowCommentResolveRes = ContractWorkflowCommentResolveRes
+export type WorkflowCommentUpdateRes = ContractWorkflowCommentUpdateRes
 
 export const fetchWorkflowComments = async (appId: string): Promise<WorkflowCommentList[]> => {
   const response = await consoleClient.workflowComments.list({

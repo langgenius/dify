@@ -145,7 +145,7 @@ export const VersionHistoryPanel = ({
 
   const emitRestoreIntent = useCallback(async (item: VersionHistory) => {
     try {
-      const { collaborationManager } = await import('../../collaboration')
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
       collaborationManager.emitRestoreIntent({
         versionId: item.id,
         versionName: item.marked_name,
@@ -160,7 +160,7 @@ export const VersionHistoryPanel = ({
 
   const emitRestoreComplete = useCallback(async (item: VersionHistory, success: boolean, errorMessage?: string) => {
     try {
-      const { collaborationManager } = await import('../../collaboration')
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
       collaborationManager.emitRestoreComplete({
         versionId: item.id,
         success,
@@ -178,7 +178,7 @@ export const VersionHistoryPanel = ({
       if (!appId)
         return
 
-      const { collaborationManager } = await import('../../collaboration')
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
       collaborationManager.emitWorkflowUpdate(appId)
     }
     catch (error) {
@@ -259,7 +259,7 @@ export const VersionHistoryPanel = ({
   return (
     <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
-        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
+        <div className="flex-1 py-1 system-xl-semibold text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
@@ -315,7 +315,7 @@ export const VersionHistoryPanel = ({
                   ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
                   : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
               </div>
-              <div className="system-xs-medium-uppercase py-px text-text-accent">
+              <div className="py-px system-xs-medium-uppercase text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}
               </div>
             </div>

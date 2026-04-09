@@ -1,5 +1,5 @@
 import type { BlockEnum, ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
-import type { WorkflowDraftFeaturesPayload } from '@/contract/console/workflow'
+import type { WorkflowDraftFeaturesPayload as ContractWorkflowDraftFeaturesPayload } from '@/contract/console/workflow'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -13,7 +13,7 @@ import { get, post } from './base'
 import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
 
-export type { WorkflowDraftFeaturesPayload } from '@/contract/console/workflow'
+export type WorkflowDraftFeaturesPayload = ContractWorkflowDraftFeaturesPayload
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -130,7 +130,7 @@ export const updateConversationVariables = ({ appId, conversationVariables }: {
 
 export const updateFeatures = ({ appId, features }: {
   appId: string
-  features: WorkflowDraftFeaturesPayload
+  features: ContractWorkflowDraftFeaturesPayload
 }) => {
   return consoleClient.workflowDraft.updateFeatures({
     params: { appId },

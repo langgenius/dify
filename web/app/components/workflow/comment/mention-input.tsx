@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import type { UserProfile } from '@/service/workflow-comment'
 import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
-import { useParams } from 'next/navigation'
 import {
   forwardRef,
   memo,
@@ -21,6 +20,7 @@ import Textarea from 'react-textarea-autosize'
 import Avatar from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
+import { useParams } from '@/next/navigation'
 import { fetchMentionableUsers } from '@/service/workflow-comment'
 import { cn } from '@/utils/classnames'
 import { useStore, useWorkflowStore } from '../store'
@@ -511,7 +511,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <div
           aria-hidden
           className={cn(
-            'pointer-events-none absolute inset-0 z-0 overflow-hidden whitespace-pre-wrap break-words p-1 leading-6',
+            'inset-0 pointer-events-none absolute z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
             'body-lg-regular text-text-primary',
           )}
           style={{ paddingRight, paddingBottom }}
@@ -528,7 +528,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <Textarea
           ref={textareaRef}
           className={cn(
-            'body-lg-regular relative z-10 w-full resize-none bg-transparent p-1 leading-6 text-transparent caret-primary-500 outline-none',
+            'relative z-10 w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-transparent caret-primary-500 outline-none',
             'placeholder:text-text-tertiary',
           )}
           style={{ paddingRight, paddingBottom }}
@@ -546,7 +546,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         {!isEditing && (
           <div
             ref={setActionContainerRef}
-            className="absolute bottom-0 right-1 z-20 flex items-end gap-1"
+            className="absolute right-1 bottom-0 z-20 flex items-end gap-1"
           >
             <div
               className={cn(
@@ -575,7 +575,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         {isEditing && (
           <div
             ref={setActionContainerRef}
-            className="absolute bottom-0 left-1 right-1 z-20 flex items-end justify-between"
+            className="absolute right-1 bottom-0 left-1 z-20 flex items-end justify-between"
           >
             <div
               className={cn(
@@ -615,7 +615,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="bg-components-panel-bg/95 fixed z-[9999] max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[10px]"
+          className="fixed z-[9999] max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
           style={{
             left: dropdownPosition.x,
             [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'
@@ -628,7 +628,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
             <div
               key={user.id}
               className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-md py-1 pl-2 pr-3 hover:bg-state-base-hover',
+                'flex cursor-pointer items-center gap-2 rounded-md py-1 pr-3 pl-2 hover:bg-state-base-hover',
                 index === selectedMentionIndex && 'bg-state-base-hover',
               )}
               onClick={() => insertMention(user)}

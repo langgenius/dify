@@ -89,7 +89,7 @@ export const useLeaderRestoreListener = () => {
         ns: 'workflow',
         userName: data.initiatorName,
         versionName: data.versionName || data.versionId,
-      }), { duration: 3000 })
+      }), { timeout: 3000 })
       performRestore(data)
     })
 
@@ -102,7 +102,7 @@ export const useLeaderRestoreListener = () => {
         ns: 'workflow',
         userName: data.initiatorName,
         versionName: data.versionName || data.versionId,
-      }), { duration: 3000 })
+      }), { timeout: 3000 })
     })
 
     return unsubscribe

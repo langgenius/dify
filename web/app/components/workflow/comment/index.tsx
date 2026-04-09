@@ -1,5 +1,0 @@
-export { CommentIcon } from './comment-icon'
-export { CommentInput } from './comment-input'
-export { CommentCursor } from './cursor'
-export { MentionInput } from './mention-input'
-export { CommentThread } from './thread'

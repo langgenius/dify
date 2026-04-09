@@ -54,8 +54,11 @@ import { cn } from '@/utils/classnames'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
-import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
 import CommentManager from './comment-manager'
+import { CommentIcon } from './comment/comment-icon'
+import { CommentInput } from './comment/comment-input'
+import { CommentCursor } from './comment/cursor'
+import { CommentThread } from './comment/thread'
 import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
@@ -545,7 +548,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <CandidateNode />
       <CommentManager />
       <div
-        className="pointer-events-none absolute left-0 top-0 z-[60] flex w-12 items-center justify-center p-1 pl-2"
+        className="pointer-events-none absolute top-0 left-0 z-[60] flex w-12 items-center justify-center p-1 pl-2"
         style={{ height: controlHeight }}
       >
         <Control />
