@@ -46,3 +46,10 @@ class PGVectorConfig(BaseSettings):
         description="Whether to use pg_bigm module for full text search",
         default=False,
     )
+
+    PGVECTOR_HNSW_EF_SEARCH: PositiveInt = Field(
+        description="HNSW ef_search parameter for controlling search accuracy vs speed tradeoff. "
+        "Higher values improve recall when using filters but increase query time. "
+        "Recommended: 100-200 for filtered queries.",
+        default=100,
+    )
