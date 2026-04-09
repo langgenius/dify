@@ -73,6 +73,36 @@ class VirtualWorkflowSynthesizer:
 
         return workflow
 
+    @staticmethod
+    def ensure_workflow(app: App) -> Any:
+        """Ensure the old app has a workflow, creating one if needed.
+
+        On first call for a legacy app, synthesizes a workflow from its
+        AppModelConfig and persists it as a draft. On subsequent calls,
+        returns the existing draft. This is a one-time lazy upgrade:
+        the app gets a real workflow that can be edited in the workflow editor.
+
+        The app's workflow_id is NOT updated (preserving its legacy state),
+        but the workflow is findable via app_id + version="draft".
+        """
+        from models.workflow import Workflow
+
+        from extensions.ext_database import db
+
+        existing = db.session.query(Workflow).filter_by(
+            app_id=app.id, version="draft"
+        ).first()
+        if existing:
+            return existing
+
+        workflow = VirtualWorkflowSynthesizer.synthesize(app)
+        workflow.version = "draft"
+
+        db.session.add(workflow)
+        db.session.commit()
+        logger.info("Created draft workflow %s for legacy app %s", workflow.id, app.id)
+        return workflow
+
 
 def _extract_model_config(config: AppModelConfig) -> dict[str, Any]:
     if config.model:

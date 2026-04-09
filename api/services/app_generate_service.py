@@ -133,17 +133,13 @@ class AppGenerateService:
                 from services.workflow.virtual_workflow import VirtualWorkflowSynthesizer
 
                 try:
-                    virtual_workflow = VirtualWorkflowSynthesizer.synthesize(app_model)
+                    workflow = VirtualWorkflowSynthesizer.ensure_workflow(app_model)
                     logger.info(
-                        "[AGENT_V2_UPGRADE] Transparent upgrade for app %s (mode=%s)",
+                        "[AGENT_V2_UPGRADE] Transparent upgrade for app %s (mode=%s), wf=%s",
                         app_model.id,
                         effective_mode,
+                        workflow.id,
                     )
-                    workflow_id_arg = args.get("workflow_id")
-                    if not workflow_id_arg:
-                        workflow = virtual_workflow
-                    else:
-                        workflow = cls._get_workflow(app_model, invoke_from, workflow_id_arg)
 
                     if streaming:
                         with rate_limit_context(rate_limit, request_id):
