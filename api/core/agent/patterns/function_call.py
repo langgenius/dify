@@ -92,7 +92,6 @@ class FunctionCallStrategy(AgentPattern):
                 tools=current_tools,
                 stop=stop,
                 stream=stream,
-                user=self.context.user_id,
                 callbacks=[],
             )
 

@@ -114,7 +114,6 @@ class ReActStrategy(AgentPattern):
                 model_parameters=model_parameters,
                 stop=stop,
                 stream=stream,
-                user=self.context.user_id or "",
                 callbacks=[],
             )
 
