@@ -167,6 +167,46 @@ def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     assert "timezone=UTC" in options
 
 
+def test_database_uri_uses_per_service_overrides(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "shared_user")
+    monkeypatch.setenv("DB_PASSWORD", "shared_password")
+    monkeypatch.setenv("DIFY_DB_USER", "api_user")
+    monkeypatch.setenv("DIFY_DB_PASS", "api_password")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.SQLALCHEMY_DATABASE_USERNAME == "api_user"
+    assert config.SQLALCHEMY_DATABASE_PASSWORD == "api_password"
+    assert config.SQLALCHEMY_DATABASE_URI == "postgresql://api_user:api_password@localhost:5432/dify"
+
+
+def test_database_uri_falls_back_to_shared_credentials(monkeypatch: pytest.MonkeyPatch):
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "shared_user")
+    monkeypatch.setenv("DB_PASSWORD", "shared_password")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.SQLALCHEMY_DATABASE_USERNAME == "shared_user"
+    assert config.SQLALCHEMY_DATABASE_PASSWORD == "shared_password"
+    assert config.SQLALCHEMY_DATABASE_URI == "postgresql://shared_user:shared_password@localhost:5432/dify"
+
+
 def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
     os.environ.clear()
 
