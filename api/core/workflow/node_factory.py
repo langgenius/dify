@@ -331,6 +331,11 @@ class DifyNodeFactory(NodeFactory):
         typed_node_config = NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
+
+        if node_data.type == BuiltinNodeTypes.LLM and dify_config.AGENT_V2_REPLACES_LLM:
+            node_data = self._remap_llm_to_agent_v2(node_data)
+            typed_node_config["data"] = node_data
+
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
@@ -418,6 +423,23 @@ class DifyNodeFactory(NodeFactory):
     def _resolve_sandbox(self) -> Any:
         """Resolve sandbox from run_context, if available."""
         return self.graph_init_params.run_context.get(DIFY_SANDBOX_CONTEXT_KEY)
+
+    @staticmethod
+    def _remap_llm_to_agent_v2(node_data: BaseNodeData) -> BaseNodeData:
+        """Transparently remap LLMNodeData to AgentV2NodeData.
+
+        Since AgentV2NodeData is a strict superset of LLMNodeData
+        (same LLM fields + tools/iterations/strategy), the mapping is lossless.
+        With tools=[], Agent V2 behaves identically to LLM Node.
+        """
+        from core.workflow.nodes.agent_v2.entities import AGENT_V2_NODE_TYPE, AgentV2NodeData
+
+        data_dict = node_data.model_dump()
+        data_dict["type"] = AGENT_V2_NODE_TYPE
+        data_dict.setdefault("tools", [])
+        data_dict.setdefault("max_iterations", 10)
+        data_dict.setdefault("agent_strategy", "auto")
+        return AgentV2NodeData.model_validate(data_dict)
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:

@@ -1322,6 +1322,22 @@ class CollaborationConfig(BaseSettings):
     )
 
 
+class AgentV2UpgradeConfig(BaseSettings):
+    """Feature flags for transparent Agent V2 upgrade."""
+
+    AGENT_V2_TRANSPARENT_UPGRADE: bool = Field(
+        description="Transparently run old apps (chat/completion/agent-chat) through the Agent V2 workflow engine. "
+        "When enabled, old apps synthesize a virtual workflow at runtime instead of using legacy runners.",
+        default=False,
+    )
+
+    AGENT_V2_REPLACES_LLM: bool = Field(
+        description="Transparently replace LLM nodes in workflows with Agent V2 nodes at runtime. "
+        "LLMNodeData is remapped to AgentV2NodeData with tools=[] (identical behavior).",
+        default=False,
+    )
+
+
 class LoginConfig(BaseSettings):
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
@@ -1450,6 +1466,7 @@ class FeatureConfig(
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     CollaborationConfig,
+    AgentV2UpgradeConfig,
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,
