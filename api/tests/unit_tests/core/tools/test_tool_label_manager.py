@@ -11,10 +11,12 @@ from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
+
 # Create a mock class for testing abstract/base classes
 class _ConcreteBuiltinToolProviderController(BuiltinToolProviderController):
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         return None
+
 
 # Factory function to create a "lightweight" controller for testing
 def _api_controller(provider_id: str = "api-1") -> ApiToolProviderController:
@@ -28,11 +30,13 @@ def _workflow_controller(provider_id: str = "wf-1") -> WorkflowToolProviderContr
     controller.provider_id = provider_id
     return controller
 
+
 # Test pure logic: filtering and deduplication
 def test_tool_label_manager_filter_tool_labels():
     filtered = ToolLabelManager.filter_tool_labels(["search", "search", "invalid", "news"])
     assert set(filtered) == {"search", "news"}
     assert len(filtered) == 2
+
 
 # Test database update logic with Session Mocking
 def test_tool_label_manager_update_tool_labels_db():
@@ -51,10 +55,12 @@ def test_tool_label_manager_update_tool_labels_db():
         # Verify if the execute method (DELETE SQL) was called
         mock_session.execute.assert_called_once()
 
+
 # Test error handling
 def test_tool_label_manager_update_tool_labels_unsupported():
     with pytest.raises(ValueError, match="Unsupported tool type"):
         ToolLabelManager.update_tool_labels(object(), ["search"])  # type: ignore[arg-type]
+
 
 # Test retrieval logic
 def test_tool_label_manager_get_tool_labels_for_builtin_and_db():
@@ -80,6 +86,7 @@ def test_tool_label_manager_get_tool_labels_for_builtin_and_db():
         
         labels = ToolLabelManager.get_tool_labels(api)
         assert labels == ["search", "news"]
+
 
 # Test batch processing and mapping
 def test_tool_label_manager_get_tools_labels_batch():

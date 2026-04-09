@@ -1,5 +1,5 @@
 from sqlalchemy import delete, select
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -20,7 +20,8 @@ class ToolLabelManager:
         return list(set(tool_labels))
 
     @classmethod
-    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str], session: Session | None = None) -> None:
+    def update_tool_labels(cls, controller: ToolProviderController,
+                           labels: list[str], session: Session | None = None) -> None:
         """
         Update tool labels
 
@@ -108,7 +109,8 @@ class ToolLabelManager:
 
         labels: list[ToolLabelBinding] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            labels = list(_session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all())
+            labels = list(_session.scalars(select(ToolLabelBinding)
+            .where(ToolLabelBinding.tool_id.in_(provider_ids))).all())
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 
