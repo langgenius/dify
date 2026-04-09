@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+from libs.url_utils import normalize_api_base_url
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
 from libs.helper import generate_string  # type: ignore[import-not-found]
@@ -447,7 +448,7 @@ class App(Base):
     @property
     def api_base_url(self) -> str:
         base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
-        return base.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"
+        return normalize_api_base_url(base)
 
     @property
     def tenant(self) -> Tenant | None:

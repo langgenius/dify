@@ -1131,10 +1131,12 @@ class ToolMCPAuthApi(Resource):
             with sessionmaker(db.engine).begin() as session:
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
+            parsed = urlparse(server_url)
+            sanitized_url = f"{parsed.scheme}://{parsed.hostname}{parsed.path}"
             logger.warning(
                 "MCP authorization failed for provider %s (url=%s)",
                 provider_id,
-                server_url,
+                sanitized_url,
                 exc_info=True,
             )
             raise ValueError(f"Failed to connect to MCP server: {e}") from e

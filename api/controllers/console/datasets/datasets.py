@@ -9,6 +9,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
+from libs.url_utils import normalize_api_base_url
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import (
@@ -893,7 +894,7 @@ class DatasetApiBaseUrlApi(Resource):
     @account_initialization_required
     def get(self):
         base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
-        return {"api_base_url": base.rstrip("/").removesuffix("/v1").rstrip("/") + "/v1"}
+        return {"api_base_url": normalize_api_base_url(base)}
 
 
 @console_ns.route("/datasets/retrieval-setting")
