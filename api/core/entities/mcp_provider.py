@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
+from core.tools.entities.tool_entities import EmojiIconDict
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
@@ -141,7 +142,7 @@ class MCPProviderEntity(BaseModel):
         )
 
     @property
-    def provider_icon(self) -> dict[str, str] | str:
+    def provider_icon(self) -> EmojiIconDict | str:
         """Get provider icon, handling both dict and string formats"""
         if isinstance(self.icon, dict):
             return self.icon
