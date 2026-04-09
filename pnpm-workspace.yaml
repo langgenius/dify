@@ -129,6 +129,7 @@ catalog:
   ahooks: 3.9.7
   autoprefixer: 10.4.27
   class-variance-authority: 0.7.1
+  client-only: 0.0.1
   clsx: 2.1.1
   cmdk: 1.1.1
   code-inspector-plugin: 1.5.1
@@ -154,7 +155,6 @@ catalog:
   eslint-plugin-sonarjs: 4.0.2
   eslint-plugin-storybook: 10.3.5
   fast-deep-equal: 3.1.3
-  foxact: 0.3.0
   happy-dom: 20.8.9
   hast-util-to-jsx-runtime: 2.3.6
   hono: 4.12.12
