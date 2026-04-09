@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
@@ -85,15 +85,11 @@ export const useLeaderRestoreListener = () => {
 
   useEffect(() => {
     const unsubscribe = collaborationManager.onRestoreRequest((data: RestoreRequestData) => {
-      Toast.notify({
-        type: 'info',
-        message: t('versionHistory.action.restoreInProgress', {
-          ns: 'workflow',
-          userName: data.initiatorName,
-          versionName: data.versionName || data.versionId,
-        }),
-        duration: 3000,
-      })
+      toast.info(t('versionHistory.action.restoreInProgress', {
+        ns: 'workflow',
+        userName: data.initiatorName,
+        versionName: data.versionName || data.versionId,
+      }), { duration: 3000 })
       performRestore(data)
     })
 
@@ -102,15 +98,11 @@ export const useLeaderRestoreListener = () => {
 
   useEffect(() => {
     const unsubscribe = collaborationManager.onRestoreIntent((data: RestoreIntentData) => {
-      Toast.notify({
-        type: 'info',
-        message: t('versionHistory.action.restoreInProgress', {
-          ns: 'workflow',
-          userName: data.initiatorName,
-          versionName: data.versionName || data.versionId,
-        }),
-        duration: 3000,
-      })
+      toast.info(t('versionHistory.action.restoreInProgress', {
+        ns: 'workflow',
+        userName: data.initiatorName,
+        versionName: data.versionName || data.versionId,
+      }), { duration: 3000 })
     })
 
     return unsubscribe

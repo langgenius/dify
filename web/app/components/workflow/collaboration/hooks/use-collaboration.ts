@@ -6,7 +6,7 @@ import type {
   OnlineUser,
 } from '../types/collaboration'
 import { useEffect, useRef, useState } from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
@@ -105,10 +105,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   const prevIsConnected = useRef(false)
   useEffect(() => {
     if (prevIsConnected.current && !state.isConnected) {
-      Toast.notify({
-        type: 'error',
-        message: 'Network connection lost. Please check your network.',
-      })
+      toast.error('Network connection lost. Please check your network.')
     }
     prevIsConnected.current = state.isConnected || false
   }, [state.isConnected])
