@@ -3,17 +3,31 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import EditWorkspaceModal from '../index'
 
+const toastMocks = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+}))
+
 vi.mock('@/context/app-context')
 vi.mock('@/service/common')
+vi.mock('@/app/components/base/ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => toastMocks.mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => toastMocks.mockNotify({ type: 'success', message }),
+    error: (message: string) => toastMocks.mockNotify({ type: 'error', message }),
+    warning: (message: string) => toastMocks.mockNotify({ type: 'warning', message }),
+    info: (message: string) => toastMocks.mockNotify({ type: 'info', message }),
+  },
+}))
 
 describe('EditWorkspaceModal', () => {
   const mockOnCancel = vi.fn()
-  const mockNotify = vi.fn()
+  const { mockNotify } = toastMocks
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -29,9 +43,9 @@ describe('EditWorkspaceModal', () => {
   })
 
   const renderModal = () => render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+    <>
       <EditWorkspaceModal onCancel={mockOnCancel} />
-    </ToastContext.Provider>,
+    </>,
   )
 
   it('should show current workspace name in the input', async () => {
@@ -43,7 +57,7 @@ describe('EditWorkspaceModal', () => {
   it('should render on the base/ui overlay layer', async () => {
     renderModal()
 
-    expect(await screen.findByRole('dialog')).toHaveClass('z-[1002]')
+    expect(await screen.findByRole('dialog')).toHaveClass('z-1002')
   })
 
   it('should let user edit workspace name', async () => {

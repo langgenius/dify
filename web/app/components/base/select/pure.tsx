@@ -140,7 +140,7 @@ const PureSelect = (props: PureSelectProps) => {
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
-        'z-[9999]',
+        'z-9999',
         popupWrapperClassName,
       )}
       >

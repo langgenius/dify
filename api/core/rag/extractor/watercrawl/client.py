@@ -1,11 +1,10 @@
 import json
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any, TypedDict
 from urllib.parse import urljoin
 
 import httpx
 from httpx import Response
-from typing_extensions import TypedDict
 
 from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlAuthenticationError,
@@ -142,7 +141,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
     def create_crawl_request(
         self,
-        url: Union[list, str] | None = None,
+        url: list | str | None = None,
         spider_options: SpiderOptions | None = None,
         page_options: PageOptions | None = None,
         plugin_options: dict[str, Any] | None = None,

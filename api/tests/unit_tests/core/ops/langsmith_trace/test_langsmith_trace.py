@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 from core.ops.entities.config_entity import LangSmithConfig
 from core.ops.entities.trace_entity import (
@@ -21,7 +22,6 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 
 
@@ -319,9 +319,7 @@ def test_message_trace(trace_instance, monkeypatch):
     # Mock EndUser lookup
     mock_end_user = MagicMock(spec=EndUser)
     mock_end_user.session_id = "session-id-123"
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = mock_end_user
-    monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.db.session.query", lambda model: mock_query)
+    monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.db.session.get", lambda model, pk: mock_end_user)
 
     trace_instance.add_run = MagicMock()
 

@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - sdks/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
 
 concurrency:
   group: sdk-tests-${{ github.head_ref || github.run_id }}

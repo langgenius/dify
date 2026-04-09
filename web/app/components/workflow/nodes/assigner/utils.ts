@@ -2,16 +2,6 @@ import type { AssignerNodeType } from './types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { AssignerNodeInputType, WriteMode } from './types'
 
-export const checkNodeValid = (_payload: AssignerNodeType) => {
-  return true
-}
-
-export const formatOperationName = (type: string) => {
-  if (type === 'over-write')
-    return 'Overwrite'
-  return type.charAt(0).toUpperCase() + type.slice(1)
-}
-
 export type OperationName = I18nKeysByPrefix<'workflow', 'nodes.assigner.operations.'>
 
 export type Item

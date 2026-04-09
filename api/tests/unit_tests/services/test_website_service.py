@@ -343,7 +343,7 @@ def test_crawl_with_watercrawl_passes_options_dict(monkeypatch: pytest.MonkeyPat
 
 def test_crawl_with_jinareader_single_page_success(monkeypatch: pytest.MonkeyPatch) -> None:
     get_mock = MagicMock(return_value=_DummyHttpxResponse({"code": 200, "data": {"title": "t"}}))
-    monkeypatch.setattr(website_service_module.httpx, "get", get_mock)
+    monkeypatch.setattr(website_service_module._jina_http_client, "get", get_mock)
 
     req = WebsiteCrawlApiRequest(
         provider="jinareader", url="https://example.com", options={"crawl_sub_pages": False}
@@ -356,7 +356,11 @@ def test_crawl_with_jinareader_single_page_success(monkeypatch: pytest.MonkeyPat
 
 
 def test_crawl_with_jinareader_single_page_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(website_service_module.httpx, "get", MagicMock(return_value=_DummyHttpxResponse({"code": 500})))
+    monkeypatch.setattr(
+        website_service_module._jina_http_client,
+        "get",
+        MagicMock(return_value=_DummyHttpxResponse({"code": 500})),
+    )
     req = WebsiteCrawlApiRequest(
         provider="jinareader", url="https://example.com", options={"crawl_sub_pages": False}
     ).to_crawl_request()
@@ -368,7 +372,7 @@ def test_crawl_with_jinareader_single_page_failure(monkeypatch: pytest.MonkeyPat
 
 def test_crawl_with_jinareader_multi_page_success(monkeypatch: pytest.MonkeyPatch) -> None:
     post_mock = MagicMock(return_value=_DummyHttpxResponse({"code": 200, "data": {"taskId": "t1"}}))
-    monkeypatch.setattr(website_service_module.httpx, "post", post_mock)
+    monkeypatch.setattr(website_service_module._adaptive_http_client, "post", post_mock)
 
     req = WebsiteCrawlApiRequest(
         provider="jinareader",
@@ -384,7 +388,7 @@ def test_crawl_with_jinareader_multi_page_success(monkeypatch: pytest.MonkeyPatc
 
 def test_crawl_with_jinareader_multi_page_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        website_service_module.httpx, "post", MagicMock(return_value=_DummyHttpxResponse({"code": 400}))
+        website_service_module._adaptive_http_client, "post", MagicMock(return_value=_DummyHttpxResponse({"code": 400}))
     )
     req = WebsiteCrawlApiRequest(
         provider="jinareader",
@@ -482,7 +486,7 @@ def test_get_jinareader_status_active(monkeypatch: pytest.MonkeyPatch) -> None:
             }
         )
     )
-    monkeypatch.setattr(website_service_module.httpx, "post", post_mock)
+    monkeypatch.setattr(website_service_module._adaptive_http_client, "post", post_mock)
 
     result = WebsiteService._get_jinareader_status("job-1", "k")
     assert result["status"] == "active"
@@ -518,7 +522,7 @@ def test_get_jinareader_status_completed_formats_processed_items(monkeypatch: py
         }
     }
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])
-    monkeypatch.setattr(website_service_module.httpx, "post", post_mock)
+    monkeypatch.setattr(website_service_module._adaptive_http_client, "post", post_mock)
 
     result = WebsiteService._get_jinareader_status("job-1", "k")
     assert result["status"] == "completed"
@@ -619,7 +623,7 @@ def test_get_watercrawl_url_data_delegates(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_get_jinareader_url_data_without_job_id_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        website_service_module.httpx,
+        website_service_module._jina_http_client,
         "get",
         MagicMock(return_value=_DummyHttpxResponse({"code": 200, "data": {"url": "u"}})),
     )
@@ -627,7 +631,11 @@ def test_get_jinareader_url_data_without_job_id_success(monkeypatch: pytest.Monk
 
 
 def test_get_jinareader_url_data_without_job_id_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(website_service_module.httpx, "get", MagicMock(return_value=_DummyHttpxResponse({"code": 500})))
+    monkeypatch.setattr(
+        website_service_module._jina_http_client,
+        "get",
+        MagicMock(return_value=_DummyHttpxResponse({"code": 500})),
+    )
     with pytest.raises(ValueError, match="Failed to crawl$"):
         WebsiteService._get_jinareader_url_data("", "u", "k")
 
@@ -637,7 +645,7 @@ def test_get_jinareader_url_data_with_job_id_completed_returns_matching_item(mon
     processed_payload = {"data": {"processed": {"u1": {"data": {"url": "u", "title": "t"}}}}}
 
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])
-    monkeypatch.setattr(website_service_module.httpx, "post", post_mock)
+    monkeypatch.setattr(website_service_module._adaptive_http_client, "post", post_mock)
 
     assert WebsiteService._get_jinareader_url_data("job-1", "u", "k") == {"url": "u", "title": "t"}
     assert post_mock.call_count == 2
@@ -645,7 +653,7 @@ def test_get_jinareader_url_data_with_job_id_completed_returns_matching_item(mon
 
 def test_get_jinareader_url_data_with_job_id_not_completed_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     post_mock = MagicMock(return_value=_DummyHttpxResponse({"data": {"status": "active"}}))
-    monkeypatch.setattr(website_service_module.httpx, "post", post_mock)
+    monkeypatch.setattr(website_service_module._adaptive_http_client, "post", post_mock)
 
     with pytest.raises(ValueError, match=r"Crawl job is no\s*t completed"):
         WebsiteService._get_jinareader_url_data("job-1", "u", "k")
@@ -658,7 +666,7 @@ def test_get_jinareader_url_data_with_job_id_completed_but_not_found_returns_non
     processed_payload = {"data": {"processed": {"u1": {"data": {"url": "other"}}}}}
 
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])
-    monkeypatch.setattr(website_service_module.httpx, "post", post_mock)
+    monkeypatch.setattr(website_service_module._adaptive_http_client, "post", post_mock)
 
     assert WebsiteService._get_jinareader_url_data("job-1", "u", "k") is None
 

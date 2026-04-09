@@ -38,7 +38,7 @@ class TestBillingServiceSendRequest:
     @pytest.fixture
     def mock_httpx_request(self):
         """Mock httpx.request for testing."""
-        with patch("services.billing_service.httpx.request") as mock_request:
+        with patch("services.billing_service._http_client.request") as mock_request:
             yield mock_request
 
     @pytest.fixture
@@ -290,9 +290,19 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "subscription_plan": "professional",
-            "billing_cycle": "monthly",
-            "status": "active",
+            "enabled": True,
+            "subscription": {"plan": "professional", "interval": "month", "education": False},
+            "members": {"size": 1, "limit": 50},
+            "apps": {"size": 1, "limit": 200},
+            "vector_space": {"size": 0.0, "limit": 20480},
+            "knowledge_rate_limit": {"limit": 1000},
+            "documents_upload_quota": {"size": 0, "limit": 1000},
+            "annotation_quota_limit": {"size": 0, "limit": 5000},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+            "next_credit_reset_date": 1775952000,
         }
         mock_send_request.return_value = expected_response
 
@@ -865,15 +875,10 @@ class TestBillingServiceAccountManagement:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.OWNER
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = mock_join
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
         BillingService.is_tenant_owner_or_admin(current_user)
-
-        # Assert
-        mock_db_session.query.assert_called_once()
 
     def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
         """Test tenant owner/admin check for admin role."""
@@ -885,15 +890,10 @@ class TestBillingServiceAccountManagement:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.ADMIN
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = mock_join
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
         BillingService.is_tenant_owner_or_admin(current_user)
-
-        # Assert
-        mock_db_session.query.assert_called_once()
 
     def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error for normal user."""
@@ -905,9 +905,7 @@ class TestBillingServiceAccountManagement:
         mock_join = MagicMock(spec=TenantAccountJoin)
         mock_join.role = TenantAccountRole.NORMAL
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = mock_join
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = mock_join
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -921,9 +919,7 @@ class TestBillingServiceAccountManagement:
         current_user.id = "account-123"
         current_user.current_tenant_id = "tenant-456"
 
-        mock_query = MagicMock()
-        mock_query.where.return_value.first.return_value = None
-        mock_db_session.query.return_value = mock_query
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -1009,17 +1005,14 @@ class TestBillingServiceEdgeCases:
             yield mock
 
     def test_get_info_empty_response(self, mock_send_request):
-        """Test handling of empty billing info response."""
-        # Arrange
+        """Empty response from billing API should raise ValidationError due to missing required fields."""
+        from pydantic import ValidationError
+
         tenant_id = "tenant-empty"
         mock_send_request.return_value = {}
 
-        # Act
-        result = BillingService.get_info(tenant_id)
-
-        # Assert
-        assert result == {}
-        mock_send_request.assert_called_once()
+        with pytest.raises(ValidationError):
+            BillingService.get_info(tenant_id)
 
     def test_update_tenant_feature_plan_usage_zero_delta(self, mock_send_request):
         """Test updating tenant feature usage with zero delta (no change)."""
@@ -1135,9 +1128,7 @@ class TestBillingServiceEdgeCases:
         mock_join.role = TenantAccountRole.EDITOR  # Editor is not privileged
 
         with patch("services.billing_service.db.session") as mock_session:
-            mock_query = MagicMock()
-            mock_query.where.return_value.first.return_value = mock_join
-            mock_session.query.return_value = mock_query
+            mock_session.scalar.return_value = mock_join
 
             # Act & Assert
             with pytest.raises(ValueError) as exc_info:
@@ -1155,9 +1146,7 @@ class TestBillingServiceEdgeCases:
         mock_join.role = TenantAccountRole.DATASET_OPERATOR  # Dataset operator is not privileged
 
         with patch("services.billing_service.db.session") as mock_session:
-            mock_query = MagicMock()
-            mock_query.where.return_value.first.return_value = mock_join
-            mock_session.query.return_value = mock_query
+            mock_session.scalar.return_value = mock_join
 
             # Act & Assert
             with pytest.raises(ValueError) as exc_info:
@@ -1434,12 +1423,21 @@ class TestBillingServiceIntegrationScenarios:
 
         # Step 1: Get current billing info
         mock_send_request.return_value = {
-            "subscription_plan": "sandbox",
-            "billing_cycle": "monthly",
-            "status": "active",
+            "enabled": True,
+            "subscription": {"plan": "sandbox", "interval": "", "education": False},
+            "members": {"size": 0, "limit": 1},
+            "apps": {"size": 0, "limit": 5},
+            "vector_space": {"size": 0.0, "limit": 50},
+            "knowledge_rate_limit": {"limit": 10},
+            "documents_upload_quota": {"size": 0, "limit": 50},
+            "annotation_quota_limit": {"size": 0, "limit": 10},
+            "docs_processing": "standard",
+            "can_replace_logo": False,
+            "model_load_balancing_enabled": False,
+            "knowledge_pipeline_publish_enabled": False,
         }
         current_info = BillingService.get_info(tenant_id)
-        assert current_info["subscription_plan"] == "sandbox"
+        assert current_info["subscription"]["plan"] == "sandbox"
 
         # Step 2: Get payment link for upgrade
         mock_send_request.return_value = {"payment_link": "https://payment.example.com/upgrade"}
@@ -1553,3 +1551,140 @@ class TestBillingServiceIntegrationScenarios:
             mock_send_request.return_value = {"result": "success", "activated": True}
             activate_result = BillingService.EducationIdentity.activate(account, "token-123", "MIT", "student")
             assert activate_result["activated"] is True
+
+
+class TestBillingServiceSubscriptionInfoDataType:
+    """Unit tests for data type coercion in BillingService.get_info
+
+    1. Verifies the get_info returns correct Python types for numeric fields
+    2. Ensure the compatibility regardless of what results the upstream billing API returns
+    """
+
+    @pytest.fixture
+    def mock_send_request(self):
+        with patch.object(BillingService, "_send_request") as mock:
+            yield mock
+
+    @pytest.fixture
+    def normal_billing_response(self) -> dict:
+        return {
+            "enabled": True,
+            "subscription": {
+                "plan": "team",
+                "interval": "year",
+                "education": False,
+            },
+            "members": {"size": 10, "limit": 50},
+            "apps": {"size": 80, "limit": 200},
+            "vector_space": {"size": 5120.75, "limit": 20480},
+            "knowledge_rate_limit": {"limit": 1000},
+            "documents_upload_quota": {"size": 450, "limit": 1000},
+            "annotation_quota_limit": {"size": 1200, "limit": 5000},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+            "next_credit_reset_date": 1745971200,
+        }
+
+    @pytest.fixture
+    def string_billing_response(self) -> dict:
+        return {
+            "enabled": True,
+            "subscription": {
+                "plan": "team",
+                "interval": "year",
+                "education": False,
+            },
+            "members": {"size": "10", "limit": "50"},
+            "apps": {"size": "80", "limit": "200"},
+            "vector_space": {"size": 5120.75, "limit": "20480"},
+            "knowledge_rate_limit": {"limit": "1000"},
+            "documents_upload_quota": {"size": "450", "limit": "1000"},
+            "annotation_quota_limit": {"size": "1200", "limit": "5000"},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+            "next_credit_reset_date": "1745971200",
+        }
+
+    @staticmethod
+    def _assert_billing_info_types(result: dict):
+        assert isinstance(result["enabled"], bool)
+        assert isinstance(result["subscription"]["plan"], str)
+        assert isinstance(result["subscription"]["interval"], str)
+        assert isinstance(result["subscription"]["education"], bool)
+
+        assert isinstance(result["members"]["size"], int)
+        assert isinstance(result["members"]["limit"], int)
+
+        assert isinstance(result["apps"]["size"], int)
+        assert isinstance(result["apps"]["limit"], int)
+
+        assert isinstance(result["vector_space"]["size"], float)
+        assert isinstance(result["vector_space"]["limit"], int)
+
+        assert isinstance(result["knowledge_rate_limit"]["limit"], int)
+
+        assert isinstance(result["documents_upload_quota"]["size"], int)
+        assert isinstance(result["documents_upload_quota"]["limit"], int)
+
+        assert isinstance(result["annotation_quota_limit"]["size"], int)
+        assert isinstance(result["annotation_quota_limit"]["limit"], int)
+
+        assert isinstance(result["docs_processing"], str)
+        assert isinstance(result["can_replace_logo"], bool)
+        assert isinstance(result["model_load_balancing_enabled"], bool)
+        assert isinstance(result["knowledge_pipeline_publish_enabled"], bool)
+        if "next_credit_reset_date" in result:
+            assert isinstance(result["next_credit_reset_date"], int)
+
+    def test_get_info_with_normal_types(self, mock_send_request, normal_billing_response):
+        """When the billing API returns native numeric types, get_info should preserve them."""
+        mock_send_request.return_value = normal_billing_response
+
+        result = BillingService.get_info("tenant-type-test")
+
+        self._assert_billing_info_types(result)
+        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": "tenant-type-test"})
+
+    def test_get_info_with_string_types(self, mock_send_request, string_billing_response):
+        """When the billing API returns numeric values as strings, get_info should coerce them."""
+        mock_send_request.return_value = string_billing_response
+
+        result = BillingService.get_info("tenant-type-test")
+
+        self._assert_billing_info_types(result)
+        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": "tenant-type-test"})
+
+    def test_get_info_without_optional_fields(self, mock_send_request, string_billing_response):
+        """NotRequired fields can be absent without raising."""
+        del string_billing_response["next_credit_reset_date"]
+        mock_send_request.return_value = string_billing_response
+
+        result = BillingService.get_info("tenant-type-test")
+
+        assert "next_credit_reset_date" not in result
+        self._assert_billing_info_types(result)
+
+    def test_get_info_with_extra_fields(self, mock_send_request, string_billing_response):
+        """Undefined fields are silently stripped by validate_python."""
+        string_billing_response["new_feature"] = "something"
+        mock_send_request.return_value = string_billing_response
+
+        result = BillingService.get_info("tenant-type-test")
+
+        # extra fields are dropped by TypeAdapter on TypedDict
+        assert "new_feature" not in result
+        self._assert_billing_info_types(result)
+
+    def test_get_info_missing_required_field_raises(self, mock_send_request, string_billing_response):
+        """Missing a required field should raise ValidationError."""
+        from pydantic import ValidationError
+
+        del string_billing_response["members"]
+        mock_send_request.return_value = string_billing_response
+
+        with pytest.raises(ValidationError):
+            BillingService.get_info("tenant-type-test")

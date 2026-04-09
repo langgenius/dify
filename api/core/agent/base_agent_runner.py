@@ -7,7 +7,22 @@ import uuid
 from decimal import Decimal
 from typing import Generator, List, Dict, Any, Union, cast, Optional
 
-from sqlalchemy import select
+from graphon.file import file_manager
+from graphon.model_runtime.entities import (
+    AssistantPromptMessage,
+    LLMUsage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from sqlalchemy import func, select
+
 from core.agent.entities import AgentEntity, AgentToolEntity
 # EROS FIX: Direct import to comply with 'no-barrel-files' rule
 from core.agent.plan_hydration.engine import get_hydrator  
@@ -32,20 +47,6 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.file import file_manager
-from graphon.model_runtime.entities import (
-    AssistantPromptMessage,
-    LLMUsage,
-    PromptMessage,
-    PromptMessageTool,
-    SystemPromptMessage,
-    TextPromptMessageContent,
-    ToolPromptMessage,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from graphon.model_runtime.entities.model_entities import ModelFeature
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 
@@ -103,6 +104,18 @@ class BaseAgentRunner(AppRunner):
             user_id=user_id,
             inputs=cast(dict, application_generate_entity.inputs),
         )
+        # get how many agent thoughts have been created
+        self.agent_thought_count = (
+            db.session.scalar(
+                select(func.count())
+                .select_from(MessageAgentThought)
+                .where(
+                    MessageAgentThought.message_id == self.message.id,
+                )
+            )
+            or 0
+        )
+        db.session.close()
 
         # 3. Handle Model Features (Vision/Streaming)
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)

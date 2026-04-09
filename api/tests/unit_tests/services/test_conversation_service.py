@@ -355,15 +355,13 @@ class TestConversationServiceGetConversation:
             from_account_id=user.id, from_source=ConversationFromSource.CONSOLE
         )
 
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.first.return_value = conversation
+        mock_db_session.scalar.return_value = conversation
 
         # Act
         result = ConversationService.get_conversation(app_model, "conv-123", user)
 
         # Assert
         assert result == conversation
-        mock_db_session.query.assert_called_once_with(Conversation)
 
     @patch("services.conversation_service.db.session")
     def test_get_conversation_success_with_end_user(self, mock_db_session):
@@ -379,8 +377,7 @@ class TestConversationServiceGetConversation:
             from_end_user_id=user.id, from_source=ConversationFromSource.API
         )
 
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.first.return_value = conversation
+        mock_db_session.scalar.return_value = conversation
 
         # Act
         result = ConversationService.get_conversation(app_model, "conv-123", user)
@@ -399,8 +396,7 @@ class TestConversationServiceGetConversation:
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
 
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ConversationNotExistsError):
@@ -489,8 +485,7 @@ class TestConversationServiceAutoGenerateName:
         )
 
         # Mock database query to return message
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.order_by.return_value.first.return_value = message
+        mock_db_session.scalar.return_value = message
 
         # Mock LLM generator
         mock_llm_generator.generate_conversation_name.return_value = "Generated Name"
@@ -518,8 +513,7 @@ class TestConversationServiceAutoGenerateName:
         conversation = ConversationServiceTestDataFactory.create_conversation_mock()
 
         # Mock database query to return None
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.order_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
@@ -541,8 +535,7 @@ class TestConversationServiceAutoGenerateName:
         )
 
         # Mock database query to return message
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.order_by.return_value.first.return_value = message
+        mock_db_session.scalar.return_value = message
 
         # Mock LLM generator to raise exception
         mock_llm_generator.generate_conversation_name.side_effect = Exception("LLM Error")

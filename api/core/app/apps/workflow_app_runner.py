@@ -3,6 +3,39 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.graph import Graph
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import (
+    GraphEngineEvent,
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+    NodeRunAgentLogEvent,
+    NodeRunExceptionEvent,
+    NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
+    NodeRunHumanInputFormTimeoutEvent,
+    NodeRunIterationFailedEvent,
+    NodeRunIterationNextEvent,
+    NodeRunIterationStartedEvent,
+    NodeRunIterationSucceededEvent,
+    NodeRunLoopFailedEvent,
+    NodeRunLoopNextEvent,
+    NodeRunLoopStartedEvent,
+    NodeRunLoopSucceededEvent,
+    NodeRunRetrieverResourceEvent,
+    NodeRunRetryEvent,
+    NodeRunStartedEvent,
+    NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
+)
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from pydantic import ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -32,8 +65,13 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id, resolve_workflow_node_class
+from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.node_factory import (
+    DifyGraphInitContext,
+    DifyNodeFactory,
+    get_default_root_node_id,
+    resolve_workflow_node_class,
+)
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -44,40 +82,6 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities import GraphInitParams
-from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.graph import Graph
-from graphon.graph_engine.layers.base import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
-    GraphRunFailedEvent,
-    GraphRunPartialSucceededEvent,
-    GraphRunPausedEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-    NodeRunAgentLogEvent,
-    NodeRunExceptionEvent,
-    NodeRunFailedEvent,
-    NodeRunHumanInputFormFilledEvent,
-    NodeRunHumanInputFormTimeoutEvent,
-    NodeRunIterationFailedEvent,
-    NodeRunIterationNextEvent,
-    NodeRunIterationStartedEvent,
-    NodeRunIterationSucceededEvent,
-    NodeRunLoopFailedEvent,
-    NodeRunLoopNextEvent,
-    NodeRunLoopStartedEvent,
-    NodeRunLoopSucceededEvent,
-    NodeRunRetrieverResourceEvent,
-    NodeRunRetryEvent,
-    NodeRunStartedEvent,
-    NodeRunStreamChunkEvent,
-    NodeRunSucceededEvent,
-)
-from graphon.graph_events.graph import GraphRunAbortedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
@@ -127,24 +131,25 @@ class WorkflowBasedAppRunner:
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
 
-        # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
+        # Create explicit graph init context for Graph.init.
+        run_context = build_dify_run_context(
+            tenant_id=tenant_id or "",
+            app_id=self._app_id,
+            user_id=user_id,
+            user_from=user_from,
+            invoke_from=invoke_from,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow_id,
             graph_config=graph_config,
-            run_context=build_dify_run_context(
-                tenant_id=tenant_id or "",
-                app_id=self._app_id,
-                user_id=user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
 
         # Use the provided graph_runtime_state for consistent state management
 
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
 
@@ -289,22 +294,23 @@ class WorkflowBasedAppRunner:
 
         typed_node_configs = [NodeConfigDictAdapter.validate_python(node) for node in node_configs]
 
-        # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
+        # Create explicit graph init context for Graph.init.
+        run_context = build_dify_run_context(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
             graph_config=graph_config,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=self._app_id,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
 
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
 

@@ -2,6 +2,7 @@ import type { DataSourceCredential } from '../../header/account-setting/data-sou
 import type { NotionCredential } from './credential-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
@@ -33,6 +34,7 @@ const NotionPageSelector = ({
   credentialList,
   onSelectCredential,
 }: NotionPageSelectorProps) => {
+  const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
 
@@ -48,27 +50,34 @@ const NotionPageSelector = ({
       }
     })
   }, [credentialList])
-  const [currentCredential, setCurrentCredential] = useState(notionCredentials[0])
+  const [selectedCredentialId, setSelectedCredentialId] = useState(() => notionCredentials[0]?.credentialId ?? '')
+  const currentCredential = useMemo(() => {
+    return notionCredentials.find(item => item.credentialId === selectedCredentialId) ?? notionCredentials[0] ?? null
+  }, [notionCredentials, selectedCredentialId])
+  const currentCredentialId = currentCredential?.credentialId ?? ''
 
   useEffect(() => {
-    const credential = notionCredentials.find(item => item.credentialId === currentCredential?.credentialId)
-    if (!credential) {
-      const firstCredential = notionCredentials[0]
-      invalidPreImportNotionPages({ datasetId, credentialId: firstCredential.credentialId })
-      setCurrentCredential(notionCredentials[0])
-      onSelect([]) // Clear selected pages when changing credential
-      onSelectCredential?.(firstCredential.credentialId)
+    onSelectCredential?.(currentCredentialId)
+  }, [currentCredentialId, onSelectCredential])
+
+  useEffect(() => {
+    if (!notionCredentials.length) {
+      onSelect([])
+      return
     }
-    else {
-      onSelectCredential?.(credential?.credentialId || '')
-    }
-  }, [notionCredentials])
+
+    if (!selectedCredentialId || selectedCredentialId === currentCredentialId)
+      return
+
+    invalidPreImportNotionPages({ datasetId, credentialId: currentCredentialId })
+    onSelect([])
+  }, [currentCredentialId, datasetId, invalidPreImportNotionPages, notionCredentials.length, onSelect, selectedCredentialId])
 
   const {
     data: notionsPages,
     isFetching: isFetchingNotionPages,
     isError: isFetchingNotionPagesError,
-  } = usePreImportNotionPages({ datasetId, credentialId: currentCredential.credentialId || '' })
+  } = usePreImportNotionPages({ datasetId, credentialId: currentCredentialId })
 
   const pagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
@@ -94,28 +103,24 @@ const NotionPageSelector = ({
   const defaultSelectedPagesId = useMemo(() => {
     return [...Array.from(pagesMapAndSelectedPagesId[1]), ...(value || [])]
   }, [pagesMapAndSelectedPagesId, value])
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(() => new Set(defaultSelectedPagesId))
-
-  useEffect(() => {
-    setSelectedPagesId(new Set(defaultSelectedPagesId))
-  }, [defaultSelectedPagesId])
+  const selectedPagesId = useMemo(() => new Set(defaultSelectedPagesId), [defaultSelectedPagesId])
 
   const handleSearchValueChange = useCallback((value: string) => {
     setSearchValue(value)
   }, [])
 
   const handleSelectCredential = useCallback((credentialId: string) => {
-    const credential = notionCredentials.find(item => item.credentialId === credentialId)!
-    invalidPreImportNotionPages({ datasetId, credentialId: credential.credentialId })
-    setCurrentCredential(credential)
+    if (credentialId === currentCredentialId)
+      return
+
+    invalidPreImportNotionPages({ datasetId, credentialId })
+    setSelectedCredentialId(credentialId)
     onSelect([]) // Clear selected pages when changing credential
-    onSelectCredential?.(credential.credentialId)
-  }, [datasetId, invalidPreImportNotionPages, notionCredentials, onSelect, onSelectCredential])
+  }, [currentCredentialId, datasetId, invalidPreImportNotionPages, onSelect])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
 
-    setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     onSelect(selectedPages)
   }, [pagesMapAndSelectedPagesId, onSelect])
 
@@ -140,16 +145,16 @@ const NotionPageSelector = ({
     <div className="flex flex-col gap-y-2" data-testid="notion-page-selector-base">
       <Header
         onClickConfiguration={handleConfigureNotion}
-        title="Choose notion pages"
-        buttonText="Configure Notion"
-        docTitle="Notion docs"
+        title={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
+        buttonText={t('dataSource.notion.selector.configure', { ns: 'common' })}
+        docTitle={t('dataSource.notion.selector.docs', { ns: 'common' })}
         docLink="https://www.notion.so/docs"
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
         <div className="flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2">
           <div className="flex grow items-center gap-x-1">
             <WorkspaceSelector
-              value={currentCredential.credentialId}
+              value={currentCredentialId}
               items={notionCredentials}
               onSelect={handleSelectCredential}
             />
@@ -168,6 +173,7 @@ const NotionPageSelector = ({
               )
             : (
                 <PageSelector
+                  key={currentCredentialId || 'default'}
                   value={selectedPagesId}
                   disabledValue={pagesMapAndSelectedPagesId[2]}
                   searchValue={searchValue}

@@ -202,8 +202,8 @@ const QueryInput = ({
   }, [isExternal, externalRetrievalTestingOnSubmit, onSubmit, text, loading, t, images, isAllUploaded])
 
   return (
-    <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
-      <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
+    <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
+      <div className="flex h-full flex-col overflow-hidden radius-lg bg-background-section-burn">
         <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
           <span className="text-text-secondary system-sm-semibold-uppercase">
             {t('input.title', { ns: 'datasetHitTesting' })}

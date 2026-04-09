@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import Modal from '@/app/components/base/modal/modal'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {
@@ -47,7 +47,6 @@ const OAuthClientSettings = ({
   onUpdate,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -86,10 +85,7 @@ const OAuthClientSettings = ({
         client_params: restValues,
         enable_oauth_custom_client: __oauth_client__ === 'custom',
       })
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
 
       onClose?.()
       onUpdate?.()
@@ -98,7 +94,7 @@ const OAuthClientSettings = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [onClose, onUpdate, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
+  }, [onClose, onUpdate, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, t, handleSetDoingAction])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     await handleConfirm()
@@ -113,10 +109,7 @@ const OAuthClientSettings = ({
     try {
       handleSetDoingAction(true)
       await deletePluginOAuthCustomClient()
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
@@ -124,7 +117,7 @@ const OAuthClientSettings = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [onUpdate, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction, onClose])
+  }, [onUpdate, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, t, handleSetDoingAction, onClose])
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })
@@ -157,7 +150,7 @@ const OAuthClientSettings = ({
         )
       }
       containerClassName="pt-0"
-      wrapperClassName="!z-[1002]"
+      wrapperClassName="z-1002!"
       clickOutsideNotClose={true}
     >
       {pluginPayload.detail && (

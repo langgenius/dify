@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
 
@@ -50,6 +50,17 @@ jobs:
         run: |
           diff -u /tmp/pyrefly_base.txt /tmp/pyrefly_pr.txt > pyrefly_diff.txt || true
 
+      - name: Check if line counts match
+        id: line_count_check
+        run: |
+          base_lines=$(wc -l < /tmp/pyrefly_base.txt)
+          pr_lines=$(wc -l < /tmp/pyrefly_pr.txt)
+          if [ "$base_lines" -eq "$pr_lines" ]; then
+            echo "same=true" >> $GITHUB_OUTPUT
+          else
+            echo "same=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Save PR number
         run: |
           echo ${{ github.event.pull_request.number }} > pr_number.txt
@@ -63,7 +74,7 @@ jobs:
             pr_number.txt
 
       - name: Comment PR with pyrefly diff
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && steps.line_count_check.outputs.same == 'false' }}
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

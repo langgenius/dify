@@ -172,16 +172,282 @@ class TestDatasetAndFiles:
 # EROS Persistence Layer
 # ==========================================================
 
-class TestEROSPisistence:
-    def test_save_agent_thought_full_eros_path(self, runner, mock_db_session, mocker):
-        # PRECISION FIX: Explicitly bind method to instance
-        runner.save_agent_thought = BaseAgentRunner.save_agent_thought.__get__(runner)
-        
-        agent_thought = mocker.MagicMock(tool="tool1", thought="")
-        mock_db_session.scalar.return_value = agent_thought
-        
-        usage = LLMUsage(prompt_tokens=10, completion_tokens=10, total_tokens=20)
-        
+
+class TestAdditionalCoverage:
+    def test_update_prompt_with_input_schema(self, runner, mocker):
+        tool = mocker.MagicMock()
+
+        param = mocker.MagicMock()
+        param.form = module.ToolParameter.ToolParameterForm.LLM
+        param.name = "p1"
+        param.required = False
+        param.llm_description = "desc"
+        param.options = None
+        param.input_schema = {"type": "number"}
+
+        mock_type = mocker.MagicMock()
+        mock_type.as_normal_type.return_value = "string"
+        param.type = mock_type
+
+        tool.get_runtime_parameters.return_value = [param]
+
+        prompt_tool = mocker.MagicMock()
+        prompt_tool.parameters = {"properties": {}, "required": []}
+
+        result = runner.update_prompt_message_tool(tool, prompt_tool)
+        assert result.parameters["properties"]["p1"]["type"] == "number"
+
+    def test_save_agent_thought_existing_labels(self, runner, mock_db_session, mocker):
+        agent = mocker.MagicMock()
+        agent.tool = "tool1"
+        agent.tool_labels = {"tool1": {"en_US": "existing"}}
+        agent.thought = ""
+        mock_db_session.scalar.return_value = agent
+
+        runner.save_agent_thought("id", None, None, None, None, None, None, [], None)
+        labels = json.loads(agent.tool_labels_str)
+        assert labels["tool1"]["en_US"] == "existing"
+
+    def test_save_agent_thought_tool_meta_string(self, runner, mock_db_session, mocker):
+        agent = mocker.MagicMock()
+        agent.tool = "tool1"
+        agent.tool_labels = {}
+        agent.thought = ""
+        mock_db_session.scalar.return_value = agent
+
+        runner.save_agent_thought("id", None, None, None, None, "meta_string", None, [], None)
+        assert agent.tool_meta_str == "meta_string"
+
+    def test_convert_dataset_retriever_tool(self, runner, mocker):
+        ds_tool = mocker.MagicMock()
+        ds_tool.entity.identity.name = "ds"
+        ds_tool.entity.description.llm = "desc"
+
+        param = mocker.MagicMock()
+        param.name = "query"
+        param.llm_description = "desc"
+        param.required = True
+
+        ds_tool.get_runtime_parameters.return_value = [param]
+
+        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
+
+        prompt = runner._convert_dataset_retriever_tool_to_prompt_message_tool(ds_tool)
+        assert prompt is not None
+
+    def test_organize_user_prompt_with_file_objects(self, runner, mock_db_session, mocker):
+        mock_db_session.scalars.return_value.all.return_value = [mocker.MagicMock()]
+
+        file_config = mocker.MagicMock()
+        file_config.image_config = mocker.MagicMock(detail=None)
+
+        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_config)
+        mocker.patch.object(module.file_factory, "build_from_message_files", return_value=["file1"])
+        mocker.patch.object(module.file_manager, "to_prompt_message_content", return_value=mocker.MagicMock())
+
+        mocker.patch.object(module, "UserPromptMessage", side_effect=lambda **kw: MagicMock(**kw))
+        mocker.patch.object(module, "TextPromptMessageContent", side_effect=lambda **kw: MagicMock(**kw))
+
+        msg = mocker.MagicMock(id="1", query="hello")
+        msg.app_model_config.to_dict.return_value = {}
+
+        result = runner.organize_agent_user_prompt(msg)
+        assert result is not None
+
+    def test_organize_history_without_tool_names(self, runner, mock_db_session, mocker):
+        thought = mocker.MagicMock(tool=None, thought="thinking")
+        msg = mocker.MagicMock(id="m3", agent_thoughts=[thought], answer=None, app_model_config=None)
+
+        mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
+        mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
+
+        result = runner.organize_agent_history([])
+        assert isinstance(result, list)
+
+    def test_organize_history_multiple_tools_split(self, runner, mock_db_session, mocker):
+        thought = mocker.MagicMock(
+            tool="tool1;tool2",
+            tool_input=json.dumps({"tool1": {}, "tool2": {}}),
+            observation=json.dumps({"tool1": "o1", "tool2": "o2"}),
+            thought="thinking",
+        )
+        msg = mocker.MagicMock(id="m4", agent_thoughts=[thought], answer=None, app_model_config=None)
+
+        mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
+        mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
+        mocker.patch("uuid.uuid4", return_value="uuid")
+
+        result = runner.organize_agent_history([])
+        assert isinstance(result, list)
+
+    # ================= Additional Surgical Coverage =================
+
+    def test_convert_tool_select_enum_branch(self, runner, mocker):
+        tool = mocker.MagicMock(tool_name="tool1")
+
+        param = mocker.MagicMock()
+        param.form = module.ToolParameter.ToolParameterForm.LLM
+        param.name = "select_param"
+        param.required = True
+        param.llm_description = "desc"
+        param.input_schema = None
+
+        option1 = mocker.MagicMock(value="A")
+        option2 = mocker.MagicMock(value="B")
+        param.options = [option1, option2]
+        param.type = module.ToolParameter.ToolParameterType.SELECT
+
+        tool_entity = mocker.MagicMock()
+        tool_entity.entity.description.llm = "desc"
+        tool_entity.get_merged_runtime_parameters.return_value = [param]
+
+        mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
+        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
+
+        prompt_tool, _ = runner._convert_tool_to_prompt_message_tool(tool)
+        assert prompt_tool is not None
+
+
+class TestConvertDatasetRetrieverTool:
+    def test_required_param_added(self, runner, mocker):
+        ds_tool = mocker.MagicMock()
+        ds_tool.entity.identity.name = "ds"
+        ds_tool.entity.description.llm = "desc"
+
+        param = mocker.MagicMock()
+        param.name = "query"
+        param.llm_description = "desc"
+        param.required = True
+
+        ds_tool.get_runtime_parameters.return_value = [param]
+
+        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
+
+        prompt = runner._convert_dataset_retriever_tool_to_prompt_message_tool(ds_tool)
+
+        assert prompt is not None
+
+
+class TestBaseAgentRunnerInit:
+    def test_init_sets_stream_tool_call_and_files(self, mocker):
+        session = mocker.MagicMock()
+        session.scalar.return_value = 2
+        mocker.patch.object(module.db, "session", session)
+
+        mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
+        mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=["ds_tool"])
+
+        llm = mocker.MagicMock()
+        llm.get_model_schema.return_value = mocker.MagicMock(
+            features=[module.ModelFeature.STREAM_TOOL_CALL, module.ModelFeature.VISION]
+        )
+        model_instance = mocker.MagicMock(model_type_instance=llm, model="m", credentials="c")
+
+        app_config = mocker.MagicMock()
+        app_config.app_id = "app1"
+        app_config.agent = None
+        app_config.dataset = mocker.MagicMock(dataset_ids=["d1"], retrieve_config={"k": "v"})
+        app_config.additional_features = mocker.MagicMock(show_retrieve_source=True)
+
+        app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=["file1"])
+        message = mocker.MagicMock(id="msg1", conversation_id="conv1")
+
+        runner = BaseAgentRunner(
+            tenant_id="tenant",
+            application_generate_entity=app_generate,
+            conversation=mocker.MagicMock(),
+            app_config=app_config,
+            model_config=mocker.MagicMock(),
+            config=mocker.MagicMock(),
+            queue_manager=mocker.MagicMock(),
+            message=message,
+            user_id="user",
+            model_instance=model_instance,
+        )
+
+        assert runner.stream_tool_call is True
+        assert runner.files == ["file1"]
+        assert runner.dataset_tools == ["ds_tool"]
+        assert runner.agent_thought_count == 2
+
+
+class TestBaseAgentRunnerCoverage:
+    def test_convert_tool_skips_non_llm_param(self, runner, mocker):
+        tool = mocker.MagicMock(tool_name="tool1")
+
+        param = mocker.MagicMock()
+        param.form = "NOT_LLM"
+        param.type = mocker.MagicMock()
+
+        tool_entity = mocker.MagicMock()
+        tool_entity.entity.description.llm = "desc"
+        tool_entity.get_merged_runtime_parameters.return_value = [param]
+
+        mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
+        mocker.patch.object(module, "PromptMessageTool", side_effect=lambda **kw: MagicMock(**kw))
+
+        prompt_tool, _ = runner._convert_tool_to_prompt_message_tool(tool)
+
+        assert prompt_tool.parameters["properties"] == {}
+
+    def test_init_prompt_tools_adds_dataset_tools(self, runner, mocker):
+        dataset_tool = mocker.MagicMock()
+        dataset_tool.entity.identity.name = "ds"
+        runner.dataset_tools = [dataset_tool]
+
+        mocker.patch.object(runner, "_convert_dataset_retriever_tool_to_prompt_message_tool", return_value=MagicMock())
+
+        tools, prompt_tools = runner._init_prompt_tools()
+
+        assert tools["ds"] == dataset_tool
+        assert len(prompt_tools) == 1
+
+    def test_update_prompt_message_tool_select_enum(self, runner, mocker):
+        tool = mocker.MagicMock()
+
+        option1 = mocker.MagicMock(value="A")
+        option2 = mocker.MagicMock(value="B")
+
+        param = mocker.MagicMock()
+        param.form = module.ToolParameter.ToolParameterForm.LLM
+        param.name = "select_param"
+        param.required = False
+        param.llm_description = "desc"
+        param.input_schema = None
+        param.options = [option1, option2]
+        param.type = module.ToolParameter.ToolParameterType.SELECT
+
+        tool.get_runtime_parameters.return_value = [param]
+
+        prompt_tool = mocker.MagicMock()
+        prompt_tool.parameters = {"properties": {}, "required": []}
+
+        result = runner.update_prompt_message_tool(tool, prompt_tool)
+
+        assert result.parameters["properties"]["select_param"]["enum"] == ["A", "B"]
+
+    def test_save_agent_thought_json_dumps_fallbacks(self, runner, mock_db_session, mocker):
+        agent = mocker.MagicMock()
+        agent.tool = "tool1"
+        agent.tool_labels = {}
+        agent.thought = ""
+        mock_db_session.scalar.return_value = agent
+
+        mocker.patch.object(module.ToolManager, "get_tool_label", return_value=None)
+
+        tool_input = {"a": 1}
+        observation = {"b": 2}
+        tool_meta = {"c": 3}
+
+        real_dumps = json.dumps
+
+        def dumps_side_effect(value, *args, **kwargs):
+            if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
+                raise TypeError("fail")
+            return real_dumps(value, *args, **kwargs)
+
+        mocker.patch.object(module.json, "dumps", side_effect=dumps_side_effect)
+
         runner.save_agent_thought(
             "id", "tool1", {"i": 1}, "thought", {"o": 1}, 
             None, None, [], usage

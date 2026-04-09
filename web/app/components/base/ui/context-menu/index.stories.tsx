@@ -22,7 +22,7 @@ import {
 const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: string }) => (
   <ContextMenuTrigger
     aria-label="context menu trigger area"
-    render={<button type="button" className="flex h-44 w-80 select-none items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary" />}
+    render={<button type="button" className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none" />}
   >
     {label}
   </ContextMenuTrigger>

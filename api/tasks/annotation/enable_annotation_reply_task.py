@@ -36,7 +36,9 @@ def enable_annotation_reply_task(
     start_at = time.perf_counter()
     # get app info
     with session_factory.create_session() as session:
-        app = session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+        app = session.scalar(
+            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+        )
 
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
@@ -51,8 +53,8 @@ def enable_annotation_reply_task(
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                 embedding_provider_name, embedding_model_name, CollectionBindingType.ANNOTATION
             )
-            annotation_setting = (
-                session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+            annotation_setting = session.scalar(
+                select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
             )
             if annotation_setting:
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:

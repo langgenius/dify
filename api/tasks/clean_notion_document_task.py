@@ -26,7 +26,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     total_index_node_ids = []
 
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
 
         if not dataset:
             raise Exception("Document has no dataset")
@@ -41,7 +41,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
             total_index_node_ids.extend([segment.index_node_id for segment in segments])
 
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if dataset:
             index_processor.clean(
                 dataset, total_index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
