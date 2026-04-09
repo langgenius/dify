@@ -130,7 +130,7 @@ describe('Evaluation', () => {
       ])
       store.addCondition(resourceType, resourceId)
 
-      const condition = useEvaluationStore.getState().resources['apps:app-2'].conditions.conditions[0]
+      const condition = useEvaluationStore.getState().resources['apps:app-2'].judgmentConfig.conditions[0]
       conditionId = condition.id
       store.updateConditionOperator(resourceType, resourceId, conditionId, '=')
     })

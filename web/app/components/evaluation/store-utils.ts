@@ -180,21 +180,6 @@ const getNormalizedConditionValue = (
   return typeof previousValue === 'string' ? previousValue : null
 }
 
-const getRawJudgmentConfig = (config: EvaluationConfig): EvaluationJudgmentConfig | null | undefined => {
-  if (config.judgment_config)
-    return config.judgment_config
-
-  if (
-    config.judgement_conditions
-    && !Array.isArray(config.judgement_conditions)
-    && 'conditions' in config.judgement_conditions
-  ) {
-    return config.judgement_conditions as EvaluationJudgmentConfig
-  }
-
-  return null
-}
-
 const normalizeConditionItem = (
   value: EvaluationJudgmentCondition,
   metrics: EvaluationMetric[],
@@ -234,7 +219,7 @@ const normalizeJudgmentConfig = (
   config: EvaluationConfig,
   metrics: EvaluationMetric[],
 ): JudgmentConfig => {
-  const rawJudgmentConfig = getRawJudgmentConfig(config)
+  const rawJudgmentConfig: EvaluationJudgmentConfig | null | undefined = config.judgment_config
 
   if (!rawJudgmentConfig)
     return createEmptyJudgmentConfig()
@@ -393,7 +378,7 @@ export const buildInitialState = (_resourceType: EvaluationResourceType): Evalua
   return {
     judgeModelId: null,
     metrics: [],
-    conditions: createEmptyJudgmentConfig(),
+    judgmentConfig: createEmptyJudgmentConfig(),
     activeBatchTab: 'input-fields',
     uploadedFileName: null,
     batchRecords: [],
@@ -414,7 +399,7 @@ export const buildStateFromEvaluationConfig = (
       ? encodeModelSelection(config.evaluation_model_provider, config.evaluation_model)
       : null,
     metrics,
-    conditions: normalizeJudgmentConfig(config, metrics),
+    judgmentConfig: normalizeJudgmentConfig(config, metrics),
   }
 }
 

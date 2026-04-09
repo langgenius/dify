@@ -133,7 +133,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
           return {
             ...currentResource,
             metrics,
-            conditions: syncJudgmentConfigWithMetrics(currentResource.conditions, metrics),
+            judgmentConfig: syncJudgmentConfigWithMetrics(currentResource.judgmentConfig, metrics),
           }
         }),
       }
@@ -160,7 +160,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
         }
       }),
     }))
@@ -173,7 +173,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
         }
       }),
     }))
@@ -201,7 +201,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
         }
       }),
     }))
@@ -238,7 +238,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         return {
           ...resource,
           metrics,
-          conditions: syncJudgmentConfigWithMetrics(resource.conditions, metrics),
+          judgmentConfig: syncJudgmentConfigWithMetrics(resource.judgmentConfig, metrics),
         }
       }),
     }))
@@ -263,8 +263,8 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: {
-          ...resource.conditions,
+        judgmentConfig: {
+          ...resource.judgmentConfig,
           logicalOperator,
         },
       })),
@@ -274,9 +274,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: {
-          ...resource.conditions,
-          conditions: [...resource.conditions.conditions, buildConditionItem(resource.metrics)],
+        judgmentConfig: {
+          ...resource.judgmentConfig,
+          conditions: [...resource.judgmentConfig.conditions, buildConditionItem(resource.metrics)],
         },
       })),
     }))
@@ -285,9 +285,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: {
-          ...resource.conditions,
-          conditions: resource.conditions.conditions.filter(condition => condition.id !== conditionId),
+        judgmentConfig: {
+          ...resource.judgmentConfig,
+          conditions: resource.judgmentConfig.conditions.filter(condition => condition.id !== conditionId),
         },
       })),
     }))
@@ -303,9 +303,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
 
         return {
           ...resource,
-          conditions: {
-            ...resource.conditions,
-            conditions: resource.conditions.conditions.map(condition => condition.id === conditionId
+          judgmentConfig: {
+            ...resource.judgmentConfig,
+            conditions: resource.judgmentConfig.conditions.map(condition => condition.id === conditionId
               ? {
                   ...condition,
                   variableSelector,
@@ -323,9 +323,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       return {
         resources: updateResourceState(state.resources, resourceType, resourceId, currentResource => ({
           ...currentResource,
-          conditions: {
-            ...currentResource.conditions,
-            conditions: currentResource.conditions.conditions.map((condition) => {
+          judgmentConfig: {
+            ...currentResource.judgmentConfig,
+            conditions: currentResource.judgmentConfig.conditions.map((condition) => {
               if (condition.id !== conditionId)
                 return condition
 
@@ -350,9 +350,9 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
-        conditions: {
-          ...resource.conditions,
-          conditions: resource.conditions.conditions.map(condition => condition.id === conditionId ? { ...condition, value } : condition),
+        judgmentConfig: {
+          ...resource.judgmentConfig,
+          conditions: resource.judgmentConfig.conditions.map(condition => condition.id === conditionId ? { ...condition, value } : condition),
         },
       })),
     }))

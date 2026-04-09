@@ -107,7 +107,7 @@ describe('evaluation store', () => {
       { node_id: 'node-2', title: 'Retriever Node', type: 'retriever' },
     ])
     expect(state.metrics.filter(item => item.optionId === metricId)).toHaveLength(1)
-    expect(state.conditions.conditions).toHaveLength(0)
+    expect(state.judgmentConfig.conditions).toHaveLength(0)
   })
 
   it('should build numeric conditions from selected metrics', () => {
@@ -124,9 +124,9 @@ describe('evaluation store', () => {
     store.addCondition(resourceType, resourceId)
 
     const state = useEvaluationStore.getState().resources['apps:app-conditions']
-    const condition = state.conditions.conditions[0]
+    const condition = state.judgmentConfig.conditions[0]
 
-    expect(state.conditions.logicalOperator).toBe('or')
+    expect(state.judgmentConfig.logicalOperator).toBe('or')
     expect(condition.variableSelector).toEqual(['node-answer', 'answer-correctness'])
     expect(condition.comparisonOperator).toBe('=')
     expect(getAllowedOperators(state.metrics, condition.variableSelector)).toEqual(['=', '≠', '>', '<', '≥', '≤', 'is null', 'is not null'])
@@ -153,13 +153,13 @@ describe('evaluation store', () => {
     }])
     store.addCondition(resourceType, resourceId)
 
-    const condition = useEvaluationStore.getState().resources['apps:app-3'].conditions.conditions[0]
+    const condition = useEvaluationStore.getState().resources['apps:app-3'].judgmentConfig.conditions[0]
 
     store.updateConditionMetric(resourceType, resourceId, condition.id, [config.workflowOptions[0].id, 'reason'])
     store.updateConditionValue(resourceType, resourceId, condition.id, 'needs follow-up')
     store.updateConditionOperator(resourceType, resourceId, condition.id, 'empty')
 
-    const updatedCondition = useEvaluationStore.getState().resources['apps:app-3'].conditions.conditions[0]
+    const updatedCondition = useEvaluationStore.getState().resources['apps:app-3'].judgmentConfig.conditions[0]
 
     expect(requiresConditionValue('empty')).toBe(false)
     expect(updatedCondition.value).toBeNull()
@@ -232,8 +232,8 @@ describe('evaluation store', () => {
     expect(hydratedState.metrics[1].customConfig?.mappings[0].inputVariableId).toBe('query')
     expect(hydratedState.metrics[1].customConfig?.mappings[0].outputVariableId).toBe('answer')
     expect(hydratedState.metrics[1].customConfig?.outputs).toEqual([{ id: 'reason', valueType: 'string' }])
-    expect(hydratedState.conditions.logicalOperator).toBe('or')
-    expect(hydratedState.conditions.conditions[0]).toMatchObject({
+    expect(hydratedState.judgmentConfig.logicalOperator).toBe('or')
+    expect(hydratedState.judgmentConfig.conditions[0]).toMatchObject({
       variableSelector: ['node-1', 'faithfulness'],
       comparisonOperator: '≥',
       value: '0.9',

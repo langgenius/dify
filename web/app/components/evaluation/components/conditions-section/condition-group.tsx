@@ -231,7 +231,7 @@ const ConditionGroup = ({
                 type="button"
                 className={cn(
                   'rounded-md px-3 py-1.5 system-xs-medium-uppercase',
-                  resource.conditions.logicalOperator === operator
+                  resource.judgmentConfig.logicalOperator === operator
                     ? 'bg-components-card-bg text-text-primary shadow-xs'
                     : 'text-text-tertiary',
                 )}
@@ -245,7 +245,7 @@ const ConditionGroup = ({
       </div>
 
       <div className="space-y-3">
-        {resource.conditions.conditions.map((condition) => {
+        {resource.judgmentConfig.conditions.map((condition) => {
           const metric = metricOptions.find(option => isSelectorEqual(option.variableSelector, condition.variableSelector))
           const allowedOperators = getAllowedOperators(resource.metrics, condition.variableSelector)
           const showValue = !!metric && requiresConditionValue(condition.comparisonOperator)

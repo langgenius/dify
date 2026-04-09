@@ -26,12 +26,12 @@ const ConditionsSection = ({
         tooltip={t('conditions.description')}
       />
       <div className="mt-2 space-y-4">
-        {resource.conditions.conditions.length === 0 && (
+        {resource.judgmentConfig.conditions.length === 0 && (
           <div className="rounded-xl bg-background-section px-3 py-3 system-xs-regular text-text-tertiary">
             {t('conditions.emptyDescription')}
           </div>
         )}
-        {resource.conditions.conditions.length > 0 && (
+        {resource.judgmentConfig.conditions.length > 0 && (
           <ConditionGroup
             resourceType={resourceType}
             resourceId={resourceId}

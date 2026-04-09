@@ -13,36 +13,12 @@ export type EvaluationJudgmentConfig = {
   conditions?: EvaluationJudgmentCondition[]
 }
 
-export type EvaluationConditionValue = string | number | boolean | null
-
-export type EvaluationJudgementConditionItem = {
-  id?: string
-  fieldId?: string
-  field_id?: string
-  operator?: string
-  value?: EvaluationConditionValue
-}
-
-export type EvaluationJudgementConditionGroup = {
-  id?: string
-  logicalOperator?: 'and' | 'or'
-  logical_operator?: 'and' | 'or'
-  items?: EvaluationJudgementConditionItem[]
-}
-
-export type EvaluationJudgementConditions
-  = | EvaluationJudgementConditionGroup[]
-    | {
-      groups?: EvaluationJudgementConditionGroup[]
-    }
-
 export type EvaluationConfig = {
   evaluation_model: string | null
   evaluation_model_provider: string | null
   default_metrics?: EvaluationDefaultMetric[] | null
   customized_metrics?: EvaluationCustomizedMetric | null
   judgment_config?: EvaluationJudgmentConfig | null
-  judgement_conditions?: EvaluationJudgementConditions | null
 }
 
 export type NodeInfo = {

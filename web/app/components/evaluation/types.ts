@@ -130,7 +130,7 @@ export type BatchTestRecord = {
 export type EvaluationResourceState = {
   judgeModelId: string | null
   metrics: EvaluationMetric[]
-  conditions: JudgmentConfig
+  judgmentConfig: JudgmentConfig
   activeBatchTab: BatchTestTab
   uploadedFileName: string | null
   batchRecords: BatchTestRecord[]
