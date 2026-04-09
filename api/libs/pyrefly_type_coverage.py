@@ -5,37 +5,59 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TypedDict
 
-if TYPE_CHECKING:
-    from typing import TypedDict
 
-    class CoverageSummary(TypedDict):
-        n_modules: int
-        n_typable: int
-        n_typed: int
-        n_any: int
-        n_untyped: int
-        coverage: float
-        strict_coverage: float
-else:
-    CoverageSummary = dict
+class CoverageSummary(TypedDict):
+    n_modules: int
+    n_typable: int
+    n_typed: int
+    n_any: int
+    n_untyped: int
+    coverage: float
+    strict_coverage: float
+
+
+_REQUIRED_KEYS = frozenset(CoverageSummary.__annotations__)
+
+_EMPTY_SUMMARY: CoverageSummary = {
+    "n_modules": 0,
+    "n_typable": 0,
+    "n_typed": 0,
+    "n_any": 0,
+    "n_untyped": 0,
+    "coverage": 0.0,
+    "strict_coverage": 0.0,
+}
 
 
 def parse_summary(report_json: str) -> CoverageSummary:
-    """Extract the summary section from ``pyrefly report`` JSON output."""
+    """Extract the summary section from ``pyrefly report`` JSON output.
 
-    data = json.loads(report_json)
-    summary = data["summary"]
-    return CoverageSummary(
-        n_modules=summary["n_modules"],
-        n_typable=summary["n_typable"],
-        n_typed=summary["n_typed"],
-        n_any=summary["n_any"],
-        n_untyped=summary["n_untyped"],
-        coverage=summary["coverage"],
-        strict_coverage=summary["strict_coverage"],
-    )
+    Returns an empty summary when *report_json* is empty or malformed so that
+    the CI workflow can degrade gracefully instead of crashing.
+    """
+    if not report_json or not report_json.strip():
+        return _EMPTY_SUMMARY.copy()
+
+    try:
+        data = json.loads(report_json)
+    except json.JSONDecodeError:
+        return _EMPTY_SUMMARY.copy()
+
+    summary = data.get("summary")
+    if not isinstance(summary, dict) or not _REQUIRED_KEYS.issubset(summary):
+        return _EMPTY_SUMMARY.copy()
+
+    return {
+        "n_modules": summary["n_modules"],
+        "n_typable": summary["n_typable"],
+        "n_typed": summary["n_typed"],
+        "n_any": summary["n_any"],
+        "n_untyped": summary["n_untyped"],
+        "coverage": summary["coverage"],
+        "strict_coverage": summary["strict_coverage"],
+    }
 
 
 def format_summary_markdown(summary: CoverageSummary) -> str:
@@ -110,7 +132,8 @@ def main() -> int:
     pr_summary = parse_summary(pr_report)
 
     if base_file is not None:
-        base_summary = parse_summary(Path(base_file).read_text())
+        base_text = Path(base_file).read_text() if Path(base_file).exists() else ""
+        base_summary = parse_summary(base_text)
         sys.stdout.write(format_comparison_markdown(base_summary, pr_summary) + "\n")
     else:
         sys.stdout.write(format_summary_markdown(pr_summary) + "\n")

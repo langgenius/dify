@@ -31,6 +31,27 @@ _SAMPLE_SUMMARY: dict = {
 }
 
 
+def _make_summary(
+    *,
+    n_modules: int = 100,
+    n_typable: int = 1000,
+    n_typed: int = 400,
+    n_any: int = 50,
+    n_untyped: int = 550,
+    coverage: float = 45.0,
+    strict_coverage: float = 40.0,
+) -> CoverageSummary:
+    return {
+        "n_modules": n_modules,
+        "n_typable": n_typable,
+        "n_typed": n_typed,
+        "n_any": n_any,
+        "n_untyped": n_untyped,
+        "coverage": coverage,
+        "strict_coverage": strict_coverage,
+    }
+
+
 def test_parse_summary_extracts_fields() -> None:
     report_json = _make_report(_SAMPLE_SUMMARY)
 
@@ -45,16 +66,26 @@ def test_parse_summary_extracts_fields() -> None:
     assert result["strict_coverage"] == 40.0
 
 
+def test_parse_summary_handles_empty_input() -> None:
+    assert parse_summary("")["n_modules"] == 0
+    assert parse_summary("   ")["n_modules"] == 0
+
+
+def test_parse_summary_handles_invalid_json() -> None:
+    assert parse_summary("not json")["n_modules"] == 0
+
+
+def test_parse_summary_handles_missing_summary_key() -> None:
+    assert parse_summary(json.dumps({"other": 1}))["n_modules"] == 0
+
+
+def test_parse_summary_handles_incomplete_summary() -> None:
+    partial = json.dumps({"summary": {"n_modules": 5}})
+    assert parse_summary(partial)["n_modules"] == 0
+
+
 def test_format_summary_markdown_contains_key_metrics() -> None:
-    summary = CoverageSummary(
-        n_modules=100,
-        n_typable=1000,
-        n_typed=400,
-        n_any=50,
-        n_untyped=550,
-        coverage=45.0,
-        strict_coverage=40.0,
-    )
+    summary = _make_summary()
 
     result = format_summary_markdown(summary)
 
@@ -65,20 +96,11 @@ def test_format_summary_markdown_contains_key_metrics() -> None:
 
 
 def test_format_comparison_markdown_shows_positive_delta() -> None:
-    base = CoverageSummary(
-        n_modules=100,
-        n_typable=1000,
-        n_typed=400,
-        n_any=50,
-        n_untyped=550,
-        coverage=45.0,
-        strict_coverage=40.0,
-    )
-    pr = CoverageSummary(
+    base = _make_summary()
+    pr = _make_summary(
         n_modules=101,
         n_typable=1010,
         n_typed=420,
-        n_any=50,
         n_untyped=540,
         coverage=46.53,
         strict_coverage=41.58,
@@ -93,21 +115,10 @@ def test_format_comparison_markdown_shows_positive_delta() -> None:
 
 
 def test_format_comparison_markdown_shows_negative_delta() -> None:
-    base = CoverageSummary(
-        n_modules=100,
-        n_typable=1000,
-        n_typed=400,
-        n_any=50,
-        n_untyped=550,
-        coverage=45.0,
-        strict_coverage=40.0,
-    )
-    pr = CoverageSummary(
-        n_modules=100,
-        n_typable=1000,
+    base = _make_summary()
+    pr = _make_summary(
         n_typed=390,
         n_any=60,
-        n_untyped=550,
         coverage=44.0,
         strict_coverage=39.0,
     )
@@ -119,15 +130,7 @@ def test_format_comparison_markdown_shows_negative_delta() -> None:
 
 
 def test_format_comparison_markdown_shows_zero_delta() -> None:
-    summary = CoverageSummary(
-        n_modules=100,
-        n_typable=1000,
-        n_typed=400,
-        n_any=50,
-        n_untyped=550,
-        coverage=45.0,
-        strict_coverage=40.0,
-    )
+    summary = _make_summary()
 
     result = format_comparison_markdown(summary, summary)
 

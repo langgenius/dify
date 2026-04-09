@@ -31,22 +31,27 @@ jobs:
 
       - name: Run pyrefly report on PR branch
         run: |
-          uv run --directory api --dev pyrefly report 2>/dev/null > /tmp/pyrefly_report_pr.json || true
+          uv run --directory api --dev pyrefly report 2>/dev/null > /tmp/pyrefly_report_pr.tmp && \
+            mv /tmp/pyrefly_report_pr.tmp /tmp/pyrefly_report_pr.json || \
+            echo '{}' > /tmp/pyrefly_report_pr.json
+
+      - name: Save helper script from base branch
+        run: |
+          git show ${{ github.event.pull_request.base.sha }}:api/libs/pyrefly_type_coverage.py > /tmp/pyrefly_type_coverage.py 2>/dev/null \
+            || cp api/libs/pyrefly_type_coverage.py /tmp/pyrefly_type_coverage.py
 
       - name: Checkout base branch
         run: git checkout ${{ github.base_ref }}
 
       - name: Run pyrefly report on base branch
         run: |
-          uv run --directory api --dev pyrefly report 2>/dev/null > /tmp/pyrefly_report_base.json || true
-
-      - name: Checkout PR branch again (for helper script)
-        run: git checkout ${{ github.event.pull_request.head.sha }}
+          uv run --directory api --dev pyrefly report 2>/dev/null > /tmp/pyrefly_report_base.tmp && \
+            mv /tmp/pyrefly_report_base.tmp /tmp/pyrefly_report_base.json || \
+            echo '{}' > /tmp/pyrefly_report_base.json
 
       - name: Generate coverage comparison
         id: coverage
         run: |
-          cp api/libs/pyrefly_type_coverage.py /tmp/pyrefly_type_coverage.py
           comment_body="$(uv run --directory api python /tmp/pyrefly_type_coverage.py \
             --base /tmp/pyrefly_report_base.json \
             < /tmp/pyrefly_report_pr.json)"
@@ -55,14 +60,11 @@ jobs:
             echo "### Pyrefly Type Coverage"
             echo ""
             echo "$comment_body"
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY" > /tmp/type_coverage_comment.md
 
-          # Save for PR comment and fork workflow
-          {
-            echo "### Pyrefly Type Coverage"
-            echo ""
-            echo "$comment_body"
-          } > /tmp/type_coverage_comment.md
+          # Save structured data for the fork-PR comment workflow
+          cp /tmp/pyrefly_report_pr.json pr_report.json
+          cp /tmp/pyrefly_report_base.json base_report.json
 
       - name: Save PR number
         run: |
@@ -73,7 +75,8 @@ jobs:
         with:
           name: pyrefly_type_coverage
           path: |
-            /tmp/type_coverage_comment.md
+            pr_report.json
+            base_report.json
             pr_number.txt
 
       - name: Comment PR with type coverage
@@ -83,7 +86,13 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const body = fs.readFileSync('/tmp/type_coverage_comment.md', { encoding: 'utf8' });
+            const marker = '### Pyrefly Type Coverage';
+            let body;
+            try {
+              body = fs.readFileSync('/tmp/type_coverage_comment.md', { encoding: 'utf8' });
+            } catch {
+              body = `${marker}\n\n_Coverage report unavailable._`;
+            }
             const prNumber = context.payload.pull_request.number;
 
             // Update existing comment if one exists, otherwise create new
@@ -92,7 +101,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            const marker = '### Pyrefly Type Coverage';
             const existing = comments.find(c => c.body.startsWith(marker));
 
             if (existing) {
