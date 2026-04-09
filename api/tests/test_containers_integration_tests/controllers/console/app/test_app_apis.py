@@ -555,7 +555,7 @@ class TestWorkflowTriggerEndpoints:
 
         trigger = MagicMock()
         session = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = trigger
+        session.scalar.return_value = trigger
 
         class DummySessionCtx:
             def __enter__(self):

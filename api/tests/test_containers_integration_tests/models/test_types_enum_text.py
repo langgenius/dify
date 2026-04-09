@@ -4,6 +4,7 @@ from typing import Any, NamedTuple
 
 import pytest
 import sqlalchemy as sa
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import insert
 from sqlalchemy.engine import Connection, Engine
@@ -56,6 +57,13 @@ class _ColumnTest(_Base):
         EnumText(_UserType, length=50), nullable=True, default=_UserType.normal
     )
     long_value: Mapped[_EnumWithLongValue] = mapped_column(EnumText(enum_class=_EnumWithLongValue), nullable=False)
+
+
+class _LegacyModelTypeRecord(_Base):
+    __tablename__ = "enum_text_legacy_model_type_test"
+
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(enum_class=ModelType), nullable=False)
 
 
 def _first[T](it: Iterable[T]) -> T:
@@ -201,3 +209,23 @@ class TestEnumText:
                 _user = session.query(_User).where(_User.id == 1).first()
 
         assert str(exc.value) == "'invalid' is not a valid _UserType"
+
+    def test_select_legacy_model_type_values(self, engine_with_containers: Engine):
+        insertion_sql = """
+                        INSERT INTO enum_text_legacy_model_type_test (id, model_type) VALUES
+                            (1, 'text-generation'),
+                            (2, 'embeddings'),
+                            (3, 'reranking');
+                        """
+        with Session(engine_with_containers) as session:
+            session.execute(sa.text(insertion_sql))
+            session.commit()
+
+        with Session(engine_with_containers) as session:
+            records = session.query(_LegacyModelTypeRecord).order_by(_LegacyModelTypeRecord.id).all()
+
+        assert [record.model_type for record in records] == [
+            ModelType.LLM,
+            ModelType.TEXT_EMBEDDING,
+            ModelType.RERANK,
+        ]

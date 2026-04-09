@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "موفقیت (۱=موفق، ۰=ناموفق)",
   "nodes.parameterExtractor.outputVars.usage": "اطلاعات مصرف مدل",
   "nodes.parameterExtractor.reasoningMode": "حالت استدلال",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "فراخوانی تابع/ابزار",
+  "nodes.parameterExtractor.reasoningModePrompt": "پیام",
   "nodes.parameterExtractor.reasoningModeTip": "حالت استدلال مناسب را بر اساس توانایی مدل (Function Call یا Prompt) انتخاب کنید.",
   "nodes.questionClassifiers.addClass": "افزودن کلاس",
   "nodes.questionClassifiers.advancedSetting": "تنظیمات پیشرفته",

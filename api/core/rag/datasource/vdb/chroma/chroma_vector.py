@@ -1,18 +1,27 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 import chromadb
-from chromadb import QueryResult, Settings
+from chromadb import QueryResult, Settings  # pyright: ignore[reportPrivateImportUsage]
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+
+class ChromaParamsDict(TypedDict):
+    host: str
+    port: int
+    ssl: bool
+    tenant: str
+    database: str
+    settings: Settings
 
 
 class ChromaConfig(BaseModel):
@@ -23,14 +32,13 @@ class ChromaConfig(BaseModel):
     auth_provider: str | None = None
     auth_credentials: str | None = None
 
-    def to_chroma_params(self):
+    def to_chroma_params(self) -> ChromaParamsDict:
         settings = Settings(
             # auth
             chroma_client_auth_provider=self.auth_provider,
             chroma_client_auth_credentials=self.auth_credentials,
         )
-
-        return {
+        result: ChromaParamsDict = {
             "host": self.host,
             "port": self.port,
             "ssl": False,
@@ -38,6 +46,7 @@ class ChromaConfig(BaseModel):
             "database": self.database,
             "settings": settings,
         }
+        return result
 
 
 class ChromaVector(BaseVector):
@@ -97,14 +106,15 @@ class ChromaVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         collection = self._client.get_or_create_collection(self._collection_name)
         document_ids_filter = kwargs.get("document_ids_filter")
+        results: QueryResult
         if document_ids_filter:
-            results: QueryResult = collection.query(
+            results = collection.query(
                 query_embeddings=query_vector,
                 n_results=kwargs.get("top_k", 4),
                 where={"document_id": {"$in": document_ids_filter}},  # type: ignore
             )
         else:
-            results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))  # type: ignore
+            results = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))  # type: ignore
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         # Check if results contain data
@@ -145,7 +155,10 @@ class ChromaVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            index_struct_dict = {"type": VectorType.CHROMA, "vector_store": {"class_prefix": collection_name}}
+            index_struct_dict: VectorIndexStructDict = {
+                "type": VectorType.CHROMA,
+                "vector_store": {"class_prefix": collection_name},
+            }
             dataset.index_struct = json.dumps(index_struct_dict)
 
         return ChromaVector(
@@ -153,8 +166,8 @@ class ChromaVectorFactory(AbstractVectorFactory):
             config=ChromaConfig(
                 host=dify_config.CHROMA_HOST or "",
                 port=dify_config.CHROMA_PORT,
-                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
-                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,
+                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,  # pyright: ignore[reportPrivateImportUsage]
+                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,  # pyright: ignore[reportPrivateImportUsage]
                 auth_provider=dify_config.CHROMA_AUTH_PROVIDER,
                 auth_credentials=dify_config.CHROMA_AUTH_CREDENTIALS,
             ),

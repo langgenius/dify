@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -71,7 +71,7 @@ class AppImportApi(Resource):
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # Create service with session
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
@@ -92,11 +92,13 @@ class AppImportApi(Resource):
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+        match status:
+            case ImportStatus.FAILED:
+                return result.model_dump(mode="json"), 400
+            case ImportStatus.PENDING:
+                return result.model_dump(mode="json"), 202
+            case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
+                return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")

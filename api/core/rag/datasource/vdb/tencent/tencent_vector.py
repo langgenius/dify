@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
@@ -12,7 +12,7 @@ from tcvectordb.model.document import AnnSearch, Filter, KeywordSearch, Weighted
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import parse_metadata_json
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -21,6 +21,13 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+
+class TencentParamsDict(TypedDict):
+    url: str
+    username: str | None
+    key: str | None
+    timeout: float
 
 
 class TencentConfig(BaseModel):
@@ -36,8 +43,14 @@ class TencentConfig(BaseModel):
     max_upsert_batch_size: int = 128
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
 
-    def to_tencent_params(self):
-        return {"url": self.url, "username": self.username, "key": self.api_key, "timeout": self.timeout}
+    def to_tencent_params(self) -> TencentParamsDict:
+        result: TencentParamsDict = {
+            "url": self.url,
+            "username": self.username,
+            "key": self.api_key,
+            "timeout": self.timeout,
+        }
+        return result
 
 
 bm25 = BM25Encoder.default("zh")
@@ -83,8 +96,12 @@ class TencentVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.TENCENT
 
-    def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+    def to_index_struct(self) -> VectorIndexStructDict:
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def _has_collection(self) -> bool:
         return bool(

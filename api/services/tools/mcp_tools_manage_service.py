@@ -285,7 +285,7 @@ class MCPToolManageService:
 
         # Batch query all users to avoid N+1 problem
         user_ids = {provider.user_id for provider in mcp_providers}
-        users = self._session.query(Account).where(Account.id.in_(user_ids)).all()
+        users = self._session.scalars(select(Account).where(Account.id.in_(user_ids))).all()
         user_name_map = {user.id: user.name for user in users}
 
         return [
