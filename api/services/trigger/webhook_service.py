@@ -627,6 +627,8 @@ class WebhookService:
                 | SegmentType.GROUP
             ):
                 raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+            case _:
+                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
 
     @classmethod
     def _validate_json_value(cls, param_name: str, value: Any, param_type: SegmentType | str) -> Any:
