@@ -117,8 +117,7 @@ const COOKIE_DOMAIN = getStringConfig(
   '',
 ).trim()
 export const SOCKET_URL = getStringConfig(
-  process.env.NEXT_PUBLIC_SOCKET_URL,
-  DatasetAttr.DATA_PUBLIC_SOCKET_URL,
+  env.NEXT_PUBLIC_SOCKET_URL,
   'ws://localhost:5001',
 ).trim()
 
