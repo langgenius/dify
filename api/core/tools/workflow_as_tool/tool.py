@@ -305,14 +305,15 @@ class WorkflowTool(Tool):
                                 "transfer_method": file.transfer_method.value,
                                 "type": file.type.value,
                             }
-                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
-                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
-                            elif file.transfer_method == FileTransferMethod.DATASOURCE_FILE:
-                                file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
-                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file.generate_url()
+                            match file.transfer_method:
+                                case FileTransferMethod.TOOL_FILE:
+                                    file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.LOCAL_FILE:
+                                    file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.DATASOURCE_FILE:
+                                    file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.REMOTE_URL:
+                                    file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
                     except Exception:
@@ -357,8 +358,11 @@ class WorkflowTool(Tool):
     def _update_file_mapping(self, file_dict: dict):
         file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
-        if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_id
-        elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_id
+        match transfer_method:
+            case FileTransferMethod.TOOL_FILE:
+                file_dict["tool_file_id"] = file_id
+            case FileTransferMethod.LOCAL_FILE:
+                file_dict["upload_file_id"] = file_id
+            case FileTransferMethod.REMOTE_URL | FileTransferMethod.DATASOURCE_FILE:
+                pass
         return file_dict
