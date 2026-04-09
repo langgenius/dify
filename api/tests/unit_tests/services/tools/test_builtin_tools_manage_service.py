@@ -15,17 +15,24 @@ def _mock_session(mock_session_cls):
     return session
 
 
+def _mock_sessionmaker(mock_sm_cls):
+    """Helper: set up a sessionmaker().begin() context manager mock and return the inner session."""
+    session = MagicMock()
+    mock_sm_cls.return_value.begin.return_value.__enter__ = MagicMock(return_value=session)
+    mock_sm_cls.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+    return session
+
+
 class TestDeleteCustomOauthClientParams:
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_deletes_and_returns_success(self, mock_db, mock_session_cls):
-        session = _mock_session(mock_session_cls)
+    def test_deletes_and_returns_success(self, mock_db, mock_sm_cls):
+        session = _mock_sessionmaker(mock_sm_cls)
 
         result = BuiltinToolManageService.delete_custom_oauth_client_params("tenant-1", "google")
 
         assert result == {"result": "success"}
         session.query.return_value.filter_by.return_value.delete.assert_called_once()
-        session.commit.assert_called_once()
 
 
 class TestListBuiltinToolProviderTools:
@@ -138,10 +145,10 @@ class TestIsOauthCustomClientEnabled:
 class TestDeleteBuiltinToolProvider:
     @patch(f"{MODULE}.BuiltinToolManageService.create_tool_encrypter")
     @patch(f"{MODULE}.ToolManager")
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_raises_when_not_found(self, mock_db, mock_session_cls, mock_tm, mock_enc):
-        session = _mock_session(mock_session_cls)
+    def test_raises_when_not_found(self, mock_db, mock_sm_cls, mock_tm, mock_enc):
+        session = _mock_sessionmaker(mock_sm_cls)
         session.query.return_value.where.return_value.first.return_value = None
 
         with pytest.raises(ValueError, match="you have not added provider"):
@@ -149,10 +156,10 @@ class TestDeleteBuiltinToolProvider:
 
     @patch(f"{MODULE}.BuiltinToolManageService.create_tool_encrypter")
     @patch(f"{MODULE}.ToolManager")
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_deletes_provider_and_clears_cache(self, mock_db, mock_session_cls, mock_tm, mock_enc):
-        session = _mock_session(mock_session_cls)
+    def test_deletes_provider_and_clears_cache(self, mock_db, mock_sm_cls, mock_tm, mock_enc):
+        session = _mock_sessionmaker(mock_sm_cls)
         db_provider = MagicMock()
         session.query.return_value.where.return_value.first.return_value = db_provider
         mock_cache = MagicMock()
@@ -162,24 +169,23 @@ class TestDeleteBuiltinToolProvider:
 
         assert result == {"result": "success"}
         session.delete.assert_called_once_with(db_provider)
-        session.commit.assert_called_once()
         mock_cache.delete.assert_called_once()
 
 
 class TestSetDefaultProvider:
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_raises_when_not_found(self, mock_db, mock_session_cls):
-        session = _mock_session(mock_session_cls)
+    def test_raises_when_not_found(self, mock_db, mock_sm_cls):
+        session = _mock_sessionmaker(mock_sm_cls)
         session.query.return_value.filter_by.return_value.first.return_value = None
 
         with pytest.raises(ValueError, match="provider not found"):
             BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
 
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_sets_default_and_clears_old(self, mock_db, mock_session_cls):
-        session = _mock_session(mock_session_cls)
+    def test_sets_default_and_clears_old(self, mock_db, mock_sm_cls):
+        session = _mock_sessionmaker(mock_sm_cls)
         target = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = target
 
@@ -187,14 +193,13 @@ class TestSetDefaultProvider:
 
         assert result == {"result": "success"}
         assert target.is_default is True
-        session.commit.assert_called_once()
 
 
 class TestUpdateBuiltinToolProvider:
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_raises_when_provider_not_exists(self, mock_db, mock_session_cls):
-        session = _mock_session(mock_session_cls)
+    def test_raises_when_provider_not_exists(self, mock_db, mock_sm_cls):
+        session = _mock_sessionmaker(mock_sm_cls)
         session.query.return_value.where.return_value.first.return_value = None
 
         with pytest.raises(ValueError, match="you have not added provider"):
@@ -203,10 +208,10 @@ class TestUpdateBuiltinToolProvider:
     @patch(f"{MODULE}.BuiltinToolManageService.create_tool_encrypter")
     @patch(f"{MODULE}.CredentialType")
     @patch(f"{MODULE}.ToolManager")
-    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
-    def test_updates_credentials_and_commits(self, mock_db, mock_session_cls, mock_tm, mock_cred_type, mock_enc):
-        session = _mock_session(mock_session_cls)
+    def test_updates_credentials_and_commits(self, mock_db, mock_sm_cls, mock_tm, mock_cred_type, mock_enc):
+        session = _mock_sessionmaker(mock_sm_cls)
         db_provider = MagicMock(credential_type="api_key", credentials="{}")
         session.query.return_value.where.return_value.first.return_value = db_provider
 
@@ -227,7 +232,6 @@ class TestUpdateBuiltinToolProvider:
         result = BuiltinToolManageService.update_builtin_tool_provider("u", "t", "p", "c", credentials={"key": "val"})
 
         assert result == {"result": "success"}
-        session.commit.assert_called_once()
         mock_cache.delete.assert_called_once()
 
 
