@@ -303,7 +303,11 @@ class AgentV2Node(Node[AgentV2NodeData]):
         return model_instance
 
     def _build_prompt_messages(self, dify_ctx: DifyRunContext) -> list[PromptMessage]:
-        """Build prompt messages from the node's prompt_template, resolving variables."""
+        """Build prompt messages from the node's prompt_template, resolving variables.
+
+        If the node has memory config and a conversation_id exists, conversation
+        history is loaded and inserted between system and user messages.
+        """
         variable_pool = self.graph_runtime_state.variable_pool
         messages: list[PromptMessage] = []
 
@@ -328,7 +332,53 @@ class AgentV2Node(Node[AgentV2NodeData]):
             resolved = self._resolve_variable_template(text_content, variable_pool)
             messages.append(UserPromptMessage(content=resolved))
 
+        if self.node_data.memory:
+            history = self._load_memory_messages(dify_ctx)
+            if history:
+                system_msgs = [m for m in messages if isinstance(m, SystemPromptMessage)]
+                other_msgs = [m for m in messages if not isinstance(m, SystemPromptMessage)]
+                messages = system_msgs + history + other_msgs
+
         return messages
+
+    def _load_memory_messages(self, dify_ctx: DifyRunContext) -> list[PromptMessage]:
+        """Load conversation history from memory."""
+        from core.memory.token_buffer_memory import TokenBufferMemory
+        from models.model import Conversation
+
+        conversation_id = get_system_text(
+            self.graph_runtime_state.variable_pool,
+            SystemVariableKey.CONVERSATION_ID,
+        )
+        if not conversation_id:
+            return []
+
+        try:
+            from sqlalchemy import select
+            from extensions.ext_database import db
+
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = db.session.scalar(stmt)
+            if not conversation:
+                return []
+
+            model_instance = self._fetch_model_instance(dify_ctx)
+            memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
+
+            window_size = None
+            if self.node_data.memory and hasattr(self.node_data.memory, "window"):
+                window = self.node_data.memory.window
+                if window and window.enabled:
+                    window_size = window.size
+
+            history = memory.get_history_prompt_messages(
+                max_token_limit=2000,
+                message_limit=window_size or 50,
+            )
+            return list(history)
+        except Exception:
+            logger.warning("Failed to load memory for agent-v2 node", exc_info=True)
+            return []
 
     @staticmethod
     def _resolve_variable_template(template: str, variable_pool: Any) -> str:
