@@ -20,7 +20,7 @@ class TestGetStrategy:
     def test_returns_strategy_when_found(self):
         p1, p2, session = _patched_session()
         strategy = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = strategy
+        session.scalar.return_value = strategy
 
         with p1, p2:
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -31,7 +31,7 @@ class TestGetStrategy:
 
     def test_returns_none_when_not_found(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with p1, p2:
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -44,9 +44,9 @@ class TestGetStrategy:
 class TestChangeStrategy:
     def test_creates_new_strategy(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
             strat_cls.return_value = MagicMock()
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
@@ -65,7 +65,7 @@ class TestChangeStrategy:
     def test_updates_existing_strategy(self):
         p1, p2, session = _patched_session()
         existing = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
         with p1, p2:
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -90,11 +90,12 @@ class TestChangeStrategy:
 class TestExcludePlugin:
     def test_creates_default_strategy_when_none_exists(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with (
             p1,
             p2,
+            patch(f"{MODULE}.select"),
             patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls,
             patch(f"{MODULE}.PluginAutoUpgradeService.change_strategy") as cs,
         ):
@@ -113,9 +114,9 @@ class TestExcludePlugin:
         existing = MagicMock()
         existing.upgrade_mode = "exclude"
         existing.exclude_plugins = ["p-existing"]
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
             strat_cls.UpgradeMode.EXCLUDE = "exclude"
             strat_cls.UpgradeMode.PARTIAL = "partial"
             strat_cls.UpgradeMode.ALL = "all"
@@ -131,9 +132,9 @@ class TestExcludePlugin:
         existing = MagicMock()
         existing.upgrade_mode = "partial"
         existing.include_plugins = ["p1", "p2"]
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
             strat_cls.UpgradeMode.EXCLUDE = "exclude"
             strat_cls.UpgradeMode.PARTIAL = "partial"
             strat_cls.UpgradeMode.ALL = "all"
@@ -148,9 +149,9 @@ class TestExcludePlugin:
         p1, p2, session = _patched_session()
         existing = MagicMock()
         existing.upgrade_mode = "all"
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
             strat_cls.UpgradeMode.EXCLUDE = "exclude"
             strat_cls.UpgradeMode.PARTIAL = "partial"
             strat_cls.UpgradeMode.ALL = "all"
@@ -167,9 +168,9 @@ class TestExcludePlugin:
         existing = MagicMock()
         existing.upgrade_mode = "exclude"
         existing.exclude_plugins = ["p1"]
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
             strat_cls.UpgradeMode.EXCLUDE = "exclude"
             strat_cls.UpgradeMode.PARTIAL = "partial"
             strat_cls.UpgradeMode.ALL = "all"
