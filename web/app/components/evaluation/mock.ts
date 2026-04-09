@@ -69,6 +69,30 @@ const builtinMetrics: MetricOption[] = [
   },
 ]
 
+const pipelineBuiltinMetrics: MetricOption[] = [
+  {
+    id: 'context-precision',
+    label: 'Context Precision',
+    description: 'Measures whether retrieved chunks stay tightly aligned to the request.',
+    group: 'quality',
+    badges: ['Retrieval'],
+  },
+  {
+    id: 'context-recall',
+    label: 'Context Recall',
+    description: 'Checks whether the retrieval result includes the evidence needed to answer.',
+    group: 'quality',
+    badges: ['Retrieval'],
+  },
+  {
+    id: 'context-relevance',
+    label: 'Context Relevance',
+    description: 'Scores how useful the retrieved context is for downstream generation.',
+    group: 'quality',
+    badges: ['Retrieval'],
+  },
+]
+
 const workflowOptions = [
   {
     id: 'workflow-precision-review',
@@ -139,7 +163,7 @@ export const getEvaluationMockConfig = (resourceType: EvaluationResourceType): E
   if (resourceType === 'pipeline') {
     return {
       judgeModels,
-      builtinMetrics,
+      builtinMetrics: pipelineBuiltinMetrics,
       workflowOptions,
       fieldOptions: pipelineFields,
       templateFileName: 'pipeline-evaluation-template.csv',

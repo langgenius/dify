@@ -8,17 +8,22 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { useEvaluationResource, useEvaluationStore } from '../store'
 import { decodeModelSelection, encodeModelSelection } from '../utils'
 
+type JudgeModelSelectorProps = EvaluationResourceProps & {
+  autoSelectFirst?: boolean
+}
+
 const JudgeModelSelector = ({
   resourceType,
   resourceId,
-}: EvaluationResourceProps) => {
+  autoSelectFirst = true,
+}: JudgeModelSelectorProps) => {
   const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
   const resource = useEvaluationResource(resourceType, resourceId)
   const setJudgeModel = useEvaluationStore(state => state.setJudgeModel)
   const selectedModel = decodeModelSelection(resource.judgeModelId)
 
   useEffect(() => {
-    if (resource.judgeModelId || !modelList.length)
+    if (!autoSelectFirst || resource.judgeModelId || !modelList.length)
       return
 
     const firstProvider = modelList[0]
@@ -27,7 +32,7 @@ const JudgeModelSelector = ({
       return
 
     setJudgeModel(resourceType, resourceId, encodeModelSelection(firstProvider.provider, firstModel.model))
-  }, [modelList, resource.judgeModelId, resourceId, resourceType, setJudgeModel])
+  }, [autoSelectFirst, modelList, resource.judgeModelId, resourceId, resourceType, setJudgeModel])
 
   return (
     <ModelSelector

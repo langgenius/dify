@@ -16,9 +16,23 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
-    <div data-testid="evaluation-model-selector">
-      {defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'empty'}
+  default: ({
+    defaultModel,
+    onSelect,
+  }: {
+    defaultModel?: { provider: string, model: string }
+    onSelect: (model: { provider: string, model: string }) => void
+  }) => (
+    <div>
+      <div data-testid="evaluation-model-selector">
+        {defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'empty'}
+      </div>
+      <button
+        type="button"
+        onClick={() => onSelect({ provider: 'openai', model: 'gpt-4o-mini' })}
+      >
+        select-model
+      </button>
     </div>
   ),
 }))
@@ -207,5 +221,27 @@ describe('Evaluation', () => {
 
     expect(screen.getByText('LLM 4')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'evaluation.metrics.showLess' })).toBeInTheDocument()
+  })
+
+  it('should render the pipeline-specific layout without auto-selecting a judge model', () => {
+    render(<Evaluation resourceType="pipeline" resourceId="dataset-1" />)
+
+    expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('empty')
+    expect(screen.getByText('evaluation.history.title')).toBeInTheDocument()
+    expect(screen.getByText('Context Precision')).toBeInTheDocument()
+    expect(screen.getByText('Context Recall')).toBeInTheDocument()
+    expect(screen.getByText('Context Relevance')).toBeInTheDocument()
+    expect(screen.getByText('evaluation.results.empty')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' })).toBeDisabled()
+  })
+
+  it('should enable pipeline batch actions after selecting a judge model and metric', () => {
+    render(<Evaluation resourceType="pipeline" resourceId="dataset-2" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-model' }))
+    fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))
+
+    expect(screen.getByRole('button', { name: 'evaluation.batch.downloadTemplate' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' })).toBeEnabled()
   })
 })

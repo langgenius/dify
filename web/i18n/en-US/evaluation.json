@@ -47,6 +47,15 @@
   "conditions.title": "Judgment Conditions",
   "conditions.valuePlaceholder": "Enter a value",
   "description": "Configure automated testing to grade your application's performance.",
+  "history.columns.creator": "Creator",
+  "history.columns.status": "Status",
+  "history.columns.time": "Time",
+  "history.columns.version": "Version",
+  "history.creatorYou": "You",
+  "history.empty": "No test history yet",
+  "history.latestVersion": "Latest",
+  "history.searchPlaceholder": "Search",
+  "history.title": "Test History",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",
   "metrics.add": "Add Metric",
@@ -83,5 +92,7 @@
   "metrics.showMore": "Show more",
   "metrics.title": "Metrics",
   "metrics.update": "Update",
+  "pipeline.uploadAndRun": "Upload & Run Test",
+  "results.empty": "No evaluation results yet.",
   "title": "Evaluation"
 }
