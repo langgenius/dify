@@ -173,8 +173,9 @@ class TestHitTestingService:
     def test_retrieve_should_handle_metadata_filtering(
         self, mock_get_meta, mock_retrieve, db_session_with_containers: Session
     ):
+        dataset_id = str(uuid4())
         dataset = MagicMock(spec=Dataset)
-        dataset.id = str(uuid4())
+        dataset.id = dataset_id
         account = MagicMock()
         account.id = str(uuid4())
 
@@ -185,7 +186,7 @@ class TestHitTestingService:
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
-        mock_get_meta.return_value = ({"dataset_id": ["doc_id1"]}, "condition_string")
+        mock_get_meta.return_value = ({dataset_id: ["doc_id1"]}, "condition_string")
         mock_retrieve.return_value = []
 
         HitTestingService.retrieve(
