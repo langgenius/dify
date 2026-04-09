@@ -909,7 +909,7 @@ class WorkflowService:
         with sessionmaker(db.engine).begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=app_model.id,
@@ -920,7 +920,6 @@ class WorkflowService:
                 user=account,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
-            session.commit()
 
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution,
@@ -1049,7 +1048,7 @@ class WorkflowService:
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
         enclosing_node_id = enclosing_node_type_and_id[1] if enclosing_node_type_and_id else None
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=app_model.id,
@@ -1060,7 +1059,6 @@ class WorkflowService:
                 enclosing_node_id=enclosing_node_id,
             )
             draft_var_saver.save(outputs=outputs, process_data={})
-            session.commit()
 
         return outputs
 
