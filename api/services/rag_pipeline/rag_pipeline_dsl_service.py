@@ -5,7 +5,6 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -21,7 +20,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from packaging import version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +37,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -54,18 +54,6 @@ DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
 
 
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
-
-
 class RagPipelineImportInfo(BaseModel):
     id: str
     status: ImportStatus
@@ -74,10 +62,6 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
-
-
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
