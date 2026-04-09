@@ -597,21 +597,38 @@ class WebhookService:
         Raises:
             ValueError: If the value cannot be converted to the specified type
         """
-        if param_type == SegmentType.STRING:
-            return value
-        elif param_type == SegmentType.NUMBER:
-            if not cls._can_convert_to_number(value):
-                raise ValueError(f"Cannot convert '{value}' to number")
-            numeric_value = float(value)
-            return int(numeric_value) if numeric_value.is_integer() else numeric_value
-        elif param_type == SegmentType.BOOLEAN:
-            lower_value = value.lower()
-            bool_map = {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
-            if lower_value not in bool_map:
-                raise ValueError(f"Cannot convert '{value}' to boolean")
-            return bool_map[lower_value]
-        else:
-            raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+        match param_type:
+            case SegmentType.STRING:
+                return value
+            case SegmentType.NUMBER:
+                if not cls._can_convert_to_number(value):
+                    raise ValueError(f"Cannot convert '{value}' to number")
+                numeric_value = float(value)
+                return int(numeric_value) if numeric_value.is_integer() else numeric_value
+            case SegmentType.BOOLEAN:
+                lower_value = value.lower()
+                bool_map = {"true": True, "false": False, "1": True, "0": False, "yes": True, "no": False}
+                if lower_value not in bool_map:
+                    raise ValueError(f"Cannot convert '{value}' to boolean")
+                return bool_map[lower_value]
+            case (
+                SegmentType.OBJECT
+                | SegmentType.FILE
+                | SegmentType.ARRAY_ANY
+                | SegmentType.ARRAY_STRING
+                | SegmentType.ARRAY_NUMBER
+                | SegmentType.ARRAY_OBJECT
+                | SegmentType.ARRAY_FILE
+                | SegmentType.ARRAY_BOOLEAN
+                | SegmentType.SECRET
+                | SegmentType.INTEGER
+                | SegmentType.FLOAT
+                | SegmentType.NONE
+                | SegmentType.GROUP
+            ):
+                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
+            case _:
+                raise ValueError(f"Unsupported type '{param_type}' for form data parameter '{param_name}'")
 
     @classmethod
     def _validate_json_value(cls, param_name: str, value: Any, param_type: SegmentType | str) -> Any:
