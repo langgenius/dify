@@ -1880,12 +1880,6 @@
     }
   },
   "app/components/base/chat/chat/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
