@@ -1103,15 +1103,17 @@ class DatasetEvaluationDetailApi(Resource):
             return {
                 "evaluation_model": None,
                 "evaluation_model_provider": None,
-                "metrics_config": None,
-                "judgement_conditions": None,
+                "default_metrics": None,
+                "customized_metrics": None,
+                "judgment_config": None,
             }
 
         return {
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
-            "metrics_config": config.metrics_config_dict,
-            "judgement_conditions": config.judgement_conditions_dict,
+            "default_metrics": config.default_metrics_list,
+            "customized_metrics": config.customized_metrics_dict,
+            "judgment_config": config.judgment_config_dict,
         }
 
     @console_ns.doc("save_dataset_evaluation_config")
@@ -1152,8 +1154,9 @@ class DatasetEvaluationDetailApi(Resource):
         return {
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
-            "metrics_config": config.metrics_config_dict,
-            "judgement_conditions": config.judgement_conditions_dict,
+            "default_metrics": config.default_metrics_list,
+            "customized_metrics": config.customized_metrics_dict,
+            "judgment_config": config.judgment_config_dict,
         }
 
 

@@ -69,6 +69,26 @@ class EvaluationConfiguration(Base):
         self.metrics_config = json.dumps(value)
 
     @property
+    def default_metrics_list(self) -> list[dict[str, Any]]:
+        """Extract default_metrics from the stored metrics_config JSON."""
+        config = self.metrics_config_dict
+        return config.get("default_metrics", [])
+
+    @property
+    def customized_metrics_dict(self) -> dict[str, Any] | None:
+        """Extract customized_metrics from the stored metrics_config JSON."""
+        config = self.metrics_config_dict
+        return config.get("customized_metrics")
+
+    @property
+    def judgment_config_dict(self) -> dict[str, Any] | None:
+        """Return judgment config (stored in the judgement_conditions column)."""
+        if self.judgement_conditions:
+            parsed = json.loads(self.judgement_conditions)
+            return parsed if parsed else None
+        return None
+
+    @property
     def judgement_conditions_dict(self) -> dict[str, Any]:
         if self.judgement_conditions:
             return json.loads(self.judgement_conditions)

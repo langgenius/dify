@@ -96,32 +96,51 @@ evaluation_log_list_model = console_ns.model(
     },
 )
 
-customized_matrix_fields = {
+evaluation_default_metric_node_info_fields = {
+    "node_id": fields.String,
+    "type": fields.String,
+    "title": fields.String,
+}
+evaluation_default_metric_item_fields = {
+    "metric": fields.String,
+    "value_type": fields.String,
+    "node_info_list": fields.List(
+        fields.Nested(
+            console_ns.model("EvaluationDefaultMetricNodeInfo", evaluation_default_metric_node_info_fields),
+        ),
+    ),
+}
+
+customized_metrics_fields = {
     "evaluation_workflow_id": fields.String,
     "input_fields": fields.Raw,
     "output_fields": fields.Raw,
 }
 
-condition_fields = {
-    "name": fields.List(fields.String),
+judgment_condition_fields = {
+    "variable_selector": fields.List(fields.String),
     "comparison_operator": fields.String,
     "value": fields.String,
 }
 
-judgement_conditions_fields = {
+judgment_config_fields = {
     "logical_operator": fields.String,
-    "conditions": fields.List(fields.Nested(console_ns.model("EvaluationCondition", condition_fields))),
+    "conditions": fields.List(fields.Nested(console_ns.model("JudgmentCondition", judgment_condition_fields))),
 }
 
 evaluation_detail_fields = {
     "evaluation_model": fields.String,
     "evaluation_model_provider": fields.String,
-    "customized_matrix": fields.Nested(
-        console_ns.model("EvaluationCustomizedMatrix", customized_matrix_fields),
+    "default_metrics": fields.List(
+        fields.Nested(console_ns.model("EvaluationDefaultMetricItem_Detail", evaluation_default_metric_item_fields)),
         allow_null=True,
     ),
-    "judgement_conditions": fields.Nested(
-        console_ns.model("EvaluationJudgementConditions", judgement_conditions_fields),
+    "customized_metrics": fields.Nested(
+        console_ns.model("EvaluationCustomizedMetrics", customized_metrics_fields),
+        allow_null=True,
+    ),
+    "judgment_config": fields.Nested(
+        console_ns.model("EvaluationJudgmentConfig", judgment_config_fields),
         allow_null=True,
     ),
 }
@@ -155,20 +174,6 @@ available_evaluation_workflow_pagination_model = console_ns.model(
     available_evaluation_workflow_pagination_fields,
 )
 
-evaluation_default_metric_node_info_fields = {
-    "node_id": fields.String,
-    "type": fields.String,
-    "title": fields.String,
-}
-evaluation_default_metric_item_fields = {
-    "metric": fields.String,
-    "value_type": fields.String,
-    "node_info_list": fields.List(
-        fields.Nested(
-            console_ns.model("EvaluationDefaultMetricNodeInfo", evaluation_default_metric_node_info_fields),
-        ),
-    ),
-}
 evaluation_default_metrics_response_model = console_ns.model(
     "EvaluationDefaultMetricsResponse",
     {
@@ -290,15 +295,17 @@ class EvaluationDetailApi(Resource):
             return {
                 "evaluation_model": None,
                 "evaluation_model_provider": None,
-                "metrics_config": None,
-                "judgement_conditions": None,
+                "default_metrics": None,
+                "customized_metrics": None,
+                "judgment_config": None,
             }
 
         return {
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
-            "metrics_config": config.metrics_config_dict,
-            "judgement_conditions": config.judgement_conditions_dict,
+            "default_metrics": config.default_metrics_list,
+            "customized_metrics": config.customized_metrics_dict,
+            "judgment_config": config.judgment_config_dict,
         }
 
     @console_ns.doc("save_evaluation_detail")
@@ -334,8 +341,9 @@ class EvaluationDetailApi(Resource):
         return {
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
-            "metrics_config": config.metrics_config_dict,
-            "judgement_conditions": config.judgement_conditions_dict,
+            "default_metrics": config.default_metrics_list,
+            "customized_metrics": config.customized_metrics_dict,
+            "judgment_config": config.judgment_config_dict,
         }
 
 
