@@ -184,6 +184,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
                 metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
                 metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
+                self.graph_runtime_state.add_tokens(usage.total_tokens)
 
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
@@ -261,6 +262,9 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.id,
             )
+
+            if result.usage and hasattr(result.usage, "total_tokens"):
+                self.graph_runtime_state.add_tokens(result.usage.total_tokens)
 
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(

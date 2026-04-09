@@ -141,7 +141,16 @@ class SandboxBuilder:
                 assets_id=self._assets_id,
             )
 
-            for init in self._initializers:
+            all_initializers = list(self._initializers)
+            try:
+                from core.sandbox.initializer.skill_initializer import SkillInitializer
+
+                if not any(isinstance(i, SkillInitializer) for i in all_initializers):
+                    all_initializers.append(SkillInitializer())
+            except ImportError:
+                pass
+
+            for init in all_initializers:
                 if isinstance(init, SyncSandboxInitializer):
                     init.initialize(sandbox, ctx)
         except Exception as exc:
