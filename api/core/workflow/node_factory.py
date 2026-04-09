@@ -402,14 +402,7 @@ class DifyNodeFactory(NodeFactory):
                 "runtime_support": self._agent_runtime_support,
                 "message_transformer": self._agent_message_transformer,
             },
-            AGENT_V2_NODE_TYPE: lambda: {
-                "tool_manager": AgentV2ToolManager(
-                    tenant_id=self._dify_context.tenant_id,
-                    app_id=self._dify_context.app_id,
-                ),
-                "event_adapter": AgentV2EventAdapter(),
-                "sandbox": self._resolve_sandbox(),
-            },
+            AGENT_V2_NODE_TYPE: lambda: self._build_agent_v2_kwargs(node_data),
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
@@ -419,6 +412,55 @@ class DifyNodeFactory(NodeFactory):
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
         )
+
+    def _build_agent_v2_kwargs(self, node_data: BaseNodeData) -> dict[str, object]:
+        """Build initialization kwargs for Agent V2 node.
+
+        Injects memory (same mechanism as LLM Node) plus tool_manager,
+        event_adapter, and sandbox.
+        """
+        from core.workflow.nodes.agent_v2.entities import AgentV2NodeData
+
+        validated = AgentV2NodeData.model_validate(node_data.model_dump())
+
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+
+        memory = None
+        if validated.memory is not None:
+            conversation_id = get_system_text(
+                self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID
+            )
+            _log.info("[AGENT_V2_MEMORY] memory_config=%s, conversation_id=%s", validated.memory, conversation_id)
+            if conversation_id:
+                from graphon.model_runtime.entities.model_entities import ModelType as _ModelType
+
+                from core.model_manager import ModelManager as _ModelManager
+
+                model_instance = _ModelManager.for_tenant(
+                    tenant_id=self._dify_context.tenant_id
+                ).get_model_instance(
+                    tenant_id=self._dify_context.tenant_id,
+                    provider=validated.model.provider,
+                    model_type=_ModelType.LLM,
+                    model=validated.model.name,
+                )
+                memory = fetch_memory(
+                    conversation_id=conversation_id,
+                    app_id=self._dify_context.app_id,
+                    node_data_memory=validated.memory,
+                    model_instance=model_instance,
+                )
+
+        return {
+            "tool_manager": AgentV2ToolManager(
+                tenant_id=self._dify_context.tenant_id,
+                app_id=self._dify_context.app_id,
+            ),
+            "event_adapter": AgentV2EventAdapter(),
+            "sandbox": self._resolve_sandbox(),
+            "memory": memory,
+        }
 
     def _resolve_sandbox(self) -> Any:
         """Resolve sandbox from run_context, if available."""

@@ -63,7 +63,7 @@ class TokenBufferMemory:
         """
         if self.conversation.mode in {AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.CHAT}:
             file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
-        elif self.conversation.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        elif self.conversation.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT}:
             app = self.conversation.app
             if not app:
                 raise ValueError("App not found for conversation")

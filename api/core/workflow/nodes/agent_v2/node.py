@@ -73,6 +73,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
         tool_manager: AgentV2ToolManager,
         event_adapter: AgentV2EventAdapter,
         sandbox: Any | None = None,
+        memory: Any | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -83,6 +84,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
         self._tool_manager = tool_manager
         self._event_adapter = event_adapter
         self._sandbox = sandbox
+        self._memory = memory
 
     @classmethod
     def version(cls) -> str:
@@ -332,12 +334,29 @@ class AgentV2Node(Node[AgentV2NodeData]):
             resolved = self._resolve_variable_template(text_content, variable_pool)
             messages.append(UserPromptMessage(content=resolved))
 
-        if self.node_data.memory:
-            history = self._load_memory_messages(dify_ctx)
-            if history:
-                system_msgs = [m for m in messages if isinstance(m, SystemPromptMessage)]
-                other_msgs = [m for m in messages if not isinstance(m, SystemPromptMessage)]
-                messages = system_msgs + history + other_msgs
+        if self._memory is not None:
+            try:
+                window_size = None
+                if self.node_data.memory and hasattr(self.node_data.memory, "window"):
+                    w = self.node_data.memory.window
+                    if w and w.enabled:
+                        window_size = w.size
+
+                history = self._memory.get_history_prompt_messages(
+                    max_token_limit=2000,
+                    message_limit=window_size or 50,
+                )
+                history_list = list(history)
+                logger.info("[AGENT_V2_MEMORY] Loaded %d history messages from memory", len(history_list))
+                if history_list:
+                    system_msgs = [m for m in messages if isinstance(m, SystemPromptMessage)]
+                    other_msgs = [m for m in messages if not isinstance(m, SystemPromptMessage)]
+                    messages = system_msgs + history_list + other_msgs
+                    logger.info("[AGENT_V2_MEMORY] Total prompt messages after memory injection: %d", len(messages))
+            except Exception:
+                logger.warning("Failed to load memory for agent-v2 node", exc_info=True)
+        else:
+            logger.info("[AGENT_V2_MEMORY] No memory injected (self._memory is None)")
 
         return messages
 
