@@ -993,7 +993,7 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
-    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict | dict[str, str] | str:
+    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> EmojiIconDict | str:
         try:
             with Session(db.engine) as session:
                 mcp_service = MCPToolManageService(session=session)
@@ -1013,7 +1013,7 @@ class ToolManager:
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
-    ) -> str | EmojiIconDict | dict[str, str]:
+    ) -> str | EmojiIconDict:
         """
         get the tool icon
 
