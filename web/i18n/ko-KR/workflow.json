@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.",
   "nodes.parameterExtractor.outputVars.usage": "모델 사용 정보",
   "nodes.parameterExtractor.reasoningMode": "추론 모드",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "함수/도구 호출",
+  "nodes.parameterExtractor.reasoningModePrompt": "프롬프트",
   "nodes.parameterExtractor.reasoningModeTip": "모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.",
   "nodes.questionClassifiers.addClass": "클래스 추가",
   "nodes.questionClassifiers.advancedSetting": "고급 설정",

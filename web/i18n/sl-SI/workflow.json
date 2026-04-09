@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.",
   "nodes.parameterExtractor.outputVars.usage": "Informacije o uporabi modela",
   "nodes.parameterExtractor.reasoningMode": "Način razmišljanja",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "Klic funkcije/orodja",
+  "nodes.parameterExtractor.reasoningModePrompt": "Poziv",
   "nodes.parameterExtractor.reasoningModeTip": "Lahko izberete ustrezen način razmišljanja glede na sposobnost modela, da se odzove na navodila za klic funkcij ali pozive.",
   "nodes.questionClassifiers.addClass": "Dodaj razred",
   "nodes.questionClassifiers.advancedSetting": "Napredno nastavitev",

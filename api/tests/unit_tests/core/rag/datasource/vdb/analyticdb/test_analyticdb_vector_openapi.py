@@ -249,7 +249,7 @@ def test_create_collection_if_not_exists_creates_when_missing(monkeypatch):
     vector._client = MagicMock()
     vector._client.describe_collection.side_effect = stubs.TeaException(statusCode=404)
 
-    vector._create_collection_if_not_exists(embedding_dimension=1024)
+    vector.create_collection_if_not_exists(embedding_dimension=1024)
 
     vector._client.create_collection.assert_called_once()
     openapi_module.redis_client.set.assert_called_once()
@@ -268,7 +268,7 @@ def test_create_collection_if_not_exists_skips_when_cached(monkeypatch):
     vector.config = _config()
     vector._client = MagicMock()
 
-    vector._create_collection_if_not_exists(embedding_dimension=1024)
+    vector.create_collection_if_not_exists(embedding_dimension=1024)
 
     vector._client.describe_collection.assert_not_called()
     vector._client.create_collection.assert_not_called()
@@ -290,7 +290,7 @@ def test_create_collection_if_not_exists_raises_on_non_404_errors(monkeypatch):
     vector._client.describe_collection.side_effect = stubs.TeaException(statusCode=500)
 
     with pytest.raises(ValueError, match="failed to create collection collection_1"):
-        vector._create_collection_if_not_exists(embedding_dimension=512)
+        vector.create_collection_if_not_exists(embedding_dimension=512)
 
 
 def test_openapi_add_delete_and_search_methods(monkeypatch):
