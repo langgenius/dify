@@ -674,28 +674,24 @@ class AppModelConfig(TypeBase):
     def suggested_questions_list(self) -> list[str]:
         return json.loads(self.suggested_questions) if self.suggested_questions else []
 
+    def _get_enabled_config(self, value: str | None, *, default_enabled: bool = False) -> EnabledConfig:
+        return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
+
     @property
     def suggested_questions_after_answer_dict(self) -> EnabledConfig:
-        return cast(
-            EnabledConfig,
-            json.loads(self.suggested_questions_after_answer)
-            if self.suggested_questions_after_answer
-            else {"enabled": False},
-        )
+        return self._get_enabled_config(self.suggested_questions_after_answer)
 
     @property
     def speech_to_text_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.speech_to_text) if self.speech_to_text else {"enabled": False})
+        return self._get_enabled_config(self.speech_to_text)
 
     @property
     def text_to_speech_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.text_to_speech) if self.text_to_speech else {"enabled": False})
+        return self._get_enabled_config(self.text_to_speech)
 
     @property
     def retriever_resource_dict(self) -> EnabledConfig:
-        return cast(
-            EnabledConfig, json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True}
-        )
+        return self._get_enabled_config(self.retriever_resource, default_enabled=True)
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
@@ -722,7 +718,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def more_like_this_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.more_like_this) if self.more_like_this else {"enabled": False})
+        return self._get_enabled_config(self.more_like_this)
 
     @property
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
