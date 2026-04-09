@@ -83,11 +83,12 @@ afterEach(async () => {
   })
 })
 
-// mock foxact/use-clipboard - not available in test environment
-vi.mock('foxact/use-clipboard', () => ({
+// mock custom clipboard hook - wraps writeTextToClipboard with fallback
+vi.mock('@/hooks/use-clipboard', () => ({
   useClipboard: () => ({
     copy: vi.fn(),
     copied: false,
+    reset: vi.fn(),
   }),
 }))
 

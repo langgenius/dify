@@ -249,6 +249,9 @@ catalogs:
     class-variance-authority:
       specifier: 0.7.1
       version: 0.7.1
+    client-only:
+      specifier: 0.0.1
+      version: 0.0.1
     clsx:
       specifier: 2.1.1
       version: 2.1.1
@@ -324,9 +327,6 @@ catalogs:
     fast-deep-equal:
       specifier: 3.1.3
       version: 3.1.3
-    foxact:
-      specifier: 0.3.0
-      version: 0.3.0
     happy-dom:
       specifier: 20.8.9
       version: 20.8.9
@@ -739,6 +739,9 @@ importers:
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
+      client-only:
+        specifier: 'catalog:'
+        version: 0.0.1
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
@@ -784,9 +787,6 @@ importers:
       fast-deep-equal:
         specifier: 'catalog:'
         version: 3.1.3
-      foxact:
-        specifier: 'catalog:'
-        version: 0.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       hast-util-to-jsx-runtime:
         specifier: 'catalog:'
         version: 2.3.6
@@ -5877,9 +5877,6 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
-  event-target-bus@1.0.0:
-    resolution: {integrity: sha512-uPcWKbj/BJU3Tbw9XqhHqET4/LBOhvv3/SJWr7NksxA6TC5YqBpaZgawE9R+WpYFCBFSAE4Vun+xQS6w4ABdlA==}
-
   events@3.3.0:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
@@ -5991,17 +5988,6 @@ packages:
     resolution: {integrity: sha512-9XNj/o4wrRFyhSMJOvsuyMwy8aUfBaZ1VrqHVfohyXf0Sw0e+yfKG+xZaY3arGCOMdwFsqObtzVOc1gU9KiT9w==}
     engines: {node: '>=18.3.0'}
     hasBin: true
-
-  foxact@0.3.0:
-    resolution: {integrity: sha512-CSlMlC0KlKQQEO83iLeQCLuT1V0OqnMWj7mjLstIDV8baMe1w4F7z3cz3/T+6Z8W12jqkQj07rwlw4Gi39knGg==}
-    peerDependencies:
-      react: '*'
-      react-dom: '*'
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
 
   fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
@@ -7735,9 +7721,6 @@ packages:
   seroval@1.5.1:
     resolution: {integrity: sha512-OwrZRZAfhHww0WEnKHDY8OM0U/Qs8OTfIDWhUD4BLpNJUfXK4cGmjiagGze086m+mhI+V2nD0gfbHEnJjb9STA==}
     engines: {node: '>=10'}
-
-  server-only@0.0.1:
-    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
 
   sharp@0.34.5:
     resolution: {integrity: sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg==}
@@ -13578,8 +13561,6 @@ snapshots:
 
   esutils@2.0.3: {}
 
-  event-target-bus@1.0.0: {}
-
   events@3.3.0: {}
 
   expand-template@2.0.3:
@@ -13686,15 +13667,6 @@ snapshots:
   formatly@0.3.0:
     dependencies:
       fd-package-json: 2.0.0
-
-  foxact@0.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
-    dependencies:
-      client-only: 0.0.1
-      event-target-bus: 1.0.0
-      server-only: 0.0.1
-    optionalDependencies:
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
 
   fs-constants@1.0.0:
     optional: true
@@ -15944,8 +15916,6 @@ snapshots:
       seroval: 1.5.1
 
   seroval@1.5.1: {}
-
-  server-only@0.0.1: {}
 
   sharp@0.34.5:
     dependencies:
