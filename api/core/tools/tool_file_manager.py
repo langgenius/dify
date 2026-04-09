@@ -167,9 +167,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            tool_file: ToolFile | None = session.scalar(
-                select(ToolFile).where(ToolFile.id == id).limit(1)
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == id).limit(1))
 
         if not tool_file:
             return None
@@ -187,9 +185,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            message_file: MessageFile | None = session.scalar(
-                select(MessageFile).where(MessageFile.id == id).limit(1)
-            )
+            message_file: MessageFile | None = session.scalar(select(MessageFile).where(MessageFile.id == id).limit(1))
 
             # Check if message_file is not None
             if message_file is not None:
@@ -203,9 +199,7 @@ class ToolFileManager:
             else:
                 tool_file_id = None
 
-            tool_file: ToolFile | None = session.scalar(
-                select(ToolFile).where(ToolFile.id == tool_file_id).limit(1)
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
 
         if not tool_file:
             return None
@@ -223,9 +217,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            tool_file: ToolFile | None = session.scalar(
-                select(ToolFile).where(ToolFile.id == tool_file_id).limit(1)
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
 
         if not tool_file:
             return None, None
