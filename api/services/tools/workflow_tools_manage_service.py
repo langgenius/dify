@@ -147,7 +147,8 @@ class WorkflowToolManageService:
                     WorkflowToolProvider.tenant_id == tenant_id,
                     WorkflowToolProvider.name == name,
                     WorkflowToolProvider.id != workflow_tool_id,
-                ).limit(1)
+                )
+                .limit(1)
             )
 
         # if the name exists raise error
@@ -159,10 +160,8 @@ class WorkflowToolManageService:
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_tool_provider = _session.scalar(
                 select(WorkflowToolProvider)
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id == workflow_tool_id
-                ).limit(1)
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
+                .limit(1)
             )
 
         # if not found raise error
@@ -173,11 +172,7 @@ class WorkflowToolManageService:
         app: App | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(
-                select(App)
-                .where(
-                    App.id == workflow_tool_provider.app_id,
-                    App.tenant_id == tenant_id
-                ).limit(1)
+                select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
             )
 
         # if not found raise error
@@ -216,7 +211,7 @@ class WorkflowToolManageService:
                 ToolLabelManager.update_tool_labels(
                     ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
                     labels,
-                    session=_session
+                    session=_session,
                 )
 
         return {"result": "success"}
@@ -233,9 +228,9 @@ class WorkflowToolManageService:
 
         providers: list[WorkflowToolProvider] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = list(_session.scalars(
-                select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
-            ).all())
+            providers = list(
+                _session.scalars(select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)).all()
+            )
 
         # Create a mapping from provider_id to app_id
         provider_id_to_app_id = {provider.id: provider.app_id for provider in providers}

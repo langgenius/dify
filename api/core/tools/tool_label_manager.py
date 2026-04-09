@@ -20,8 +20,9 @@ class ToolLabelManager:
         return list(set(tool_labels))
 
     @classmethod
-    def update_tool_labels(cls, controller: ToolProviderController,
-                           labels: list[str], session: Session | None = None) -> None:
+    def update_tool_labels(
+        cls, controller: ToolProviderController, labels: list[str], session: Session | None = None
+    ) -> None:
         """
         Update tool labels
 
@@ -44,9 +45,7 @@ class ToolLabelManager:
 
             # insert new labels
             for label in labels:
-                session.add(
-                    ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label)
-                )
+                session.add(ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label))
 
         else:
             with sessionmaker(db.engine).begin() as _session:
@@ -109,8 +108,9 @@ class ToolLabelManager:
 
         labels: list[ToolLabelBinding] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            labels = list(_session.scalars(select(ToolLabelBinding)
-            .where(ToolLabelBinding.tool_id.in_(provider_ids))).all())
+            labels = list(
+                _session.scalars(select(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids))).all()
+            )
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 

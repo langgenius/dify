@@ -43,13 +43,14 @@ def test_tool_label_manager_update_tool_labels_db():
     controller = _api_controller("api-1")
 
     # Patch 'db' to avoid Flask context issues, and 'sessionmaker' to intercept DB calls
-    with patch("core.tools.tool_label_manager.db"), \
-         patch("core.tools.tool_label_manager.sessionmaker") as mock_sessionmaker:
-
+    with (
+        patch("core.tools.tool_label_manager.db"),
+        patch("core.tools.tool_label_manager.sessionmaker") as mock_sessionmaker,
+    ):
         # Mocking the chain: sessionmaker(engine).begin().__enter__ -> session
         mock_session = MagicMock()
         mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        
+
         ToolLabelManager.update_tool_labels(controller, ["search", "search", "invalid"])
 
         # Verify if the execute method (DELETE SQL) was called
@@ -75,15 +76,16 @@ def test_tool_label_manager_get_tool_labels_for_builtin_and_db():
         assert ToolLabelManager.get_tool_labels(builtin) == ["search", "news"]
 
     api = _api_controller("api-1")
-    with patch("core.tools.tool_label_manager.db"), \
-         patch("core.tools.tool_label_manager.sessionmaker") as mock_sessionmaker:
-        
+    with (
+        patch("core.tools.tool_label_manager.db"),
+        patch("core.tools.tool_label_manager.sessionmaker") as mock_sessionmaker,
+    ):
         mock_session = MagicMock()
         mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        
+
         # Inject mock data into the query result: session.scalars(stmt).all()
         mock_session.scalars.return_value.all.return_value = ["search", "news"]
-        
+
         labels = ToolLabelManager.get_tool_labels(api)
         assert labels == ["search", "news"]
 
@@ -102,16 +104,17 @@ def test_tool_label_manager_get_tools_labels_batch():
         SimpleNamespace(tool_id="wf-1", label_name="utilities"),
     ]
 
-    with patch("core.tools.tool_label_manager.db"), \
-         patch("core.tools.tool_label_manager.sessionmaker") as mock_sessionmaker:
-        
+    with (
+        patch("core.tools.tool_label_manager.db"),
+        patch("core.tools.tool_label_manager.sessionmaker") as mock_sessionmaker,
+    ):
         mock_session = MagicMock()
         mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        
+
         # Simulating the batch query result
         mock_session.scalars.return_value.all.return_value = records
-        
+
         labels = ToolLabelManager.get_tools_labels([api, wf])
 
-    # Verify the final dictionary mapping    
+    # Verify the final dictionary mapping
     assert labels == {"api-1": ["search", "news"], "wf-1": ["utilities"]}

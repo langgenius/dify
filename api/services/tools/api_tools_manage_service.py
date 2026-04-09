@@ -525,8 +525,9 @@ class ApiToolManageService:
         # create new session with automatic transaction management
         providers: list[ApiToolProvider] = []
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = list(_session.scalars(select(ApiToolProvider)
-            .where(ApiToolProvider.tenant_id == tenant_id)).all())
+            providers = list(
+                _session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
+            )
 
         result: list[ToolProviderApiEntity] = []
         for provider in providers:
