@@ -138,12 +138,15 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     if not app_model or app_model.status != "normal" or not app_model.enable_site:
         raise NotFound()
 
-    if auth_type == WebAppAuthType.PUBLIC:
-        return _exchange_for_public_app_token(app_model, site, enterprise_user_decoded)
-    elif auth_type == WebAppAuthType.EXTERNAL and user_auth_type != "external":
-        raise WebAppAuthRequiredError("Please login as external user.")
-    elif auth_type == WebAppAuthType.INTERNAL and user_auth_type != "internal":
-        raise WebAppAuthRequiredError("Please login as internal user.")
+    match auth_type:
+        case WebAppAuthType.PUBLIC:
+            return _exchange_for_public_app_token(app_model, site, enterprise_user_decoded)
+        case WebAppAuthType.EXTERNAL:
+            if user_auth_type != "external":
+                raise WebAppAuthRequiredError("Please login as external user.")
+        case WebAppAuthType.INTERNAL:
+            if user_auth_type != "internal":
+                raise WebAppAuthRequiredError("Please login as internal user.")
 
     end_user = None
     if end_user_id:
