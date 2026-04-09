@@ -58,6 +58,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId)
+  const isRagPipelineDataset = datasetRes?.runtime_mode === 'rag_pipeline'
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)
@@ -103,19 +104,21 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           selectedIcon: PipelineFill as RemixiconComponentType,
           disabled: false,
         },
-        {
-          name: t('datasetMenus.evaluation', { ns: 'common' }),
-          href: `/datasets/${datasetId}/evaluation`,
-          icon: RiFlaskLine,
-          selectedIcon: RiFlaskFill,
-          disabled: false,
-        },
+        ...(isRagPipelineDataset
+          ? [{
+              name: t('datasetMenus.evaluation', { ns: 'common' }),
+              href: `/datasets/${datasetId}/evaluation`,
+              icon: RiFlaskLine,
+              selectedIcon: RiFlaskFill,
+              disabled: isButtonDisabledWithPipeline,
+            }]
+          : []),
         ...baseNavigation,
       ]
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+  }, [t, datasetId, isButtonDisabledWithPipeline, isRagPipelineDataset, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 

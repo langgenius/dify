@@ -59,7 +59,7 @@ const Evaluation = ({
         </div>
       </div>
 
-      <div className="h-[420px] shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-l xl:border-t-0">
+      <div className="h-[420px] shrink-0 border-t border-divider-subtle xl:h-auto xl:w-[450px] xl:border-t-0 xl:border-l">
         <BatchTestPanel resourceType={resourceType} resourceId={resourceId} />
       </div>
     </div>
