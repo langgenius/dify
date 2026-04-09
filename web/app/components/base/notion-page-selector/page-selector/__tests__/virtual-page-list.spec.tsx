@@ -1,5 +1,5 @@
-import type { NotionPageRow } from '../types'
 import type { ComponentProps } from 'react'
+import type { NotionPageRow } from '../types'
 import { render, screen } from '@testing-library/react'
 import VirtualPageList from '../virtual-page-list'
 

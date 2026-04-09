@@ -23,7 +23,7 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, any> | null
 }
 
-const afterResponse204: AfterResponseHook = async ({ response }) => {
+const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
   if (response.status === 204) {
     return new Response(JSON.stringify({ result: 'success' }), {
       status: 200,
@@ -39,15 +39,17 @@ export type ResponseError = {
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async ({ response }) => {
+  return async (_request, _options, response) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
-      const errorData = await response.clone()
-        .json()
-        .then(data => data as ResponseError)
-        .catch(() => null)
+      let errorData: ResponseError | null = null
+      try {
+        const data: unknown = await response.clone().json()
+        errorData = data as ResponseError
+      }
+      catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      if (shouldNotifyError)
+      if (shouldNotifyError && errorData)
         toast.error(errorData.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
@@ -78,7 +80,7 @@ const resolveShareCode = () => {
   }
 }
 
-const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
+const beforeRequestPublicWithCode: BeforeRequestHook = (request) => {
   const accessToken = getWebAppAccessToken()
   if (accessToken)
     request.headers.set('Authorization', `Bearer ${accessToken}`)

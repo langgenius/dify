@@ -82,7 +82,7 @@ describe('slashAction', () => {
   it('should delegate search to the slash command registry with the active language', async () => {
     mockSearch.mockResolvedValue([{ id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } }])
 
-    const results = await slashAction.search('/theme dark')
+    const results = await slashAction.search('/theme dark', 'dark')
 
     expect(mockSearch).toHaveBeenCalledWith('/theme dark', 'ja')
     expect(results).toEqual([{ id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } }])
