@@ -726,12 +726,11 @@ class AppDslService:
                                         vector_setting = (
                                             knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
                                         )
-                                        if vector_setting is not None:
-                                            dependencies.append(
-                                                DependenciesAnalysisService.analyze_model_provider_dependency(
-                                                    vector_setting.embedding_provider_name
-                                                ),
-                                            )
+                                        dependencies.append(
+                                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                                vector_setting.embedding_provider_name
+                                            ),
+                                        )
                         elif knowledge_retrieval_entity.retrieval_mode == "single":
                             model_config = knowledge_retrieval_entity.single_retrieval_config
                             if model_config:

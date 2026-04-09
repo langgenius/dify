@@ -222,11 +222,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                         raise ValueError("weights is required")
                     reranking_model = None
                     vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
-                    keyword_setting = node_data.multiple_retrieval_config.weights.keyword_setting
-                    if vector_setting is None:
-                        raise ValueError("vector_setting is required for weighted_score mode")
-                    if keyword_setting is None:
-                        raise ValueError("keyword_setting is required for weighted_score mode")
                     weights = {
                         "vector_setting": {
                             "vector_weight": vector_setting.vector_weight,
@@ -234,7 +229,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                             "embedding_model_name": vector_setting.embedding_model_name,
                         },
                         "keyword_setting": {
-                            "keyword_weight": keyword_setting.keyword_weight
+                            "keyword_weight": node_data.multiple_retrieval_config.weights.keyword_setting.keyword_weight
                         },
                     }
                 case _:

@@ -2,8 +2,26 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
-from core.rag.entities import RerankingModelConfig, WeightedScoreConfig
+from core.rag.entities import KeywordSetting, VectorSetting
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
+
+class RerankingModelConfig(BaseModel):
+    """
+    Reranking Model Config.
+    """
+
+    reranking_provider_name: str | None = ""
+    reranking_model_name: str | None = ""
+
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+
+    vector_setting: VectorSetting | None
+    keyword_setting: KeywordSetting | None
 
 
 class IconInfo(BaseModel):
