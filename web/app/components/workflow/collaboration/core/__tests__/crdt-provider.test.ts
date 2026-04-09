@@ -1,4 +1,4 @@
-import type { LoroDoc } from 'loro-crdt'
+import type { LoroDoc } from 'loro-crdt/base64'
 import type { Socket } from 'socket.io-client'
 import { CRDTProvider } from '../crdt-provider'
 
