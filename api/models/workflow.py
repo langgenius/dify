@@ -61,7 +61,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsMixin, TypeBase
+from .base import Base, DefaultFieldsDCMixin, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
@@ -1941,7 +1941,7 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class WorkflowPause(DefaultFieldsMixin, TypeBase):
+class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
 
@@ -1980,6 +1980,11 @@ class WorkflowPause(DefaultFieldsMixin, TypeBase):
         nullable=False,
     )
 
+    # state_object_key stores the object key referencing the serialized runtime state
+    # of the `GraphEngine`. This object captures the complete execution context of the
+    # workflow at the moment it was paused, enabling accurate resumption.
+    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
+
     # `resumed_at` records the timestamp when the suspended workflow was resumed.
     # It is set to `NULL` if the workflow has not been resumed.
     #
@@ -1990,11 +1995,6 @@ class WorkflowPause(DefaultFieldsMixin, TypeBase):
         nullable=True,
         default=None,
     )
-
-    # state_object_key stores the object key referencing the serialized runtime state
-    # of the `GraphEngine`. This object captures the complete execution context of the
-    # workflow at the moment it was paused, enabling accurate resumption.
-    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 
     # Relationship to WorkflowRun
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
@@ -2008,7 +2008,7 @@ class WorkflowPause(DefaultFieldsMixin, TypeBase):
     )
 
 
-class WorkflowPauseReason(DefaultFieldsMixin, TypeBase):
+class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "workflow_pause_reasons"
 
     # `pause_id` represents the identifier of the pause,
