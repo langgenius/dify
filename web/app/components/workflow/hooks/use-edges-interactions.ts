@@ -4,11 +4,7 @@ import type {
 } from 'reactflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
-import {
-  useStoreApi,
-} from 'reactflow'
 import { useWorkflowStore } from '../store'
 import {
   applyConnectedHandleNodeData,

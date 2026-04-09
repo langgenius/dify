@@ -7,7 +7,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { useStore as useReactFlowStore } from 'reactflow'
 import {
   ContextMenu,
   ContextMenuContent,

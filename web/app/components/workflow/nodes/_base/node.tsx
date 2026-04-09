@@ -10,7 +10,6 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
@@ -25,7 +24,6 @@ import { useStore } from '@/app/components/workflow/store'
 import {
   BlockEnum,
   ControlMode,
-  isTriggerNode,
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
