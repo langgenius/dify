@@ -1,3 +1,5 @@
+'use client'
+
 import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import { emitWithAuthGuard } from './websocket-manager'
