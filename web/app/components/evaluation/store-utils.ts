@@ -89,20 +89,16 @@ const normalizeCustomMetricMappings = (
   value: EvaluationCustomizedMetric['input_fields'],
 ): CustomMetricMapping[] => {
   if (!value)
-    return [createCustomMetricMapping()]
+    return []
 
   const mappings = Object.entries(value)
     .filter((entry): entry is [string, string] => {
-      const [, targetVariableId] = entry
-      return typeof targetVariableId === 'string' && !!targetVariableId
+      const [, outputVariableId] = entry
+      return typeof outputVariableId === 'string' && !!outputVariableId
     })
-    .map(([sourceFieldId, targetVariableId]) => ({
-      id: createId('mapping'),
-      sourceFieldId,
-      targetVariableId,
-    }))
+    .map(([inputVariableId, outputVariableId]) => createCustomMetricMapping(inputVariableId, outputVariableId))
 
-  return mappings.length > 0 ? mappings : [createCustomMetricMapping()]
+  return mappings
 }
 
 const normalizeCustomMetric = (
@@ -228,12 +224,36 @@ export function createBuiltinMetric(
   }
 }
 
-export function createCustomMetricMapping(): CustomMetricMapping {
+function createCustomMetricMapping(
+  inputVariableId: string | null = null,
+  outputVariableId: string | null = null,
+): CustomMetricMapping {
   return {
     id: createId('mapping'),
-    sourceFieldId: null,
-    targetVariableId: null,
+    inputVariableId,
+    outputVariableId,
   }
+}
+
+export const syncCustomMetricMappings = (
+  mappings: CustomMetricMapping[],
+  inputVariableIds: string[],
+) => {
+  const mappingByInputVariableId = new Map(
+    mappings
+      .filter(mapping => !!mapping.inputVariableId)
+      .map(mapping => [mapping.inputVariableId, mapping]),
+  )
+
+  return inputVariableIds.map((inputVariableId) => {
+    const existingMapping = mappingByInputVariableId.get(inputVariableId)
+    return existingMapping
+      ? {
+          ...existingMapping,
+          inputVariableId,
+        }
+      : createCustomMetricMapping(inputVariableId, null)
+  })
 }
 
 export function createCustomMetric(): EvaluationMetric {
@@ -247,7 +267,7 @@ export function createCustomMetric(): EvaluationMetric {
       workflowId: null,
       workflowAppId: null,
       workflowName: null,
-      mappings: [createCustomMetricMapping()],
+      mappings: [],
     },
   }
 }
@@ -362,7 +382,7 @@ export const isCustomMetricConfigured = (metric: EvaluationMetric) => {
     return false
 
   return metric.customConfig.mappings.length > 0
-    && metric.customConfig.mappings.every(mapping => !!mapping.sourceFieldId && !!mapping.targetVariableId)
+    && metric.customConfig.mappings.every(mapping => !!mapping.inputVariableId && !!mapping.outputVariableId)
 }
 
 export const isEvaluationRunnable = (state: EvaluationResourceState) => {

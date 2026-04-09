@@ -30,9 +30,10 @@ describe('evaluation store', () => {
       workflowAppId: 'custom-workflow-app-id',
       workflowName: config.workflowOptions[0].label,
     })
-    store.updateCustomMetricMapping(resourceType, resourceId, initialMetric!.id, initialMetric!.customConfig!.mappings[0].id, {
-      sourceFieldId: config.fieldOptions[0].id,
-      targetVariableId: config.workflowOptions[0].targetVariables[0].id,
+    store.syncCustomMetricMappings(resourceType, resourceId, initialMetric!.id, ['query'])
+    const syncedMetric = useEvaluationStore.getState().resources['apps:app-1'].metrics.find(metric => metric.id === initialMetric!.id)
+    store.updateCustomMetricMapping(resourceType, resourceId, initialMetric!.id, syncedMetric!.customConfig!.mappings[0].id, {
+      outputVariableId: 'answer',
     })
 
     const configuredMetric = useEvaluationStore.getState().resources['apps:app-1'].metrics.find(metric => metric.id === initialMetric!.id)
@@ -159,7 +160,7 @@ describe('evaluation store', () => {
       customized_metrics: {
         evaluation_workflow_id: 'workflow-precision-review',
         input_fields: {
-          'app.input.query': 'query',
+          query: 'answer',
         },
       },
       judgement_conditions: [{
@@ -203,8 +204,8 @@ describe('evaluation store', () => {
     ])
     expect(hydratedState.metrics[1].kind).toBe('custom-workflow')
     expect(hydratedState.metrics[1].customConfig?.workflowId).toBe('workflow-precision-review')
-    expect(hydratedState.metrics[1].customConfig?.mappings[0].sourceFieldId).toBe('app.input.query')
-    expect(hydratedState.metrics[1].customConfig?.mappings[0].targetVariableId).toBe('query')
+    expect(hydratedState.metrics[1].customConfig?.mappings[0].inputVariableId).toBe('query')
+    expect(hydratedState.metrics[1].customConfig?.mappings[0].outputVariableId).toBe('answer')
     expect(hydratedState.conditions[0].logicalOperator).toBe('or')
     expect(hydratedState.conditions[0].items[0]).toMatchObject({
       fieldId: 'system.has_context',

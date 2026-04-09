@@ -62,8 +62,8 @@ export type EvaluationFieldOption = {
 
 export type CustomMetricMapping = {
   id: string
-  sourceFieldId: string | null
-  targetVariableId: string | null
+  inputVariableId: string | null
+  outputVariableId: string | null
 }
 
 export type CustomMetricConfig = {

@@ -3,11 +3,12 @@
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { Node } from '@/app/components/workflow/types'
-import { useMemo } from 'react'
+import type { Edge, InputVar, Node } from '@/app/components/workflow/types'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
 import MappingRow from './mapping-row'
@@ -17,16 +18,16 @@ type CustomMetricEditorCardProps = EvaluationResourceProps & {
   metric: EvaluationMetric
 }
 
-const getWorkflowTargetVariables = (
+const getWorkflowInputVariables = (
   nodes?: Array<Node>,
 ) => {
   const startNode = nodes?.find(node => node.data.type === BlockEnum.Start) as Node<StartNodeType> | undefined
   if (!startNode || !Array.isArray(startNode.data.variables))
     return []
 
-  return startNode.data.variables.map(variable => ({
+  return startNode.data.variables.map((variable: InputVar) => ({
     id: variable.variable,
-    label: typeof variable.label === 'string' ? variable.label : variable.variable,
+    valueType: inputVarTypeToVarType(variable.type ?? InputVarType.textInput),
   }))
 }
 
@@ -39,9 +40,11 @@ const getWorkflowOutputs = (nodes?: Array<Node>) => {
         return []
 
       return endNode.data.outputs
+        .filter(output => typeof output.variable === 'string' && !!output.variable)
         .map(output => ({
-          variable: output.variable,
-          valueType: output.value_type,
+          id: output.variable,
+          valueType: typeof output.value_type === 'string' ? output.value_type : null,
+          nodeTitle: typeof endNode.data.title === 'string' && endNode.data.title ? endNode.data.title : 'End',
         }))
     })
 }
@@ -54,6 +57,14 @@ const getWorkflowName = (workflow: {
   return workflow.marked_name || workflow.app_name || workflow.id
 }
 
+const getGraphNodes = (graph?: Record<string, unknown>) => {
+  return Array.isArray(graph?.nodes) ? graph.nodes as Node[] : []
+}
+
+const getGraphEdges = (graph?: Record<string, unknown>) => {
+  return Array.isArray(graph?.edges) ? graph.edges as Edge[] : []
+}
+
 const CustomMetricEditorCard = ({
   resourceType,
   resourceId,
@@ -61,17 +72,59 @@ const CustomMetricEditorCard = ({
 }: CustomMetricEditorCardProps) => {
   const { t } = useTranslation('evaluation')
   const setCustomMetricWorkflow = useEvaluationStore(state => state.setCustomMetricWorkflow)
-  const addCustomMetricMapping = useEvaluationStore(state => state.addCustomMetricMapping)
+  const syncCustomMetricMappings = useEvaluationStore(state => state.syncCustomMetricMappings)
   const updateCustomMetricMapping = useEvaluationStore(state => state.updateCustomMetricMapping)
-  const removeCustomMetricMapping = useEvaluationStore(state => state.removeCustomMetricMapping)
   const { data: selectedWorkflow } = useAppWorkflow(metric.customConfig?.workflowAppId ?? '')
-  const targetOptions = useMemo(() => {
-    return getWorkflowTargetVariables(selectedWorkflow?.graph.nodes)
+  const { data: currentAppWorkflow } = useAppWorkflow(resourceType === 'apps' ? resourceId : '')
+  const { data: currentSnippetWorkflow } = useSnippetPublishedWorkflow(resourceType === 'snippets' ? resourceId : '')
+  const inputVariables = useMemo(() => {
+    return getWorkflowInputVariables(selectedWorkflow?.graph.nodes)
   }, [selectedWorkflow?.graph.nodes])
   const workflowOutputs = useMemo(() => {
     return getWorkflowOutputs(selectedWorkflow?.graph.nodes)
   }, [selectedWorkflow?.graph.nodes])
+  const publishedGraph = useMemo(() => {
+    if (resourceType === 'apps') {
+      return {
+        nodes: currentAppWorkflow?.graph.nodes ?? [],
+        edges: currentAppWorkflow?.graph.edges ?? [],
+        environmentVariables: currentAppWorkflow?.environment_variables ?? [],
+        conversationVariables: currentAppWorkflow?.conversation_variables ?? [],
+      }
+    }
+
+    return {
+      nodes: getGraphNodes(currentSnippetWorkflow?.graph),
+      edges: getGraphEdges(currentSnippetWorkflow?.graph),
+      environmentVariables: [],
+      conversationVariables: [],
+    }
+  }, [
+    currentAppWorkflow?.conversation_variables,
+    currentAppWorkflow?.environment_variables,
+    currentAppWorkflow?.graph.edges,
+    currentAppWorkflow?.graph.nodes,
+    currentSnippetWorkflow?.graph,
+    resourceType,
+  ])
+  const inputVariableIds = useMemo(() => inputVariables.map(variable => variable.id), [inputVariables])
   const isConfigured = isCustomMetricConfigured(metric)
+
+  useEffect(() => {
+    if (!metric.customConfig?.workflowId)
+      return
+
+    const currentInputVariableIds = metric.customConfig.mappings
+      .map(mapping => mapping.inputVariableId)
+      .filter((value): value is string => !!value)
+
+    if (currentInputVariableIds.length === inputVariableIds.length
+      && currentInputVariableIds.every((value, index) => value === inputVariableIds[index])) {
+      return
+    }
+
+    syncCustomMetricMappings(resourceType, resourceId, metric.id, inputVariableIds)
+  }, [inputVariableIds, metric.customConfig?.mappings, metric.customConfig?.workflowId, metric.id, resourceId, resourceType, syncCustomMetricMappings])
 
   if (!metric.customConfig)
     return null
@@ -88,6 +141,37 @@ const CustomMetricEditorCard = ({
         })}
       />
 
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="system-xs-medium-uppercase text-text-secondary">{t('metrics.custom.mappingTitle')}</div>
+        </div>
+        <div className="space-y-2">
+          {inputVariables.map((inputVariable) => {
+            const mapping = metric.customConfig?.mappings.find(item => item.inputVariableId === inputVariable.id)
+
+            return (
+              <MappingRow
+                key={inputVariable.id}
+                inputVariable={inputVariable}
+                publishedGraph={publishedGraph}
+                value={mapping?.outputVariableId ?? null}
+                onUpdate={(outputVariableId) => {
+                  if (!mapping)
+                    return
+
+                  updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, { outputVariableId })
+                }}
+              />
+            )
+          })}
+        </div>
+        {!isConfigured && (
+          <div className="mt-3 rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
+            {t('metrics.custom.mappingWarning')}
+          </div>
+        )}
+      </div>
+
       {!!workflowOutputs.length && (
         <div className="mt-4 py-1">
           <div className="min-h-6 system-xs-medium-uppercase text-text-tertiary">
@@ -95,8 +179,8 @@ const CustomMetricEditorCard = ({
           </div>
           <div className="flex flex-wrap items-center gap-y-1 px-2 py-2 system-xs-regular text-text-tertiary">
             {workflowOutputs.map((output, index) => (
-              <div key={output.variable} className="flex items-center">
-                <span className="px-1 system-xs-medium text-text-secondary">{output.variable}</span>
+              <div key={`${output.nodeTitle}-${output.id}-${index}`} className="flex items-center">
+                <span className="px-1 system-xs-medium text-text-secondary">{output.id}</span>
                 {output.valueType && (
                   <span>{output.valueType}</span>
                 )}
@@ -108,38 +192,6 @@ const CustomMetricEditorCard = ({
           </div>
         </div>
       )}
-
-      <div className="mt-4">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="system-xs-medium-uppercase text-text-secondary">{t('metrics.custom.mappingTitle')}</div>
-          <Button
-            size="small"
-            variant="ghost"
-            className="text-text-accent"
-            onClick={() => addCustomMetricMapping(resourceType, resourceId, metric.id)}
-          >
-            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-            {t('metrics.custom.addMapping')}
-          </Button>
-        </div>
-        <div className="space-y-2">
-          {metric.customConfig.mappings.map(mapping => (
-            <MappingRow
-              key={mapping.id}
-              resourceType={resourceType}
-              mapping={mapping}
-              targetOptions={targetOptions}
-              onUpdate={patch => updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, patch)}
-              onRemove={() => removeCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id)}
-            />
-          ))}
-        </div>
-        {!isConfigured && (
-          <div className="mt-3 rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
-            {t('metrics.custom.mappingWarning')}
-          </div>
-        )}
-      </div>
     </div>
   )
 }

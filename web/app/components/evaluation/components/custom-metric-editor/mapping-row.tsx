@@ -1,74 +1,62 @@
 'use client'
 
-import type { CustomMetricMapping, EvaluationResourceType } from '../../types'
+import type {
+  ConversationVariable,
+  Edge,
+  EnvironmentVariable,
+  Node,
+} from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectGroupLabel,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/base/ui/select'
-import { getEvaluationMockConfig } from '../../mock'
-import { groupFieldOptions } from '../../utils'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import PublishedGraphVariablePicker from './published-graph-variable-picker'
 
 type MappingRowProps = {
-  resourceType: EvaluationResourceType
-  mapping: CustomMetricMapping
-  targetOptions: Array<{ id: string, label: string }>
-  onUpdate: (patch: { sourceFieldId?: string | null, targetVariableId?: string | null }) => void
-  onRemove: () => void
+  inputVariable: {
+    id: string
+    valueType: string
+  }
+  publishedGraph: {
+    nodes: Node[]
+    edges: Edge[]
+    environmentVariables: EnvironmentVariable[]
+    conversationVariables: ConversationVariable[]
+  }
+  value: string | null
+  onUpdate: (outputVariableId: string | null) => void
 }
 
 const MappingRow = ({
-  resourceType,
-  mapping,
-  targetOptions,
+  inputVariable,
+  publishedGraph,
+  value,
   onUpdate,
-  onRemove,
 }: MappingRowProps) => {
   const { t } = useTranslation('evaluation')
-  const config = getEvaluationMockConfig(resourceType)
 
   return (
-    <div className="grid gap-2 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-card-bg p-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
-      <Select value={mapping.sourceFieldId ?? ''} onValueChange={value => onUpdate({ sourceFieldId: value })}>
-        <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
-          <SelectValue placeholder={t('metrics.custom.sourcePlaceholder')} />
-        </SelectTrigger>
-        <SelectContent>
-          {groupFieldOptions(config.fieldOptions).map(([groupName, fields]) => (
-            <SelectGroup key={groupName}>
-              <SelectGroupLabel>{groupName}</SelectGroupLabel>
-              {fields.map(field => (
-                <SelectItem key={field.id} value={field.id}>{field.label}</SelectItem>
-              ))}
-            </SelectGroup>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <div className="flex items-center justify-center text-text-quaternary">
-        <span aria-hidden="true" className="i-ri-arrow-down-s-line h-4 w-4 -rotate-90" />
+    <div className="flex items-center">
+      <div className="flex h-8 w-[200px] items-center rounded-md px-2">
+        <div className="flex min-w-0 items-center gap-0.5 px-1">
+          <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+          <div className="truncate system-xs-medium text-text-secondary">{inputVariable.id}</div>
+          <div className="shrink-0 system-xs-regular text-text-tertiary">{inputVariable.valueType}</div>
+        </div>
       </div>
 
-      <Select value={mapping.targetVariableId ?? ''} onValueChange={value => onUpdate({ targetVariableId: value })}>
-        <SelectTrigger className="bg-transparent hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
-          <SelectValue placeholder={t('metrics.custom.targetPlaceholder')} />
-        </SelectTrigger>
-        <SelectContent>
-          {targetOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex h-8 w-9 items-center justify-center px-3 system-xs-medium text-text-tertiary">
+        <span aria-hidden="true">→</span>
+      </div>
 
-      <Button variant="ghost" size="small" aria-label={t('metrics.remove')} onClick={onRemove}>
-        <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
-      </Button>
+      <PublishedGraphVariablePicker
+        className="grow"
+        nodes={publishedGraph.nodes}
+        edges={publishedGraph.edges}
+        environmentVariables={publishedGraph.environmentVariables}
+        conversationVariables={publishedGraph.conversationVariables}
+        value={value}
+        placeholder={t('metrics.custom.outputPlaceholder')}
+        onChange={onUpdate}
+      />
     </div>
   )
 }

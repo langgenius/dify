@@ -15,12 +15,12 @@ import {
   createBuiltinMetric,
   createConditionGroup,
   createCustomMetric,
-  createCustomMetricMapping,
   getAllowedOperators as getAllowedOperatorsFromUtils,
   getConditionValue,
   isCustomMetricConfigured as isCustomMetricConfiguredFromUtils,
   isEvaluationRunnable as isEvaluationRunnableFromUtils,
   requiresConditionValue as requiresConditionValueFromUtils,
+  syncCustomMetricMappings as syncCustomMetricMappingsFromUtils,
   updateConditionGroup,
   updateMetric,
   updateResourceState,
@@ -41,15 +41,19 @@ type EvaluationStore = {
     metricId: string,
     workflow: { workflowId: string, workflowAppId: string, workflowName: string },
   ) => void
-  addCustomMetricMapping: (resourceType: EvaluationResourceType, resourceId: string, metricId: string) => void
+  syncCustomMetricMappings: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    metricId: string,
+    inputVariableIds: string[],
+  ) => void
   updateCustomMetricMapping: (
     resourceType: EvaluationResourceType,
     resourceId: string,
     metricId: string,
     mappingId: string,
-    patch: { sourceFieldId?: string | null, targetVariableId?: string | null },
+    patch: { inputVariableId?: string | null, outputVariableId?: string | null },
   ) => void
-  removeCustomMetricMapping: (resourceType: EvaluationResourceType, resourceId: string, metricId: string, mappingId: string) => void
   addConditionGroup: (resourceType: EvaluationResourceType, resourceId: string) => void
   removeConditionGroup: (resourceType: EvaluationResourceType, resourceId: string, groupId: string) => void
   setConditionGroupOperator: (resourceType: EvaluationResourceType, resourceId: string, groupId: string, logicalOperator: 'and' | 'or') => void
@@ -170,7 +174,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
                 workflowName: workflow.workflowName,
                 mappings: metric.customConfig.mappings.map(mapping => ({
                   ...mapping,
-                  targetVariableId: null,
+                  outputVariableId: null,
                 })),
               }
             : metric.customConfig,
@@ -178,7 +182,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
-  addCustomMetricMapping: (resourceType, resourceId, metricId) => {
+  syncCustomMetricMappings: (resourceType, resourceId, metricId, inputVariableIds) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
@@ -187,7 +191,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
           customConfig: metric.customConfig
             ? {
                 ...metric.customConfig,
-                mappings: [...metric.customConfig.mappings, createCustomMetricMapping()],
+                mappings: syncCustomMetricMappingsFromUtils(metric.customConfig.mappings, inputVariableIds),
               }
             : metric.customConfig,
         })),
@@ -204,22 +208,6 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
             ? {
                 ...metric.customConfig,
                 mappings: metric.customConfig.mappings.map(mapping => mapping.id === mappingId ? { ...mapping, ...patch } : mapping),
-              }
-            : metric.customConfig,
-        })),
-      })),
-    }))
-  },
-  removeCustomMetricMapping: (resourceType, resourceId, metricId, mappingId) => {
-    set(state => ({
-      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
-        ...resource,
-        metrics: updateMetric(resource.metrics, metricId, metric => ({
-          ...metric,
-          customConfig: metric.customConfig
-            ? {
-                ...metric.customConfig,
-                mappings: metric.customConfig.mappings.filter(mapping => mapping.id !== mappingId),
               }
             : metric.customConfig,
         })),

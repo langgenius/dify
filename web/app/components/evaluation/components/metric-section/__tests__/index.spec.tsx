@@ -208,7 +208,7 @@ describe('MetricSection', () => {
       expect(screen.getByText('Custom Evaluator')).toBeInTheDocument()
       expect(screen.getByText('evaluation.metrics.custom.warningBadge')).toBeInTheDocument()
       expect(screen.getByText('evaluation.metrics.custom.workflowPlaceholder')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'evaluation.metrics.custom.addMapping' })).toBeInTheDocument()
+      expect(screen.getByText('evaluation.metrics.custom.mappingTitle')).toBeInTheDocument()
     })
 
     it('should disable adding another custom metric when one already exists', () => {
