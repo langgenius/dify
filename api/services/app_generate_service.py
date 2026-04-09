@@ -141,6 +141,12 @@ class AppGenerateService:
                         workflow.id,
                     )
 
+                    upgraded_args = dict(args)
+                    if "query" not in upgraded_args or not upgraded_args.get("query"):
+                        inputs = upgraded_args.get("inputs", {})
+                        upgraded_args["query"] = inputs.get("query", "") or inputs.get("input", "") or str(inputs)
+                    args = upgraded_args
+
                     if streaming:
                         with rate_limit_context(rate_limit, request_id):
                             payload = AppExecutionParams.new(

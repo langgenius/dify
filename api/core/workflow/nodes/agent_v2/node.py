@@ -170,10 +170,6 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 chunk_text = self._extract_chunk_text(chunk)
                 if chunk_text:
                     full_text += chunk_text
-                    yield StreamChunkEvent(
-                        selector=[self._node_id, "text"],
-                        chunk=chunk_text,
-                    )
 
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
