@@ -2753,9 +2753,9 @@ class TestWorkflowServiceFreeNodeExecution:
         variable_pool = MagicMock()
 
         with (
-            patch("services.workflow_service.GraphInitParams") as mock_graph_init_params,
+            patch("services.workflow_service.DifyGraphInitContext") as mock_graph_init_context_cls,
             patch("services.workflow_service.GraphRuntimeState"),
-            patch("services.workflow_service.build_dify_run_context"),
+            patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
             patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
@@ -2764,4 +2764,17 @@ class TestWorkflowServiceFreeNodeExecution:
             )
             assert node == mock_node_cls.return_value
             mock_node_cls.assert_called_once()
-            mock_runtime_cls.assert_called_once_with(mock_graph_init_params.return_value.run_context)
+            mock_graph_init_context_cls.assert_called_once_with(
+                workflow_id="wf-1",
+                graph_config=workflow.graph_dict,
+                run_context=mock_build_dify_run_context.return_value,
+                call_depth=0,
+            )
+            mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
+            mock_node_cls.assert_called_once_with(
+                id="n-1",
+                config=node_config,
+                graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
+                graph_runtime_state=ANY,
+                runtime=mock_runtime_cls.return_value,
+            )
