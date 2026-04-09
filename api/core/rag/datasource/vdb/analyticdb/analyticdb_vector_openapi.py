@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, model_validator
 
@@ -11,6 +11,13 @@ _import_err_msg = (
 from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+
+
+class AnalyticdbClientParamsDict(TypedDict):
+    access_key_id: str
+    access_key_secret: str
+    region_id: str
+    read_timeout: int
 
 
 class AnalyticdbVectorOpenAPIConfig(BaseModel):
@@ -44,13 +51,14 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
             raise ValueError("config ANALYTICDB_NAMESPACE_PASSWORD is required")
         return values
 
-    def to_analyticdb_client_params(self):
-        return {
+    def to_analyticdb_client_params(self) -> AnalyticdbClientParamsDict:
+        result: AnalyticdbClientParamsDict = {
             "access_key_id": self.access_key_id,
             "access_key_secret": self.access_key_secret,
             "region_id": self.region_id,
             "read_timeout": self.read_timeout,
         }
+        return result
 
 
 class AnalyticdbVectorOpenAPI:
@@ -115,7 +123,7 @@ class AnalyticdbVectorOpenAPI:
             else:
                 raise ValueError(f"failed to create namespace {self.config.namespace}: {e}")
 
-    def _create_collection_if_not_exists(self, embedding_dimension: int):
+    def create_collection_if_not_exists(self, embedding_dimension: int):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException
 

@@ -3390,7 +3390,7 @@
       "count": 3
     },
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
@@ -3490,12 +3490,7 @@
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
     "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "app/components/base/prompt-editor/plugins/workflow-variable-block/workflow-variable-block-replacement-block.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/base/prompt-log-modal/card.tsx": {
@@ -7928,12 +7923,6 @@
   "app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 13
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/tools/workflow-tool/method-selector.tsx": {
@@ -11293,7 +11282,7 @@
   },
   "app/components/workflow/utils/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "app/components/workflow/utils/node-navigation.ts": {

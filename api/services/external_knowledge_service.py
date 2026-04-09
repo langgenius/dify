@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
-from core.rag.entities.metadata_entities import MetadataCondition
+from core.rag.entities import MetadataFilteringCondition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import (
@@ -302,7 +302,7 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalar(
             select(ExternalKnowledgeBindings)

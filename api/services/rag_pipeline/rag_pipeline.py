@@ -38,11 +38,7 @@ from core.datasource.online_document.online_document_plugin import OnlineDocumen
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.helper import marketplace
-from core.rag.entities.event import (
-    DatasourceCompletedEvent,
-    DatasourceErrorEvent,
-    DatasourceProcessingEvent,
-)
+from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
 from core.repositories.factory import DifyCoreRepositoryFactory, OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
@@ -1186,7 +1182,7 @@ class RagPipelineService:
         workflow = db.session.get(Workflow, pipeline.workflow_id)
         if not workflow:
             raise ValueError("Workflow not found")
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             dataset = pipeline.retrieve_dataset(session=session)
             if not dataset:
                 raise ValueError("Dataset not found")
@@ -1213,7 +1209,7 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         if args.get("icon_info") is None:
