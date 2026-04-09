@@ -117,13 +117,13 @@ describe('Evaluation', () => {
     vi.useRealTimers()
   })
 
-  it('should render time placeholders and hide the value row for empty operators', () => {
+  it('should hide the value row for empty operators', () => {
     const resourceType = 'apps'
     const resourceId = 'app-2'
     const store = useEvaluationStore.getState()
     const config = getEvaluationMockConfig(resourceType)
 
-    const timeField = config.fieldOptions.find(field => field.type === 'time')!
+    const stringField = config.fieldOptions.find(field => field.type === 'string')!
     let groupId = ''
     let itemId = ''
 
@@ -135,8 +135,8 @@ describe('Evaluation', () => {
       groupId = group.id
       itemId = group.items[0].id
 
-      store.updateConditionField(resourceType, resourceId, groupId, itemId, timeField.id)
-      store.updateConditionOperator(resourceType, resourceId, groupId, itemId, 'before')
+      store.updateConditionField(resourceType, resourceId, groupId, itemId, stringField.id)
+      store.updateConditionOperator(resourceType, resourceId, groupId, itemId, 'contains')
     })
 
     let rerender: ReturnType<typeof render>['rerender']
@@ -144,14 +144,14 @@ describe('Evaluation', () => {
       ({ rerender } = render(<Evaluation resourceType={resourceType} resourceId={resourceId} />))
     })
 
-    expect(screen.getByText('evaluation.conditions.selectTime')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('evaluation.conditions.valuePlaceholder')).toBeInTheDocument()
 
     act(() => {
       store.updateConditionOperator(resourceType, resourceId, groupId, itemId, 'is_empty')
       rerender(<Evaluation resourceType={resourceType} resourceId={resourceId} />)
     })
 
-    expect(screen.queryByText('evaluation.conditions.selectTime')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('evaluation.conditions.valuePlaceholder')).not.toBeInTheDocument()
   })
 
   it('should render the metric no-node empty state', () => {

@@ -102,14 +102,12 @@ const workflowFields: EvaluationFieldOption[] = [
   { id: 'app.input.locale', label: 'Locale', group: 'App Input', type: 'enum', options: [{ value: 'en-US', label: 'en-US' }, { value: 'zh-Hans', label: 'zh-Hans' }] },
   { id: 'app.output.answer', label: 'Answer', group: 'App Output', type: 'string' },
   { id: 'app.output.score', label: 'Score', group: 'App Output', type: 'number' },
-  { id: 'app.output.published_at', label: 'Publication Date', group: 'App Output', type: 'time' },
   { id: 'system.has_context', label: 'Has Context', group: 'System', type: 'boolean' },
 ]
 
 const pipelineFields: EvaluationFieldOption[] = [
   { id: 'dataset.input.document_id', label: 'Document ID', group: 'Dataset', type: 'string' },
   { id: 'dataset.input.chunk_count', label: 'Chunk Count', group: 'Dataset', type: 'number' },
-  { id: 'dataset.input.updated_at', label: 'Updated At', group: 'Dataset', type: 'time' },
   { id: 'retrieval.output.hit_rate', label: 'Hit Rate', group: 'Retrieval', type: 'number' },
   { id: 'retrieval.output.source', label: 'Source', group: 'Retrieval', type: 'enum', options: [{ value: 'bm25', label: 'BM25' }, { value: 'hybrid', label: 'Hybrid' }] },
   { id: 'pipeline.output.published', label: 'Published', group: 'Output', type: 'boolean' },
@@ -120,16 +118,12 @@ const snippetFields: EvaluationFieldOption[] = [
   { id: 'snippet.input.platforms', label: 'Platforms', group: 'Snippet Input', type: 'string' },
   { id: 'snippet.output.content', label: 'Generated Content', group: 'Snippet Output', type: 'string' },
   { id: 'snippet.output.length', label: 'Output Length', group: 'Snippet Output', type: 'number' },
-  { id: 'snippet.output.scheduled_at', label: 'Scheduled At', group: 'Snippet Output', type: 'time' },
   { id: 'system.requires_review', label: 'Requires Review', group: 'System', type: 'boolean' },
 ]
 
 export const getComparisonOperators = (fieldType: EvaluationFieldOption['type']): ComparisonOperator[] => {
   if (fieldType === 'number')
     return ['is', 'is_not', 'greater_than', 'less_than', 'greater_or_equal', 'less_or_equal', 'is_empty', 'is_not_empty']
-
-  if (fieldType === 'time')
-    return ['is', 'before', 'after', 'is_empty', 'is_not_empty']
 
   if (fieldType === 'boolean' || fieldType === 'enum')
     return ['is', 'is_not']

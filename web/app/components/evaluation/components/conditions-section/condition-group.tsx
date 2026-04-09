@@ -5,12 +5,10 @@ import type {
   EvaluationFieldOption,
   EvaluationResourceProps,
   JudgmentConditionGroup,
-} from '../types'
+} from '../../types'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import dayjs from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 import {
   Select,
@@ -22,9 +20,9 @@ import {
   SelectValue,
 } from '@/app/components/base/ui/select'
 import { cn } from '@/utils/classnames'
-import { getEvaluationMockConfig } from '../mock'
-import { getAllowedOperators, requiresConditionValue, useEvaluationStore } from '../store'
-import { getFieldTypeIconClassName, getOperatorLabel, groupFieldOptions } from '../utils'
+import { getEvaluationMockConfig } from '../../mock'
+import { getAllowedOperators, requiresConditionValue, useEvaluationStore } from '../../store'
+import { getFieldTypeIconClassName, getOperatorLabel, groupFieldOptions } from '../../utils'
 
 type ConditionFieldLabelProps = {
   field?: EvaluationFieldOption
@@ -62,15 +60,15 @@ const ConditionFieldLabel = ({
   placeholder,
 }: ConditionFieldLabelProps) => {
   if (!field)
-    return <span className="px-1 text-components-input-text-placeholder system-sm-regular">{placeholder}</span>
+    return <span className="px-1 system-sm-regular text-components-input-text-placeholder">{placeholder}</span>
 
   return (
     <div className="flex min-w-0 items-center gap-2 px-1">
-      <div className="inline-flex h-6 min-w-0 items-center gap-1 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-[5px] pr-1.5 shadow-xs">
+      <div className="inline-flex h-6 min-w-0 items-center gap-1 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] shadow-xs">
         <span className={cn(getFieldTypeIconClassName(field.type), 'h-3 w-3 shrink-0 text-text-secondary')} />
-        <span className="truncate text-text-secondary system-xs-medium">{field.label}</span>
+        <span className="truncate system-xs-medium text-text-secondary">{field.label}</span>
       </div>
-      <span className="shrink-0 text-text-tertiary system-xs-regular">{field.type}</span>
+      <span className="shrink-0 system-xs-regular text-text-tertiary">{field.type}</span>
     </div>
   )
 }
@@ -89,7 +87,7 @@ const ConditionFieldSelect = ({
       <SelectContent popupClassName="w-[320px]">
         {groupFieldOptions(fieldOptions).map(([groupName, fields]) => (
           <SelectGroup key={groupName}>
-            <SelectGroupLabel className="px-3 pb-1 pt-2 text-text-tertiary system-xs-medium-uppercase">{groupName}</SelectGroupLabel>
+            <SelectGroupLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{groupName}</SelectGroupLabel>
             {fields.map(option => (
               <SelectItem key={option.id} value={option.id}>
                 <div className="flex min-w-0 items-center gap-2">
@@ -116,7 +114,7 @@ const ConditionOperatorSelect = ({
   return (
     <Select value={operator} onValueChange={value => value && onChange(value as ComparisonOperator)}>
       <SelectTrigger className="h-8 w-auto min-w-[88px] gap-1 rounded-md bg-transparent px-1.5 py-0 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt">
-        <span className="truncate text-text-secondary system-xs-medium">{getOperatorLabel(operator, field?.type, t)}</span>
+        <span className="truncate system-xs-medium text-text-secondary">{getOperatorLabel(operator, field?.type, t)}</span>
       </SelectTrigger>
       <SelectContent className="z-[1002]" popupClassName="w-[240px] bg-components-panel-bg-blur backdrop-blur-[10px]">
         {operators.map(nextOperator => (
@@ -139,40 +137,6 @@ const FieldValueInput = ({
 
   if (!field || !requiresConditionValue(operator))
     return null
-
-  if (field.type === 'time') {
-    const selectedTime = typeof value === 'string' && value ? dayjs(value) : undefined
-
-    return (
-      <div className="px-2 py-1.5">
-        <DatePicker
-          value={selectedTime}
-          onChange={date => onChange(date ? date.toISOString() : null)}
-          onClear={() => onChange(null)}
-          placeholder={t('conditions.selectTime')}
-          triggerWrapClassName="w-full"
-          popupZIndexClassname="z-[1002]"
-          renderTrigger={({ handleClickTrigger }) => (
-            <button
-              type="button"
-              className="group flex w-full items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-state-base-hover-alt"
-              onClick={handleClickTrigger}
-            >
-              <span
-                className={cn(
-                  'min-w-0 flex-1 truncate system-sm-regular',
-                  selectedTime ? 'text-text-secondary' : 'text-components-input-text-placeholder',
-                )}
-              >
-                {selectedTime ? selectedTime.format('MMM D, YYYY h:mm A') : t('conditions.selectTime')}
-              </span>
-              <span className="i-ri-calendar-line h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary" />
-            </button>
-          )}
-        />
-      </div>
-    )
-  }
 
   if (field.type === 'boolean') {
     return (
@@ -273,7 +237,7 @@ const ConditionGroup = ({
         </div>
         <div className="flex items-center gap-2">
           <Button size="small" variant="ghost" onClick={() => addConditionItem(resourceType, resourceId, group.id)}>
-            <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
+            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
             {t('conditions.addCondition')}
           </Button>
           <Button
@@ -323,7 +287,7 @@ const ConditionGroup = ({
                   </div>
                 )}
               </div>
-              <div className="pl-1 pt-1">
+              <div className="pt-1 pl-1">
                 <Button
                   size="small"
                   variant="ghost"

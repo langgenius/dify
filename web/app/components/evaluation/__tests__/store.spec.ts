@@ -123,7 +123,7 @@ describe('evaluation store', () => {
     expect(getAllowedOperators(resourceType, booleanField.id)).toEqual(['is', 'is_not'])
   })
 
-  it('should support time fields and clear values for empty operators', () => {
+  it('should clear values for empty operators', () => {
     const resourceType = 'apps'
     const resourceId = 'app-3'
     const store = useEvaluationStore.getState()
@@ -131,15 +131,15 @@ describe('evaluation store', () => {
 
     store.ensureResource(resourceType, resourceId)
 
-    const timeField = config.fieldOptions.find(field => field.type === 'time')!
+    const stringField = config.fieldOptions.find(field => field.type === 'string')!
     const item = useEvaluationStore.getState().resources['apps:app-3'].conditions[0].items[0]
 
-    store.updateConditionField(resourceType, resourceId, useEvaluationStore.getState().resources['apps:app-3'].conditions[0].id, item.id, timeField.id)
+    store.updateConditionField(resourceType, resourceId, useEvaluationStore.getState().resources['apps:app-3'].conditions[0].id, item.id, stringField.id)
     store.updateConditionOperator(resourceType, resourceId, useEvaluationStore.getState().resources['apps:app-3'].conditions[0].id, item.id, 'is_empty')
 
     const updatedItem = useEvaluationStore.getState().resources['apps:app-3'].conditions[0].items[0]
 
-    expect(getAllowedOperators(resourceType, timeField.id)).toEqual(['is', 'before', 'after', 'is_empty', 'is_not_empty'])
+    expect(getAllowedOperators(resourceType, stringField.id)).toEqual(['contains', 'not_contains', 'is', 'is_not', 'is_empty', 'is_not_empty'])
     expect(requiresConditionValue('is_empty')).toBe(false)
     expect(updatedItem.value).toBeNull()
   })

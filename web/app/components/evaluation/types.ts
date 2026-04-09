@@ -11,7 +11,7 @@ export type MetricKind = 'builtin' | 'custom-workflow'
 
 export type BatchTestTab = 'input-fields' | 'history'
 
-export type FieldType = 'string' | 'number' | 'boolean' | 'enum' | 'time'
+export type FieldType = 'string' | 'number' | 'boolean' | 'enum'
 
 export type ComparisonOperator
   = | 'contains'
@@ -24,8 +24,6 @@ export type ComparisonOperator
     | 'less_than'
     | 'greater_or_equal'
     | 'less_or_equal'
-    | 'before'
-    | 'after'
 
 export type JudgeModelOption = {
   id: string

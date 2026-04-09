@@ -53,8 +53,5 @@ export const getFieldTypeIconClassName = (fieldType: EvaluationFieldOption['type
   if (fieldType === 'enum')
     return 'i-ri-list-check-2'
 
-  if (fieldType === 'time')
-    return 'i-ri-time-line'
-
   return 'i-ri-text'
 }
