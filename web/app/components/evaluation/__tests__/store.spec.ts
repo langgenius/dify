@@ -132,18 +132,16 @@ describe('evaluation store', () => {
     const config: EvaluationConfig = {
       evaluation_model: 'gpt-4o-mini',
       evaluation_model_provider: 'openai',
-      metrics_config: {
-        default_metrics: [{
-          metric: 'faithfulness',
-          node_info_list: [
-            { node_id: 'node-1', title: 'Retriever', type: 'retriever' },
-          ],
-        }],
-        customized_metrics: {
-          evaluation_workflow_id: 'workflow-precision-review',
-          input_fields: {
-            'app.input.query': 'query',
-          },
+      default_metrics: [{
+        metric: 'faithfulness',
+        node_info_list: [
+          { node_id: 'node-1', title: 'Retriever', type: 'retriever' },
+        ],
+      }],
+      customized_metrics: {
+        evaluation_workflow_id: 'workflow-precision-review',
+        input_fields: {
+          'app.input.query': 'query',
         },
       },
       judgement_conditions: [{

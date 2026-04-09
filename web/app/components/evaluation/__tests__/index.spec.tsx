@@ -245,12 +245,10 @@ describe('Evaluation', () => {
       data: {
         evaluation_model: null,
         evaluation_model_provider: null,
-        metrics_config: {
-          default_metrics: [{
-            metric: 'context-precision',
-          }],
-          customized_metrics: null,
-        },
+        default_metrics: [{
+          metric: 'context-precision',
+        }],
+        customized_metrics: null,
         judgement_conditions: null,
       },
     })

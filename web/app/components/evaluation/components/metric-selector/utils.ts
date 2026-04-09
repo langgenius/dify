@@ -3,7 +3,7 @@ import type { MetricVisualTone } from './types'
 import type { EvaluationTargetType, NodeInfo } from '@/types/evaluation'
 
 export const toEvaluationTargetType = (resourceType: 'apps' | 'snippets'): EvaluationTargetType => {
-  return resourceType === 'snippets' ? 'snippets' : 'app'
+  return resourceType === 'snippets' ? 'snippets' : 'apps'
 }
 
 const humanizeMetricId = (metricId: string) => {

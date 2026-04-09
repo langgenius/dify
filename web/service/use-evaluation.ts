@@ -29,30 +29,14 @@ const normalizeAvailableEvaluationWorkflowsParams = (params: AvailableEvaluation
   }
 }
 
-const toEvaluationTargetType = (resourceType: Exclude<EvaluationResourceType, 'datasets'>) => {
-  return resourceType === 'snippets' ? 'snippets' : 'app'
-}
-
 const getEvaluationConfigQueryOptions = (
   resourceType: EvaluationResourceType,
   resourceId: string,
 ) => {
-  if (resourceType === 'datasets') {
-    return consoleQuery.datasetEvaluation.config.queryOptions({
-      input: {
-        params: {
-          datasetId: resourceId,
-        },
-      },
-      enabled: !!resourceId,
-      refetchOnWindowFocus: false,
-    })
-  }
-
   return consoleQuery.evaluation.config.queryOptions({
     input: {
       params: {
-        targetType: toEvaluationTargetType(resourceType),
+        targetType: resourceType,
         targetId: resourceId,
       },
     },

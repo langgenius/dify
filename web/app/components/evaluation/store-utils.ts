@@ -16,7 +16,6 @@ import type {
   EvaluationDefaultMetric,
   EvaluationJudgementConditionGroup,
   EvaluationJudgementConditionItem,
-  EvaluationMetricsConfig,
   NodeInfo,
 } from '@/types/evaluation'
 import { getComparisonOperators, getDefaultOperator, getEvaluationMockConfig } from './mock'
@@ -71,7 +70,7 @@ const normalizeNodeInfoList = (value: NodeInfo[] | undefined): NodeInfo[] => {
 
 const normalizeDefaultMetrics = (
   resourceType: EvaluationResourceType,
-  value: EvaluationDefaultMetric[] | undefined,
+  value: EvaluationDefaultMetric[] | null | undefined,
 ): EvaluationMetric[] => {
   if (!value?.length)
     return []
@@ -292,9 +291,8 @@ export const buildStateFromEvaluationConfig = (
   resourceType: EvaluationResourceType,
   config: EvaluationConfig,
 ): EvaluationResourceState => {
-  const metricsConfig: EvaluationMetricsConfig = config.metrics_config ?? {}
-  const defaultMetrics = normalizeDefaultMetrics(resourceType, metricsConfig.default_metrics)
-  const customMetrics = normalizeCustomMetric(metricsConfig.customized_metrics)
+  const defaultMetrics = normalizeDefaultMetrics(resourceType, config.default_metrics)
+  const customMetrics = normalizeCustomMetric(config.customized_metrics)
 
   return {
     ...buildInitialState(resourceType),
