@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from models.account import AccountStatus
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -81,7 +82,7 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
 
 
 def _mock_account(user_id: str = "user-123") -> SimpleNamespace:
-    return SimpleNamespace(id=user_id, status="active", is_authenticated=True, current_tenant_id=None)
+    return SimpleNamespace(id=user_id, status=AccountStatus.ACTIVE, is_authenticated=True, current_tenant_id=None)
 
 
 def _set_current_account(

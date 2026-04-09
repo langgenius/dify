@@ -28,7 +28,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
-from models import Account
+from models import Account, AccountStatus, TenantStatus
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
@@ -175,7 +175,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
     def setup_test_data(self, db_session_with_containers: Session):
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -184,7 +184,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()

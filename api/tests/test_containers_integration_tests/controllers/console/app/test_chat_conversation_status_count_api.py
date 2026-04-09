@@ -11,7 +11,7 @@ from configs import dify_config
 from constants import HEADER_NAME_CSRF_TOKEN
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
-from models import Account, DifySetup, Tenant, TenantAccountJoin
+from models import Account, DifySetup, Tenant, TenantAccountJoin, TenantStatus
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
@@ -30,7 +30,7 @@ def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
     db_session.add(account)
     db_session.commit()
 
-    tenant = Tenant(name="Test Tenant", status="normal")
+    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
     db_session.add(tenant)
     db_session.commit()
 

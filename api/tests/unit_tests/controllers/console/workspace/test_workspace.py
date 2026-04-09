@@ -43,13 +43,13 @@ class TestTenantListApi:
         tenant1 = MagicMock(
             id="t1",
             name="Tenant 1",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
 
@@ -96,13 +96,13 @@ class TestTenantListApi:
         tenant1 = MagicMock(
             id="t1",
             name="Tenant 1",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
 
@@ -151,13 +151,13 @@ class TestTenantListApi:
         tenant1 = MagicMock(
             id="t1",
             name="Tenant 1",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
 
@@ -203,7 +203,7 @@ class TestTenantListApi:
         tenant = MagicMock(
             id="t1",
             name="Tenant",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
 
@@ -242,13 +242,13 @@ class TestTenantListApi:
         tenant1 = MagicMock(
             id="t1",
             name="Tenant 1",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
         tenant2 = MagicMock(
             id="t2",
             name="Tenant 2",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
 
@@ -305,7 +305,7 @@ class TestWorkspaceListApi:
         api = WorkspaceListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
+        tenant = MagicMock(id="t1", name="T", status=TenantStatus.NORMAL, created_at=naive_utc_now())
 
         paginate_result = MagicMock(
             items=[tenant],
@@ -330,7 +330,7 @@ class TestWorkspaceListApi:
         tenant = MagicMock(
             id="t1",
             name="T",
-            status="active",
+            status=TenantStatus.NORMAL,
             created_at=naive_utc_now(),
         )
 
@@ -358,7 +358,7 @@ class TestTenantApi:
         api = TenantApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(status="active")
+        tenant = MagicMock(status=TenantStatus.NORMAL)
 
         user = MagicMock(current_tenant=tenant)
 
@@ -379,7 +379,7 @@ class TestTenantApi:
         method = unwrap(api.post)
 
         archived = MagicMock(status=TenantStatus.ARCHIVE)
-        new_tenant = MagicMock(status="active")
+        new_tenant = MagicMock(status=TenantStatus.NORMAL)
 
         user = MagicMock(current_tenant=archived)
 
@@ -414,7 +414,7 @@ class TestTenantApi:
         api = TenantApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(status="active")
+        tenant = MagicMock(status=TenantStatus.NORMAL)
         user = MagicMock(current_tenant=tenant)
 
         with (

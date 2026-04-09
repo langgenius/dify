@@ -21,7 +21,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from models import Account, Tenant
+from models import Account, Tenant, AccountStatus, TenantStatus
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow
@@ -104,7 +104,7 @@ class TestWorkflowConverter:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -113,7 +113,7 @@ class TestWorkflowConverter:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

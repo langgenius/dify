@@ -41,7 +41,7 @@ from core.app.layers.pause_state_persist_layer import (
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
-from models import Account
+from models import Account, AccountStatus, TenantStatus
 from models import WorkflowPause as WorkflowPauseModel
 from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
@@ -92,7 +92,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -101,7 +101,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
