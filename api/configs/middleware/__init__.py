@@ -167,12 +167,12 @@ class DatabaseConfig(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_USERNAME(self) -> str:
-        return self.DIFY_DB_USER if self.DIFY_DB_USER is not None else self.DB_USERNAME
+        return self.DIFY_DB_USER or self.DB_USERNAME
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_PASSWORD(self) -> str:
-        return self.DIFY_DB_PASS if self.DIFY_DB_PASS is not None else self.DB_PASSWORD
+        return self.DIFY_DB_PASS or self.DB_PASSWORD
 
     @computed_field  # type: ignore[prop-decorator]
     @property
