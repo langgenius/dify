@@ -39,7 +39,7 @@ class AgentV2EventAdapter:
                 if isinstance(item, AgentLog):
                     yield self._convert_agent_log(item, node_id=node_id, node_execution_id=node_execution_id)
                 elif isinstance(item, LLMResultChunk):
-                    yield from self._convert_llm_chunk(item, node_id=node_id)
+                    pass
         except StopIteration as e:
             result: AgentResult = e.value
             return result
