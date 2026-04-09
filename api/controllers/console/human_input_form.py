@@ -168,12 +168,13 @@ class ConsoleWorkflowEventsApi(Resource):
         else:
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
-            if app.mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
-            elif app.mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
-            else:
-                raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+            match app.mode:
+                case AppMode.ADVANCED_CHAT:
+                    generator = AdvancedChatAppGenerator()
+                case AppMode.WORKFLOW:
+                    generator = WorkflowAppGenerator()
+                case _:
+                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
 
