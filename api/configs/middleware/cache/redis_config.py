@@ -119,7 +119,7 @@ class RedisConfig(BaseSettings):
 
     REDIS_RETRY_RETRIES: NonNegativeInt = Field(
         description="Maximum number of retries per Redis command on "
-                    "transient failures (ConnectionError, TimeoutError, socket.timeout)",
+        "transient failures (ConnectionError, TimeoutError, socket.timeout)",
         default=3,
     )
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 import redis
 from redis import RedisError
-from redis.backoff import ExponentialWithJitterBackoff # type: ignore
+from redis.backoff import ExponentialWithJitterBackoff  # type: ignore
 from redis.cache import CacheConfig
 from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
