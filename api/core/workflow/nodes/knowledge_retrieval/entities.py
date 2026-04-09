@@ -1,10 +1,13 @@
-from collections.abc import Sequence
 from typing import Literal
 
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.llm.entities import ModelConfig, VisionConfig
 from pydantic import BaseModel, Field
+
+from core.rag.entities import Condition, MetadataFilteringCondition, WeightedScoreConfig
+
+__all__ = ["Condition"]
 
 
 class RerankingModelConfig(BaseModel):
@@ -14,33 +17,6 @@ class RerankingModelConfig(BaseModel):
 
     provider: str
     model: str
-
-
-class VectorSetting(BaseModel):
-    """
-    Vector Setting.
-    """
-
-    vector_weight: float
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class KeywordSetting(BaseModel):
-    """
-    Keyword Setting.
-    """
-
-    keyword_weight: float
-
-
-class WeightedScoreConfig(BaseModel):
-    """
-    Weighted score Config.
-    """
-
-    vector_setting: VectorSetting
-    keyword_setting: KeywordSetting
 
 
 class MultipleRetrievalConfig(BaseModel):
@@ -62,50 +38,6 @@ class SingleRetrievalConfig(BaseModel):
     """
 
     model: ModelConfig
-
-
-SupportedComparisonOperator = Literal[
-    # for string or array
-    "contains",
-    "not contains",
-    "start with",
-    "end with",
-    "is",
-    "is not",
-    "empty",
-    "not empty",
-    "in",
-    "not in",
-    # for number
-    "=",
-    "≠",
-    ">",
-    "<",
-    "≥",
-    "≤",
-    # for time
-    "before",
-    "after",
-]
-
-
-class Condition(BaseModel):
-    """
-    Condition detail
-    """
-
-    name: str
-    comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None | int | float = None
-
-
-class MetadataFilteringCondition(BaseModel):
-    """
-    Metadata Filtering Condition.
-    """
-
-    logical_operator: Literal["and", "or"] | None = "and"
-    conditions: list[Condition] | None = Field(default=None, deprecated=True)
 
 
 class KnowledgeRetrievalNodeData(BaseNodeData):

@@ -1,5 +1,8 @@
+import type {
+  UpdateWorkflowNodesMapPayload,
+} from './index'
 import type { WorkflowNodesMap } from './node'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -15,7 +18,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
-import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isRagVariableVar, isSpecialVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import {
   VariableLabelInEditor,
@@ -34,6 +37,7 @@ type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  availableVariables?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -47,10 +51,8 @@ const WorkflowVariableBlockComponent = ({
   nodeKey,
   variables,
   workflowNodesMap = {},
+  availableVariables,
   getVarType,
-  environmentVariables,
-  conversationVariables,
-  ragVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -66,36 +68,25 @@ const WorkflowVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
+  const [localAvailableVariables, setLocalAvailableVariables] = useState<NodeOutPutVar[]>(availableVariables || [])
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
 
   const isException = isExceptionVariable(varName, node?.type)
   const sourceNodeId = variables[isRagVar ? 1 : 0]
   const isLlmModelInstalled = useLlmModelPluginInstalled(sourceNodeId, localWorkflowNodesMap)
   const variableValid = useMemo(() => {
-    let variableValid = true
-    const isEnv = isENV(variables)
-    const isChatVar = isConversationVar(variables)
-    const isGlobal = isGlobalVar(variables)
-    if (isGlobal)
+    if (isSpecialVar(variables[0] ?? ''))
       return true
 
-    if (isEnv) {
-      if (environmentVariables)
-        variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-    }
-    else if (isChatVar) {
-      if (conversationVariables)
-        variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-    }
-    else if (isRagVar) {
-      if (ragVariables)
-        variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
-    }
-    else {
-      variableValid = !!node
-    }
-    return variableValid
-  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables])
+    if (!variables[1])
+      return false
+
+    const sourceNode = localAvailableVariables.find(v => v.nodeId === variables[0])
+    if (!sourceNode)
+      return false
+
+    return sourceNode.vars.some(v => v.variable === variables[1])
+  }, [localAvailableVariables, variables])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -107,9 +98,9 @@ const WorkflowVariableBlockComponent = ({
     return mergeRegister(
       editor.registerCommand(
         UPDATE_WORKFLOW_NODES_MAP,
-        (workflowNodesMap: WorkflowNodesMap) => {
-          setLocalWorkflowNodesMap(workflowNodesMap)
-
+        (payload: UpdateWorkflowNodesMapPayload) => {
+          setLocalWorkflowNodesMap(payload.workflowNodesMap)
+          setLocalAvailableVariables(payload.availableVariables)
           return true
         },
         COMMAND_PRIORITY_EDITOR,

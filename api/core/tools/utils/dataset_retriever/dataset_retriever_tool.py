@@ -1,13 +1,11 @@
-from typing import NotRequired, TypedDict, cast
+from typing import cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
+from core.rag.entities import DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -17,18 +15,6 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
-
-
-class DefaultRetrievalModelDict(TypedDict):
-    search_method: RetrievalMethod
-    reranking_enable: bool
-    reranking_model: RerankingModelDict
-    reranking_mode: NotRequired[str]
-    weights: NotRequired[WeightsDict | None]
-    score_threshold: NotRequired[float]
-    top_k: int
-    score_threshold_enabled: bool
-
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,

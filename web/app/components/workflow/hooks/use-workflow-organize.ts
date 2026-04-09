@@ -4,7 +4,7 @@ import { useWorkflowStore } from '../store'
 import {
   getLayoutByELK,
   getLayoutForChildNodes,
-} from '../utils'
+} from '../utils/elk-layout'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
