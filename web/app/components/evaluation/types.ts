@@ -37,8 +37,6 @@ export type MetricOption = {
   id: string
   label: string
   description: string
-  group: string
-  badges: string[]
 }
 
 export type EvaluationWorkflowOption = {
@@ -81,7 +79,6 @@ export type EvaluationMetric = {
   kind: MetricKind
   label: string
   description: string
-  badges: string[]
   threshold?: number
   nodeInfoList?: NodeInfo[]
   customConfig?: CustomMetricConfig

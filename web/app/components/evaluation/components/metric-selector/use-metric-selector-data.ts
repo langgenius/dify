@@ -54,9 +54,8 @@ export const useMetricSelectorData = ({
 
   const resolvedMetrics = useMemo(() => {
     const metricsMap = new Map(config.builtinMetrics.map(metric => [metric.id, metric] as const))
-    const defaultGroup = config.builtinMetrics[0]?.group ?? 'other'
 
-    return availableMetricIds.map(metricId => metricsMap.get(metricId) ?? buildMetricOption(metricId, defaultGroup))
+    return availableMetricIds.map(metricId => metricsMap.get(metricId) ?? buildMetricOption(metricId))
   }, [availableMetricIds, config.builtinMetrics])
 
   useEffect(() => {

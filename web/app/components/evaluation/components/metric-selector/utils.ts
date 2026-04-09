@@ -14,12 +14,10 @@ const humanizeMetricId = (metricId: string) => {
     .join(' ')
 }
 
-export const buildMetricOption = (metricId: string, fallbackGroup: string): MetricOption => ({
+export const buildMetricOption = (metricId: string): MetricOption => ({
   id: metricId,
   label: humanizeMetricId(metricId),
   description: '',
-  group: fallbackGroup,
-  badges: ['Built-in'],
 })
 
 export const getMetricVisual = (metricId: string): { icon: string, tone: MetricVisualTone } => {

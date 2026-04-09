@@ -41,8 +41,6 @@ const resolveMetricOption = (resourceType: EvaluationResourceType, metricId: str
     id: metricId,
     label: humanizeMetricId(metricId),
     description: '',
-    group: config.builtinMetrics[0]?.group ?? 'other',
-    badges: ['Built-in'],
   }
 }
 
@@ -225,7 +223,6 @@ export function createBuiltinMetric(
     kind: 'builtin',
     label: metric.label,
     description: metric.description,
-    badges: metric.badges,
     threshold,
     nodeInfoList,
   }
@@ -246,7 +243,6 @@ export function createCustomMetric(): EvaluationMetric {
     kind: 'custom-workflow',
     label: 'Custom Evaluator',
     description: 'Map workflow variables to your evaluation inputs.',
-    badges: ['Workflow'],
     customConfig: {
       workflowId: null,
       workflowAppId: null,

@@ -29,43 +29,31 @@ const builtinMetrics: MetricOption[] = [
     id: 'answer-correctness',
     label: 'Answer Correctness',
     description: 'Compares the response with the expected answer and scores factual alignment.',
-    group: 'quality',
-    badges: ['LLM', 'Built-in'],
   },
   {
     id: 'faithfulness',
     label: 'Faithfulness',
     description: 'Checks whether the answer stays grounded in the retrieved evidence.',
-    group: 'quality',
-    badges: ['LLM', 'Retrieval'],
   },
   {
     id: 'relevance',
     label: 'Relevance',
     description: 'Evaluates how directly the answer addresses the original request.',
-    group: 'quality',
-    badges: ['LLM'],
   },
   {
     id: 'latency',
     label: 'Latency',
     description: 'Captures runtime responsiveness for the full execution path.',
-    group: 'operations',
-    badges: ['System'],
   },
   {
     id: 'token-usage',
     label: 'Token Usage',
     description: 'Tracks prompt and completion token consumption for the run.',
-    group: 'operations',
-    badges: ['System'],
   },
   {
     id: 'tool-success-rate',
     label: 'Tool Success Rate',
     description: 'Measures whether each required tool invocation finishes without failure.',
-    group: 'operations',
-    badges: ['Workflow'],
   },
 ]
 
@@ -74,22 +62,16 @@ const pipelineBuiltinMetrics: MetricOption[] = [
     id: 'context-precision',
     label: 'Context Precision',
     description: 'Measures whether retrieved chunks stay tightly aligned to the request.',
-    group: 'quality',
-    badges: ['Retrieval'],
   },
   {
     id: 'context-recall',
     label: 'Context Recall',
     description: 'Checks whether the retrieval result includes the evidence needed to answer.',
-    group: 'quality',
-    badges: ['Retrieval'],
   },
   {
     id: 'context-relevance',
     label: 'Context Relevance',
     description: 'Scores how useful the retrieved context is for downstream generation.',
-    group: 'quality',
-    badges: ['Retrieval'],
   },
 ]
 
