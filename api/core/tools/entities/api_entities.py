@@ -75,22 +75,27 @@ class ToolProviderApiEntity(BaseModel):
                         parameter.pop("input_schema", None)
         # -------------
         optional_fields = self.optional_field("server_url", self.server_url)
-        if self.type == ToolProviderType.MCP:
-            optional_fields.update(self.optional_field("updated_at", self.updated_at))
-            optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
-            optional_fields.update(
-                self.optional_field(
-                    "configuration", self.configuration.model_dump() if self.configuration else MCPConfiguration()
+        match self.type:
+            case ToolProviderType.MCP:
+                optional_fields.update(self.optional_field("updated_at", self.updated_at))
+                optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
+                optional_fields.update(
+                    self.optional_field(
+                        "configuration", self.configuration.model_dump() if self.configuration else MCPConfiguration()
+                    )
                 )
-            )
-            optional_fields.update(
-                self.optional_field("authentication", self.authentication.model_dump() if self.authentication else None)
-            )
-            optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
-            optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
-            optional_fields.update(self.optional_field("original_headers", self.original_headers))
-        elif self.type == ToolProviderType.WORKFLOW:
-            optional_fields.update(self.optional_field("workflow_app_id", self.workflow_app_id))
+                optional_fields.update(
+                    self.optional_field(
+                        "authentication", self.authentication.model_dump() if self.authentication else None
+                    )
+                )
+                optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
+                optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
+                optional_fields.update(self.optional_field("original_headers", self.original_headers))
+            case ToolProviderType.WORKFLOW:
+                optional_fields.update(self.optional_field("workflow_app_id", self.workflow_app_id))
+            case _:
+                pass
         return {
             "id": self.id,
             "author": self.author,

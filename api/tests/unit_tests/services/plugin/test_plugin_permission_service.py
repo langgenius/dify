@@ -6,12 +6,12 @@ MODULE = "services.plugin.plugin_permission_service"
 
 
 def _patched_session():
-    """Patch Session(db.engine) to return a mock session as context manager."""
+    """Patch sessionmaker(bind=db.engine).begin() to return a mock session as context manager."""
     session = MagicMock()
-    session_cls = MagicMock()
-    session_cls.return_value.__enter__ = MagicMock(return_value=session)
-    session_cls.return_value.__exit__ = MagicMock(return_value=False)
-    patcher = patch(f"{MODULE}.Session", session_cls)
+    mock_sessionmaker = MagicMock()
+    mock_sessionmaker.return_value.begin.return_value.__enter__ = MagicMock(return_value=session)
+    mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+    patcher = patch(f"{MODULE}.sessionmaker", mock_sessionmaker)
     db_patcher = patch(f"{MODULE}.db")
     return patcher, db_patcher, session
 
@@ -20,7 +20,7 @@ class TestGetPermission:
     def test_returns_permission_when_found(self):
         p1, p2, session = _patched_session()
         permission = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = permission
+        session.scalar.return_value = permission
 
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
@@ -31,7 +31,7 @@ class TestGetPermission:
 
     def test_returns_none_when_not_found(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
@@ -44,9 +44,9 @@ class TestGetPermission:
 class TestChangePermission:
     def test_creates_new_permission_when_not_exists(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginPermission") as perm_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginPermission") as perm_cls:
             perm_cls.return_value = MagicMock()
             from services.plugin.plugin_permission_service import PluginPermissionService
 
@@ -55,12 +55,11 @@ class TestChangePermission:
             )
 
         session.add.assert_called_once()
-        session.commit.assert_called_once()
 
     def test_updates_existing_permission(self):
         p1, p2, session = _patched_session()
         existing = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
@@ -71,5 +70,4 @@ class TestChangePermission:
 
         assert existing.install_permission == TenantPluginPermission.InstallPermission.ADMINS
         assert existing.debug_permission == TenantPluginPermission.DebugPermission.ADMINS
-        session.commit.assert_called_once()
         session.add.assert_not_called()
