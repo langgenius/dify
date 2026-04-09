@@ -92,11 +92,13 @@ class AppImportApi(Resource):
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+        match status:
+            case ImportStatus.FAILED:
+                return result.model_dump(mode="json"), 400
+            case ImportStatus.PENDING:
+                return result.model_dump(mode="json"), 202
+            case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
+                return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")

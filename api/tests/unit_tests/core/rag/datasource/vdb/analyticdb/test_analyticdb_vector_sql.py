@@ -374,7 +374,7 @@ def test_create_collection_if_not_exists_creates_table_indexes_and_cache(monkeyp
 
     vector._get_cursor = _cursor_context
 
-    vector._create_collection_if_not_exists(embedding_dimension=3)
+    vector.create_collection_if_not_exists(embedding_dimension=3)
 
     assert any("CREATE TABLE IF NOT EXISTS dify.collection" in call.args[0] for call in cursor.execute.call_args_list)
     assert any("CREATE INDEX collection_embedding_idx" in call.args[0] for call in cursor.execute.call_args_list)
@@ -404,7 +404,7 @@ def test_create_collection_if_not_exists_raises_for_non_existing_error(monkeypat
     vector._get_cursor = _cursor_context
 
     with pytest.raises(RuntimeError, match="permission denied"):
-        vector._create_collection_if_not_exists(embedding_dimension=3)
+        vector.create_collection_if_not_exists(embedding_dimension=3)
 
 
 def test_delete_methods_raise_when_error_is_not_missing_table():
