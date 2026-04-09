@@ -46,3 +46,8 @@ class PGVectorConfig(BaseSettings):
         description="Whether to use pg_bigm module for full text search",
         default=False,
     )
+
+    PGVECTOR_SCHEMA: str = Field(
+        description="PostgreSQL schema name for vector tables (default is 'public')",
+        default="public",
+    )

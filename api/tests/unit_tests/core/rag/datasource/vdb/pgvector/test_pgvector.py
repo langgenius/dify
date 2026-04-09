@@ -23,6 +23,7 @@ class TestPGVector:
             min_connection=1,
             max_connection=5,
             pg_bigm=False,
+            schema_name="public",
         )
         self.collection_name = "test_collection"
 
@@ -53,6 +54,7 @@ class TestPGVector:
             min_connection=1,
             max_connection=5,
             pg_bigm=True,
+            schema_name="public",
         )
         mock_pool = MagicMock()
         mock_pool_class.return_value = mock_pool
@@ -152,6 +154,7 @@ class TestPGVector:
             min_connection=1,
             max_connection=5,
             pg_bigm=True,
+            schema_name="public",
         )
 
         # Mock Redis operations
@@ -319,6 +322,7 @@ def test_config_validation_parametrized(invalid_config_override):
         "database": "test_db",
         "min_connection": 1,
         "max_connection": 5,
+        "schema_name": "public",
     }
     config.update(invalid_config_override)
 
