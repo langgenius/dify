@@ -1,36 +1,38 @@
-import type { EvaluationFieldOption } from '../../types'
+import type { EvaluationResourceProps } from '../../types'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { toast } from '@/app/components/base/ui/toast'
+import { getEvaluationMockConfig } from '../../mock'
+import { useEvaluationResource, useEvaluationStore } from '../../store'
 
-type InputFieldsTabProps = {
-  requirementFields: EvaluationFieldOption[]
-  templateFileName: string
-  uploadedFileName: string | null
+type InputFieldsTabProps = EvaluationResourceProps & {
   isPanelReady: boolean
   isRunnable: boolean
-  onRun: () => void
-  onUploadFileNameChange: (uploadedFileName: string | null) => void
 }
 
 const InputFieldsTab = ({
-  requirementFields,
-  templateFileName,
-  uploadedFileName,
+  resourceType,
+  resourceId,
   isPanelReady,
   isRunnable,
-  onRun,
-  onUploadFileNameChange,
 }: InputFieldsTabProps) => {
   const { t } = useTranslation('evaluation')
+  const config = getEvaluationMockConfig(resourceType)
+  const requirementFields = config.fieldOptions
+    .filter(field => field.id.includes('.input.') || field.group.toLowerCase().includes('input'))
+    .slice(0, 4)
+  const displayedRequirementFields = requirementFields.length > 0 ? requirementFields : config.fieldOptions.slice(0, 4)
+  const uploadedFileName = useEvaluationResource(resourceType, resourceId).uploadedFileName
+  const setUploadedFileName = useEvaluationStore(state => state.setUploadedFileName)
+  const runBatchTest = useEvaluationStore(state => state.runBatchTest)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDownloadTemplate = () => {
     const content = ['case_id,input,expected', '1,Example input,Example output'].join('\n')
     const link = document.createElement('a')
     link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(content)}`
-    link.download = templateFileName
+    link.download = config.templateFileName
     link.click()
   }
 
@@ -40,7 +42,7 @@ const InputFieldsTab = ({
       return
     }
 
-    onRun()
+    runBatchTest(resourceType, resourceId)
   }
 
   return (
@@ -49,7 +51,7 @@ const InputFieldsTab = ({
         <div className="system-md-semibold text-text-primary">{t('batch.requirementsTitle')}</div>
         <div className="mt-1 system-xs-regular text-text-tertiary">{t('batch.requirementsDescription')}</div>
         <div className="mt-3 rounded-xl bg-background-section p-3">
-          {requirementFields.map(field => (
+          {displayedRequirementFields.map(field => (
             <div key={field.id} className="flex items-center py-1">
               <div className="rounded px-1 py-0.5 system-xs-medium text-text-tertiary">
                 {field.label}
@@ -73,7 +75,7 @@ const InputFieldsTab = ({
           accept=".csv,.xlsx"
           onChange={(event) => {
             const file = event.target.files?.[0]
-            onUploadFileNameChange(file?.name ?? null)
+            setUploadedFileName(resourceType, resourceId, file?.name ?? null)
           }}
         />
         {isPanelReady && (
