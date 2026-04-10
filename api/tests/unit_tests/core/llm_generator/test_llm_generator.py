@@ -156,8 +156,7 @@ class TestLLMGenerator:
         """Nested <think> tags — non-greedy match strips the first complete block."""
         mock_response = MagicMock()
         mock_response.message.get_text_content.return_value = (
-            "<think>outer <think>inner</think> leftover</think>\n"
-            '["What is polymorphism?", "What are interfaces?"]'
+            '<think>outer <think>inner</think> leftover</think>\n["What is polymorphism?", "What are interfaces?"]'
         )
         mock_model_instance.invoke_llm.return_value = mock_response
 
