@@ -219,7 +219,7 @@ def _get_cluster_connection_health_params() -> dict[str, Any]:
     here. Only ``retry``, ``socket_timeout``, and ``socket_connect_timeout``
     are passed through.
     """
-    params = _get_connection_health_params()
+    params: dict[str, Any] = dict(_get_connection_health_params())
     return {k: v for k, v in params.items() if k != "health_check_interval"}
 
 
@@ -262,7 +262,8 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
         sentinel_kwargs=sentinel_kwargs,
     )
 
-    master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
+    params: dict[str, Any] = {**redis_params}
+    master: redis.Redis = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **params)
     return master
 
 
