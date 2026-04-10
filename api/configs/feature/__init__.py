@@ -286,6 +286,11 @@ class CliApiConfig(BaseSettings):
         default="",
     )
 
+    DIFY_PORT: int = Field(
+        description="Dify API port, used by Docker sandbox for socat forwarding.",
+        default=5001,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

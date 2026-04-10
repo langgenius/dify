@@ -179,7 +179,7 @@ class CliFetchToolsBatchApi(Resource):
                     provider_type=provider_type,
                     provider_id=item.tool_provider,
                     tool_name=item.tool_name,
-                    invoke_from=InvokeFrom.AGENT,
+                    invoke_from=InvokeFrom.DEBUGGER,
                     credential_id=item.credential_id,
                 )
                 tool_config = DifyCliToolConfig.create_from_tool(tool_runtime)
