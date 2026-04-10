@@ -15,6 +15,7 @@ type UploadRunPopoverProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   triggerDisabled: boolean
+  triggerLabel?: string
   inputFields: InputField[]
   currentFileName: string | null | undefined
   currentFileExtension: string
@@ -32,6 +33,7 @@ const UploadRunPopover = ({
   open,
   onOpenChange,
   triggerDisabled,
+  triggerLabel,
   inputFields,
   currentFileName,
   currentFileExtension,
@@ -65,7 +67,7 @@ const UploadRunPopover = ({
       <PopoverTrigger
         render={(
           <Button className="w-full justify-center" variant="primary" disabled={triggerDisabled}>
-            {t('batch.uploadAndRun')}
+            {triggerLabel ?? t('batch.uploadAndRun')}
           </Button>
         )}
       />

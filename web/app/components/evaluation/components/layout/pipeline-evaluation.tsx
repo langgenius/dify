@@ -1,14 +1,16 @@
 'use client'
 
 import type { EvaluationResourceProps } from '../../types'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useDocLink } from '@/context/i18n'
 import { useAvailableEvaluationMetrics } from '@/service/use-evaluation'
 import { getEvaluationMockConfig } from '../../mock'
 import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
+import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popover'
+import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
+import { usePublishedInputFields } from '../batch-test-panel/input-fields/use-published-input-fields'
 import JudgeModelSelector from '../judge-model-selector'
 import PipelineHistoryTable from '../pipeline/pipeline-history-table'
 import PipelineMetricItem from '../pipeline/pipeline-metric-item'
@@ -26,11 +28,8 @@ const PipelineEvaluation = ({
   const addBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore(state => state.removeMetric)
   const updateMetricThreshold = useEvaluationStore(state => state.updateMetricThreshold)
-  const setUploadedFileName = useEvaluationStore(state => state.setUploadedFileName)
-  const runBatchTest = useEvaluationStore(state => state.runBatchTest)
   const { data: availableMetricsData } = useAvailableEvaluationMetrics()
   const resource = useEvaluationResource(resourceType, resourceId)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const config = getEvaluationMockConfig(resourceType)
   const builtinMetricMap = useMemo(() => new Map(
     resource.metrics
@@ -45,6 +44,16 @@ const PipelineEvaluation = ({
   }, [availableMetricIds, builtinMetricMap, config.builtinMetrics])
   const isConfigReady = !!resource.judgeModelId && builtinMetricMap.size > 0
   const isRunnable = isEvaluationRunnable(resource)
+  const { inputFields, isInputFieldsLoading } = usePublishedInputFields(resourceType, resourceId)
+  const actions = useInputFieldsActions({
+    resourceType,
+    resourceId,
+    inputFields,
+    isInputFieldsLoading,
+    isPanelReady: isConfigReady,
+    isRunnable,
+    templateFileName: config.templateFileName,
+  })
 
   useEffect(() => {
     ensureResource(resourceType, resourceId)
@@ -58,23 +67,6 @@ const PipelineEvaluation = ({
     }
 
     addBuiltinMetric(resourceType, resourceId, metricId)
-  }
-
-  const handleDownloadTemplate = () => {
-    const content = ['case_id,input,expected', '1,Example input,Example output'].join('\n')
-    const link = document.createElement('a')
-    link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(content)}`
-    link.download = config.templateFileName
-    link.click()
-  }
-
-  const handleUploadAndRun = () => {
-    if (!isRunnable) {
-      toast.warning(t('batch.validation'))
-      return
-    }
-
-    fileInputRef.current?.click()
   }
 
   return (
@@ -138,37 +130,32 @@ const PipelineEvaluation = ({
               <Button
                 className="flex-1 justify-center"
                 variant="secondary"
-                disabled={!isConfigReady}
-                onClick={handleDownloadTemplate}
+                disabled={!actions.canDownloadTemplate}
+                onClick={actions.handleDownloadTemplate}
               >
                 <span aria-hidden="true" className="mr-1 i-ri-file-excel-2-line h-4 w-4" />
                 {t('batch.downloadTemplate')}
               </Button>
-              <Button
-                className="flex-1 justify-center"
-                variant="primary"
-                disabled={!isConfigReady}
-                onClick={handleUploadAndRun}
-              >
-                {t('pipeline.uploadAndRun')}
-              </Button>
+              <div className="flex-1">
+                <UploadRunPopover
+                  open={actions.isUploadPopoverOpen}
+                  onOpenChange={actions.setIsUploadPopoverOpen}
+                  triggerDisabled={actions.uploadButtonDisabled}
+                  triggerLabel={t('pipeline.uploadAndRun')}
+                  inputFields={inputFields}
+                  currentFileName={actions.currentFileName}
+                  currentFileExtension={actions.currentFileExtension}
+                  currentFileSize={actions.currentFileSize}
+                  isFileUploading={actions.isFileUploading}
+                  isRunDisabled={actions.isRunDisabled}
+                  isRunning={actions.isRunning}
+                  onUploadFile={actions.handleUploadFile}
+                  onClearUploadedFile={actions.handleClearUploadedFile}
+                  onDownloadTemplate={actions.handleDownloadTemplate}
+                  onRun={actions.handleRun}
+                />
+              </div>
             </div>
-
-            <input
-              ref={fileInputRef}
-              hidden
-              type="file"
-              accept=".csv,.xlsx"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (!file)
-                  return
-
-                setUploadedFileName(resourceType, resourceId, file.name)
-                runBatchTest(resourceType, resourceId)
-                event.target.value = ''
-              }}
-            />
           </div>
         </div>
 

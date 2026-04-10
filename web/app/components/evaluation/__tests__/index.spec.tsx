@@ -1,15 +1,25 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Evaluation from '..'
 import ConditionsSection from '../components/conditions-section'
 import { useEvaluationStore } from '../store'
 
+const mockUpload = vi.hoisted(() => vi.fn())
 const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
 const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
 const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
 const mockUseSaveEvaluationConfigMutation = vi.hoisted(() => vi.fn())
 const mockUseStartEvaluationRunMutation = vi.hoisted(() => vi.fn())
+const mockUsePublishedPipelineInfo = vi.hoisted(() => vi.fn())
+
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: { pipeline_id?: string } }) => unknown) => selector({
+    dataset: {
+      pipeline_id: 'pipeline-1',
+    },
+  }),
+}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: () => ({
@@ -42,12 +52,20 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
+vi.mock('@/service/base', () => ({
+  upload: (...args: unknown[]) => mockUpload(...args),
+}))
+
 vi.mock('@/service/use-evaluation', () => ({
   useEvaluationConfig: (...args: unknown[]) => mockUseEvaluationConfig(...args),
   useAvailableEvaluationMetrics: (...args: unknown[]) => mockUseAvailableEvaluationMetrics(...args),
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
   useSaveEvaluationConfigMutation: (...args: unknown[]) => mockUseSaveEvaluationConfigMutation(...args),
   useStartEvaluationRunMutation: (...args: unknown[]) => mockUseStartEvaluationRunMutation(...args),
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  usePublishedPipelineInfo: (...args: unknown[]) => mockUsePublishedPipelineInfo(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -146,6 +164,28 @@ describe('Evaluation', () => {
     mockUseStartEvaluationRunMutation.mockReturnValue({
       isPending: false,
       mutate: vi.fn(),
+    })
+    mockUsePublishedPipelineInfo.mockReturnValue({
+      data: {
+        rag_pipeline_variables: [{
+          belong_to_node_id: 'shared',
+          type: 'text-input',
+          label: 'Question',
+          variable: 'question',
+          required: true,
+        }, {
+          belong_to_node_id: 'shared',
+          type: 'number',
+          label: 'Top K',
+          variable: 'top_k',
+          required: false,
+        }],
+      },
+      isLoading: false,
+    })
+    mockUpload.mockResolvedValue({
+      id: 'uploaded-file-id',
+      name: 'evaluation.csv',
     })
   })
 
@@ -410,5 +450,68 @@ describe('Evaluation', () => {
     expect(screen.getByDisplayValue('0.85')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'evaluation.batch.downloadTemplate' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' })).toBeEnabled()
+  })
+
+  it('should upload and start a pipeline evaluation run', async () => {
+    const startRun = vi.fn()
+    mockUseStartEvaluationRunMutation.mockReturnValue({
+      isPending: false,
+      mutate: startRun,
+    })
+    mockUpload.mockResolvedValue({
+      id: 'file-1',
+      name: 'pipeline-evaluation.csv',
+    })
+
+    renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-run" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-model' }))
+    fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' }))
+
+    expect(screen.getAllByText('question').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('top_k').length).toBeGreaterThan(0)
+
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv,.xlsx"]')
+    expect(fileInput).toBeInTheDocument()
+
+    fireEvent.change(fileInput!, {
+      target: {
+        files: [new File(['case_id,input,expected'], 'pipeline-evaluation.csv', { type: 'text/csv' })],
+      },
+    })
+
+    await waitFor(() => {
+      expect(mockUpload).toHaveBeenCalledWith({
+        xhr: expect.any(XMLHttpRequest),
+        data: expect.any(FormData),
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'evaluation.batch.run' }))
+
+    await waitFor(() => {
+      expect(startRun).toHaveBeenCalledWith({
+        params: {
+          targetType: 'datasets',
+          targetId: 'dataset-run',
+        },
+        body: {
+          evaluation_model: 'gpt-4o-mini',
+          evaluation_model_provider: 'openai',
+          default_metrics: [{
+            metric: 'context-precision',
+            value_type: 'number',
+            node_info_list: [],
+          }],
+          customized_metrics: null,
+          judgment_config: null,
+          file_id: 'file-1',
+        },
+      }, {
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      })
+    })
   })
 })
