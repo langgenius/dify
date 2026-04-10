@@ -368,22 +368,33 @@ class ApiToolManageService:
     @staticmethod
     def delete_api_tool_provider(user_id: str, tenant_id: str, provider_name: str):
         """
-        delete tool provider
+        Delete an API tool provider.
+
+        :param user_id: The ID of the user performing the deletion operation.
+        :param tenant_id: The ID of the workspace/tenant where the provider belongs.
+        :param provider_name: The unique name of the API tool provider to be deleted.
+        :raises ValueError: If the specified provider does not exist in the tenant.
+        :return: A dictionary indicating the result status.
         """
-        provider = db.session.scalar(
-            select(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+
+        # create new session with automatic transaction management
+        provider: ApiToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider = _session.scalar(
+                select(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
 
-        db.session.delete(provider)
-        db.session.commit()
+        # create new session with automatic transaction management to delete the provider
+        with sessionmaker(db.engine).begin() as _session:
+            _session.delete(provider)
 
         return {"result": "success"}
 
