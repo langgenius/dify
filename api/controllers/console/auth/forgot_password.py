@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -85,8 +84,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with sessionmaker(db.engine).begin() as session:
-            account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email)
 
         token = AccountService.send_reset_password_email(
             account=account,
@@ -184,17 +182,18 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-        with sessionmaker(db.engine).begin() as session:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(email)
 
-            if account:
-                self._update_existing_account(account, password_hashed, salt, session)
-            else:
-                raise AccountNotFound()
+        if account:
+            account = db.session.merge(account)
+            self._update_existing_account(account, password_hashed, salt)
+            db.session.commit()
+        else:
+            raise AccountNotFound()
 
         return {"result": "success"}
 
-    def _update_existing_account(self, account, password_hashed, salt, session):
+    def _update_existing_account(self, account, password_hashed, salt):
         # Update existing account credentials
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
