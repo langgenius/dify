@@ -1,8 +1,6 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { InputVar, Node } from '@/app/components/workflow/types'
-import type { RAGPipelineVariables } from '@/models/pipeline'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { inputVarTypeToVarType as pipelineInputVarTypeToVarType } from '@/app/components/workflow/nodes/data-source/utils'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 
 export type InputField = {
@@ -26,18 +24,6 @@ export const getStartNodeInputFields = (nodes?: Node[]): InputField[] => {
     .map(variable => ({
       name: variable.variable,
       type: inputVarTypeToVarType(variable.type ?? InputVarType.textInput),
-    }))
-}
-
-export const getRagPipelineInputFields = (variables?: RAGPipelineVariables): InputField[] => {
-  if (!Array.isArray(variables))
-    return []
-
-  return variables
-    .filter(variable => typeof variable.variable === 'string' && !!variable.variable)
-    .map(variable => ({
-      name: variable.variable,
-      type: pipelineInputVarTypeToVarType(variable.type),
     }))
 }
 

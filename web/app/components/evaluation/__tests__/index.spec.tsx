@@ -11,15 +11,6 @@ const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
 const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
 const mockUseSaveEvaluationConfigMutation = vi.hoisted(() => vi.fn())
 const mockUseStartEvaluationRunMutation = vi.hoisted(() => vi.fn())
-const mockUsePublishedPipelineInfo = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: { pipeline_id?: string } }) => unknown) => selector({
-    dataset: {
-      pipeline_id: 'pipeline-1',
-    },
-  }),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: () => ({
@@ -62,10 +53,6 @@ vi.mock('@/service/use-evaluation', () => ({
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
   useSaveEvaluationConfigMutation: (...args: unknown[]) => mockUseSaveEvaluationConfigMutation(...args),
   useStartEvaluationRunMutation: (...args: unknown[]) => mockUseStartEvaluationRunMutation(...args),
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineInfo: (...args: unknown[]) => mockUsePublishedPipelineInfo(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -164,24 +151,6 @@ describe('Evaluation', () => {
     mockUseStartEvaluationRunMutation.mockReturnValue({
       isPending: false,
       mutate: vi.fn(),
-    })
-    mockUsePublishedPipelineInfo.mockReturnValue({
-      data: {
-        rag_pipeline_variables: [{
-          belong_to_node_id: 'shared',
-          type: 'text-input',
-          label: 'Question',
-          variable: 'question',
-          required: true,
-        }, {
-          belong_to_node_id: 'shared',
-          type: 'number',
-          label: 'Top K',
-          variable: 'top_k',
-          required: false,
-        }],
-      },
-      isLoading: false,
     })
     mockUpload.mockResolvedValue({
       id: 'uploaded-file-id',
@@ -469,15 +438,15 @@ describe('Evaluation', () => {
     fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' }))
 
-    expect(screen.getAllByText('question').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('top_k').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('query').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Expect Results').length).toBeGreaterThan(0)
 
     const fileInput = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv,.xlsx"]')
     expect(fileInput).toBeInTheDocument()
 
     fireEvent.change(fileInput!, {
       target: {
-        files: [new File(['case_id,input,expected'], 'pipeline-evaluation.csv', { type: 'text/csv' })],
+        files: [new File(['query,Expect Results'], 'pipeline-evaluation.csv', { type: 'text/csv' })],
       },
     })
 

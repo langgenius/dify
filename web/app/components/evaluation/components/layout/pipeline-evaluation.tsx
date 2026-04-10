@@ -10,12 +10,16 @@ import { getEvaluationMockConfig } from '../../mock'
 import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
 import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popover'
 import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
-import { usePublishedInputFields } from '../batch-test-panel/input-fields/use-published-input-fields'
 import JudgeModelSelector from '../judge-model-selector'
 import PipelineHistoryTable from '../pipeline/pipeline-history-table'
 import PipelineMetricItem from '../pipeline/pipeline-metric-item'
 import PipelineResultsPanel from '../pipeline/pipeline-results-panel'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
+
+const PIPELINE_INPUT_FIELDS = [
+  { name: 'query', type: 'string' },
+  { name: 'Expect Results', type: 'string' },
+]
 
 const PipelineEvaluation = ({
   resourceType,
@@ -44,12 +48,11 @@ const PipelineEvaluation = ({
   }, [availableMetricIds, builtinMetricMap, config.builtinMetrics])
   const isConfigReady = !!resource.judgeModelId && builtinMetricMap.size > 0
   const isRunnable = isEvaluationRunnable(resource)
-  const { inputFields, isInputFieldsLoading } = usePublishedInputFields(resourceType, resourceId)
   const actions = useInputFieldsActions({
     resourceType,
     resourceId,
-    inputFields,
-    isInputFieldsLoading,
+    inputFields: PIPELINE_INPUT_FIELDS,
+    isInputFieldsLoading: false,
     isPanelReady: isConfigReady,
     isRunnable,
     templateFileName: config.templateFileName,
@@ -142,7 +145,7 @@ const PipelineEvaluation = ({
                   onOpenChange={actions.setIsUploadPopoverOpen}
                   triggerDisabled={actions.uploadButtonDisabled}
                   triggerLabel={t('pipeline.uploadAndRun')}
-                  inputFields={inputFields}
+                  inputFields={PIPELINE_INPUT_FIELDS}
                   currentFileName={actions.currentFileName}
                   currentFileExtension={actions.currentFileExtension}
                   currentFileSize={actions.currentFileSize}
