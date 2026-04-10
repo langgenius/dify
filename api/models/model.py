@@ -1860,16 +1860,11 @@ class MessageAnnotation(TypeBase):
     message_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        insert_default=func.current_timestamp(),
-        server_default=func.current_timestamp(),
-        init=False,
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         nullable=False,
-        insert_default=func.current_timestamp(),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
         init=False,
