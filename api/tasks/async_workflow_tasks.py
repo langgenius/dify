@@ -7,13 +7,13 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NotRequired
 
 from celery import shared_task
 from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
