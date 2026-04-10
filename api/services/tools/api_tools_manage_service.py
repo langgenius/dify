@@ -401,7 +401,12 @@ class ApiToolManageService:
     @staticmethod
     def get_api_tool_provider(user_id: str, tenant_id: str, provider: str):
         """
-        get api tool provider
+        Get API tool provider details.
+
+        :param user_id: The ID of the user requesting the provider.
+        :param tenant_id: The ID of the workspace/tenant.
+        :param provider: The name of the API tool provider.
+        :return: A dictionary containing the provider details.
         """
         return ToolManager.user_get_api_provider(provider=provider, tenant_id=tenant_id)
 
