@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent V2",
   "blocks.answer": "Answer",
   "blocks.assigner": "Variable Assigner",
   "blocks.code": "Code",
@@ -31,6 +32,7 @@
   "blocks.variable-aggregator": "Variable Aggregator",
   "blocks.variable-assigner": "Variable Aggregator",
   "blocksAbout.agent": "Invoking large language models to answer questions or process natural language",
+  "blocksAbout.agent-v2": "Next-gen agent with LLM, tools, sandbox execution, and configurable strategies",
   "blocksAbout.answer": "Define the reply content of a chat conversation",
   "blocksAbout.assigner": "The variable assignment node is used for assigning values to writable variables(like conversation variables).",
   "blocksAbout.code": "Execute a piece of Python or NodeJS code to implement custom logic",

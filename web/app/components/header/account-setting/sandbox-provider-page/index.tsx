@@ -76,12 +76,12 @@ export default function SandboxProviderPage() {
     setLoading(true)
     try {
       await saveSandboxProviderConfig(providerType, editConfig, true)
-      toast({ type: 'success', message: 'Saved and activated' })
+      toast.success('Saved and activated')
       setEditingType(null)
       fetchProviders()
     }
     catch (e: any) {
-      toast({ type: 'error', message: e.message || 'Failed to save' })
+      toast.error(e.message || 'Failed to save')
     }
     finally { setLoading(false) }
   }
@@ -89,22 +89,22 @@ export default function SandboxProviderPage() {
   const handleDelete = async (providerType: string) => {
     try {
       await deleteSandboxProviderConfig(providerType)
-      toast({ type: 'success', message: 'Deleted' })
+      toast.success('Deleted')
       fetchProviders()
     }
     catch (e: any) {
-      toast({ type: 'error', message: e.message || 'Failed to delete' })
+      toast.error(e.message || 'Failed to delete')
     }
   }
 
   const handleActivate = async (providerType: string) => {
     try {
       await activateSandboxProvider(providerType)
-      toast({ type: 'success', message: 'Activated' })
+      toast.success('Activated')
       fetchProviders()
     }
     catch (e: any) {
-      toast({ type: 'error', message: e.message || 'Failed to activate' })
+      toast.error(e.message || 'Failed to activate')
     }
   }
 
