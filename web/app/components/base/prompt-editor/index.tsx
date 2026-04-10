@@ -86,6 +86,12 @@ const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
 
     const editorState = editor.parseEditorState(textToEditorState(incomingValue))
     editor.setEditorState(editorState)
+    editor.update(() => {
+      $getRoot().getAllTextNodes().forEach((node) => {
+        if (node instanceof CustomTextNode)
+          node.markDirty()
+      })
+    })
   }, [editor, value])
 
   return null
