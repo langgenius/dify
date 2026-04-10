@@ -86,7 +86,7 @@ jobs:
       - name: Test Vector Stores
         run: |
           uv run --project api pytest --timeout "${PYTEST_TIMEOUT:-180}" \
-            api/packages/dify-vdb-chroma/tests \
-            api/packages/dify-vdb-pgvector/tests \
-            api/packages/dify-vdb-qdrant/tests \
-            api/packages/dify-vdb-weaviate/tests
+            api/providers/vdb/chroma/tests \
+            api/providers/vdb/pgvector/tests \
+            api/providers/vdb/qdrant/tests \
+            api/providers/vdb/weaviate/tests

@@ -1771,74 +1771,74 @@ tools = [
     { name = "cloudscraper", specifier = "~=1.2.71" },
     { name = "nltk", specifier = "~=3.9.1" },
 ]
-vdb-alibabacloud-mysql = [{ name = "dify-vdb-alibabacloud-mysql", editable = "packages/dify-vdb-alibabacloud-mysql" }]
+vdb-alibabacloud-mysql = [{ name = "dify-vdb-alibabacloud-mysql", editable = "providers/vdb/alibabacloud-mysql" }]
 vdb-all = [
-    { name = "dify-vdb-alibabacloud-mysql", editable = "packages/dify-vdb-alibabacloud-mysql" },
-    { name = "dify-vdb-analyticdb", editable = "packages/dify-vdb-analyticdb" },
-    { name = "dify-vdb-baidu", editable = "packages/dify-vdb-baidu" },
-    { name = "dify-vdb-chroma", editable = "packages/dify-vdb-chroma" },
-    { name = "dify-vdb-clickzetta", editable = "packages/dify-vdb-clickzetta" },
-    { name = "dify-vdb-couchbase", editable = "packages/dify-vdb-couchbase" },
-    { name = "dify-vdb-elasticsearch", editable = "packages/dify-vdb-elasticsearch" },
-    { name = "dify-vdb-hologres", editable = "packages/dify-vdb-hologres" },
-    { name = "dify-vdb-huawei-cloud", editable = "packages/dify-vdb-huawei-cloud" },
-    { name = "dify-vdb-iris", editable = "packages/dify-vdb-iris" },
-    { name = "dify-vdb-lindorm", editable = "packages/dify-vdb-lindorm" },
-    { name = "dify-vdb-matrixone", editable = "packages/dify-vdb-matrixone" },
-    { name = "dify-vdb-milvus", editable = "packages/dify-vdb-milvus" },
-    { name = "dify-vdb-myscale", editable = "packages/dify-vdb-myscale" },
-    { name = "dify-vdb-oceanbase", editable = "packages/dify-vdb-oceanbase" },
-    { name = "dify-vdb-opengauss", editable = "packages/dify-vdb-opengauss" },
-    { name = "dify-vdb-opensearch", editable = "packages/dify-vdb-opensearch" },
-    { name = "dify-vdb-oracle", editable = "packages/dify-vdb-oracle" },
-    { name = "dify-vdb-pgvecto-rs", editable = "packages/dify-vdb-pgvecto-rs" },
-    { name = "dify-vdb-pgvector", editable = "packages/dify-vdb-pgvector" },
-    { name = "dify-vdb-qdrant", editable = "packages/dify-vdb-qdrant" },
-    { name = "dify-vdb-relyt", editable = "packages/dify-vdb-relyt" },
-    { name = "dify-vdb-tablestore", editable = "packages/dify-vdb-tablestore" },
-    { name = "dify-vdb-tencent", editable = "packages/dify-vdb-tencent" },
-    { name = "dify-vdb-tidb-on-qdrant", editable = "packages/dify-vdb-tidb-on-qdrant" },
-    { name = "dify-vdb-tidb-vector", editable = "packages/dify-vdb-tidb-vector" },
-    { name = "dify-vdb-upstash", editable = "packages/dify-vdb-upstash" },
-    { name = "dify-vdb-vastbase", editable = "packages/dify-vdb-vastbase" },
-    { name = "dify-vdb-vikingdb", editable = "packages/dify-vdb-vikingdb" },
-    { name = "dify-vdb-weaviate", editable = "packages/dify-vdb-weaviate" },
+    { name = "dify-vdb-alibabacloud-mysql", editable = "providers/vdb/alibabacloud-mysql" },
+    { name = "dify-vdb-analyticdb", editable = "providers/vdb/analyticdb" },
+    { name = "dify-vdb-baidu", editable = "providers/vdb/baidu" },
+    { name = "dify-vdb-chroma", editable = "providers/vdb/chroma" },
+    { name = "dify-vdb-clickzetta", editable = "providers/vdb/clickzetta" },
+    { name = "dify-vdb-couchbase", editable = "providers/vdb/couchbase" },
+    { name = "dify-vdb-elasticsearch", editable = "providers/vdb/elasticsearch" },
+    { name = "dify-vdb-hologres", editable = "providers/vdb/hologres" },
+    { name = "dify-vdb-huawei-cloud", editable = "providers/vdb/huawei-cloud" },
+    { name = "dify-vdb-iris", editable = "providers/vdb/iris" },
+    { name = "dify-vdb-lindorm", editable = "providers/vdb/lindorm" },
+    { name = "dify-vdb-matrixone", editable = "providers/vdb/matrixone" },
+    { name = "dify-vdb-milvus", editable = "providers/vdb/milvus" },
+    { name = "dify-vdb-myscale", editable = "providers/vdb/myscale" },
+    { name = "dify-vdb-oceanbase", editable = "providers/vdb/oceanbase" },
+    { name = "dify-vdb-opengauss", editable = "providers/vdb/opengauss" },
+    { name = "dify-vdb-opensearch", editable = "providers/vdb/opensearch" },
+    { name = "dify-vdb-oracle", editable = "providers/vdb/oracle" },
+    { name = "dify-vdb-pgvecto-rs", editable = "providers/vdb/pgvecto-rs" },
+    { name = "dify-vdb-pgvector", editable = "providers/vdb/pgvector" },
+    { name = "dify-vdb-qdrant", editable = "providers/vdb/qdrant" },
+    { name = "dify-vdb-relyt", editable = "providers/vdb/relyt" },
+    { name = "dify-vdb-tablestore", editable = "providers/vdb/tablestore" },
+    { name = "dify-vdb-tencent", editable = "providers/vdb/tencent" },
+    { name = "dify-vdb-tidb-on-qdrant", editable = "providers/vdb/tidb-on-qdrant" },
+    { name = "dify-vdb-tidb-vector", editable = "providers/vdb/tidb-vector" },
+    { name = "dify-vdb-upstash", editable = "providers/vdb/upstash" },
+    { name = "dify-vdb-vastbase", editable = "providers/vdb/vastbase" },
+    { name = "dify-vdb-vikingdb", editable = "providers/vdb/vikingdb" },
+    { name = "dify-vdb-weaviate", editable = "providers/vdb/weaviate" },
 ]
-vdb-analyticdb = [{ name = "dify-vdb-analyticdb", editable = "packages/dify-vdb-analyticdb" }]
-vdb-baidu = [{ name = "dify-vdb-baidu", editable = "packages/dify-vdb-baidu" }]
-vdb-chroma = [{ name = "dify-vdb-chroma", editable = "packages/dify-vdb-chroma" }]
-vdb-clickzetta = [{ name = "dify-vdb-clickzetta", editable = "packages/dify-vdb-clickzetta" }]
-vdb-couchbase = [{ name = "dify-vdb-couchbase", editable = "packages/dify-vdb-couchbase" }]
-vdb-elasticsearch = [{ name = "dify-vdb-elasticsearch", editable = "packages/dify-vdb-elasticsearch" }]
-vdb-hologres = [{ name = "dify-vdb-hologres", editable = "packages/dify-vdb-hologres" }]
-vdb-huawei-cloud = [{ name = "dify-vdb-huawei-cloud", editable = "packages/dify-vdb-huawei-cloud" }]
-vdb-iris = [{ name = "dify-vdb-iris", editable = "packages/dify-vdb-iris" }]
-vdb-lindorm = [{ name = "dify-vdb-lindorm", editable = "packages/dify-vdb-lindorm" }]
-vdb-matrixone = [{ name = "dify-vdb-matrixone", editable = "packages/dify-vdb-matrixone" }]
-vdb-milvus = [{ name = "dify-vdb-milvus", editable = "packages/dify-vdb-milvus" }]
-vdb-myscale = [{ name = "dify-vdb-myscale", editable = "packages/dify-vdb-myscale" }]
-vdb-oceanbase = [{ name = "dify-vdb-oceanbase", editable = "packages/dify-vdb-oceanbase" }]
-vdb-opengauss = [{ name = "dify-vdb-opengauss", editable = "packages/dify-vdb-opengauss" }]
-vdb-opensearch = [{ name = "dify-vdb-opensearch", editable = "packages/dify-vdb-opensearch" }]
-vdb-oracle = [{ name = "dify-vdb-oracle", editable = "packages/dify-vdb-oracle" }]
-vdb-pgvecto-rs = [{ name = "dify-vdb-pgvecto-rs", editable = "packages/dify-vdb-pgvecto-rs" }]
-vdb-pgvector = [{ name = "dify-vdb-pgvector", editable = "packages/dify-vdb-pgvector" }]
-vdb-qdrant = [{ name = "dify-vdb-qdrant", editable = "packages/dify-vdb-qdrant" }]
-vdb-relyt = [{ name = "dify-vdb-relyt", editable = "packages/dify-vdb-relyt" }]
-vdb-tablestore = [{ name = "dify-vdb-tablestore", editable = "packages/dify-vdb-tablestore" }]
-vdb-tencent = [{ name = "dify-vdb-tencent", editable = "packages/dify-vdb-tencent" }]
-vdb-tidb-on-qdrant = [{ name = "dify-vdb-tidb-on-qdrant", editable = "packages/dify-vdb-tidb-on-qdrant" }]
-vdb-tidb-vector = [{ name = "dify-vdb-tidb-vector", editable = "packages/dify-vdb-tidb-vector" }]
-vdb-upstash = [{ name = "dify-vdb-upstash", editable = "packages/dify-vdb-upstash" }]
-vdb-vastbase = [{ name = "dify-vdb-vastbase", editable = "packages/dify-vdb-vastbase" }]
-vdb-vikingdb = [{ name = "dify-vdb-vikingdb", editable = "packages/dify-vdb-vikingdb" }]
-vdb-weaviate = [{ name = "dify-vdb-weaviate", editable = "packages/dify-vdb-weaviate" }]
+vdb-analyticdb = [{ name = "dify-vdb-analyticdb", editable = "providers/vdb/analyticdb" }]
+vdb-baidu = [{ name = "dify-vdb-baidu", editable = "providers/vdb/baidu" }]
+vdb-chroma = [{ name = "dify-vdb-chroma", editable = "providers/vdb/chroma" }]
+vdb-clickzetta = [{ name = "dify-vdb-clickzetta", editable = "providers/vdb/clickzetta" }]
+vdb-couchbase = [{ name = "dify-vdb-couchbase", editable = "providers/vdb/couchbase" }]
+vdb-elasticsearch = [{ name = "dify-vdb-elasticsearch", editable = "providers/vdb/elasticsearch" }]
+vdb-hologres = [{ name = "dify-vdb-hologres", editable = "providers/vdb/hologres" }]
+vdb-huawei-cloud = [{ name = "dify-vdb-huawei-cloud", editable = "providers/vdb/huawei-cloud" }]
+vdb-iris = [{ name = "dify-vdb-iris", editable = "providers/vdb/iris" }]
+vdb-lindorm = [{ name = "dify-vdb-lindorm", editable = "providers/vdb/lindorm" }]
+vdb-matrixone = [{ name = "dify-vdb-matrixone", editable = "providers/vdb/matrixone" }]
+vdb-milvus = [{ name = "dify-vdb-milvus", editable = "providers/vdb/milvus" }]
+vdb-myscale = [{ name = "dify-vdb-myscale", editable = "providers/vdb/myscale" }]
+vdb-oceanbase = [{ name = "dify-vdb-oceanbase", editable = "providers/vdb/oceanbase" }]
+vdb-opengauss = [{ name = "dify-vdb-opengauss", editable = "providers/vdb/opengauss" }]
+vdb-opensearch = [{ name = "dify-vdb-opensearch", editable = "providers/vdb/opensearch" }]
+vdb-oracle = [{ name = "dify-vdb-oracle", editable = "providers/vdb/oracle" }]
+vdb-pgvecto-rs = [{ name = "dify-vdb-pgvecto-rs", editable = "providers/vdb/pgvecto-rs" }]
+vdb-pgvector = [{ name = "dify-vdb-pgvector", editable = "providers/vdb/pgvector" }]
+vdb-qdrant = [{ name = "dify-vdb-qdrant", editable = "providers/vdb/qdrant" }]
+vdb-relyt = [{ name = "dify-vdb-relyt", editable = "providers/vdb/relyt" }]
+vdb-tablestore = [{ name = "dify-vdb-tablestore", editable = "providers/vdb/tablestore" }]
+vdb-tencent = [{ name = "dify-vdb-tencent", editable = "providers/vdb/tencent" }]
+vdb-tidb-on-qdrant = [{ name = "dify-vdb-tidb-on-qdrant", editable = "providers/vdb/tidb-on-qdrant" }]
+vdb-tidb-vector = [{ name = "dify-vdb-tidb-vector", editable = "providers/vdb/tidb-vector" }]
+vdb-upstash = [{ name = "dify-vdb-upstash", editable = "providers/vdb/upstash" }]
+vdb-vastbase = [{ name = "dify-vdb-vastbase", editable = "providers/vdb/vastbase" }]
+vdb-vikingdb = [{ name = "dify-vdb-vikingdb", editable = "providers/vdb/vikingdb" }]
+vdb-weaviate = [{ name = "dify-vdb-weaviate", editable = "providers/vdb/weaviate" }]
 vdb-xinference = [{ name = "xinference-client", specifier = "~=2.4.0" }]
 
 [[package]]
 name = "dify-vdb-alibabacloud-mysql"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-alibabacloud-mysql" }
+source = { editable = "providers/vdb/alibabacloud-mysql" }
 dependencies = [
     { name = "mysql-connector-python" },
 ]
@@ -1849,7 +1849,7 @@ requires-dist = [{ name = "mysql-connector-python", specifier = ">=9.3.0" }]
 [[package]]
 name = "dify-vdb-analyticdb"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-analyticdb" }
+source = { editable = "providers/vdb/analyticdb" }
 dependencies = [
     { name = "alibabacloud-gpdb20160503" },
     { name = "alibabacloud-tea-openapi" },
@@ -1866,7 +1866,7 @@ requires-dist = [
 [[package]]
 name = "dify-vdb-baidu"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-baidu" }
+source = { editable = "providers/vdb/baidu" }
 dependencies = [
     { name = "pymochow" },
 ]
@@ -1877,7 +1877,7 @@ requires-dist = [{ name = "pymochow", specifier = "==2.4.0" }]
 [[package]]
 name = "dify-vdb-chroma"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-chroma" }
+source = { editable = "providers/vdb/chroma" }
 dependencies = [
     { name = "chromadb" },
 ]
@@ -1888,7 +1888,7 @@ requires-dist = [{ name = "chromadb", specifier = "==0.5.20" }]
 [[package]]
 name = "dify-vdb-clickzetta"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-clickzetta" }
+source = { editable = "providers/vdb/clickzetta" }
 dependencies = [
     { name = "clickzetta-connector-python" },
 ]
@@ -1899,7 +1899,7 @@ requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102"
 [[package]]
 name = "dify-vdb-couchbase"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-couchbase" }
+source = { editable = "providers/vdb/couchbase" }
 dependencies = [
     { name = "couchbase" },
 ]
@@ -1910,7 +1910,7 @@ requires-dist = [{ name = "couchbase", specifier = "~=4.6.0" }]
 [[package]]
 name = "dify-vdb-elasticsearch"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-elasticsearch" }
+source = { editable = "providers/vdb/elasticsearch" }
 dependencies = [
     { name = "elasticsearch" },
 ]
@@ -1921,7 +1921,7 @@ requires-dist = [{ name = "elasticsearch", specifier = "==8.14.0" }]
 [[package]]
 name = "dify-vdb-hologres"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-hologres" }
+source = { editable = "providers/vdb/hologres" }
 dependencies = [
     { name = "holo-search-sdk" },
 ]
@@ -1932,7 +1932,7 @@ requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.1" }]
 [[package]]
 name = "dify-vdb-huawei-cloud"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-huawei-cloud" }
+source = { editable = "providers/vdb/huawei-cloud" }
 dependencies = [
     { name = "elasticsearch" },
 ]
@@ -1943,7 +1943,7 @@ requires-dist = [{ name = "elasticsearch", specifier = "==8.14.0" }]
 [[package]]
 name = "dify-vdb-iris"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-iris" }
+source = { editable = "providers/vdb/iris" }
 dependencies = [
     { name = "intersystems-irispython" },
 ]
@@ -1954,7 +1954,7 @@ requires-dist = [{ name = "intersystems-irispython", specifier = ">=5.1.0" }]
 [[package]]
 name = "dify-vdb-lindorm"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-lindorm" }
+source = { editable = "providers/vdb/lindorm" }
 dependencies = [
     { name = "opensearch-py" },
     { name = "tenacity" },
@@ -1969,7 +1969,7 @@ requires-dist = [
 [[package]]
 name = "dify-vdb-matrixone"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-matrixone" }
+source = { editable = "providers/vdb/matrixone" }
 dependencies = [
     { name = "mo-vector" },
 ]
@@ -1980,7 +1980,7 @@ requires-dist = [{ name = "mo-vector", specifier = "~=0.1.13" }]
 [[package]]
 name = "dify-vdb-milvus"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-milvus" }
+source = { editable = "providers/vdb/milvus" }
 dependencies = [
     { name = "pymilvus" },
 ]
@@ -1991,7 +1991,7 @@ requires-dist = [{ name = "pymilvus", specifier = "~=2.6.10" }]
 [[package]]
 name = "dify-vdb-myscale"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-myscale" }
+source = { editable = "providers/vdb/myscale" }
 dependencies = [
     { name = "clickhouse-connect" },
 ]
@@ -2002,7 +2002,7 @@ requires-dist = [{ name = "clickhouse-connect", specifier = "~=0.15.0" }]
 [[package]]
 name = "dify-vdb-oceanbase"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-oceanbase" }
+source = { editable = "providers/vdb/oceanbase" }
 dependencies = [
     { name = "mysql-connector-python" },
     { name = "pyobvector" },
@@ -2017,12 +2017,12 @@ requires-dist = [
 [[package]]
 name = "dify-vdb-opengauss"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-opengauss" }
+source = { editable = "providers/vdb/opengauss" }
 
 [[package]]
 name = "dify-vdb-opensearch"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-opensearch" }
+source = { editable = "providers/vdb/opensearch" }
 dependencies = [
     { name = "opensearch-py" },
 ]
@@ -2033,7 +2033,7 @@ requires-dist = [{ name = "opensearch-py", specifier = "==3.1.0" }]
 [[package]]
 name = "dify-vdb-oracle"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-oracle" }
+source = { editable = "providers/vdb/oracle" }
 dependencies = [
     { name = "oracledb" },
 ]
@@ -2044,7 +2044,7 @@ requires-dist = [{ name = "oracledb", specifier = "==3.4.2" }]
 [[package]]
 name = "dify-vdb-pgvecto-rs"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-pgvecto-rs" }
+source = { editable = "providers/vdb/pgvecto-rs" }
 dependencies = [
     { name = "pgvecto-rs", extra = ["sqlalchemy"] },
 ]
@@ -2055,7 +2055,7 @@ requires-dist = [{ name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=
 [[package]]
 name = "dify-vdb-pgvector"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-pgvector" }
+source = { editable = "providers/vdb/pgvector" }
 dependencies = [
     { name = "pgvector" },
 ]
@@ -2066,7 +2066,7 @@ requires-dist = [{ name = "pgvector", specifier = "==0.4.2" }]
 [[package]]
 name = "dify-vdb-qdrant"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-qdrant" }
+source = { editable = "providers/vdb/qdrant" }
 dependencies = [
     { name = "qdrant-client" },
 ]
@@ -2077,12 +2077,12 @@ requires-dist = [{ name = "qdrant-client", specifier = "==1.9.0" }]
 [[package]]
 name = "dify-vdb-relyt"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-relyt" }
+source = { editable = "providers/vdb/relyt" }
 
 [[package]]
 name = "dify-vdb-tablestore"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-tablestore" }
+source = { editable = "providers/vdb/tablestore" }
 dependencies = [
     { name = "tablestore" },
 ]
@@ -2093,7 +2093,7 @@ requires-dist = [{ name = "tablestore", specifier = "==6.4.3" }]
 [[package]]
 name = "dify-vdb-tencent"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-tencent" }
+source = { editable = "providers/vdb/tencent" }
 dependencies = [
     { name = "tcvectordb" },
 ]
@@ -2104,7 +2104,7 @@ requires-dist = [{ name = "tcvectordb", specifier = "~=2.1.0" }]
 [[package]]
 name = "dify-vdb-tidb-on-qdrant"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-tidb-on-qdrant" }
+source = { editable = "providers/vdb/tidb-on-qdrant" }
 dependencies = [
     { name = "qdrant-client" },
 ]
@@ -2115,7 +2115,7 @@ requires-dist = [{ name = "qdrant-client", specifier = "==1.9.0" }]
 [[package]]
 name = "dify-vdb-tidb-vector"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-tidb-vector" }
+source = { editable = "providers/vdb/tidb-vector" }
 dependencies = [
     { name = "tidb-vector" },
 ]
@@ -2126,7 +2126,7 @@ requires-dist = [{ name = "tidb-vector", specifier = "==0.0.15" }]
 [[package]]
 name = "dify-vdb-upstash"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-upstash" }
+source = { editable = "providers/vdb/upstash" }
 dependencies = [
     { name = "upstash-vector" },
 ]
@@ -2137,7 +2137,7 @@ requires-dist = [{ name = "upstash-vector", specifier = "==0.8.0" }]
 [[package]]
 name = "dify-vdb-vastbase"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-vastbase" }
+source = { editable = "providers/vdb/vastbase" }
 dependencies = [
     { name = "pyobvector" },
 ]
@@ -2148,7 +2148,7 @@ requires-dist = [{ name = "pyobvector", specifier = "~=0.2.17" }]
 [[package]]
 name = "dify-vdb-vikingdb"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-vikingdb" }
+source = { editable = "providers/vdb/vikingdb" }
 dependencies = [
     { name = "volcengine-compat" },
 ]
@@ -2159,7 +2159,7 @@ requires-dist = [{ name = "volcengine-compat", specifier = "~=1.0.0" }]
 [[package]]
 name = "dify-vdb-weaviate"
 version = "1.13.3"
-source = { editable = "packages/dify-vdb-weaviate" }
+source = { editable = "providers/vdb/weaviate" }
 dependencies = [
     { name = "weaviate-client" },
 ]

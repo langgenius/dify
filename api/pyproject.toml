@@ -98,8 +98,8 @@ dependencies = [
 packages = []
 
 [tool.uv.workspace]
-members = ["packages/*"]
-exclude = ["packages/__pycache__"]
+members = ["providers/vdb/*"]
+exclude = ["providers/vdb/__pycache__"]
 
 [tool.uv.sources]
 dify-vdb-alibabacloud-mysql = { workspace = true }
@@ -232,7 +232,7 @@ storage = [
 tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
 
 ############################################################
-# [ VDB ] workspace plugins — hollow packages under packages/dify-vdb-*
+# [ VDB ] workspace plugins — hollow packages under providers/vdb/*
 # Each declares its own third-party deps and registers dify.vector_backends entry points.
 # Use: uv sync --group vdb-all | uv sync --group vdb-qdrant
 # Regenerate packages: python scripts/generate_vdb_workspace_packages.py

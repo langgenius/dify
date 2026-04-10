@@ -21,7 +21,7 @@ RUN apt-get update \
           # for building gmpy2
           libmpfr-dev libmpc-dev
 
-# Install Python dependencies (workspace members under packages/)
+# Install Python dependencies (workspace members under providers/vdb/)
 COPY pyproject.toml uv.lock ./
 COPY packages ./packages
 RUN uv sync --group vdb-all --locked --no-dev
