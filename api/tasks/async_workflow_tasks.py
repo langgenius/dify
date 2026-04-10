@@ -13,7 +13,7 @@ from celery import shared_task
 from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from configs import dify_config
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
@@ -50,6 +50,7 @@ WorkflowGeneratorArgsDict = TypedDict(  # noqa: UP013
         "inputs": dict[str, Any],
         "files": list[Any],
         "_skip_prepare_user_inputs": bool,
+        "workflow_id": NotRequired[str],
     },
 )
 
