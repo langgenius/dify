@@ -1560,11 +1560,6 @@
       "count": 1
     }
   },
-  "app/components/base/avatar/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/badge.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
