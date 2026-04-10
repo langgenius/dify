@@ -101,4 +101,4 @@ If you ever get stuck or get a burning question while contributing, simply shoot
 ## Automated Agent Contributions
 
 > [!NOTE]
-> If you are an automated agent, keep the PR title unchanged and add `From <Tool Name>` as the final line of the PR description instead. For example: `From Codex`.
+> If you are an automated agent, add `From <Tool Name>` as the final line of the PR description. For example: `From Codex`.
