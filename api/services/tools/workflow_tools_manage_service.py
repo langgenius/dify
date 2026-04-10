@@ -361,28 +361,32 @@ class WorkflowToolManageService:
     def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[ToolApiEntity]:
         """
         List workflow tool provider tools.
+
         :param user_id: the user id
         :param tenant_id: the tenant id
         :param workflow_tool_id: the workflow tool id
         :return: the list of tools
         """
-        db_tool: WorkflowToolProvider | None = db.session.scalar(
-            select(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .limit(1)
-        )
 
-        if db_tool is None:
+        provider: WorkflowToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider = _session.scalar(
+                select(WorkflowToolProvider)
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
+                .limit(1)
+            )
+
+        if provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+        tool = ToolTransformService.workflow_provider_to_controller(provider)
         workflow_tools: list[WorkflowTool] = tool.get_tools(tenant_id)
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
         return [
             ToolTransformService.convert_tool_entity_to_api_entity(
-                tool=tool.get_tools(db_tool.tenant_id)[0],
+                tool=tool.get_tools(provider.tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool),
                 tenant_id=tenant_id,
             )
