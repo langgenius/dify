@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { Avatar } from '../index'
+import { Avatar } from '..'
 
 describe('Avatar', () => {
   describe('Rendering', () => {
