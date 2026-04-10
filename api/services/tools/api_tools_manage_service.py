@@ -228,16 +228,25 @@ class ApiToolManageService:
     @staticmethod
     def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[ToolApiEntity]:
         """
-        list api tool provider tools
+        List tools provided by a specific API tool provider.
+
+        :param user_id: The ID of the user requesting the list.
+        :param tenant_id: The ID of the workspace/tenant.
+        :param provider_name: The name of the API tool provider.
+        :return: A list of ToolApiEntity objects.
         """
-        provider: ApiToolProvider | None = db.session.scalar(
-            select(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+
+        # create new session with automatic transaction management
+        provider: ApiToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider = _session.scalar(
+                select(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
