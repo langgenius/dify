@@ -1,13 +1,14 @@
+import logging
 import subprocess
 import time
 
-import logging
-
-logger = logging.getLogger(__name__)
 from dify_vdb_couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def wait_for_healthy_container(service_name="couchbase-server", timeout=300):
@@ -17,10 +18,10 @@ def wait_for_healthy_container(service_name="couchbase-server", timeout=300):
             ["docker", "inspect", "--format", "{{.State.Health.Status}}", service_name], capture_output=True, text=True
         )
         if result.stdout.strip() == "healthy":
-            logger.info(f"{service_name} is healthy!")
+            logger.info("%s is healthy!", service_name)
             return True
         else:
-            logger.info(f"Waiting for {service_name} to be healthy...")
+            logger.info("Waiting for %s to be healthy...", service_name)
         time.sleep(10)
     raise TimeoutError(f"{service_name} did not become healthy in time")
 

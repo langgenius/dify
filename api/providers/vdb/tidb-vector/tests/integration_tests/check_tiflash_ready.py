@@ -1,9 +1,13 @@
+import logging
 import time
 
 import pymysql
 
+logger = logging.getLogger(__name__)
+
 
 def check_tiflash_ready() -> bool:
+    connection = None
     try:
         connection = pymysql.connect(
             host="localhost",
@@ -23,8 +27,8 @@ def check_tiflash_ready() -> bool:
             cursor.execute(select_tiflash_query)
             result = cursor.fetchall()
             return result is not None and len(result) > 0
-    except Exception as e:
-        logger.error(f"TiFlash is not ready. Exception: {e}")
+    except Exception:
+        logger.exception("TiFlash is not ready.")
         return False
     finally:
         if connection:
@@ -38,20 +42,20 @@ def main():
     for attempt in range(max_attempts):
         try:
             is_tiflash_ready = check_tiflash_ready()
-        except Exception as e:
-            logger.error(f"TiFlash is not ready. Exception: {e}")
+        except Exception:
+            logger.exception("TiFlash is not ready.")
             is_tiflash_ready = False
 
         if is_tiflash_ready:
             break
         else:
-            logger.error(f"Attempt {attempt + 1} failed, retry in {retry_interval_seconds} seconds...")
+            logger.error("Attempt %s failed, retry in %s seconds...", attempt + 1, retry_interval_seconds)
             time.sleep(retry_interval_seconds)
 
     if is_tiflash_ready:
         logger.info("TiFlash is ready in TiDB.")
     else:
-        logger.error(f"TiFlash is not ready in TiDB after {max_attempts} attempting checks.")
+        logger.error("TiFlash is not ready in TiDB after %s attempting checks.", max_attempts)
         exit(1)
 
 

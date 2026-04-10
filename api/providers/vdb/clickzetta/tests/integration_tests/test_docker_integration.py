@@ -3,13 +3,12 @@
 Test Clickzetta integration in Docker environment
 """
 
+import logging
 import os
 import time
-import logging
 
 import httpx
 from clickzetta import connect
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,35 +28,31 @@ def test_clickzetta_connection():
         )
 
         with conn.cursor() as cursor:
-            # Test basic connectivity
             cursor.execute("SELECT 1 as test")
             result = cursor.fetchone()
-            logger.info(f"✓ Connection test: {result}")
+            logger.info("✓ Connection test: %s", result)
 
-            # Check if our test table exists
             cursor.execute("SHOW TABLES IN dify")
             tables = cursor.fetchall()
-            logger.info(f"✓ Existing tables: {[t[1] for t in tables if t[0] == 'dify']}")
+            logger.info("✓ Existing tables: %s", [t[1] for t in tables if t[0] == "dify"])
 
-            # Check if test collection exists
             test_collection = "collection_test_dataset"
             if test_collection in [t[1] for t in tables if t[0] == "dify"]:
                 cursor.execute(f"DESCRIBE dify.{test_collection}")
                 columns = cursor.fetchall()
-                logger.info(f"✓ Table structure for {test_collection}:")
+                logger.info("✓ Table structure for %s:", test_collection)
                 for col in columns:
-                    logger.info(f"  - {col[0]}: {col[1]}")
+                    logger.info("  - %s: %s", col[0], col[1])
 
-                # Check for indexes
                 cursor.execute(f"SHOW INDEXES IN dify.{test_collection}")
                 indexes = cursor.fetchall()
-                logger.info(f"✓ Indexes on {test_collection}:")
+                logger.info("✓ Indexes on %s:", test_collection)
                 for idx in indexes:
-                    logger.info(f"  - {idx}")
+                    logger.info("  - %s", idx)
 
         return True
-    except Exception as e:
-        logger.error(f"✗ Connection test failed: {e}")
+    except Exception:
+        logger.exception("✗ Connection test failed")
         return False
 
 
@@ -66,7 +61,6 @@ def test_dify_api():
     logger.info("\n=== Testing Dify API ===")
     base_url = "http://localhost:5001"
 
-    # Wait for API to be ready
     max_retries = 30
     for i in range(max_retries):
         try:
@@ -76,17 +70,15 @@ def test_dify_api():
                 break
         except:
             if i == max_retries - 1:
-                logger.error("✗ Dify API is not responding")
+                logger.exception("✗ Dify API is not responding")
                 return False
             time.sleep(2)
 
-    # Check vector store configuration
     try:
-        # This is a simplified check - in production, you'd use proper auth
         logger.info("✓ Dify is configured to use Clickzetta as vector store")
         return True
-    except Exception as e:
-        logger.error(f"✗ API test failed: {e}")
+    except Exception:
+        logger.exception("✗ API test failed")
         return False
 
 
@@ -97,7 +89,7 @@ def verify_table_structure():
     expected_columns = {
         "id": "VARCHAR",
         "page_content": "VARCHAR",
-        "metadata": "VARCHAR",  # JSON stored as VARCHAR in Clickzetta
+        "metadata": "VARCHAR",
         "vector": "ARRAY<FLOAT>",
     }
 
@@ -105,11 +97,11 @@ def verify_table_structure():
 
     logger.info("✓ Expected table structure:")
     for col, dtype in expected_columns.items():
-        logger.info(f"  - {col}: {dtype}")
+        logger.info("  - %s: %s", col, dtype)
 
     logger.info("\n✓ Required metadata fields:")
     for field in expected_metadata_fields:
-        logger.info(f"  - {field}")
+        logger.info("  - %s", field)
 
     logger.info("\n✓ Index requirements:")
     logger.info("  - Vector index (HNSW) on 'vector' column")
@@ -135,12 +127,11 @@ def main():
         try:
             success = test_func()
             results.append((test_name, success))
-        except Exception as e:
-            logger.error(f"\n✗ {test_name} crashed: {e}")
+        except Exception:
+            logger.exception("\n✗ %s crashed", test_name)
             results.append((test_name, False))
 
-    # Summary
-    logger.info("\n" + "=" * 50)
+    logger.info("\n%s", "=" * 50)
     logger.info("Test Summary:")
     logger.info("=" * 50)
 
@@ -149,9 +140,9 @@ def main():
 
     for test_name, success in results:
         status = "✅ PASSED" if success else "❌ FAILED"
-        logger.info(f"{test_name}: {status}")
+        logger.info("%s: %s", test_name, status)
 
-    logger.info(f"\nTotal: {passed}/{total} tests passed")
+    logger.info("\nTotal: %s/%s tests passed", passed, total)
 
     if passed == total:
         logger.info("\n🎉 All tests passed! Clickzetta is ready for Dify Docker deployment.")

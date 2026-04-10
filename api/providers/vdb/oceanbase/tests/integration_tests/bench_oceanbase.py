@@ -7,11 +7,11 @@ Usage (from repo root):
 """
 
 import json
+import logging
 import random
 import statistics
 import time
 import uuid
-import logging
 
 from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance
 from sqlalchemy import JSON, Column, String, text
@@ -169,8 +169,8 @@ def main():
 
     logger.info("=" * 70)
     logger.info("OceanBase Vector Store — Performance Benchmark")
-    logger.info(f"  Endpoint : {HOST}:{PORT}")
-    logger.info(f"  Vec dim  : {VEC_DIM}")
+    logger.info("  Endpoint : %s:%s", HOST, PORT)
+    logger.info("  Vec dim  : %s", VEC_DIM)
     logger.info("=" * 70)
 
     # ------------------------------------------------------------------
@@ -190,10 +190,10 @@ def main():
         t_batch = bench_insert_batch(client_pooled, tbl_batch, rows, batch_size=100)
 
         speedup = t_single / t_batch if t_batch > 0 else float("inf")
-        logger.info(f"\n[Insert {n_docs} docs]")
-        logger.info(f"  Single-row : {t_single:.2f}s")
-        logger.info(f"  Batch(100) : {t_batch:.2f}s")
-        logger.info(f"  Speedup    : {speedup:.1f}x")
+        logger.info("\n[Insert %s docs]", n_docs)
+        logger.info("  Single-row : %.2fs", t_single)
+        logger.info("  Batch(100) : %.2fs", t_batch)
+        logger.info("  Speedup    : %.1fx", speedup)
 
     # ------------------------------------------------------------------
     # 2. Metadata query benchmark (use the 1000-doc batch table)
@@ -208,9 +208,9 @@ def main():
 
     logger.info("\n[Metadata filter query — 1000 rows, by document_id]")
     times_no_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=False)
-    logger.info(f"  Without index : {_fmt(times_no_idx)}")
+    logger.info("  Without index : %s", _fmt(times_no_idx))
     times_with_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=True)
-    logger.info(f"  With index    : {_fmt(times_with_idx)}")
+    logger.info("  With index    : %s", _fmt(times_with_idx))
 
     # ------------------------------------------------------------------
     # 3. Vector search benchmark — across metrics
@@ -225,7 +225,7 @@ def main():
         rows_vs, _ = _gen_rows(1000)
         bench_insert_batch(client_pooled, tbl_vs, rows_vs, batch_size=100)
         times = bench_vector_search(client_pooled, tbl_vs, metric, topk=10, n_queries=20)
-        logger.info(f"  {metric:15s}: {_fmt(times)}")
+        logger.info("  %-15s: %s", metric, _fmt(times))
         _drop(client_pooled, tbl_vs)
 
     # ------------------------------------------------------------------
@@ -235,7 +235,7 @@ def main():
         _drop(client, f"bench_single_{n}")
         _drop(client, f"bench_batch_{n}")
 
-    logger.info("\n" + "=" * 70)
+    logger.info("\n%s", "=" * 70)
     logger.info("Benchmark complete.")
     logger.info("=" * 70)
 
