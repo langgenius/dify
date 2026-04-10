@@ -50,7 +50,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.CUSTOMIZED
 
     @classmethod
-    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> CustomizedTemplatesResultDict:
+    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param tenant_id: tenant id
@@ -77,7 +77,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> CustomizedTemplateDetailDict | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param template_id: Template ID
@@ -90,7 +90,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         dsl_data = yaml.safe_load(pipeline_template.yaml_content)
         graph_data = dsl_data.get("workflow", {}).get("graph", {})
 
-        result: CustomizedTemplateDetailDict = {
+        return {
             "id": pipeline_template.id,
             "name": pipeline_template.name,
             "icon_info": pipeline_template.icon,
@@ -100,4 +100,3 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             "graph": graph_data,
             "created_by": pipeline_template.created_user_name,
         }
-        return result

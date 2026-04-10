@@ -49,7 +49,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.DATABASE
 
     @classmethod
-    def fetch_pipeline_templates_from_db(cls, language: str) -> PipelineTemplatesResultDict:
+    def fetch_pipeline_templates_from_db(cls, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param language: language
@@ -79,7 +79,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> PipelineTemplateDetailDict | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID
@@ -92,7 +92,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             return None
         dsl_data = yaml.safe_load(pipeline_template.yaml_content)
         graph_data = dsl_data.get("workflow", {}).get("graph", {})
-        result: PipelineTemplateDetailDict = {
+        return {
             "id": pipeline_template.id,
             "name": pipeline_template.name,
             "icon_info": pipeline_template.icon,
@@ -101,4 +101,3 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             "export_data": pipeline_template.yaml_content,
             "graph": graph_data,
         }
-        return result
