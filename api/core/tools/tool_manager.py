@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Protocol, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 import sqlalchemy as sa
 from graphon.runtime import VariablePool
@@ -100,7 +100,7 @@ class ToolManager:
     _builtin_provider_lock = Lock()
     _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
     _builtin_providers_loaded = False
-    _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
+    _builtin_tools_labels: dict[str, I18nObject | None] = {}
 
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -190,7 +190,7 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
-    ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
+    ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
         get the tool runtime
 
@@ -398,7 +398,7 @@ class ToolManager:
         agent_tool: AgentToolEntity,
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional["VariablePool"] = None,
+        variable_pool: "VariablePool | None" = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -442,7 +442,7 @@ class ToolManager:
         workflow_tool: WorkflowToolRuntimeSpec,
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Optional["VariablePool"] = None,
+        variable_pool: "VariablePool | None" = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -634,7 +634,7 @@ class ToolManager:
         cls._builtin_providers_loaded = False
 
     @classmethod
-    def get_tool_label(cls, tool_name: str) -> Union[I18nObject, None]:
+    def get_tool_label(cls, tool_name: str) -> I18nObject | None:
         """
         get the tool label
 
@@ -1052,7 +1052,7 @@ class ToolManager:
     def _convert_tool_parameters_type(
         cls,
         parameters: list[ToolParameter],
-        variable_pool: Optional["VariablePool"],
+        variable_pool: "VariablePool | None",
         tool_configurations: Mapping[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:
