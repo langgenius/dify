@@ -12,6 +12,7 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
@@ -23,7 +24,6 @@ import {
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import { Avatar } from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'

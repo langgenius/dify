@@ -9,7 +9,6 @@ from flask_restx import Resource, fields, marshal_with
 from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -580,8 +579,7 @@ class ChangeEmailSendEmailApi(Resource):
 
             user_email = current_user.email
         else:
-            with sessionmaker(db.engine).begin() as session:
-                account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
+            account = AccountService.get_account_by_email_with_case_fallback(args.email)
             if account is None:
                 raise AccountNotFound()
             email_for_sending = account.email
