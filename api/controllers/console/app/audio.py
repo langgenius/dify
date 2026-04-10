@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -51,7 +50,12 @@ class AudioTranscriptResponse(BaseModel):
     text: str = Field(description="Transcribed text from audio")
 
 
-register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template="#/definitions/{model}"))
+
+
+for cls in [AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery]:
+    reg(cls)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")

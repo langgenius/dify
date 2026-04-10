@@ -6,7 +6,6 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
@@ -28,12 +27,16 @@ class OAuthDataSourceSyncResponse(BaseModel):
     result: str = Field(description="Operation result")
 
 
-register_schema_models(
-    console_ns,
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template="#/definitions/{model}"))
+
+
+for cls in [
     OAuthDataSourceResponse,
     OAuthDataSourceBindingResponse,
     OAuthDataSourceSyncResponse,
-)
+]:
+    reg(cls)
 
 
 def get_oauth_providers():
