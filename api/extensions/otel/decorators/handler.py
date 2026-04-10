@@ -18,7 +18,7 @@ class SpanHandler:
 
     _signature_cache: dict[Callable[..., object], inspect.Signature] = {}
 
-    def _build_span_name(self, wrapped: Callable[..., object]) -> str:
+    def _build_span_name[**P, R](self, wrapped: Callable[P, R]) -> str:
         """
         Build the span name from the wrapped function.
 
@@ -29,9 +29,9 @@ class SpanHandler:
         """
         return f"{wrapped.__module__}.{wrapped.__qualname__}"
 
-    def _extract_arguments(
+    def _extract_arguments[**P, R](
         self,
-        wrapped: Callable[..., object],
+        wrapped: Callable[P, R],
         args: tuple[object, ...],
         kwargs: Mapping[str, object],
     ) -> dict[str, Any] | None:
