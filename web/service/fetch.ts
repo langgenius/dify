@@ -61,13 +61,15 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async ({ response }) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
-      const errorData = await response.clone()
-        .json()
-        .then(data => data as ResponseError)
-        .catch(() => null)
+      let errorData: ResponseError | null = null
+      try {
+        const data: unknown = await response.clone().json()
+        errorData = data as ResponseError
+      }
+      catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      if (shouldNotifyError)
+      if (shouldNotifyError && errorData)
         toast.error(errorData.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
