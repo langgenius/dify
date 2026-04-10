@@ -109,9 +109,9 @@ class DbMigrationAutoRenewLock:
                 timeout=self._ttl_seconds,
                 thread_local=False,
             )
-        acquired = bool(self._lock.acquire(
-            sleep=sleep, blocking=blocking, blocking_timeout=blocking_timeout, token=token
-        ))
+        acquired = bool(
+            self._lock.acquire(sleep=sleep, blocking=blocking, blocking_timeout=blocking_timeout, token=token)
+        )
         self._acquired = acquired
         if acquired:
             self._start_heartbeat()
