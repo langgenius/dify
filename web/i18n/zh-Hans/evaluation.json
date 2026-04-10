@@ -61,6 +61,7 @@
   "conditions.valueTypes.boolean": "布尔",
   "conditions.valueTypes.number": "数值",
   "conditions.valueTypes.string": "文本",
+  "config.saveFailed": "保存评测配置失败。",
   "description": "配置自动化测试，对应用表现进行评分。",
   "history.actions.downloadResultFile": "下载结果文件",
   "history.actions.downloadTestFile": "下载测试文件",

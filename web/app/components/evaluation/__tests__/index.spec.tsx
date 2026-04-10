@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import Evaluation from '..'
 import ConditionsSection from '../components/conditions-section'
@@ -6,6 +8,8 @@ import { useEvaluationStore } from '../store'
 const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
 const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
 const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
+const mockUseSaveEvaluationConfigMutation = vi.hoisted(() => vi.fn())
+const mockUseStartEvaluationRunMutation = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: () => ({
@@ -42,7 +46,70 @@ vi.mock('@/service/use-evaluation', () => ({
   useEvaluationConfig: (...args: unknown[]) => mockUseEvaluationConfig(...args),
   useAvailableEvaluationMetrics: (...args: unknown[]) => mockUseAvailableEvaluationMetrics(...args),
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
+  useSaveEvaluationConfigMutation: (...args: unknown[]) => mockUseSaveEvaluationConfigMutation(...args),
+  useStartEvaluationRunMutation: (...args: unknown[]) => mockUseStartEvaluationRunMutation(...args),
 }))
+
+vi.mock('@/service/use-workflow', () => ({
+  useAppWorkflow: () => ({
+    data: {
+      graph: {
+        nodes: [{
+          id: 'start',
+          data: {
+            type: 'start',
+            variables: [{
+              variable: 'query',
+              type: 'text-input',
+            }],
+          },
+        }],
+      },
+    },
+    isLoading: false,
+  }),
+}))
+
+vi.mock('@/service/use-snippet-workflows', () => ({
+  useSnippetPublishedWorkflow: () => ({
+    data: {
+      graph: {
+        nodes: [{
+          id: 'start',
+          data: {
+            type: 'start',
+            variables: [{
+              variable: 'query',
+              type: 'text-input',
+            }],
+          },
+        }],
+      },
+    },
+    isLoading: false,
+  }),
+}))
+
+const renderWithQueryClient = (ui: ReactNode) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    ),
+  })
+}
 
 describe('Evaluation', () => {
   beforeEach(() => {
@@ -72,12 +139,24 @@ describe('Evaluation', () => {
         })
       },
     })
+    mockUseSaveEvaluationConfigMutation.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    })
+    mockUseStartEvaluationRunMutation.mockReturnValue({
+      isPending: false,
+      mutate: vi.fn(),
+    })
   })
 
-  it('should search, select metric nodes, and create a batch history record', async () => {
-    vi.useFakeTimers()
+  it('should search, select metric nodes, and save evaluation config', () => {
+    const saveConfig = vi.fn()
+    mockUseSaveEvaluationConfigMutation.mockReturnValue({
+      isPending: false,
+      mutate: saveConfig,
+    })
 
-    render(<Evaluation resourceType="apps" resourceId="app-1" />)
+    renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-1" />)
 
     expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('openai:gpt-4o-mini')
 
@@ -104,17 +183,39 @@ describe('Evaluation', () => {
     fireEvent.click(screen.getByTestId('evaluation-metric-node-answer-correctness-node-answer'))
     expect(screen.getAllByText('Answer Correctness').length).toBeGreaterThan(0)
 
-    fireEvent.click(screen.getByRole('button', { name: 'evaluation.batch.run' }))
-    expect(screen.getByText('evaluation.batch.status.running')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    await act(async () => {
-      vi.advanceTimersByTime(1300)
+    expect(saveConfig).toHaveBeenCalledWith({
+      params: {
+        targetType: 'apps',
+        targetId: 'app-1',
+      },
+      body: {
+        evaluation_model: 'gpt-4o-mini',
+        evaluation_model_provider: 'openai',
+        default_metrics: [
+          {
+            metric: 'faithfulness',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+            ],
+          },
+          {
+            metric: 'answer-correctness',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+            ],
+          },
+        ],
+        customized_metrics: null,
+        judgment_config: null,
+      },
+    }, {
+      onSuccess: expect.any(Function),
+      onError: expect.any(Function),
     })
-
-    expect(screen.getByText('evaluation.batch.status.success')).toBeInTheDocument()
-    expect(screen.getByText('Workflow evaluation batch')).toBeInTheDocument()
-
-    vi.useRealTimers()
   })
 
   it('should hide the value row for empty operators', () => {
@@ -138,7 +239,7 @@ describe('Evaluation', () => {
 
     let rerender: ReturnType<typeof render>['rerender']
     act(() => {
-      ({ rerender } = render(<Evaluation resourceType={resourceType} resourceId={resourceId} />))
+      ({ rerender } = renderWithQueryClient(<Evaluation resourceType={resourceType} resourceId={resourceId} />))
     })
 
     expect(screen.getByPlaceholderText('evaluation.conditions.valuePlaceholder')).toBeInTheDocument()
@@ -212,7 +313,7 @@ describe('Evaluation', () => {
       },
     })
 
-    render(<Evaluation resourceType="apps" resourceId="app-3" />)
+    renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-3" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
 
@@ -227,7 +328,7 @@ describe('Evaluation', () => {
       isLoading: false,
     })
 
-    render(<Evaluation resourceType="apps" resourceId="app-4" />)
+    renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-4" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
 
@@ -256,7 +357,7 @@ describe('Evaluation', () => {
       },
     })
 
-    render(<Evaluation resourceType="apps" resourceId="app-5" />)
+    renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-5" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
 
@@ -270,7 +371,7 @@ describe('Evaluation', () => {
   })
 
   it('should render the pipeline-specific layout without auto-selecting a judge model', () => {
-    render(<Evaluation resourceType="datasets" resourceId="dataset-1" />)
+    renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-1" />)
 
     expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('empty')
     expect(screen.getByText('evaluation.history.title')).toBeInTheDocument()
@@ -294,14 +395,14 @@ describe('Evaluation', () => {
       },
     })
 
-    render(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
+    renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
 
     expect(screen.getByText('Context Precision')).toBeInTheDocument()
     expect(screen.getByDisplayValue('0.85')).toBeInTheDocument()
   })
 
   it('should enable pipeline batch actions after selecting a judge model and metric', () => {
-    render(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
+    renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-2" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'select-model' }))
     fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))

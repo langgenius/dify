@@ -11,6 +11,7 @@ import type {
 } from './types'
 import type {
   EvaluationConfig,
+  EvaluationConfigData,
   EvaluationCustomizedMetric,
   EvaluationDefaultMetric,
   EvaluationJudgmentCondition,
@@ -432,7 +433,7 @@ const getCustomMetricScopeId = (metric: EvaluationMetric) => {
   return metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? null
 }
 
-const buildCustomizedMetricsPayload = (metrics: EvaluationMetric[]): EvaluationRunRequest['customized_metrics'] => {
+const buildCustomizedMetricsPayload = (metrics: EvaluationMetric[]): EvaluationConfigData['customized_metrics'] => {
   const customMetric = metrics.find(metric => metric.kind === 'custom-workflow')
   const customConfig = customMetric?.customConfig
   const evaluationWorkflowId = customMetric ? getCustomMetricScopeId(customMetric) : null
@@ -456,7 +457,7 @@ const buildCustomizedMetricsPayload = (metrics: EvaluationMetric[]): EvaluationR
   }
 }
 
-const buildJudgmentConfigPayload = (resource: EvaluationResourceState): EvaluationRunRequest['judgment_config'] => {
+const buildJudgmentConfigPayload = (resource: EvaluationResourceState): EvaluationConfigData['judgment_config'] => {
   const conditions = resource.judgmentConfig.conditions
     .filter(condition => !!condition.variableSelector)
     .map((condition) => {
@@ -484,17 +485,15 @@ const buildJudgmentConfigPayload = (resource: EvaluationResourceState): Evaluati
   }
 }
 
-export const buildEvaluationRunRequest = (
+export const buildEvaluationConfigPayload = (
   resource: EvaluationResourceState,
-  fileId: string,
-): EvaluationRunRequest | null => {
+): EvaluationConfigData | null => {
   const selectedModel = decodeModelSelection(resource.judgeModelId)
 
   if (!selectedModel)
     return null
 
   return {
-    file_id: fileId,
     evaluation_model: selectedModel.model,
     evaluation_model_provider: selectedModel.provider,
     default_metrics: resource.metrics
@@ -506,6 +505,21 @@ export const buildEvaluationRunRequest = (
       })),
     customized_metrics: buildCustomizedMetricsPayload(resource.metrics),
     judgment_config: buildJudgmentConfigPayload(resource),
+  }
+}
+
+export const buildEvaluationRunRequest = (
+  resource: EvaluationResourceState,
+  fileId: string,
+): EvaluationRunRequest | null => {
+  const configPayload = buildEvaluationConfigPayload(resource)
+
+  if (!configPayload)
+    return null
+
+  return {
+    ...configPayload,
+    file_id: fileId,
   }
 }
 

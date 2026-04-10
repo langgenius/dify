@@ -63,6 +63,18 @@ export const useEvaluationNodeInfoMutation = () => {
   return useMutation(consoleQuery.evaluation.nodeInfo.mutationOptions())
 }
 
+export const useSaveEvaluationConfigMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation(consoleQuery.evaluation.saveConfig.mutationOptions({
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.evaluation.config.key(),
+      })
+    },
+  }))
+}
+
 export const useStartEvaluationRunMutation = () => {
   const queryClient = useQueryClient()
 

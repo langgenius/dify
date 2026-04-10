@@ -6,6 +6,7 @@ import {
   requiresConditionValue,
   useEvaluationStore,
 } from '../store'
+import { buildEvaluationConfigPayload, buildEvaluationRunRequest } from '../store-utils'
 
 describe('evaluation store', () => {
   beforeEach(() => {
@@ -270,5 +271,77 @@ describe('evaluation store', () => {
     expect(hydratedState.activeBatchTab).toBe('history')
     expect(hydratedState.uploadedFileName).toBe('batch.csv')
     expect(hydratedState.batchRecords).toHaveLength(1)
+  })
+
+  it('should build an evaluation config save payload from resource state', () => {
+    const resourceType = 'apps'
+    const resourceId = 'app-save-config'
+    const store = useEvaluationStore.getState()
+
+    store.ensureResource(resourceType, resourceId)
+    store.setJudgeModel(resourceType, resourceId, 'openai::gpt-4o-mini')
+    store.addBuiltinMetric(resourceType, resourceId, 'faithfulness', [
+      { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+    ])
+    store.addCustomMetric(resourceType, resourceId)
+
+    const customMetric = useEvaluationStore.getState().resources['apps:app-save-config'].metrics.find(metric => metric.kind === 'custom-workflow')!
+    store.setCustomMetricWorkflow(resourceType, resourceId, customMetric.id, {
+      workflowId: 'workflow-precision-review',
+      workflowAppId: 'evaluation-workflow-app-id',
+      workflowName: 'Precision Review',
+    })
+    store.syncCustomMetricMappings(resourceType, resourceId, customMetric.id, ['query'])
+    store.syncCustomMetricOutputs(resourceType, resourceId, customMetric.id, [{
+      id: 'score',
+      valueType: 'number',
+    }])
+
+    const syncedMetric = useEvaluationStore.getState().resources['apps:app-save-config'].metrics.find(metric => metric.id === customMetric.id)!
+    store.updateCustomMetricMapping(resourceType, resourceId, customMetric.id, syncedMetric.customConfig!.mappings[0].id, {
+      outputVariableId: '{{#node-answer.output#}}',
+    })
+    store.addCondition(resourceType, resourceId, ['workflow-precision-review', 'score'])
+
+    const condition = useEvaluationStore.getState().resources['apps:app-save-config'].judgmentConfig.conditions[0]
+    store.updateConditionOperator(resourceType, resourceId, condition.id, '≥')
+    store.updateConditionValue(resourceType, resourceId, condition.id, '0.8')
+
+    const resource = useEvaluationStore.getState().resources['apps:app-save-config']
+    const expectedPayload = {
+      evaluation_model: 'gpt-4o-mini',
+      evaluation_model_provider: 'openai',
+      default_metrics: [{
+        metric: 'faithfulness',
+        value_type: 'number',
+        node_info_list: [
+          { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+        ],
+      }],
+      customized_metrics: {
+        evaluation_workflow_id: 'evaluation-workflow-app-id',
+        input_fields: {
+          query: '{{#node-answer.output#}}',
+        },
+        output_fields: [{
+          variable: 'score',
+          value_type: 'number',
+        }],
+      },
+      judgment_config: {
+        logical_operator: 'and',
+        conditions: [{
+          variable_selector: ['evaluation-workflow-app-id', 'score'],
+          comparison_operator: '≥',
+          value: '0.8',
+        }],
+      },
+    }
+
+    expect(buildEvaluationConfigPayload(resource)).toEqual(expectedPayload)
+    expect(buildEvaluationRunRequest(resource, 'file-1')).toEqual({
+      ...expectedPayload,
+      file_id: 'file-1',
+    })
   })
 })

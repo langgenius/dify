@@ -61,6 +61,7 @@
   "conditions.valueTypes.boolean": "Boolean",
   "conditions.valueTypes.number": "Number",
   "conditions.valueTypes.string": "String",
+  "config.saveFailed": "Failed to save evaluation configuration.",
   "description": "Configure automated testing to grade your application's performance.",
   "history.actions.downloadResultFile": "Download result",
   "history.actions.downloadTestFile": "Download test file",
