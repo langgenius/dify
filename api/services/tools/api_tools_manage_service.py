@@ -4,6 +4,7 @@ from typing import Any, TypedDict, cast
 
 from httpx import get
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -116,22 +117,37 @@ class ApiToolManageService:
         privacy_policy: str,
         custom_disclaimer: str,
         labels: list[str],
-    ):
+    ) -> dict[str, Any]:
         """
-        create api tool provider
+        Create a new API tool provider.
+
+        :param user_id: The ID of the user creating the provider.
+        :param tenant_id: The ID of the workspace/tenant.
+        :param provider_name: The name of the API tool provider.
+        :param icon: The icon configuration for the provider.
+        :param credentials: The credentials for the provider.
+        :param schema_type: The type of schema (e.g., OpenAPI).
+        :param schema: The raw schema string.
+        :param privacy_policy: The privacy policy URL or text.
+        :param custom_disclaimer: Custom disclaimer text.
+        :param labels: A list of labels for the provider.
+        :return: A dictionary indicating the result status.
         """
+
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = db.session.scalar(
-            select(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+        # Create new session with automatic transaction management
+        provider: ApiToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider = _session.scalar(
+                select(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
-
         if provider is not None:
             raise ValueError(f"provider {provider_name} already exists")
 
@@ -176,8 +192,8 @@ class ApiToolManageService:
         )
         db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
-        db.session.add(db_provider)
-        db.session.commit()
+        with sessionmaker(db.engine).begin() as _session:
+            _session.add(db_provider)
 
         # update labels
         ToolLabelManager.update_tool_labels(provider_controller, labels)
