@@ -40,23 +40,35 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
 
         if session is not None:
-            # delete old labels
-            _ = session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
-
-            # insert new labels
-            for label in labels:
-                session.add(ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label))
-
+            cls._update_tool_labels_logics(session, provider_id, controller, labels)
         else:
             with sessionmaker(db.engine).begin() as _session:
-                # delete old labels
-                _ = _session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
+                cls._update_tool_labels_logics(_session, provider_id, controller, labels)
 
-                # insert new labels
-                for label in labels:
-                    _session.add(
-                        ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label)
-                    )
+    @classmethod
+    def _update_tool_labels_logics(
+        cls, session: Session, provider_id: str, controller: ToolProviderController, labels: list[str]
+    ) -> None:
+        """
+        Update tool labels logics
+
+        :param session: database session
+        :param provider_id: tool provider ID
+        :param controller: tool provider controller
+        :param labels: list of tool labels
+        :return: None
+        """
+
+        # delete old labels
+        _ = session.execute(
+            delete(ToolLabelBinding).where(
+                ToolLabelBinding.tool_id == provider_id, ToolLabelBinding.tool_type == controller.provider_type
+            )
+        )
+
+        # insert new labels
+        for label in labels:
+            session.add(ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label))
 
     @classmethod
     def get_tool_labels(cls, controller: ToolProviderController) -> list[str]:
