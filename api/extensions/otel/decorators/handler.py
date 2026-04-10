@@ -29,9 +29,9 @@ class SpanHandler:
         """
         return f"{wrapped.__module__}.{wrapped.__qualname__}"
 
-    def _extract_arguments[T](
+    def _extract_arguments(
         self,
-        wrapped: Callable[..., T],
+        wrapped: Callable[..., object],
         args: tuple[object, ...],
         kwargs: Mapping[str, object],
     ) -> dict[str, Any] | None:
