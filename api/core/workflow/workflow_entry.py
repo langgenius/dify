@@ -24,7 +24,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.node_factory import DifyNodeFactory, is_start_node_type, resolve_workflow_node_class
+from core.workflow.node_factory import (
+    DifyGraphInitContext,
+    DifyNodeFactory,
+    is_start_node_type,
+    resolve_workflow_node_class,
+)
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -251,17 +256,18 @@ class WorkflowEntry:
         node_version = str(node_config_data.version)
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
-        # init graph init params and runtime state
-        graph_init_params = GraphInitParams(
+        # init graph context and runtime state
+        run_context = build_dify_run_context(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -313,8 +319,8 @@ class WorkflowEntry:
             )
 
         # init workflow run state
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
         node = node_factory.create_node(node_config)
@@ -409,17 +415,18 @@ class WorkflowEntry:
         variable_pool = VariablePool()
         add_variables_to_pool(variable_pool, default_system_variables())
 
-        # init graph init params and runtime state
-        graph_init_params = GraphInitParams(
+        # init graph context and runtime state
+        run_context = build_dify_run_context(
+            tenant_id=tenant_id,
+            app_id="",
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id="",
             graph_config=graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=tenant_id,
-                app_id="",
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
         graph_runtime_state = GraphRuntimeState(
@@ -430,8 +437,8 @@ class WorkflowEntry:
 
         # init workflow run state
         node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
         node = node_factory.create_node(node_config)
