@@ -383,7 +383,7 @@ describe('Evaluation', () => {
     renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-1" />)
 
     expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('empty')
-    expect(screen.getByText('evaluation.history.title')).toBeInTheDocument()
+    expect(screen.getByText('evaluation.history.columns.time')).toBeInTheDocument()
     expect(screen.getByText('Context Precision')).toBeInTheDocument()
     expect(screen.getByText('Context Recall')).toBeInTheDocument()
     expect(screen.getByText('Context Relevance')).toBeInTheDocument()

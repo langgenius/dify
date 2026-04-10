@@ -8,10 +8,10 @@ import { useDocLink } from '@/context/i18n'
 import { useAvailableEvaluationMetrics } from '@/service/use-evaluation'
 import { getEvaluationMockConfig } from '../../mock'
 import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
+import HistoryTab from '../batch-test-panel/history-tab'
 import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popover'
 import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
 import JudgeModelSelector from '../judge-model-selector'
-import PipelineHistoryTable from '../pipeline/pipeline-history-table'
 import PipelineMetricItem from '../pipeline/pipeline-metric-item'
 import PipelineResultsPanel from '../pipeline/pipeline-results-panel'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
@@ -164,10 +164,12 @@ const PipelineEvaluation = ({
 
         <div className="border-t border-divider-subtle" />
 
-        <PipelineHistoryTable
-          resourceType={resourceType}
-          resourceId={resourceId}
-        />
+        <div className="min-h-0 flex-1 px-6 py-4">
+          <HistoryTab
+            resourceType={resourceType}
+            resourceId={resourceId}
+          />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 bg-background-default">
