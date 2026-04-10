@@ -269,17 +269,22 @@ class WorkflowToolManageService:
     def get_workflow_tool_by_tool_id(cls, user_id: str, tenant_id: str, workflow_tool_id: str):
         """
         Get a workflow tool.
+
         :param user_id: the user id
         :param tenant_id: the tenant id
         :param workflow_tool_id: the workflow tool id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider | None = db.session.scalar(
-            select(WorkflowToolProvider)
-            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
-            .limit(1)
-        )
-        return cls._get_workflow_tool(tenant_id, db_tool)
+
+        tool_provider: WorkflowToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            tool_provider = _session.scalar(
+                select(WorkflowToolProvider)
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
+                .limit(1)
+            )
+
+        return cls._get_workflow_tool(tenant_id, tool_provider)
 
     @classmethod
     def get_workflow_tool_by_app_id(cls, user_id: str, tenant_id: str, workflow_app_id: str):
