@@ -285,51 +285,17 @@ The `After` hook automatically captures on failure:
 
 Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
 
-## Reusable step reference
+## Reusing existing steps
 
-Check existing steps before writing new ones. Steps in `common/` are designed for broad reuse.
+Before writing a new step definition, check what already exists. Steps in `common/` are designed for broad reuse across all features.
 
-### Authentication (`common/auth.steps.ts`)
+List all registered step patterns:
 
-| Step | Type | Description |
-|---|---|---|
-| `Given I am signed in as the default E2E admin` | Given | Start authenticated session with shared admin state |
-| `Given I am not signed in` | Given | Start clean unauthenticated session |
+```bash
+grep -rn "Given\|When\|Then" e2e/features/step-definitions/ --include='*.ts' | grep -oP "'[^']+'"
+```
 
-### Navigation and assertions (`common/navigation.steps.ts`)
+Or browse the step definition files directly:
 
-| Step | Type | Description |
-|---|---|---|
-| `When I open the apps console` | When | Navigate to `/apps` |
-| `Then I should stay on the apps console` | Then | Assert URL matches `/apps` |
-| `Then I should be redirected to the signin page` | Then | Assert URL matches `/signin` |
-| `Then I should see the {string} button` | Then | Assert a button with the given label is visible |
-| `Then I should not see the {string} button` | Then | Assert a button with the given label is not visible |
-| `Then I should see the {string} text` | Then | Assert text is visible (30s timeout) |
-
-### App creation (`apps/create-app.steps.ts`)
-
-| Step | Type | Description |
-|---|---|---|
-| `When I start creating a blank app` | When | Click "Create from Blank" |
-| `When I enter a unique E2E app name` | When | Fill app name with `E2E App {timestamp}` |
-| `When I confirm app creation` | When | Click the "Create" button |
-| `When I select the {string} app type` | When | Select an app type in the dialog (e.g. `"Workflow"`, `"Chatbot"`) |
-| `When I expand the beginner app types` | When | Click "More basic app types" toggle |
-| `Then I should land on the app editor` | Then | Assert URL matches `/app/.../workflow` or `/configuration` |
-| `Then I should land on the workflow editor` | Then | Assert URL matches `/app/.../workflow` |
-| `Then I should land on the app configuration page` | Then | Assert URL matches `/app/.../configuration` |
-
-### Sign out (`auth/sign-out.steps.ts`)
-
-| Step | Type | Description |
-|---|---|---|
-| `When I open the account menu` | When | Click the "Account" button |
-| `When I sign out` | When | Click "Log out" in the account menu |
-| `Then I should be on the sign-in page` | Then | Assert URL matches `/signin` and "Sign in" button is visible |
-
-### Smoke / install (`smoke/install.steps.ts`)
-
-| Step | Type | Description |
-|---|---|---|
-| `Given the last authentication bootstrap came from a fresh install` | Given | Assert the auth session mode is `install` |
+- `features/step-definitions/common/` — auth guards and navigation assertions shared by all features
+- `features/step-definitions/<capability>/` — domain-specific steps scoped to a single feature area
