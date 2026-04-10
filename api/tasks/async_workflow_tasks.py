@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
@@ -105,11 +105,11 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
 
 def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDict:
     """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
-    return WorkflowGeneratorArgsDict(
-        inputs=dict(trigger_data.inputs),
-        files=list(trigger_data.files),
-        **{SKIP_PREPARE_USER_INPUTS_KEY: True},
-    )
+    return {
+        "inputs": dict(trigger_data.inputs),
+        "files": list(trigger_data.files),
+        "_skip_prepare_user_inputs": True,
+    }
 
 
 def _execute_workflow_common(
