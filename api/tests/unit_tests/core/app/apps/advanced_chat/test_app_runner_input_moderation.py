@@ -91,7 +91,23 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     _mock_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
     return patch.multiple(
         "core.app.apps.advanced_chat.app_runner",
-        sessionmaker=MagicMock(return_value=_mock_factory),
+        Session=MagicMock(
+            return_value=MagicMock(
+                __enter__=lambda s: s,
+                __exit__=lambda *a, **k: False,
+                scalar=lambda *a, **k: MagicMock(),
+            ),
+        ),
+        sessionmaker=MagicMock(
+            return_value=MagicMock(
+                begin=MagicMock(
+                    return_value=MagicMock(
+                        __enter__=lambda s: MagicMock(scalars=MagicMock(return_value=MagicMock(all=lambda: []))),
+                        __exit__=lambda *a, **k: False,
+                    ),
+                ),
+            ),
+        ),
         select=MagicMock(),
         db=MagicMock(engine=MagicMock()),
         RedisChannel=MagicMock(),

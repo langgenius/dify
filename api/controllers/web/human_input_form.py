@@ -7,7 +7,8 @@ import logging
 from datetime import datetime
 
 from flask import Response, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -22,6 +23,12 @@ from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
+
+
+class HumanInputFormSubmitPayload(BaseModel):
+    inputs: dict
+    action: str
+
 
 _FORM_SUBMIT_RATE_LIMITER = RateLimiter(
     prefix="web_form_submit_rate_limit",
@@ -112,10 +119,7 @@ class HumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("action", type=str, required=True, location="json")
-        args = parser.parse_args()
+        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
 
         ip_address = extract_remote_ip(request)
         if _FORM_SUBMIT_RATE_LIMITER.is_rate_limited(ip_address):
@@ -135,8 +139,8 @@ class HumanInputFormApi(Resource):
             service.submit_form_by_token(
                 recipient_type=recipient_type,
                 form_token=form_token,
-                selected_action_id=args["action"],
-                form_data=args["inputs"],
+                selected_action_id=payload.action,
+                form_data=payload.inputs,
                 submission_end_user_id=None,
                 # submission_end_user_id=_end_user.id,
             )

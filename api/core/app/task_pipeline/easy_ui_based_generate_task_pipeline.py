@@ -266,7 +266,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                with sessionmaker(db.engine).begin() as session:
+                with sessionmaker(bind=db.engine).begin() as session:
                     err = self.handle_error(event=event, session=session, message_id=self._message_id)
                 yield self.error_to_stream_response(err)
                 break
@@ -287,7 +287,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                         answer=output_moderation_answer
                     )
 
-                with sessionmaker(db.engine).begin() as session:
+                with sessionmaker(bind=db.engine).begin() as session:
                     # Save message
                     self._save_message(session=session, trace_manager=trace_manager)
                 message_end_resp = self._message_end_to_stream_response()

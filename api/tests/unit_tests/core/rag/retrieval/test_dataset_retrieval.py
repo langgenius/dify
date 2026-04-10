@@ -4911,9 +4911,12 @@ class TestInternalHooksCoverage:
         mock_factory = Mock()
         mock_factory.begin.return_value = begin_cm
 
+        sessionmaker_ctx = MagicMock()
+        sessionmaker_ctx.begin.return_value = session_ctx
+
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=mock_factory),
+            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=sessionmaker_ctx),
             patch.object(retrieval, "_send_trace_task") as mock_trace,
         ):
             retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})

@@ -135,6 +135,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         # Patch the necessary components
         with (
             patch("core.app.apps.advanced_chat.app_runner.sessionmaker") as mock_sessionmaker,
+            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
             patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
@@ -151,6 +152,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
         ):
             # Setup mocks
             mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+            mock_session_class.return_value.__enter__.return_value = MagicMock()
             mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock()  # App exists
             mock_db.engine = MagicMock()
 
@@ -177,7 +180,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             # Note: Since we're mocking ConversationVariable.from_variable,
             # we can't directly check the id, but we can verify add_all was called
             assert mock_session.add_all.called, "Session add_all should have been called"
-            # With sessionmaker().begin(), commit is automatic on context exit
 
     def test_no_variables_creates_all(self):
         """Test that all conversation variables are created when none exist in DB."""
@@ -279,6 +281,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         # Patch the necessary components
         with (
             patch("core.app.apps.advanced_chat.app_runner.sessionmaker") as mock_sessionmaker,
+            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
             patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
@@ -296,6 +299,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
         ):
             # Setup mocks
             mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+            mock_session_class.return_value.__enter__.return_value = MagicMock()
             mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock()  # App exists
             mock_db.engine = MagicMock()
 
@@ -326,7 +331,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             # Verify that all variables were created
             assert len(added_items) == 2, "Should have added both variables"
             assert mock_session.add_all.called, "Session add_all should have been called"
-            # With sessionmaker().begin(), commit is automatic on context exit
 
     def test_all_variables_exist_no_changes(self):
         """Test that no changes are made when all variables already exist in DB."""
@@ -430,6 +434,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         # Patch the necessary components
         with (
             patch("core.app.apps.advanced_chat.app_runner.sessionmaker") as mock_sessionmaker,
+            patch("core.app.apps.advanced_chat.app_runner.Session") as mock_session_class,
             patch("core.app.apps.advanced_chat.app_runner.select") as mock_select,
             patch("core.app.apps.advanced_chat.app_runner.db") as mock_db,
             patch.object(runner, "_init_graph") as mock_init_graph,
@@ -446,6 +451,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
         ):
             # Setup mocks
             mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+            mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
+            mock_session_class.return_value.__enter__.return_value = MagicMock()
             mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock()  # App exists
             mock_db.engine = MagicMock()
 
@@ -465,4 +472,3 @@ class TestAdvancedChatAppRunnerConversationVariables:
 
             # Verify that no variables were added
             assert not mock_session.add_all.called, "Session add_all should not have been called"
-            # With sessionmaker().begin(), commit is automatic on context exit

@@ -856,6 +856,8 @@
   "nodes.parameterExtractor.outputVars.isSuccess": "คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0",
   "nodes.parameterExtractor.outputVars.usage": "ข้อมูลการใช้งานรุ่น",
   "nodes.parameterExtractor.reasoningMode": "โหมดการให้เหตุผล",
+  "nodes.parameterExtractor.reasoningModeFunctionToolCalling": "ฟังก์ชัน/การเรียกใช้เครื่องมือ",
+  "nodes.parameterExtractor.reasoningModePrompt": "พรอมต์",
   "nodes.parameterExtractor.reasoningModeTip": "คุณสามารถเลือกโหมดการให้เหตุผลที่เหมาะสมตามความสามารถของโมเดลในการตอบสนองต่อคําแนะนําสําหรับการเรียกใช้ฟังก์ชันหรือข้อความแจ้ง",
   "nodes.questionClassifiers.addClass": "เพิ่มชั้นเรียน",
   "nodes.questionClassifiers.advancedSetting": "การตั้งค่าขั้นสูง",

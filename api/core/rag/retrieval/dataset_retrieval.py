@@ -884,7 +884,7 @@ class DatasetRetrieval:
                 self._send_trace_task(message_id, documents, timer)
                 return
 
-            with sessionmaker(db.engine).begin() as session:
+            with sessionmaker(bind=db.engine).begin() as session:
                 # Collect all document_ids and batch fetch DatasetDocuments
                 document_ids = {
                     doc.metadata["document_id"]

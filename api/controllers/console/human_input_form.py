@@ -7,7 +7,8 @@ import logging
 from collections.abc import Generator
 
 from flask import Response, jsonify, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -31,6 +32,11 @@ from services.human_input_service import Form, HumanInputService
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
+
+
+class HumanInputFormSubmitPayload(BaseModel):
+    inputs: dict
+    action: str
 
 
 def _jsonify_form_definition(form: Form) -> Response:
@@ -84,10 +90,7 @@ class ConsoleHumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("action", type=str, required=True, location="json")
-        args = parser.parse_args()
+        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
         current_user, _ = current_account_with_tenant()
 
         service = HumanInputService(db.engine)
@@ -107,8 +110,8 @@ class ConsoleHumanInputFormApi(Resource):
         service.submit_form_by_token(
             recipient_type=recipient_type,
             form_token=form_token,
-            selected_action_id=args["action"],
-            form_data=args["inputs"],
+            selected_action_id=payload.action,
+            form_data=payload.inputs,
             submission_user_id=current_user.id,
         )
 
@@ -168,12 +171,13 @@ class ConsoleWorkflowEventsApi(Resource):
         else:
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
-            if app.mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
-            elif app.mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
-            else:
-                raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+            match app.mode:
+                case AppMode.ADVANCED_CHAT:
+                    generator = AdvancedChatAppGenerator()
+                case AppMode.WORKFLOW:
+                    generator = WorkflowAppGenerator()
+                case _:
+                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
 

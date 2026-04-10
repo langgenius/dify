@@ -363,7 +363,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         :return: List of conversation variables ready for use
         """
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             existing_variables = self._load_existing_conversation_variables(session)
 
             if not existing_variables:
