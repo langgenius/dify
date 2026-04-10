@@ -1424,13 +1424,12 @@ class ProviderConfiguration(BaseModel):
                     preferred_provider_type=provider_type,
                 )
                 s.add(preferred_model_provider)
-            s.commit()
 
         if session:
             return _switch(session)
         else:
-            with Session(db.engine) as session:
-                return _switch(session)
+            with sessionmaker(bind=db.engine).begin() as new_session:
+                return _switch(new_session)
 
     def extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
         """

@@ -117,6 +117,7 @@ def _patched_session(session: Mock):
             patch("core.entities.provider_configuration.sessionmaker") as mock_sm_cls,
         ):
             mock_session_cls.return_value.__enter__.return_value = session
+            mock_session_cls.return_value.__exit__ = Mock(return_value=False)
             mock_sm_cls.return_value.begin.return_value.__enter__.return_value = session
             mock_sm_cls.return_value.begin.return_value.__exit__ = Mock(return_value=False)
             yield mock_session_cls
@@ -1645,11 +1646,12 @@ def test_switch_active_provider_credential_rolls_back_on_error() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(id="cred-1")
-    session.commit.side_effect = RuntimeError("boom")
     provider_record = SimpleNamespace(id="provider-1", credential_id=None, updated_at=None)
 
     with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
+        with patch.object(
+            ProviderConfiguration, "_get_provider_record", side_effect=RuntimeError("boom")
+        ):
             with pytest.raises(RuntimeError, match="boom"):
                 configuration.switch_active_provider_credential("cred-1")
 
