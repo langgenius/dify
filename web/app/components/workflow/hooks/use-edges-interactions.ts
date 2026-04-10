@@ -4,8 +4,9 @@ import type {
 } from 'reactflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useCollaborativeWorkflow } from './use-collaborative-workflow'
+import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import {
   applyConnectedHandleNodeData,
   buildContextMenuEdges,
@@ -19,6 +20,7 @@ import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useEdgesInteractions = () => {
+  const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
@@ -53,17 +55,17 @@ export const useEdgesInteractions = () => {
     if (getNodesReadOnly())
       return
 
-    const { edges, setEdges } = collaborativeWorkflow.getState()
+    const { edges, setEdges } = store.getState()
     setEdges(updateEdgeHoverState(edges, edge.id, true))
-  }, [collaborativeWorkflow, getNodesReadOnly])
+  }, [getNodesReadOnly, store])
 
   const handleEdgeLeave = useCallback<EdgeMouseHandler>((_, edge) => {
     if (getNodesReadOnly())
       return
 
-    const { edges, setEdges } = collaborativeWorkflow.getState()
+    const { edges, setEdges } = store.getState()
     setEdges(updateEdgeHoverState(edges, edge.id, false))
-  }, [collaborativeWorkflow, getNodesReadOnly])
+  }, [getNodesReadOnly, store])
 
   const handleEdgeDeleteByDeleteBranch = useCallback((nodeId: string, branchId: string) => {
     if (getNodesReadOnly())
