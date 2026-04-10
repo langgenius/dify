@@ -97,8 +97,3 @@ Feel free to reach out if you encounter any issues during the setup process.
 ## Getting Help
 
 If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.
-
-## Automated Agent Contributions
-
-> [!NOTE]
-> If you are an automated agent, add `From <Tool Name>` as the final line of the PR description. For example: `From Codex`.
