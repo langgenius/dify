@@ -67,7 +67,7 @@ class VirtualWorkflowSynthesizer:
         workflow.type = WorkflowType.CHAT if is_chat else WorkflowType.WORKFLOW
         workflow.version = "virtual"
         workflow.graph = json.dumps(graph)
-        workflow.features = "{}"
+        workflow.features = json.dumps(_build_features(config))
         workflow.created_by = app.created_by
         workflow.updated_by = app.updated_by
 
@@ -268,3 +268,61 @@ def _build_graph(agent_data: dict[str, Any], is_chat: bool) -> dict[str, Any]:
     ]
 
     return {"nodes": nodes, "edges": edges}
+
+
+def _build_features(config: AppModelConfig) -> dict[str, Any]:
+    """Extract app-level features from AppModelConfig for the synthesized workflow."""
+    features: dict[str, Any] = {}
+
+    if config.opening_statement:
+        features["opening_statement"] = config.opening_statement
+
+    if config.suggested_questions:
+        try:
+            sq = json.loads(config.suggested_questions) if isinstance(config.suggested_questions, str) else config.suggested_questions
+            if sq:
+                features["suggested_questions"] = sq
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if config.sensitive_word_avoidance:
+        try:
+            swa = json.loads(config.sensitive_word_avoidance) if isinstance(config.sensitive_word_avoidance, str) else config.sensitive_word_avoidance
+            if swa and swa.get("enabled"):
+                features["sensitive_word_avoidance"] = swa
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if config.more_like_this:
+        try:
+            mlt = json.loads(config.more_like_this) if isinstance(config.more_like_this, str) else config.more_like_this
+            if mlt and mlt.get("enabled"):
+                features["more_like_this"] = mlt
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if config.speech_to_text:
+        try:
+            stt = json.loads(config.speech_to_text) if isinstance(config.speech_to_text, str) else config.speech_to_text
+            if stt and stt.get("enabled"):
+                features["speech_to_text"] = stt
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if config.text_to_speech:
+        try:
+            tts = json.loads(config.text_to_speech) if isinstance(config.text_to_speech, str) else config.text_to_speech
+            if tts and tts.get("enabled"):
+                features["text_to_speech"] = tts
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if config.retriever_resource:
+        try:
+            rr = json.loads(config.retriever_resource) if isinstance(config.retriever_resource, str) else config.retriever_resource
+            if rr and rr.get("enabled"):
+                features["retriever_resource"] = rr
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return features
