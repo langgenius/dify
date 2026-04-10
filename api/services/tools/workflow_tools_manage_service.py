@@ -250,17 +250,18 @@ class WorkflowToolManageService:
     def delete_workflow_tool(cls, user_id: str, tenant_id: str, workflow_tool_id: str):
         """
         Delete a workflow tool.
+
         :param user_id: the user id
         :param tenant_id: the tenant id
         :param workflow_tool_id: the workflow tool id
         """
-        db.session.execute(
-            delete(WorkflowToolProvider).where(
-                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id
-            )
-        )
 
-        db.session.commit()
+        with sessionmaker(db.engine).begin() as _session:
+            _ = _session.execute(
+                delete(WorkflowToolProvider).where(
+                    WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id
+                )
+            )
 
         return {"result": "success"}
 
