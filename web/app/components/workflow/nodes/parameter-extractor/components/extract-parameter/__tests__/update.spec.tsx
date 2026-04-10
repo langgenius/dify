@@ -40,8 +40,15 @@ describe('parameter-extractor/extract-parameter/update', () => {
       />,
     )
 
+    const existingDialogs = screen.queryAllByRole('dialog').length
+
     await user.click(screen.getByTestId('add-button'))
-    const dialog = await screen.findByRole('dialog')
+    const dialogs = await waitFor(() => {
+      const nextDialogs = screen.getAllByRole('dialog')
+      expect(nextDialogs.length).toBeGreaterThan(existingDialogs)
+      return nextDialogs
+    })
+    const dialog = dialogs.at(-1)!
 
     fireEvent.change(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
       target: { value: 'budget' },
@@ -72,14 +79,23 @@ describe('parameter-extractor/extract-parameter/update', () => {
       />,
     )
 
+    const existingDialogs = screen.queryAllByRole('dialog').length
+
     await user.click(screen.getByTestId('add-button'))
-    fireEvent.change(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
+    const dialogs = await waitFor(() => {
+      const nextDialogs = screen.getAllByRole('dialog')
+      expect(nextDialogs.length).toBeGreaterThan(existingDialogs)
+      return nextDialogs
+    })
+    const dialog = dialogs.at(-1)!
+
+    fireEvent.change(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
       target: { value: '1bad' },
     })
 
     expect(handleSave).not.toHaveBeenCalled()
     expect(mockToast.error).toHaveBeenCalled()
-    expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')).toHaveValue('')
+    expect(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')).toHaveValue('')
   })
 
   it('renders the edit modal immediately and validates required fields', async () => {
