@@ -40,7 +40,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('add-button'))
+    await user.click(screen.getByTestId('add-button'))
     await screen.findByRole('button', { name: 'common.operation.add' })
     fireEvent.change(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
       target: { value: 'budget' },
@@ -48,7 +48,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
     fireEvent.change(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder'), {
       target: { value: 'Budget amount' },
     })
-    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.add' }))
 
     await waitFor(() => {
       expect(handleSave).toHaveBeenCalledWith({

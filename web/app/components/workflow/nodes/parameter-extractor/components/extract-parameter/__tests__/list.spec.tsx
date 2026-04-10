@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ParamType } from '../../../types'
 import List from '../list'
@@ -40,25 +40,20 @@ describe('parameter-extractor/extract-parameter/list', () => {
       />,
     )
 
-    const itemCard = container.querySelector('.group.relative.rounded-lg') as HTMLElement
-    fireEvent.mouseOver(itemCard)
-    const firstActionButtons = itemCard.querySelectorAll('.cursor-pointer.rounded-md.p-1')
-    fireEvent.click(firstActionButtons[0] as HTMLElement)
-    await screen.findByRole('button', { name: 'common.operation.save' })
-    fireEvent.change(screen.getByDisplayValue('city'), {
-      target: { value: 'city_name' },
-    })
-    fireEvent.change(screen.getByDisplayValue('City name'), {
-      target: { value: 'Updated city description' },
-    })
+    const editAndDeleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
+    fireEvent.click(editAndDeleteButtons[0] as HTMLElement)
+    fireEvent.change(screen.getByDisplayValue('city'), { target: { value: 'city_name' } })
+    fireEvent.change(screen.getByDisplayValue('City name'), { target: { value: 'Updated city description' } })
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(handleChange.mock.lastCall).toEqual([[{
-      name: 'city_name',
-      type: ParamType.string,
-      description: 'Updated city description',
-      required: false,
-    }], undefined])
+    await waitFor(() => {
+      expect(handleChange.mock.lastCall).toEqual([[{
+        name: 'city_name',
+        type: ParamType.string,
+        description: 'Updated city description',
+        required: false,
+      }], undefined])
+    })
 
     handleChange.mockClear()
 
@@ -70,9 +65,7 @@ describe('parameter-extractor/extract-parameter/list', () => {
       />,
     )
 
-    const nextItemCard = container.querySelector('.group.relative.rounded-lg') as HTMLElement
-    fireEvent.mouseOver(nextItemCard)
-    const deleteButtons = nextItemCard.querySelectorAll('.cursor-pointer.rounded-md.p-1')
+    const deleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
     fireEvent.click(deleteButtons[1] as HTMLElement)
 
     expect(handleChange).toHaveBeenCalledWith([])
