@@ -1,4 +1,56 @@
+from typing import Any, TypeVar, cast
 from unittest.mock import MagicMock
+
+from models import Account, App, EndUser
+from models.model import AppModelConfig
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
+from models.workflow import Workflow
+
+T = TypeVar("T")
+
+
+def build_spec_mock(spec: type[T], **kwargs: Any) -> T:
+    """Create a typed MagicMock with only the requested model attributes configured."""
+    mock = MagicMock(spec=spec)
+    for key, value in kwargs.items():
+        setattr(mock, key, value)
+    return cast(T, mock)
+
+
+def mock_account(**kwargs: Any) -> Account:
+    return build_spec_mock(Account, **kwargs)
+
+
+def mock_app(**kwargs: Any) -> App:
+    return build_spec_mock(App, **kwargs)
+
+
+def mock_end_user(**kwargs: Any) -> EndUser:
+    return build_spec_mock(EndUser, **kwargs)
+
+
+def mock_app_model_config(**kwargs: Any) -> AppModelConfig:
+    return build_spec_mock(AppModelConfig, **kwargs)
+
+
+def mock_workflow(**kwargs: Any) -> Workflow:
+    return build_spec_mock(Workflow, **kwargs)
+
+
+def mock_workflow_webhook_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
+    return build_spec_mock(WorkflowWebhookTrigger, **kwargs)
+
+
+def mock_app_trigger(**kwargs: Any) -> AppTrigger:
+    return build_spec_mock(AppTrigger, **kwargs)
+
+
+def mock_attrs(**kwargs: Any) -> MagicMock:
+    """Create a mock constrained to the explicitly configured attribute names."""
+    mock = MagicMock(spec=list(kwargs))
+    for key, value in kwargs.items():
+        setattr(mock, key, value)
+    return mock
 
 
 class ServiceDbTestHelper:

@@ -186,11 +186,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from models import Account, App, EndUser, WorkflowRunTriggeredFrom
+from models import EndUser, WorkflowNodeExecutionModel, WorkflowRunTriggeredFrom
 from models.model import Message
-from models.workflow import WorkflowNodeExecution, WorkflowRun
+from models.workflow import WorkflowRun
 from services import workflow_run_service as service_module
 from services.workflow_run_service import WorkflowRunService
+from tests.unit_tests.services.services_test_help import mock_account as _account, mock_app as _app_model
 
 
 @pytest.fixture
@@ -205,28 +206,6 @@ def repository_factory_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock
 
     # Assert
     return node_repo, workflow_run_repo, factory
-
-
-def _app_model(**kwargs: Any) -> App:
-    m = MagicMock(spec=App)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(App, m)
-
-
-def _account(**kwargs: Any) -> Account:
-    m = MagicMock(spec=Account)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(Account, m)
-
-
-def _end_user(**kwargs: Any) -> EndUser:
-    m = MagicMock(spec=EndUser)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(EndUser, m)
-
 
 def test___init___should_create_sessionmaker_from_db_engine_when_session_factory_missing(
     monkeypatch: pytest.MonkeyPatch,
@@ -435,7 +414,7 @@ def test_get_workflow_run_node_executions_should_use_end_user_tenant_id(
     monkeypatch.setattr(service_module, "EndUser", FakeEndUser)
     user = cast(EndUser, FakeEndUser(tenant_id="tenant-end-user"))
     app_model = _app_model(id="app-1")
-    exec1 = MagicMock(spec=WorkflowNodeExecution)
+    exec1 = MagicMock(spec=WorkflowNodeExecutionModel)
     exec1.id = "exec-1"
     expected = [exec1]
     node_repo.get_executions_by_workflow_run.return_value = expected
@@ -462,9 +441,9 @@ def test_get_workflow_run_node_executions_should_use_account_current_tenant_id(
     monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1")))
     app_model = _app_model(id="app-1")
     user = _account(current_tenant_id="tenant-account")
-    e1 = MagicMock(spec=WorkflowNodeExecution)
+    e1 = MagicMock(spec=WorkflowNodeExecutionModel)
     e1.id = "exec-1"
-    e2 = MagicMock(spec=WorkflowNodeExecution)
+    e2 = MagicMock(spec=WorkflowNodeExecutionModel)
     e2.id = "exec-2"
     expected = [e1, e2]
     node_repo.get_executions_by_workflow_run.return_value = expected

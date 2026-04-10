@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,9 +20,14 @@ from core.app.app_config.entities import (
 from core.helper import encrypter
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.model import Account, App, AppMode, AppModelConfig
+from models.model import AppMode
 from services.workflow import workflow_converter as converter_module
 from services.workflow.workflow_converter import WorkflowConverter
+from tests.unit_tests.services.services_test_help import (
+    mock_account as _account,
+    mock_app as _app_model,
+    mock_app_model_config as _app_model_config,
+)
 
 try:
     from graphon.enums import BuiltinNodeTypes
@@ -39,27 +44,6 @@ except ModuleNotFoundError:
 @pytest.fixture
 def converter() -> WorkflowConverter:
     return WorkflowConverter()
-
-
-def _app_model(**kwargs: Any) -> App:
-    m = MagicMock(spec=App)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(App, m)
-
-
-def _account(**kwargs: Any) -> Account:
-    m = MagicMock(spec=Account)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(Account, m)
-
-
-def _app_model_config(**kwargs: Any) -> AppModelConfig:
-    m = MagicMock(spec=AppModelConfig)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(AppModelConfig, m)
 
 
 def _build_start_graph() -> dict[str, Any]:

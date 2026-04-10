@@ -22,13 +22,13 @@ from .dataset_service_test_helpers import (
     PipelineIconInfo,
     ProviderTokenNotInitError,
     RagPipelineDatasetCreateEntity,
-    SimpleNamespace,
     TenantAccountRole,
     _make_knowledge_configuration,
     _make_retrieval_model,
     _make_session_context,
     json,
     mock_account,
+    mock_attrs,
     mock_dataset,
     patch,
     pytest,
@@ -45,7 +45,7 @@ class TestDatasetServiceQueries:
             patch("services.dataset_service.helper.escape_like_pattern", return_value="escaped-search") as escape_like,
             patch("services.dataset_service.TagService.get_target_ids_by_tag_ids") as get_target_ids,
         ):
-            mock_db.paginate.return_value = SimpleNamespace(items=["dataset"], total=1)
+            mock_db.paginate.return_value = mock_attrs(items=["dataset"], total=1)
             yield {
                 "db": mock_db,
                 "escape_like_pattern": escape_like,
@@ -137,7 +137,7 @@ class TestDatasetServiceQueries:
 
     def test_get_datasets_by_ids_uses_paginate_for_non_empty_input(self):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.paginate.return_value = SimpleNamespace(items=["dataset-1"], total=1)
+            mock_db.paginate.return_value = mock_attrs(items=["dataset-1"], total=1)
 
             items, total = DatasetService.get_datasets_by_ids(["dataset-1"], "tenant-1")
 
@@ -243,10 +243,10 @@ class TestDatasetServiceValidation:
                 DatasetService.check_reranking_model_setting("tenant-1", "provider", "reranker")
 
     def test_check_is_multimodal_model_returns_true_when_model_supports_vision(self):
-        model_schema = SimpleNamespace(features=[ModelFeature.VISION])
+        model_schema = mock_attrs(features=[ModelFeature.VISION])
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.return_value = model_schema
-        model_instance = SimpleNamespace(
+        model_instance = mock_attrs(
             model_type_instance=model_type_instance,
             model_name="embedding-model",
             credentials={"api_key": "secret"},
@@ -260,10 +260,10 @@ class TestDatasetServiceValidation:
         assert result is True
 
     def test_check_is_multimodal_model_returns_false_when_vision_feature_is_absent(self):
-        model_schema = SimpleNamespace(features=[])
+        model_schema = mock_attrs(features=[])
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.return_value = model_schema
-        model_instance = SimpleNamespace(
+        model_instance = mock_attrs(
             model_type_instance=model_type_instance,
             model_name="embedding-model",
             credentials={"api_key": "secret"},
@@ -279,7 +279,7 @@ class TestDatasetServiceValidation:
     def test_check_is_multimodal_model_raises_when_schema_is_missing(self):
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.return_value = None
-        model_instance = SimpleNamespace(
+        model_instance = mock_attrs(
             model_type_instance=model_type_instance,
             model_name="embedding-model",
             credentials={"api_key": "secret"},
@@ -313,7 +313,7 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_create_empty_dataset_uses_default_embedding_model_for_high_quality_dataset(self):
         account = mock_account(id="user-1")
-        default_embedding_model = SimpleNamespace(provider="provider", model_name="default-embedding")
+        default_embedding_model = mock_attrs(provider="provider", model_name="default-embedding")
 
         with (
             patch("services.dataset_service.db") as mock_db,
@@ -350,7 +350,7 @@ class TestDatasetServiceCreationAndUpdate:
     def test_create_empty_dataset_creates_external_binding_for_high_quality_dataset(self):
         account = mock_account(id="user-1")
         retrieval_model = _make_retrieval_model()
-        embedding_model = SimpleNamespace(provider="provider", model_name="embedding-model")
+        embedding_model = mock_attrs(provider="provider", model_name="embedding-model")
 
         with (
             patch("services.dataset_service.db") as mock_db,
@@ -361,7 +361,7 @@ class TestDatasetServiceCreationAndUpdate:
             ),
             patch(
                 "services.dataset_service.ExternalKnowledgeBindings",
-                side_effect=lambda **kwargs: SimpleNamespace(**kwargs),
+                side_effect=lambda **kwargs: mock_attrs(**kwargs),
             ) as binding_cls,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.ExternalDatasetService.get_external_knowledge_api", return_value=object()),
@@ -424,7 +424,7 @@ class TestDatasetServiceCreationAndUpdate:
             icon_info=PipelineIconInfo(icon="book", icon_background="#fff"),
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
-        pipeline = SimpleNamespace(id="pipeline-1")
+        pipeline = mock_attrs(id="pipeline-1")
 
         def pipeline_factory(**kwargs):
             pipeline.__dict__.update(kwargs)
@@ -442,8 +442,8 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.Dataset", side_effect=dataset_factory),
         ):
             mock_db.session.scalars.return_value.all.return_value = [
-                SimpleNamespace(name="Untitled"),
-                SimpleNamespace(name="Untitled 1"),
+                mock_attrs(name="Untitled"),
+                mock_attrs(name="Untitled 1"),
             ]
 
             dataset = DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity)
@@ -577,7 +577,7 @@ class TestDatasetServiceCreationAndUpdate:
             DatasetService._update_external_dataset(dataset, payload, mock_account(id="user-1"))
 
     def test_update_external_knowledge_binding_updates_changed_binding_values(self):
-        binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
+        binding = mock_attrs(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
         session = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = binding
         session.add = MagicMock()
@@ -691,8 +691,8 @@ class TestDatasetServiceCreationAndUpdate:
             keyword_number=8,
             summary_index_setting={"enable": True},
         )
-        pipeline = SimpleNamespace(id="pipeline-1", tenant_id="tenant-1")
-        published_workflow = SimpleNamespace(
+        pipeline = mock_attrs(id="pipeline-1", tenant_id="tenant-1")
+        published_workflow = mock_attrs(
             graph=json.dumps({"nodes": [{"data": {"type": "knowledge-index"}}, {"data": {"type": "start"}}]}),
             type="chat",
             features={"feature": True},
@@ -700,8 +700,8 @@ class TestDatasetServiceCreationAndUpdate:
             conversation_variables=[],
             rag_pipeline_variables=[],
         )
-        draft_workflow = SimpleNamespace(graph=json.dumps({"nodes": [{"data": {"type": "knowledge-index"}}]}))
-        new_workflow = SimpleNamespace(id="workflow-1")
+        draft_workflow = mock_attrs(graph=json.dumps({"nodes": [{"data": {"type": "knowledge-index"}}]}))
+        new_workflow = mock_attrs(id="workflow-1")
         rag_pipeline_service = MagicMock()
         rag_pipeline_service.get_published_workflow.return_value = published_workflow
         rag_pipeline_service.get_draft_workflow.return_value = draft_workflow
@@ -725,7 +725,7 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_update_pipeline_knowledge_base_node_data_rolls_back_when_update_fails(self):
         dataset = mock_dataset(runtime_mode="rag_pipeline", pipeline_id="pipeline-1")
-        pipeline = SimpleNamespace(id="pipeline-1", tenant_id="tenant-1")
+        pipeline = mock_attrs(id="pipeline-1", tenant_id="tenant-1")
         rag_pipeline_service = MagicMock()
         rag_pipeline_service.get_published_workflow.side_effect = RuntimeError("boom")
 
@@ -800,11 +800,11 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_configure_embedding_model_for_high_quality_updates_filtered_data(self):
         class FakeAccount:
-            pass
+            current_tenant_id: str | None = None
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
-        embedding_model = SimpleNamespace(provider="provider", model_name="embedding-model")
+        embedding_model = mock_attrs(provider="provider", model_name="embedding-model")
         filtered_data: dict[str, object] = {}
 
         with (
@@ -813,7 +813,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
-                return_value=SimpleNamespace(id="binding-1"),
+                return_value=mock_attrs(id="binding-1"),
             ),
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
@@ -838,7 +838,7 @@ class TestDatasetServiceCreationAndUpdate:
     )
     def test_configure_embedding_model_for_high_quality_wraps_model_errors(self, error, message):
         class FakeAccount:
-            pass
+            current_tenant_id: str | None = None
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
@@ -963,7 +963,7 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_apply_new_embedding_settings_updates_binding_for_new_model(self):
         class FakeAccount:
-            pass
+            current_tenant_id: str | None = None
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
@@ -976,10 +976,10 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
-                return_value=SimpleNamespace(id="binding-2"),
+                return_value=mock_attrs(id="binding-2"),
             ),
         ):
-            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = SimpleNamespace(
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = mock_attrs(
                 provider="provider-two",
                 model_name="embedding-model-two",
             )
@@ -998,7 +998,7 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_apply_new_embedding_settings_preserves_existing_values_when_provider_token_is_missing(self):
         class FakeAccount:
-            pass
+            current_tenant_id: str | None = None
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
@@ -1070,7 +1070,7 @@ class TestDatasetServiceRagPipelineSettings:
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
         session.merge.return_value = dataset
         knowledge_configuration = _make_knowledge_configuration(summary_index_setting={"enable": True})
-        embedding_model = SimpleNamespace(provider="provider", model_name="embedding-model")
+        embedding_model = mock_attrs(provider="provider", model_name="embedding-model")
 
         with (
             patch("services.dataset_service.current_user", mock_account(current_tenant_id="tenant-1")),
@@ -1078,7 +1078,7 @@ class TestDatasetServiceRagPipelineSettings:
             patch.object(DatasetService, "check_is_multimodal_model", return_value=True) as check_multimodal,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
-                return_value=SimpleNamespace(id="binding-1"),
+                return_value=mock_attrs(id="binding-1"),
             ),
         ):
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
@@ -1163,7 +1163,7 @@ class TestDatasetServiceRagPipelineSettings:
         dataset.indexing_technique = "economy"
         session.merge.return_value = dataset
         knowledge_configuration = _make_knowledge_configuration()
-        embedding_model = SimpleNamespace(provider="provider", model_name="embedding-model")
+        embedding_model = mock_attrs(provider="provider", model_name="embedding-model")
 
         with (
             patch("services.dataset_service.current_user", mock_account(current_tenant_id="tenant-1")),
@@ -1171,7 +1171,7 @@ class TestDatasetServiceRagPipelineSettings:
             patch.object(DatasetService, "check_is_multimodal_model", return_value=False),
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
-                return_value=SimpleNamespace(id="binding-1"),
+                return_value=mock_attrs(id="binding-1"),
             ),
             patch("services.dataset_service.deal_dataset_index_update_task") as update_task,
         ):
@@ -1214,11 +1214,11 @@ class TestDatasetServiceRagPipelineSettings:
             patch.object(DatasetService, "check_is_multimodal_model", return_value=True),
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
-                return_value=SimpleNamespace(id="binding-2"),
+                return_value=mock_attrs(id="binding-2"),
             ),
             patch("services.dataset_service.deal_dataset_index_update_task") as update_task,
         ):
-            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = SimpleNamespace(
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = mock_attrs(
                 provider="provider-two",
                 model_name="embedding-model-two",
             )
@@ -1443,7 +1443,7 @@ class TestDatasetServicePermissionsAndLifecycle:
     def test_get_dataset_queries_delegates_to_paginate(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.desc.side_effect = lambda column: column
-            mock_db.paginate.return_value = SimpleNamespace(items=["query"], total=1)
+            mock_db.paginate.return_value = mock_attrs(items=["query"], total=1)
 
             items, total = DatasetService.get_dataset_queries("dataset-1", page=1, per_page=20)
 
@@ -1494,13 +1494,13 @@ class TestDatasetServicePermissionsAndLifecycle:
 
     def test_get_dataset_auto_disable_logs_returns_empty_when_billing_is_disabled(self):
         class FakeAccount:
-            pass
+            current_tenant_id: str | None = None
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
 
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL))
+        features = mock_attrs(
+            billing=mock_attrs(enabled=False, subscription=mock_attrs(plan=CloudPlan.PROFESSIONAL))
         )
 
         with (
@@ -1516,13 +1516,13 @@ class TestDatasetServicePermissionsAndLifecycle:
 
     def test_get_dataset_auto_disable_logs_returns_recent_document_ids(self):
         class FakeAccount:
-            pass
+            current_tenant_id: str | None = None
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
-        logs = [SimpleNamespace(document_id="doc-1"), SimpleNamespace(document_id="doc-2")]
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL))
+        logs = [mock_attrs(document_id="doc-1"), mock_attrs(document_id="doc-2")]
+        features = mock_attrs(
+            billing=mock_attrs(enabled=True, subscription=mock_attrs(plan=CloudPlan.PROFESSIONAL))
         )
 
         with (
@@ -1613,7 +1613,7 @@ class TestDatasetCollectionBindingService:
     """Unit tests for dataset collection binding lookups and creation."""
 
     def test_get_dataset_collection_binding_returns_existing_binding(self):
-        binding = SimpleNamespace(id="binding-1")
+        binding = mock_attrs(id="binding-1")
 
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = binding
@@ -1624,7 +1624,7 @@ class TestDatasetCollectionBindingService:
         mock_db.session.add.assert_not_called()
 
     def test_get_dataset_collection_binding_creates_binding_when_missing(self):
-        created_binding = SimpleNamespace(id="binding-2")
+        created_binding = mock_attrs(id="binding-2")
 
         with (
             patch("services.dataset_service.db") as mock_db,
@@ -1654,7 +1654,7 @@ class TestDatasetCollectionBindingService:
                 DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type("binding-1")
 
     def test_get_dataset_collection_binding_by_id_and_type_returns_binding(self):
-        binding = SimpleNamespace(id="binding-1")
+        binding = mock_attrs(id="binding-1")
 
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = binding

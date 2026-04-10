@@ -2,14 +2,27 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.extension.extensible import ModuleExtension
 from services.code_based_extension_service import CodeBasedExtensionService
 
 
-def _ext(**kwargs: object) -> MagicMock:
-    m = MagicMock()
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return m
+def _ext(
+    *,
+    name: str = "extension",
+    label: dict[str, str] | None = None,
+    form_schema: list[dict[str, str]] | None = None,
+    builtin: bool = True,
+    extension_class: object | None = None,
+    position: int | None = None,
+) -> ModuleExtension:
+    return ModuleExtension(
+        name=name,
+        label=label,
+        form_schema=form_schema,
+        builtin=builtin,
+        extension_class=extension_class,
+        position=position,
+    )
 
 
 class TestCodeBasedExtensionService:

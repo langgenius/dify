@@ -6,8 +6,7 @@ document, and segment service test modules that exercise
 """
 
 import json
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Literal, cast
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -70,6 +69,7 @@ from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexing
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from tests.unit_tests.services.services_test_help import mock_attrs
 
 __all__ = [
     "Account",
@@ -123,7 +123,6 @@ __all__ = [
     "SegmentService",
     "SegmentUpdateArgs",
     "Segmentation",
-    "SimpleNamespace",
     "TenantAccountRole",
     "WebsiteInfo",
     "_make_child_chunk",
@@ -139,6 +138,7 @@ __all__ = [
     "create_autospec",
     "json",
     "mock_account",
+    "mock_attrs",
     "mock_dataset",
     "patch",
     "pytest",
@@ -210,15 +210,13 @@ class DatasetServiceUnitDataFactory:
         tenant_id: str = "tenant-123",
         role: str = TenantAccountRole.OWNER,
         **kwargs,
-    ) -> SimpleNamespace:
-        user = SimpleNamespace(
+    ) -> Account:
+        return mock_account(
             id=user_id,
             current_tenant_id=tenant_id,
             current_role=role,
+            **kwargs,
         )
-        for key, value in kwargs.items():
-            setattr(user, key, value)
-        return user
 
     @staticmethod
     def create_document_mock(
@@ -280,13 +278,13 @@ def _make_lock_context() -> MagicMock:
     return context_manager
 
 
-def _make_features(*, enabled: bool, plan: str = CloudPlan.PROFESSIONAL) -> SimpleNamespace:
-    return SimpleNamespace(
-        billing=SimpleNamespace(
+def _make_features(*, enabled: bool, plan: str = CloudPlan.PROFESSIONAL) -> MagicMock:
+    return mock_attrs(
+        billing=mock_attrs(
             enabled=enabled,
-            subscription=SimpleNamespace(plan=plan),
+            subscription=mock_attrs(plan=plan),
         ),
-        documents_upload_quota=SimpleNamespace(limit=1000, size=0),
+        documents_upload_quota=mock_attrs(limit=1000, size=0),
     )
 
 
@@ -340,7 +338,7 @@ def _make_document(
     document.display_status = display_status
     document.data_source_type = "upload_file"
     document.data_source_info = "{}"
-    document.completed_at = SimpleNamespace()
+    document.completed_at = object()
     document.processing_started_at = "started"
     document.parsing_completed_at = "parsed"
     document.cleaning_completed_at = "cleaned"
@@ -453,7 +451,7 @@ def _make_rag_pipeline_retrieval_setting() -> RagPipelineRetrievalSetting:
 def _make_knowledge_configuration(
     *,
     chunk_structure: str = "paragraph",
-    indexing_technique: str = "high_quality",
+    indexing_technique: Literal["economy", "high_quality"] = "high_quality",
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,

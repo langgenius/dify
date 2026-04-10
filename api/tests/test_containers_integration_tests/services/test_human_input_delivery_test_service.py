@@ -16,6 +16,7 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
 )
 from models.account import Account, TenantAccountJoin
+from services.feature_service import FeatureModel
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,
@@ -39,10 +40,8 @@ def _make_valid_email_config():
     )
 
 
-def _feature_flags(*, email_delivery_enabled: bool) -> MagicMock:
-    m = MagicMock()
-    m.human_input_email_delivery_enabled = email_delivery_enabled
-    return m
+def _feature_flags(*, email_delivery_enabled: bool) -> FeatureModel:
+    return FeatureModel(human_input_email_delivery_enabled=email_delivery_enabled)
 
 
 def test_build_form_link():
@@ -241,7 +240,7 @@ class TestEmailDeliveryTestHandler:
         )
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
-                recipients=EmailRecipients(whole_workspace=False, items=[]),
+                recipients=EmailRecipients(include_bound_group=False, items=[]),
                 subject="<b>Notice</b>\r\nBCC:{{ recipient_email }}",
                 body="Body",
             )

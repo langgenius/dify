@@ -564,7 +564,7 @@ class TestWebhookServiceUnit:
 # === Merged from test_webhook_service_additional.py ===
 
 
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -580,12 +580,17 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from models.enums import AppTriggerStatus
-from models.model import App, EndUser
+from models.model import EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
-from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as service_module
 from services.trigger.webhook_service import WebhookService
+from tests.unit_tests.services.services_test_help import (
+    mock_app as _app,
+    mock_app_trigger,
+    mock_workflow as _workflow,
+    mock_workflow_webhook_trigger as _workflow_trigger,
+)
 
 
 class _FakeQuery:
@@ -640,39 +645,12 @@ def _patch_session(monkeypatch: pytest.MonkeyPatch, session: Any) -> None:
     monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext(session))
     monkeypatch.setattr(service_module, "sessionmaker", lambda *args, **kwargs: _SessionmakerContext(session))
 
-
-def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
-    m = MagicMock(spec=WorkflowWebhookTrigger)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(WorkflowWebhookTrigger, m)
-
-
-def _workflow(**kwargs: Any) -> Workflow:
-    m = MagicMock(spec=Workflow)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(Workflow, m)
-
-
-def _app(**kwargs: Any) -> App:
-    m = MagicMock(spec=App)
-    for k, v in kwargs.items():
-        setattr(m, k, v)
-    return cast(App, m)
-
-
 def _webhook_trigger_row(*, app_id: str = "app-1", node_id: str = "node-1") -> WorkflowWebhookTrigger:
-    m = MagicMock(spec=WorkflowWebhookTrigger)
-    m.app_id = app_id
-    m.node_id = node_id
-    return cast(WorkflowWebhookTrigger, m)
+    return _workflow_trigger(app_id=app_id, node_id=node_id)
 
 
 def _app_trigger_row(*, status: AppTriggerStatus) -> AppTrigger:
-    m = MagicMock(spec=AppTrigger)
-    m.status = status
-    return cast(AppTrigger, m)
+    return mock_app_trigger(status=status)
 
 
 def test_get_webhook_trigger_and_workflow_should_raise_when_webhook_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
