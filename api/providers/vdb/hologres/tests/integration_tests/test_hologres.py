@@ -9,7 +9,6 @@ from core.rag.models.document import Document
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
 
 
-
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 

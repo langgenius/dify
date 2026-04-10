@@ -775,9 +775,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch.object(weaviate_vector_module.dify_config, "WEAVIATE_GRPC_ENDPOINT", "localhost:50051"),
             patch.object(weaviate_vector_module.dify_config, "WEAVIATE_API_KEY", "api-key"),
             patch.object(weaviate_vector_module.dify_config, "WEAVIATE_BATCH_SIZE", 88),
-            patch(
-                "dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector"
-            ) as mock_vector,
+            patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
             result = factory.init_vector(dataset, attributes, MagicMock())
@@ -806,9 +804,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
                 "gen_collection_name_by_id",
                 return_value="GeneratedCollection_Node",
             ),
-            patch(
-                "dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector"
-            ) as mock_vector,
+            patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
             result = factory.init_vector(dataset, attributes, MagicMock())

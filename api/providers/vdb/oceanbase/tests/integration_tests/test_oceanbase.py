@@ -9,7 +9,6 @@ from core.rag.datasource.vdb.vector_integration_test_support import (
 )
 
 
-
 @pytest.fixture
 def oceanbase_vector():
     return OceanBaseVector(

@@ -8,7 +8,6 @@ from core.rag.datasource.vdb.vector_integration_test_support import (
 )
 
 
-
 class OpenGaussTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()

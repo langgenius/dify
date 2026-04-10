@@ -13,6 +13,7 @@ from clickzetta import connect
 
 logger = logging.getLogger(__name__)
 
+
 def test_clickzetta_connection():
     """Test direct connection to Clickzetta"""
     logger.info("=== Testing direct Clickzetta connection ===")
@@ -155,7 +156,9 @@ def main():
     if passed == total:
         logger.info("\n🎉 All tests passed! Clickzetta is ready for Dify Docker deployment.")
         logger.info("\nNext steps:")
-        logger.info("1. Run: cd docker && docker-compose -f docker-compose.yaml -f docker-compose.clickzetta.yaml up -d")
+        logger.info(
+            "1. Run: cd docker && docker-compose -f docker-compose.yaml -f docker-compose.clickzetta.yaml up -d"
+        )
         logger.info("2. Access Dify at http://localhost:3000")
         logger.info("3. Create a dataset and test vector storage with Clickzetta")
         return 0

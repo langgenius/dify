@@ -24,7 +24,7 @@ def check_tiflash_ready() -> bool:
             result = cursor.fetchall()
             return result is not None and len(result) > 0
     except Exception as e:
-        print(f"TiFlash is not ready. Exception: {e}")
+        logger.error(f"TiFlash is not ready. Exception: {e}")
         return False
     finally:
         if connection:
@@ -39,19 +39,19 @@ def main():
         try:
             is_tiflash_ready = check_tiflash_ready()
         except Exception as e:
-            print(f"TiFlash is not ready. Exception: {e}")
+            logger.error(f"TiFlash is not ready. Exception: {e}")
             is_tiflash_ready = False
 
         if is_tiflash_ready:
             break
         else:
-            print(f"Attempt {attempt + 1} failed, retry in {retry_interval_seconds} seconds...")
+            logger.error(f"Attempt {attempt + 1} failed, retry in {retry_interval_seconds} seconds...")
             time.sleep(retry_interval_seconds)
 
     if is_tiflash_ready:
-        print("TiFlash is ready in TiDB.")
+        logger.info("TiFlash is ready in TiDB.")
     else:
-        print(f"TiFlash is not ready in TiDB after {max_attempts} attempting checks.")
+        logger.error(f"TiFlash is not ready in TiDB after {max_attempts} attempting checks.")
         exit(1)
 
 

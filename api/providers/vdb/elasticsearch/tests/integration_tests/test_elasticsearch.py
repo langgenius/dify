@@ -4,7 +4,6 @@ from core.rag.datasource.vdb.vector_integration_test_support import (
 )
 
 
-
 class ElasticSearchVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()

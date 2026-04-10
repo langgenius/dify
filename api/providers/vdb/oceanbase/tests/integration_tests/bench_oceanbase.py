@@ -11,10 +11,13 @@ import random
 import statistics
 import time
 import uuid
+import logging
 
 from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_distance
 from sqlalchemy import JSON, Column, String, text
 from sqlalchemy.dialects.mysql import LONGTEXT
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -164,11 +167,11 @@ def main():
     client = _make_client()
     client_pooled = _make_client(pool_size=5, max_overflow=10, pool_recycle=3600, pool_pre_ping=True)
 
-    print("=" * 70)
-    print("OceanBase Vector Store — Performance Benchmark")
-    print(f"  Endpoint : {HOST}:{PORT}")
-    print(f"  Vec dim  : {VEC_DIM}")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("OceanBase Vector Store — Performance Benchmark")
+    logger.info(f"  Endpoint : {HOST}:{PORT}")
+    logger.info(f"  Vec dim  : {VEC_DIM}")
+    logger.info("=" * 70)
 
     # ------------------------------------------------------------------
     # 1. Insertion benchmark
@@ -187,10 +190,10 @@ def main():
         t_batch = bench_insert_batch(client_pooled, tbl_batch, rows, batch_size=100)
 
         speedup = t_single / t_batch if t_batch > 0 else float("inf")
-        print(f"\n[Insert {n_docs} docs]")
-        print(f"  Single-row : {t_single:.2f}s")
-        print(f"  Batch(100) : {t_batch:.2f}s")
-        print(f"  Speedup    : {speedup:.1f}x")
+        logger.info(f"\n[Insert {n_docs} docs]")
+        logger.info(f"  Single-row : {t_single:.2f}s")
+        logger.info(f"  Batch(100) : {t_batch:.2f}s")
+        logger.info(f"  Speedup    : {speedup:.1f}x")
 
     # ------------------------------------------------------------------
     # 2. Metadata query benchmark (use the 1000-doc batch table)
@@ -203,16 +206,16 @@ def main():
         res = conn.execute(text(f"SELECT metadata->>'$.document_id' FROM `{tbl_meta}` LIMIT 1"))
         doc_id_1000 = res.fetchone()[0]
 
-    print("\n[Metadata filter query — 1000 rows, by document_id]")
+    logger.info("\n[Metadata filter query — 1000 rows, by document_id]")
     times_no_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=False)
-    print(f"  Without index : {_fmt(times_no_idx)}")
+    logger.info(f"  Without index : {_fmt(times_no_idx)}")
     times_with_idx = bench_metadata_query(client, tbl_meta, doc_id_1000, with_index=True)
-    print(f"  With index    : {_fmt(times_with_idx)}")
+    logger.info(f"  With index    : {_fmt(times_with_idx)}")
 
     # ------------------------------------------------------------------
     # 3. Vector search benchmark — across metrics
     # ------------------------------------------------------------------
-    print("\n[Vector search — top-10, 20 queries each, on 1000 rows]")
+    logger.info("\n[Vector search — top-10, 20 queries each, on 1000 rows]")
 
     for metric in ["l2", "cosine", "inner_product"]:
         tbl_vs = f"bench_vs_{metric}"
@@ -222,7 +225,7 @@ def main():
         rows_vs, _ = _gen_rows(1000)
         bench_insert_batch(client_pooled, tbl_vs, rows_vs, batch_size=100)
         times = bench_vector_search(client_pooled, tbl_vs, metric, topk=10, n_queries=20)
-        print(f"  {metric:15s}: {_fmt(times)}")
+        logger.info(f"  {metric:15s}: {_fmt(times)}")
         _drop(client_pooled, tbl_vs)
 
     # ------------------------------------------------------------------
@@ -232,9 +235,9 @@ def main():
         _drop(client, f"bench_single_{n}")
         _drop(client, f"bench_batch_{n}")
 
-    print("\n" + "=" * 70)
-    print("Benchmark complete.")
-    print("=" * 70)
+    logger.info("\n" + "=" * 70)
+    logger.info("Benchmark complete.")
+    logger.info("=" * 70)
 
 
 if __name__ == "__main__":

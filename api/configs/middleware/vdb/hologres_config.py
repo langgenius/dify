@@ -1,6 +1,7 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+
 class HologresConfig(BaseSettings):
     """
     Configuration settings for Hologres vector database.

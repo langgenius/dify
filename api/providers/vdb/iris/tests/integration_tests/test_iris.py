@@ -6,7 +6,6 @@ from core.rag.datasource.vdb.vector_integration_test_support import (
 )
 
 
-
 class IrisVectorTest(AbstractVectorTest):
     """Test suite for IRIS vector store implementation."""
 

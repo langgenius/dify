@@ -15,7 +15,6 @@ from core.rag.datasource.vdb.vector_integration_test_support import (
 )
 
 
-
 class TableStoreVectorTest(AbstractVectorTest):
     def __init__(self, normalize_full_text_score: bool = False):
         super().__init__()

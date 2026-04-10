@@ -4,7 +4,6 @@ from dify_vdb_lindorm.lindorm_vector import LindormVectorStore, LindormVectorSto
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest
 
 
-
 class Config:
     SEARCH_ENDPOINT = os.environ.get(
         "SEARCH_ENDPOINT", "http://ld-************-proxy-search-pub.lindorm.aliyuncs.com:30070"
