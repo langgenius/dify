@@ -13,6 +13,7 @@ from celery import shared_task
 from graphon.runtime import GraphRuntimeState
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
@@ -40,6 +41,17 @@ from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntit
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
 logger = logging.getLogger(__name__)
+
+
+# Functional form is required because the key starts with an underscore.
+WorkflowGeneratorArgsDict = TypedDict(  # noqa: UP013
+    "WorkflowGeneratorArgsDict",
+    {
+        "inputs": dict[str, Any],
+        "files": list[Any],
+        "_skip_prepare_user_inputs": bool,
+    },
+)
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -90,15 +102,13 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     )
 
 
-def _build_generator_args(trigger_data: TriggerData) -> dict[str, Any]:
+def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDict:
     """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
-
-    args: dict[str, Any] = {
-        "inputs": dict(trigger_data.inputs),
-        "files": list(trigger_data.files),
-        SKIP_PREPARE_USER_INPUTS_KEY: True,
-    }
-    return args
+    return WorkflowGeneratorArgsDict(
+        inputs=dict(trigger_data.inputs),
+        files=list(trigger_data.files),
+        **{SKIP_PREPARE_USER_INPUTS_KEY: True},
+    )
 
 
 def _execute_workflow_common(
