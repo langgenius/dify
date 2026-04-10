@@ -238,7 +238,7 @@ def _get_base_redis_params() -> RedisBaseParamsDict:
     )
 
 
-def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
+def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
         raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
@@ -289,7 +289,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     return cluster
 
 
-def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis, RedisCluster]:
+def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 
