@@ -1,13 +1,14 @@
 import enum
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from extensions.ext_database import db
-from libs.helper import TokenManager, _TokenData
+from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
 from models import Account, AccountStatus
@@ -83,7 +84,7 @@ class WebAppAuthService:
         return token
 
     @classmethod
-    def get_email_code_login_data(cls, token: str) -> _TokenData | None:
+    def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
 
     @classmethod
