@@ -74,9 +74,7 @@ class WorkflowCommentService:
         app_name = app_name_value if isinstance(app_name_value, str) and app_name_value else "Dify app"
         commenter_name_value = session.scalar(select(Account.name).where(Account.id == mentioner_id))
         commenter_name = (
-            commenter_name_value
-            if isinstance(commenter_name_value, str) and commenter_name_value
-            else "Dify user"
+            commenter_name_value if isinstance(commenter_name_value, str) and commenter_name_value else "Dify user"
         )
         comment_excerpt = WorkflowCommentService._format_comment_excerpt(content)
         base_url = dify_config.CONSOLE_WEB_URL.rstrip("/")
@@ -385,9 +383,7 @@ class WorkflowCommentService:
             mentioned_user_ids = WorkflowCommentService._filter_valid_mentioned_user_ids(mentioned_user_ids or [])
             for user_id in mentioned_user_ids:
                 # Create mention linking to specific reply
-                mention = WorkflowCommentMention(
-                    comment_id=comment_id, reply_id=reply.id, mentioned_user_id=user_id
-                )
+                mention = WorkflowCommentMention(comment_id=comment_id, reply_id=reply.id, mentioned_user_id=user_id)
                 session.add(mention)
 
             mention_email_payloads = WorkflowCommentService._build_mention_email_payloads(
