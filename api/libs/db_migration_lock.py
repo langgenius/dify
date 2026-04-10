@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import redis
 from redis.cluster import RedisCluster
@@ -86,17 +86,11 @@ class DbMigrationAutoRenewLock:
     def name(self) -> str:
         return self._name
 
-    def acquire(
-        self,
-        sleep: float | None = None,
-        blocking: bool | None = None,
-        blocking_timeout: float | None = None,
-        token: str | None = None,
-    ) -> bool:
+    def acquire(self, **kwargs: Any) -> bool:
         """
         Acquire the lock and start heartbeat renewal on success.
 
-        Accepts the same args/kwargs as redis-py `Lock.acquire()`.
+        Accepts the same keyword arguments as redis-py ``Lock.acquire()``.
         """
         # Prevent accidental double-acquire which could leave the previous heartbeat thread running.
         if self._acquired:
@@ -109,9 +103,7 @@ class DbMigrationAutoRenewLock:
                 timeout=self._ttl_seconds,
                 thread_local=False,
             )
-        acquired = bool(
-            self._lock.acquire(sleep=sleep, blocking=blocking, blocking_timeout=blocking_timeout, token=token)
-        )
+        acquired = bool(self._lock.acquire(**kwargs))
         self._acquired = acquired
         if acquired:
             self._start_heartbeat()
