@@ -7,7 +7,7 @@ with support for different subscription tiers, rate limiting, and execution trac
 
 import json
 from datetime import UTC, datetime
-from typing import Any, Union
+from typing import Any
 
 from celery.result import AsyncResult
 from sqlalchemy import select
@@ -50,7 +50,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def trigger_workflow_async(
-        cls, session: Session, user: Union[Account, EndUser], trigger_data: TriggerData
+        cls, session: Session, user: Account | EndUser, trigger_data: TriggerData
     ) -> AsyncTriggerResponse:
         """
         Universal entry point for async workflow execution - THIS METHOD WILL NOT BLOCK
@@ -177,7 +177,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def reinvoke_trigger(
-        cls, session: Session, user: Union[Account, EndUser], workflow_trigger_log_id: str
+        cls, session: Session, user: Account | EndUser, workflow_trigger_log_id: str
     ) -> AsyncTriggerResponse:
         """
         Re-invoke a previously failed or rate-limited trigger - THIS METHOD WILL NOT BLOCK

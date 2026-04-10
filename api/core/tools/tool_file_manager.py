@@ -6,11 +6,11 @@ import os
 import time
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Union
 from uuid import uuid4
 
 import httpx
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
+from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -157,7 +157,7 @@ class ToolFileManager:
 
         return tool_file
 
-    def get_file_binary(self, id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary(self, id: str) -> tuple[bytes, str] | None:
         """
         get file binary
 
@@ -166,13 +166,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == id).limit(1))
 
         if not tool_file:
             return None
@@ -181,7 +175,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_binary_by_message_file_id(self, id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary_by_message_file_id(self, id: str) -> tuple[bytes, str] | None:
         """
         get file binary
 
@@ -190,13 +184,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            message_file: MessageFile | None = (
-                session.query(MessageFile)
-                .where(
-                    MessageFile.id == id,
-                )
-                .first()
-            )
+            message_file: MessageFile | None = session.scalar(select(MessageFile).where(MessageFile.id == id).limit(1))
 
             # Check if message_file is not None
             if message_file is not None:
@@ -210,13 +198,7 @@ class ToolFileManager:
             else:
                 tool_file_id = None
 
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == tool_file_id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
 
         if not tool_file:
             return None
@@ -234,13 +216,7 @@ class ToolFileManager:
         :return: the binary of the file, mime type
         """
         with session_factory.create_session() as session:
-            tool_file: ToolFile | None = (
-                session.query(ToolFile)
-                .where(
-                    ToolFile.id == tool_file_id,
-                )
-                .first()
-            )
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
 
         if not tool_file:
             return None, None

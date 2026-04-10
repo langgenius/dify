@@ -17,8 +17,9 @@ from fields.app_fields import (
 )
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
-from services.app_dsl_service import AppDslService, ImportStatus
+from services.app_dsl_service import AppDslService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.dsl_entities import ImportStatus
 from services.feature_service import FeatureService
 
 from .. import console_ns
