@@ -196,5 +196,3 @@ class TestRequestContext:
         assert "RequestContext" in repr_str
         assert "test-123" in repr_str
         assert "MockSession" in repr_str
-
-
