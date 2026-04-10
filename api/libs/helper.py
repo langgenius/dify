@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Protocol, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -81,7 +81,7 @@ def escape_like_pattern(pattern: str) -> str:
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+def extract_tenant_id(user: "Account | EndUser") -> str | None:
     """
     Extract tenant_id from Account or EndUser object.
 
@@ -164,7 +164,10 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value: Any) -> str:
+def uuid_value(value: str | UUID) -> str:
+    if isinstance(value, UUID):
+        return str(value)
+
     if value == "":
         return str(value)
 
@@ -405,7 +408,7 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional["Account"] = None,
+        account: "Account | None" = None,
         email: str | None = None,
         additional_data: dict | None = None,
     ) -> str:
@@ -465,9 +468,7 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
-    ):
+    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_minutes: int | float):
         key = cls._get_account_token_key(account_id, token_type)
         expiry_seconds = int(expiry_minutes * 60)
         redis_client.setex(key, expiry_seconds, token)
