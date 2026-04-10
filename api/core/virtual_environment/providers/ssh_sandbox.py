@@ -285,18 +285,34 @@ class SSHSandboxEnvironment(VirtualEnvironment):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
+        pkey = None
+        if password.strip().startswith("-----BEGIN"):
+            from io import StringIO
+            try:
+                pkey = paramiko.RSAKey.from_private_key(StringIO(password))
+            except Exception:
+                try:
+                    pkey = paramiko.Ed25519Key.from_private_key(StringIO(password))
+                except Exception:
+                    pkey = paramiko.ECDSAKey.from_private_key(StringIO(password))
+
         try:
-            client.connect(
+            connect_kwargs: dict = dict(
                 hostname=host.strip(),
                 port=port_int,
                 username=username,
-                password=password,
                 look_for_keys=False,
                 allow_agent=False,
                 timeout=cls._SSH_CONNECT_TIMEOUT_SECONDS,
                 banner_timeout=cls._SSH_CONNECT_TIMEOUT_SECONDS,
                 auth_timeout=cls._SSH_CONNECT_TIMEOUT_SECONDS,
             )
+            if pkey is not None:
+                connect_kwargs["pkey"] = pkey
+            else:
+                connect_kwargs["password"] = password
+
+            client.connect(**connect_kwargs)
             transport = client.get_transport()
             if transport is not None:
                 transport.set_keepalive(30)
