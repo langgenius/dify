@@ -674,28 +674,24 @@ class AppModelConfig(TypeBase):
     def suggested_questions_list(self) -> list[str]:
         return json.loads(self.suggested_questions) if self.suggested_questions else []
 
+    def _get_enabled_config(self, value: str | None, *, default_enabled: bool = False) -> EnabledConfig:
+        return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
+
     @property
     def suggested_questions_after_answer_dict(self) -> EnabledConfig:
-        return cast(
-            EnabledConfig,
-            json.loads(self.suggested_questions_after_answer)
-            if self.suggested_questions_after_answer
-            else {"enabled": False},
-        )
+        return self._get_enabled_config(self.suggested_questions_after_answer)
 
     @property
     def speech_to_text_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.speech_to_text) if self.speech_to_text else {"enabled": False})
+        return self._get_enabled_config(self.speech_to_text)
 
     @property
     def text_to_speech_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.text_to_speech) if self.text_to_speech else {"enabled": False})
+        return self._get_enabled_config(self.text_to_speech)
 
     @property
     def retriever_resource_dict(self) -> EnabledConfig:
-        return cast(
-            EnabledConfig, json.loads(self.retriever_resource) if self.retriever_resource else {"enabled": True}
-        )
+        return self._get_enabled_config(self.retriever_resource, default_enabled=True)
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
@@ -722,7 +718,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def more_like_this_dict(self) -> EnabledConfig:
-        return cast(EnabledConfig, json.loads(self.more_like_this) if self.more_like_this else {"enabled": False})
+        return self._get_enabled_config(self.more_like_this)
 
     @property
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
@@ -813,56 +809,32 @@ class AppModelConfig(TypeBase):
             "file_upload": self.file_upload_dict,
         }
 
+    @staticmethod
+    def _dump_optional(value: Any) -> str | None:
+        return json.dumps(value) if value else None
+
     def from_model_config_dict(self, model_config: AppModelConfigDict):
         self.opening_statement = model_config.get("opening_statement")
-        self.suggested_questions = (
-            json.dumps(model_config.get("suggested_questions")) if model_config.get("suggested_questions") else None
+        self.suggested_questions = self._dump_optional(model_config.get("suggested_questions"))
+        self.suggested_questions_after_answer = self._dump_optional(
+            model_config.get("suggested_questions_after_answer")
         )
-        self.suggested_questions_after_answer = (
-            json.dumps(model_config.get("suggested_questions_after_answer"))
-            if model_config.get("suggested_questions_after_answer")
-            else None
-        )
-        self.speech_to_text = (
-            json.dumps(model_config.get("speech_to_text")) if model_config.get("speech_to_text") else None
-        )
-        self.text_to_speech = (
-            json.dumps(model_config.get("text_to_speech")) if model_config.get("text_to_speech") else None
-        )
-        self.more_like_this = (
-            json.dumps(model_config.get("more_like_this")) if model_config.get("more_like_this") else None
-        )
-        self.sensitive_word_avoidance = (
-            json.dumps(model_config.get("sensitive_word_avoidance"))
-            if model_config.get("sensitive_word_avoidance")
-            else None
-        )
-        self.external_data_tools = (
-            json.dumps(model_config.get("external_data_tools")) if model_config.get("external_data_tools") else None
-        )
-        self.model = json.dumps(model_config.get("model")) if model_config.get("model") else None
-        self.user_input_form = (
-            json.dumps(model_config.get("user_input_form")) if model_config.get("user_input_form") else None
-        )
+        self.speech_to_text = self._dump_optional(model_config.get("speech_to_text"))
+        self.text_to_speech = self._dump_optional(model_config.get("text_to_speech"))
+        self.more_like_this = self._dump_optional(model_config.get("more_like_this"))
+        self.sensitive_word_avoidance = self._dump_optional(model_config.get("sensitive_word_avoidance"))
+        self.external_data_tools = self._dump_optional(model_config.get("external_data_tools"))
+        self.model = self._dump_optional(model_config.get("model"))
+        self.user_input_form = self._dump_optional(model_config.get("user_input_form"))
         self.dataset_query_variable = model_config.get("dataset_query_variable")
         self.pre_prompt = model_config.get("pre_prompt")
-        self.agent_mode = json.dumps(model_config.get("agent_mode")) if model_config.get("agent_mode") else None
-        self.retriever_resource = (
-            json.dumps(model_config.get("retriever_resource")) if model_config.get("retriever_resource") else None
-        )
+        self.agent_mode = self._dump_optional(model_config.get("agent_mode"))
+        self.retriever_resource = self._dump_optional(model_config.get("retriever_resource"))
         self.prompt_type = PromptType(model_config.get("prompt_type", "simple"))
-        self.chat_prompt_config = (
-            json.dumps(model_config.get("chat_prompt_config")) if model_config.get("chat_prompt_config") else None
-        )
-        self.completion_prompt_config = (
-            json.dumps(model_config.get("completion_prompt_config"))
-            if model_config.get("completion_prompt_config")
-            else None
-        )
-        self.dataset_configs = (
-            json.dumps(model_config.get("dataset_configs")) if model_config.get("dataset_configs") else None
-        )
-        self.file_upload = json.dumps(model_config.get("file_upload")) if model_config.get("file_upload") else None
+        self.chat_prompt_config = self._dump_optional(model_config.get("chat_prompt_config"))
+        self.completion_prompt_config = self._dump_optional(model_config.get("completion_prompt_config"))
+        self.dataset_configs = self._dump_optional(model_config.get("dataset_configs"))
+        self.file_upload = self._dump_optional(model_config.get("file_upload"))
         return self
 
 
@@ -926,7 +898,7 @@ class InstalledApp(TypeBase):
         return db.session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
 
-class TrialApp(Base):
+class TrialApp(TypeBase):
     __tablename__ = "trial_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
@@ -935,18 +907,26 @@ class TrialApp(Base):
         sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
     )
 
-    id = mapped_column(StringUUID, default=gen_uuidv4_string)
-    app_id = mapped_column(StringUUID, nullable=False)
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=gen_uuidv4_string, default_factory=gen_uuidv4_string, init=False
+    )
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        insert_default=func.current_timestamp(),
+        server_default=func.current_timestamp(),
+        init=False,
+    )
+    trial_limit: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=3)
 
     @property
     def app(self) -> App | None:
         return db.session.scalar(select(App).where(App.id == self.app_id))
 
 
-class AccountTrialAppRecord(Base):
+class AccountTrialAppRecord(TypeBase):
     __tablename__ = "account_trial_app_records"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
@@ -954,11 +934,19 @@ class AccountTrialAppRecord(Base):
         sa.Index("account_trial_app_record_app_id_idx", "app_id"),
         sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
     )
-    id = mapped_column(StringUUID, default=gen_uuidv4_string)
-    account_id = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=False)
-    count = mapped_column(sa.Integer, nullable=False, default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=gen_uuidv4_string, default_factory=gen_uuidv4_string, init=False
+    )
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        insert_default=func.current_timestamp(),
+        server_default=func.current_timestamp(),
+        init=False,
+    )
 
     @property
     def app(self) -> App | None:

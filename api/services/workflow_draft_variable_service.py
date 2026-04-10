@@ -1075,9 +1075,8 @@ class DraftVariableSaver:
         )
         engine = bind = self._session.get_bind()
         assert isinstance(engine, Engine)
-        with Session(bind=engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:
             session.add(variable_file)
-            session.commit()
 
         return truncation_result.result, variable_file
 

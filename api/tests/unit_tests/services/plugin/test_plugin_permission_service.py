@@ -20,7 +20,7 @@ class TestGetPermission:
     def test_returns_permission_when_found(self):
         p1, p2, session = _patched_session()
         permission = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = permission
+        session.scalar.return_value = permission
 
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
@@ -31,7 +31,7 @@ class TestGetPermission:
 
     def test_returns_none_when_not_found(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
@@ -44,9 +44,9 @@ class TestGetPermission:
 class TestChangePermission:
     def test_creates_new_permission_when_not_exists(self):
         p1, p2, session = _patched_session()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
-        with p1, p2, patch(f"{MODULE}.TenantPluginPermission") as perm_cls:
+        with p1, p2, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginPermission") as perm_cls:
             perm_cls.return_value = MagicMock()
             from services.plugin.plugin_permission_service import PluginPermissionService
 
@@ -59,7 +59,7 @@ class TestChangePermission:
     def test_updates_existing_permission(self):
         p1, p2, session = _patched_session()
         existing = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = existing
+        session.scalar.return_value = existing
 
         with p1, p2:
             from services.plugin.plugin_permission_service import PluginPermissionService
