@@ -308,11 +308,13 @@ class AgentV2Node(Node[AgentV2NodeData]):
     def _build_prompt_messages(self, dify_ctx: DifyRunContext) -> list[PromptMessage]:
         """Build prompt messages from the node's prompt_template, resolving variables.
 
-        If the node has memory config and a conversation_id exists, conversation
-        history is loaded and inserted between system and user messages.
+        Handles: variable references ({{#node.var#}}), context injection ({{#context#}}),
+        Jinja2 templates, and memory (conversation history).
         """
         variable_pool = self.graph_runtime_state.variable_pool
         messages: list[PromptMessage] = []
+
+        context_str = self._build_context_string(variable_pool)
 
         template = self.node_data.prompt_template
         if isinstance(template, Sequence) and not isinstance(template, str):
@@ -320,19 +322,25 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 role = msg_template.role.value if hasattr(msg_template.role, "value") else str(msg_template.role)
                 text = msg_template.text or ""
                 jinja2_text = getattr(msg_template, "jinja2_text", None)
-                content = jinja2_text or text
 
-                resolved = self._resolve_variable_template(content, variable_pool)
+                if jinja2_text:
+                    content = self._render_jinja2(jinja2_text, variable_pool, context_str)
+                else:
+                    content = self._resolve_variable_template(text, variable_pool)
+                    if context_str:
+                        content = content.replace("{{#context#}}", context_str)
 
                 if role == "system":
-                    messages.append(SystemPromptMessage(content=resolved))
+                    messages.append(SystemPromptMessage(content=content))
                 elif role == "user":
-                    messages.append(UserPromptMessage(content=resolved))
+                    messages.append(UserPromptMessage(content=content))
                 elif role == "assistant":
-                    messages.append(AssistantPromptMessage(content=resolved))
+                    messages.append(AssistantPromptMessage(content=content))
         else:
             text_content = getattr(template, "text", "") or ""
             resolved = self._resolve_variable_template(text_content, variable_pool)
+            if context_str:
+                resolved = resolved.replace("{{#context#}}", context_str)
             messages.append(UserPromptMessage(content=resolved))
 
         if self._memory is not None:
@@ -399,6 +407,60 @@ class AgentV2Node(Node[AgentV2NodeData]):
         except Exception:
             logger.warning("Failed to load memory for agent-v2 node", exc_info=True)
             return []
+
+    def _build_context_string(self, variable_pool: Any) -> str:
+        """Build context string from knowledge retrieval node output."""
+        ctx_config = self.node_data.context
+        if not ctx_config or not ctx_config.enabled:
+            return ""
+        selector = getattr(ctx_config, "variable_selector", None)
+        if not selector:
+            return ""
+        try:
+            value = variable_pool.get(selector)
+            if value is None:
+                return ""
+            raw = value.value if hasattr(value, "value") else value
+            if isinstance(raw, str):
+                return raw
+            if isinstance(raw, list):
+                parts = []
+                for item in raw:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict):
+                        if "content" in item:
+                            parts.append(item["content"])
+                        elif "text" in item:
+                            parts.append(item["text"])
+                return "\n".join(parts)
+            return str(raw)
+        except Exception:
+            logger.warning("Failed to build context string", exc_info=True)
+            return ""
+
+    @staticmethod
+    def _render_jinja2(template: str, variable_pool: Any, context_str: str = "") -> str:
+        """Render a Jinja2 template with variables from the pool."""
+        try:
+            from jinja2 import Environment, BaseLoader
+            env = Environment(loader=BaseLoader(), autoescape=False)
+            tpl = env.from_string(template)
+
+            parser = VariableTemplateParser(template)
+            selectors = parser.extract_variable_selectors()
+            variables: dict[str, Any] = {}
+            for selector in selectors:
+                value = variable_pool.get(selector.value_selector)
+                if value is not None:
+                    variables[selector.variable] = value.text if hasattr(value, "text") else str(value)
+                else:
+                    variables[selector.variable] = ""
+            variables["context"] = context_str
+            return tpl.render(**variables)
+        except Exception:
+            logger.warning("Jinja2 rendering failed, falling back to plain text", exc_info=True)
+            return template
 
     @staticmethod
     def _resolve_variable_template(template: str, variable_pool: Any) -> str:
