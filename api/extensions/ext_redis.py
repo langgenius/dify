@@ -322,8 +322,8 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
             kwargs["max_connections"] = max_conns
         return RedisCluster.from_url(pubsub_url, **kwargs)
 
-    health_params: dict[str, Any] = dict(_get_connection_health_params())
-    kwargs = {**health_params}
+    standalone_health_params: dict[str, Any] = dict(_get_connection_health_params())
+    kwargs = {**standalone_health_params}
     if max_conns:
         kwargs["max_connections"] = max_conns
     return redis.Redis.from_url(pubsub_url, **kwargs)
