@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import Any, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -1387,7 +1387,7 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(self, dataset: Dataset, document: Document, user: Union[Account, EndUser]):
+    def retry_error_document(self, dataset: Dataset, document: Document, user: Account | EndUser):
         """
         Retry error document
         """

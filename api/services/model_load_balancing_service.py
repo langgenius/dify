@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict, Union
+from typing import Any, TypedDict
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -626,7 +626,7 @@ class ModelLoadBalancingService:
 
     def _get_credential_schema(
         self, provider_configuration: ProviderConfiguration
-    ) -> Union[ModelCredentialSchema, ProviderCredentialSchema]:
+    ) -> ModelCredentialSchema | ProviderCredentialSchema:
         """Get form schemas."""
         if provider_configuration.provider.model_credential_schema:
             return provider_configuration.provider.model_credential_schema

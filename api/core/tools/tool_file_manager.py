@@ -6,7 +6,6 @@ import os
 import time
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Union
 from uuid import uuid4
 
 import httpx
@@ -158,7 +157,7 @@ class ToolFileManager:
 
         return tool_file
 
-    def get_file_binary(self, id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary(self, id: str) -> tuple[bytes, str] | None:
         """
         get file binary
 
@@ -176,7 +175,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_binary_by_message_file_id(self, id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary_by_message_file_id(self, id: str) -> tuple[bytes, str] | None:
         """
         get file binary
 

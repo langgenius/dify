@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, Union, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -195,9 +195,7 @@ class ExternalDatasetService:
                         raise ValueError(f"{parameter.get('name')} is required")
 
     @staticmethod
-    def process_external_api(
-        settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]
-    ) -> httpx.Response:
+    def process_external_api(settings: ExternalKnowledgeApiSetting, files: dict[str, Any] | None) -> httpx.Response:
         """
         do http request depending on api bundle
         """
