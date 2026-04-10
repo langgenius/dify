@@ -5,11 +5,12 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
-from pydantic import BaseModel
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, TypeAdapter
+from sqlalchemy import delete, func, select, update
+
+from core.db.session_factory import session_factory
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -72,6 +73,15 @@ from tasks.mail_reset_password_task import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class InvitationData(TypedDict):
+    account_id: str
+    email: str
+    workspace_id: str
+
+
+_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
@@ -777,19 +787,19 @@ class AccountService:
         return token
 
     @staticmethod
-    def get_account_by_email_with_case_fallback(email: str, session: Session | None = None) -> Account | None:
+    def get_account_by_email_with_case_fallback(email: str) -> Account | None:
         """
         Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
 
         This keeps backward compatibility for older records that stored uppercase emails while the
         rest of the system gradually normalizes new inputs.
         """
-        query_session = session or db.session
-        account = query_session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
-        if account or email == email.lower():
-            return account
+        with session_factory.create_session() as session:
+            account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+            if account or email == email.lower():
+                return account
 
-        return query_session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
+            return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
@@ -1460,8 +1470,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        with Session(db.engine) as session:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(email)
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")

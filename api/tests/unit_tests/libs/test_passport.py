@@ -149,11 +149,9 @@ class TestPassportService:
             mock_config.SECRET_KEY = ""
             service = PassportService()
 
-            # Empty secret key should still work but is insecure
             payload = {"test": "data"}
-            token = service.issue(payload)
-            decoded = service.verify(token)
-            assert decoded == payload
+            with pytest.raises(jwt.exceptions.InvalidKeyError):
+                service.issue(payload)
 
     def test_should_handle_none_secret_key(self):
         """Test behavior when SECRET_KEY is None"""
