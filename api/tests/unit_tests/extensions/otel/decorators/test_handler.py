@@ -28,7 +28,7 @@ class TestSpanHandlerExtractArguments:
 
         args = (1, 2, 3)
         kwargs = {}
-        result = handler._extract_arguments(func, args, kwargs)
+        result = handler._extract_arguments(func, *args, **kwargs)
 
         assert result is not None
         assert result["a"] == 1
@@ -44,7 +44,7 @@ class TestSpanHandlerExtractArguments:
 
         args = ()
         kwargs = {"a": 1, "b": 2, "c": 3}
-        result = handler._extract_arguments(func, args, kwargs)
+        result = handler._extract_arguments(func, *args, **kwargs)
 
         assert result is not None
         assert result["a"] == 1
@@ -60,7 +60,7 @@ class TestSpanHandlerExtractArguments:
 
         args = (1,)
         kwargs = {"b": 2, "c": 3}
-        result = handler._extract_arguments(func, args, kwargs)
+        result = handler._extract_arguments(func, *args, **kwargs)
 
         assert result is not None
         assert result["a"] == 1
@@ -76,7 +76,7 @@ class TestSpanHandlerExtractArguments:
 
         args = (1,)
         kwargs = {}
-        result = handler._extract_arguments(func, args, kwargs)
+        result = handler._extract_arguments(func, *args, **kwargs)
 
         assert result is not None
         assert result["a"] == 1
@@ -94,7 +94,7 @@ class TestSpanHandlerExtractArguments:
         instance = MyClass()
         args = (1, 2)
         kwargs = {}
-        result = handler._extract_arguments(instance.method, args, kwargs)
+        result = handler._extract_arguments(instance.method, *args, **kwargs)
 
         assert result is not None
         assert result["a"] == 1
@@ -109,7 +109,7 @@ class TestSpanHandlerExtractArguments:
 
         args = (1,)
         kwargs = {}
-        result = handler._extract_arguments(func, args, kwargs)
+        result = handler._extract_arguments(func, *args, **kwargs)
 
         assert result is None
 
@@ -122,11 +122,11 @@ class TestSpanHandlerExtractArguments:
 
         assert func not in handler._signature_cache
 
-        handler._extract_arguments(func, (1, 2), {})
+        handler._extract_arguments(func, 1, 2)
         assert func in handler._signature_cache
 
         cached_sig = handler._signature_cache[func]
-        handler._extract_arguments(func, (3, 4), {})
+        handler._extract_arguments(func, 3, 4)
         assert handler._signature_cache[func] is cached_sig
 
 

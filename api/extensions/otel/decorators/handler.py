@@ -1,5 +1,5 @@
 import inspect
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing import Any
 
 from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
@@ -32,8 +32,8 @@ class SpanHandler:
     def _extract_arguments[**P, R](
         self,
         wrapped: Callable[P, R],
-        args: tuple[object, ...],
-        kwargs: Mapping[str, object],
+        *args: P.args,
+        **kwargs: P.kwargs,
     ) -> dict[str, Any] | None:
         """
         Extract function arguments using inspect.signature.

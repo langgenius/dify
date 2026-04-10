@@ -21,7 +21,7 @@ class WorkflowAppRunnerHandler(SpanHandler):
         **kwargs: P.kwargs,
     ) -> R:
         try:
-            arguments = self._extract_arguments(wrapped, args, kwargs)
+            arguments = self._extract_arguments(wrapped, *args, **kwargs)
             if not arguments:
                 return wrapped(*args, **kwargs)
 

@@ -39,7 +39,7 @@ class TestAppGenerateHandler:
             "root_node_id": None,
         }
 
-        arguments = handler._extract_arguments(AppGenerateService.generate, (), kwargs)
+        arguments = handler._extract_arguments(AppGenerateService.generate, **kwargs)
 
         assert arguments is not None, "Failed to extract arguments from AppGenerateService.generate"
         assert "app_model" in arguments, "Handler uses app_model but parameter is missing"
