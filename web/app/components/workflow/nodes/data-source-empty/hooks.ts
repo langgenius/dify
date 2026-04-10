@@ -1,12 +1,12 @@
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const useReplaceDataSourceNode = (id: string) => {
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const handleReplaceNode = useCallback<OnSelectBlock>((
@@ -14,10 +14,9 @@ export const useReplaceDataSourceNode = (id: string) => {
     pluginDefaultValue,
   ) => {
     const {
-      getNodes,
+      nodes,
       setNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    } = collaborativeWorkflow.getState()
     const emptyNodeIndex = nodes.findIndex(node => node.id === id)
 
     if (emptyNodeIndex < 0)
@@ -44,7 +43,7 @@ export const useReplaceDataSourceNode = (id: string) => {
       return draft.filter(node => !node.data._isTempNode)
     })
     setNodes(newNodesWithoutTempNodes)
-  }, [])
+  }, [collaborativeWorkflow, id, nodesMetaDataMap])
 
   return {
     handleReplaceNode,

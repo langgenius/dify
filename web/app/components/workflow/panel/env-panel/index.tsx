@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
@@ -37,7 +37,7 @@ const removeSecretFromMap = (secretMap: Record<string, string>, envId: string) =
 
 const EnvPanel = () => {
   const { t } = useTranslation()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
   const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
   const envSecrets = useStore(s => s.envSecrets)
@@ -68,36 +68,36 @@ const EnvPanel = () => {
   }, [appId])
 
   const getAffectedNodes = useCallback((env: EnvironmentVariable) => {
-    const allNodes = store.getState().getNodes()
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
     return findUsedVarNodes(
       ['env', env.name],
       allNodes,
     )
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const removeUsedVarInNodes = useCallback((env: EnvironmentVariable) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const affectedNodes = getAffectedNodes(env)
-    const newNodes = getNodes().map((node) => {
+    const newNodes = nodes.map((node) => {
       if (affectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['env', env.name], [])
 
       return node
     })
     setNodes(newNodes)
-  }, [getAffectedNodes, store])
+  }, [collaborativeWorkflow, getAffectedNodes])
 
   const renameUsedVarInNodes = useCallback((currentEnv: EnvironmentVariable, nextEnvName: string) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const affectedNodes = getAffectedNodes(currentEnv)
-    const newNodes = getNodes().map((node) => {
+    const newNodes = nodes.map((node) => {
       if (affectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['env', currentEnv.name], ['env', nextEnvName])
 
       return node
     })
     setNodes(newNodes)
-  }, [getAffectedNodes, store])
+  }, [collaborativeWorkflow, getAffectedNodes])
 
   const persistEnvironmentVariables = useCallback(async (nextEnvList: EnvironmentVariable[]) => {
     try {
