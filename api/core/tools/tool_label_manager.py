@@ -20,10 +20,18 @@ class ToolLabelManager:
         return list(set(tool_labels))
 
     @classmethod
-    def update_tool_labels(cls, controller: ToolProviderController, labels: list[str]):
+    def update_tool_labels(
+        cls, controller: ToolProviderController, labels: list[str], session: Session | None = None
+    ) -> None:
         """
         Update tool labels
+
+        :param controller: tool provider controller
+        :param labels: list of tool labels
+        :param session: database session, if None, a new session will be created
+        :return: None
         """
+
         labels = cls.filter_tool_labels(labels)
 
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
@@ -31,20 +39,24 @@ class ToolLabelManager:
         else:
             raise ValueError("Unsupported tool type")
 
-        # delete old labels
-        db.session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
+        if session is not None:
+            # delete old labels
+            _ = session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
 
-        # insert new labels
-        for label in labels:
-            db.session.add(
-                ToolLabelBinding(
-                    tool_id=provider_id,
-                    tool_type=controller.provider_type,
-                    label_name=label,
-                )
-            )
+            # insert new labels
+            for label in labels:
+                session.add(ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label))
 
-        db.session.commit()
+        else:
+            with sessionmaker(db.engine).begin() as _session:
+                # delete old labels
+                _ = _session.execute(delete(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id))
+
+                # insert new labels
+                for label in labels:
+                    _session.add(
+                        ToolLabelBinding(tool_id=provider_id, tool_type=controller.provider_type, label_name=label)
+                    )
 
     @classmethod
     def get_tool_labels(cls, controller: ToolProviderController) -> list[str]:
