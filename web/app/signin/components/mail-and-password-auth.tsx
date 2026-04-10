@@ -1,4 +1,5 @@
 import type { ResponseError } from '@/service/fetch'
+import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +8,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
+import { systemFeaturesQueryKey } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -26,6 +28,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
@@ -70,6 +73,14 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           method: 'email_password',
           is_invite: isInvite,
         })
+
+        // Invalidate the public systemFeatures cache so the next read re-fetches
+        // with auth cookies and picks up authenticated-only fields like
+        // `license.expired_at` that were intentionally gated before login.
+        // Without this, React Query serves the pre-login response for up to its
+        // staleTime window and the license-expiring banner stays hidden on /apps
+        // until a manual refresh (see issue #34520).
+        await queryClient.invalidateQueries({ queryKey: systemFeaturesQueryKey })
 
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)

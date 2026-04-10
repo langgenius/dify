@@ -1,6 +1,7 @@
 'use client'
 import type { FormEvent } from 'react'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -8,6 +9,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
+import { systemFeaturesQueryKey } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -27,6 +29,7 @@ export default function CheckCode() {
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
   const codeInputRef = useRef<HTMLInputElement>(null)
+  const queryClient = useQueryClient()
 
   const verify = async () => {
     try {
@@ -46,6 +49,12 @@ export default function CheckCode() {
           method: 'email_code',
           is_invite: !!invite_token,
         })
+
+        // Invalidate the public systemFeatures cache so the next read re-fetches
+        // with auth cookies and picks up authenticated-only fields like
+        // `license.expired_at` that were intentionally gated before login. See
+        // issue #34520 for the full data-flow trace.
+        await queryClient.invalidateQueries({ queryKey: systemFeaturesQueryKey })
 
         if (invite_token) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)

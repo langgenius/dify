@@ -18,7 +18,7 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
   setSystemFeatures: (systemFeatures: SystemFeatures) => set(() => ({ systemFeatures })),
 }))
 
-const systemFeaturesQueryKey = ['systemFeatures'] as const
+export const systemFeaturesQueryKey = ['systemFeatures'] as const
 const setupStatusQueryKey = ['setupStatus'] as const
 
 async function fetchSystemFeatures() {
