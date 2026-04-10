@@ -9920,11 +9920,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/knowledge-retrieval/use-config.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
@@ -10141,11 +10136,8 @@
     }
   },
   "app/components/workflow/nodes/llm/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 1
     }
   },
   "app/components/workflow/nodes/llm/types.ts": {
@@ -10158,7 +10150,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/llm/use-single-run-form-params.ts": {
