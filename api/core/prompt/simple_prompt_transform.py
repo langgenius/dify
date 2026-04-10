@@ -113,7 +113,12 @@ class SimplePromptTransform(PromptTransform):
         )
 
         custom_variable_keys = prompt_template_config["custom_variable_keys"]
+        if not isinstance(custom_variable_keys, list):
+            raise TypeError(f"Expected list for custom_variable_keys, got {type(custom_variable_keys)}")
+
         special_variable_keys = prompt_template_config["special_variable_keys"]
+        if not isinstance(special_variable_keys, list):
+            raise TypeError(f"Expected list for special_variable_keys, got {type(special_variable_keys)}")
 
         variables = {k: inputs[k] for k in custom_variable_keys if k in inputs}
 
