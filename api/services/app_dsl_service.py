@@ -3,7 +3,6 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Mapping
-from enum import StrEnum
 from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -19,7 +18,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData
 from packaging import version
 from packaging.version import parse as parse_version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -40,6 +39,7 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -53,18 +53,6 @@ DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.6.0"
 
 
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
-
-
 class Import(BaseModel):
     id: str
     status: ImportStatus
@@ -73,10 +61,6 @@ class Import(BaseModel):
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
-
-
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -483,61 +467,67 @@ class AppDslService:
             )
 
         # Initialize app based on mode
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow_data = data.get("workflow")
-            if not workflow_data or not isinstance(workflow_data, dict):
-                raise ValueError("Missing workflow data for workflow/advanced chat app")
+        match app_mode:
+            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+                workflow_data = data.get("workflow")
+                if not workflow_data or not isinstance(workflow_data, dict):
+                    raise ValueError("Missing workflow data for workflow/advanced chat app")
 
-            environment_variables_list = workflow_data.get("environment_variables", [])
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
-            conversation_variables_list = workflow_data.get("conversation_variables", [])
-            conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
-            ]
+                environment_variables_list = workflow_data.get("environment_variables", [])
+                environment_variables = [
+                    variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
+                ]
+                conversation_variables_list = workflow_data.get("conversation_variables", [])
+                conversation_variables = [
+                    variable_factory.build_conversation_variable_from_mapping(obj)
+                    for obj in conversation_variables_list
+                ]
 
-            workflow_service = WorkflowService()
-            current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
-            if current_draft_workflow:
-                unique_hash = current_draft_workflow.unique_hash
-            else:
-                unique_hash = None
-            graph = workflow_data.get("graph", {})
-            for node in graph.get("nodes", []):
-                if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-                    dataset_ids = node["data"].get("dataset_ids", [])
-                    node["data"]["dataset_ids"] = [
-                        decrypted_id
-                        for dataset_id in dataset_ids
-                        if (decrypted_id := self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id))
-                    ]
-            workflow_service.sync_draft_workflow(
-                app_model=app,
-                graph=workflow_data.get("graph", {}),
-                features=workflow_data.get("features", {}),
-                unique_hash=unique_hash,
-                account=account,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-            )
-        elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
-            # Initialize model config
-            model_config = data.get("model_config")
-            if not model_config or not isinstance(model_config, dict):
-                raise ValueError("Missing model_config for chat/agent-chat/completion app")
-            # Initialize or update model config
-            if not app.app_model_config:
-                app_model_config = AppModelConfig(
-                    app_id=app.id, created_by=account.id, updated_by=account.id
-                ).from_model_config_dict(cast(AppModelConfigDict, model_config))
-                app_model_config.id = str(uuid4())
-                app.app_model_config_id = app_model_config.id
+                workflow_service = WorkflowService()
+                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
+                if current_draft_workflow:
+                    unique_hash = current_draft_workflow.unique_hash
+                else:
+                    unique_hash = None
+                graph = workflow_data.get("graph", {})
+                for node in graph.get("nodes", []):
+                    if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                        dataset_ids = node["data"].get("dataset_ids", [])
+                        node["data"]["dataset_ids"] = [
+                            decrypted_id
+                            for dataset_id in dataset_ids
+                            if (
+                                decrypted_id := self.decrypt_dataset_id(
+                                    encrypted_data=dataset_id, tenant_id=app.tenant_id
+                                )
+                            )
+                        ]
+                workflow_service.sync_draft_workflow(
+                    app_model=app,
+                    graph=workflow_data.get("graph", {}),
+                    features=workflow_data.get("features", {}),
+                    unique_hash=unique_hash,
+                    account=account,
+                    environment_variables=environment_variables,
+                    conversation_variables=conversation_variables,
+                )
+            case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
+                # Initialize model config
+                model_config = data.get("model_config")
+                if not model_config or not isinstance(model_config, dict):
+                    raise ValueError("Missing model_config for chat/agent-chat/completion app")
+                # Initialize or update model config
+                if not app.app_model_config:
+                    app_model_config = AppModelConfig(
+                        app_id=app.id, created_by=account.id, updated_by=account.id
+                    ).from_model_config_dict(cast(AppModelConfigDict, model_config))
+                    app_model_config.id = str(uuid4())
+                    app.app_model_config_id = app_model_config.id
 
-                self._session.add(app_model_config)
-                app_model_config_was_updated.send(app, app_model_config=app_model_config)
-        else:
-            raise ValueError("Invalid app mode")
+                    self._session.add(app_model_config)
+                    app_model_config_was_updated.send(app, app_model_config=app_model_config)
+            case _:
+                raise ValueError("Invalid app mode")
         return app
 
     @classmethod

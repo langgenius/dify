@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, Union, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
-from core.rag.entities.metadata_entities import MetadataCondition
+from core.rag.entities import MetadataFilteringCondition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import (
@@ -148,18 +148,23 @@ class ExternalDatasetService:
         db.session.commit()
 
     @staticmethod
-    def external_knowledge_api_use_check(external_knowledge_api_id: str) -> tuple[bool, int]:
+    def external_knowledge_api_use_check(external_knowledge_api_id: str, tenant_id: str) -> tuple[bool, int]:
+        """
+        Return usage for an external knowledge API within a single tenant.
+
+        The caller already scopes access by tenant, so this query must do the
+        same; otherwise the endpoint becomes a cross-tenant UUID oracle.
+        """
         count = (
             db.session.scalar(
                 select(func.count(ExternalKnowledgeBindings.id)).where(
-                    ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id
+                    ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id,
+                    ExternalKnowledgeBindings.tenant_id == tenant_id,
                 )
             )
             or 0
         )
-        if count > 0:
-            return True, count
-        return False, 0
+        return count > 0, count
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
@@ -190,9 +195,7 @@ class ExternalDatasetService:
                         raise ValueError(f"{parameter.get('name')} is required")
 
     @staticmethod
-    def process_external_api(
-        settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]
-    ) -> httpx.Response:
+    def process_external_api(settings: ExternalKnowledgeApiSetting, files: dict[str, Any] | None) -> httpx.Response:
         """
         do http request depending on api bundle
         """
@@ -302,7 +305,7 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalar(
             select(ExternalKnowledgeBindings)

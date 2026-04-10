@@ -5,6 +5,7 @@ from typing import Any
 
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, model_validator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -17,6 +18,16 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+
+class HuaweiElasticsearchParamsDict(TypedDict, total=False):
+    hosts: list[str]
+    verify_certs: bool
+    ssl_show_warn: bool
+    request_timeout: int
+    retry_on_timeout: bool
+    max_retries: int
+    basic_auth: tuple[str, str]
 
 
 def create_ssl_context() -> ssl.SSLContext:
@@ -38,15 +49,15 @@ class HuaweiCloudVectorConfig(BaseModel):
             raise ValueError("config HOSTS is required")
         return values
 
-    def to_elasticsearch_params(self) -> dict[str, Any]:
-        params = {
-            "hosts": self.hosts.split(","),
-            "verify_certs": False,
-            "ssl_show_warn": False,
-            "request_timeout": 30000,
-            "retry_on_timeout": True,
-            "max_retries": 10,
-        }
+    def to_elasticsearch_params(self) -> HuaweiElasticsearchParamsDict:
+        params = HuaweiElasticsearchParamsDict(
+            hosts=self.hosts.split(","),
+            verify_certs=False,
+            ssl_show_warn=False,
+            request_timeout=30000,
+            retry_on_timeout=True,
+            max_retries=10,
+        )
         if self.username and self.password:
             params["basic_auth"] = (self.username, self.password)
         return params

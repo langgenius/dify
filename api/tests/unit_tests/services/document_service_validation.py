@@ -112,6 +112,7 @@ import pytest
 from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DatasetProcessRule, Document
 from services.dataset_service import DatasetService, DocumentService
@@ -122,10 +123,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     KnowledgeConfig,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     ProcessRule,
-    Rule,
-    Segmentation,
     WebsiteInfo,
 )
 
