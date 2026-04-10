@@ -44,6 +44,8 @@ export type CollaborationState = {
   onlineUsers: OnlineUser[]
   cursors: Record<string, CursorPosition>
   nodePanelPresence: NodePanelPresenceMap
+  disconnectReason?: string
+  error?: string
 }
 
 export type GraphSyncData = {
