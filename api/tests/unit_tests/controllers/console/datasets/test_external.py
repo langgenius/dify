@@ -1,3 +1,4 @@
+from importlib import import_module
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ from controllers.console.datasets.external import (
     BedrockRetrievalApi,
     ExternalApiTemplateApi,
     ExternalApiTemplateListApi,
+    ExternalApiUseCheckApi,
     ExternalDatasetCreateApi,
     ExternalKnowledgeHitTestingApi,
 )
@@ -18,6 +20,8 @@ from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
+
+external_controller = import_module("controllers.console.datasets.external")
 
 
 def unwrap(func):
@@ -44,10 +48,11 @@ def current_user():
 
 
 @pytest.fixture(autouse=True)
-def mock_auth(mocker, current_user):
-    mocker.patch(
-        "controllers.console.datasets.external.current_account_with_tenant",
-        return_value=(current_user, "tenant-1"),
+def mock_auth(monkeypatch, current_user):
+    monkeypatch.setattr(
+        external_controller,
+        "current_account_with_tenant",
+        lambda: (current_user, "tenant-1"),
     )
 
 
@@ -134,6 +139,26 @@ class TestExternalApiTemplateApi:
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
                 method(api, "api-id")
+
+
+class TestExternalApiUseCheckApi:
+    def test_get_scopes_usage_check_to_current_tenant(self, app):
+        api = ExternalApiUseCheckApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            patch.object(
+                ExternalDatasetService,
+                "external_knowledge_api_use_check",
+                return_value=(True, 2),
+            ) as mock_use_check,
+        ):
+            response, status = method(api, "api-id")
+
+        assert status == 200
+        assert response == {"is_using": True, "count": 2}
+        mock_use_check.assert_called_once_with("api-id", "tenant-1")
 
 
 class TestExternalDatasetCreateApi:
