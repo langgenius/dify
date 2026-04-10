@@ -8,6 +8,7 @@ type MentionInputProps = {
   onChange: (value: string) => void
   onSubmit: (content: string, mentionedUserIds: string[]) => void
   placeholder?: string
+  disabled?: boolean
   autoFocus?: boolean
   className?: string
 }
@@ -70,6 +71,7 @@ describe('CommentInput', () => {
 
     expect(mentionInputProps?.placeholder).toBe('workflow.comments.placeholder.add')
     expect(mentionInputProps?.autoFocus).toBe(true)
+    expect(mentionInputProps?.disabled).toBe(false)
   })
 
   it('calls onCancel when Escape is pressed', () => {

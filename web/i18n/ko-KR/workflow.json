@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "업데이트 시간: ",
   "comments.actions.deleteReply": "답글 삭제",
   "comments.actions.editReply": "답글 편집",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "댓글 닫기",
   "comments.aria.deleteComment": "댓글 삭제",
   "comments.aria.nextComment": "다음 댓글",

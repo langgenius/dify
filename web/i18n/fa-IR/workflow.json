@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "به‌روزرسانی شده در ",
   "comments.actions.deleteReply": "حذف پاسخ",
   "comments.actions.editReply": "ویرایش پاسخ",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "بستن دیدگاه",
   "comments.aria.deleteComment": "حذف دیدگاه",
   "comments.aria.nextComment": "دیدگاه بعدی",

@@ -7,8 +7,9 @@ import { ControlMode } from '../types'
 export const CommentCursor: FC = memo(() => {
   const controlMode = useStore(s => s.controlMode)
   const mousePosition = useStore(s => s.mousePosition)
+  const isCommentPlacing = useStore(s => s.isCommentPlacing)
 
-  if (controlMode !== ControlMode.Comment)
+  if (controlMode !== ControlMode.Comment || isCommentPlacing)
     return null
 
   return (

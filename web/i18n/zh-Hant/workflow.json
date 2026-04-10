@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "更新於 ",
   "comments.actions.deleteReply": "刪除回覆",
   "comments.actions.editReply": "編輯回覆",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "關閉評論",
   "comments.aria.deleteComment": "刪除評論",
   "comments.aria.nextComment": "下一則評論",

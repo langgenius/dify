@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "تم التحديث في ",
   "comments.actions.deleteReply": "حذف الرد",
   "comments.actions.editReply": "تعديل الرد",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "إغلاق التعليق",
   "comments.aria.deleteComment": "حذف المناقشة",
   "comments.aria.nextComment": "التعليق التالي",

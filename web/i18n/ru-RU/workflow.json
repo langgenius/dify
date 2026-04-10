@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "Обновлено в ",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "Close comment",
   "comments.aria.deleteComment": "Delete thread",
   "comments.aria.nextComment": "Next comment",

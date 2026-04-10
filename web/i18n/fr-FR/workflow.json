@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "Mis à jour le ",
   "comments.actions.deleteReply": "Supprimer la réponse",
   "comments.actions.editReply": "Modifier la réponse",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "Fermer le commentaire",
   "comments.aria.deleteComment": "Supprimer le commentaire",
   "comments.aria.nextComment": "Commentaire suivant",

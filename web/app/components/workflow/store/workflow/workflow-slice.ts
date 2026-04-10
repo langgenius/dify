@@ -43,6 +43,10 @@ export type WorkflowSliceShape = {
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
   pendingComment: MousePosition | null
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
+  isCommentPlacing: boolean
+  setCommentPlacing: (isCommentPlacing: boolean) => void
+  isCommentQuickAdd: boolean
+  setCommentQuickAdd: (isCommentQuickAdd: boolean) => void
   isCommentPreviewHovering: boolean
   setCommentPreviewHovering: (hovering: boolean) => void
   mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number }
@@ -89,6 +93,10 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   },
   pendingComment: null,
   setPendingComment: pendingComment => set(() => ({ pendingComment })),
+  isCommentPlacing: false,
+  setCommentPlacing: isCommentPlacing => set(() => ({ isCommentPlacing })),
+  isCommentQuickAdd: false,
+  setCommentQuickAdd: isCommentQuickAdd => set(() => ({ isCommentQuickAdd })),
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
   setMousePosition: mousePosition => set(() => ({ mousePosition })),
   isCommentPreviewHovering: false,

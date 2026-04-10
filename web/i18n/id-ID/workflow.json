@@ -111,6 +111,7 @@
   "chatVariable.updatedAt": "Diperbarui pada",
   "comments.actions.deleteReply": "Hapus balasan",
   "comments.actions.editReply": "Edit balasan",
+  "comments.actions.addComment": "Add Comment",
   "comments.aria.closeComment": "Tutup komentar",
   "comments.aria.deleteComment": "Hapus komentar",
   "comments.aria.nextComment": "Komentar berikutnya",

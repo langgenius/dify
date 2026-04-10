@@ -5,6 +5,7 @@ import { CommentCursor } from './cursor'
 
 const mockState = {
   controlMode: ControlMode.Pointer,
+  isCommentPlacing: false,
   mousePosition: {
     elementX: 10,
     elementY: 20,
@@ -34,6 +35,7 @@ describe('CommentCursor', () => {
 
   it('renders at current mouse position when in comment mode', () => {
     mockState.controlMode = ControlMode.Comment
+    mockState.isCommentPlacing = false
 
     render(<CommentCursor />)
 
@@ -41,5 +43,14 @@ describe('CommentCursor', () => {
     const container = icon.parentElement as HTMLElement
 
     expect(container).toHaveStyle({ left: '10px', top: '20px' })
+  })
+
+  it('renders nothing when comment is in placing mode', () => {
+    mockState.controlMode = ControlMode.Comment
+    mockState.isCommentPlacing = true
+
+    render(<CommentCursor />)
+
+    expect(screen.queryByTestId('comment-icon')).not.toBeInTheDocument()
   })
 })
