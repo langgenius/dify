@@ -20,7 +20,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
-import { collaborationManager } from '../collaboration'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   useNodesReadOnly,
   useWorkflowHistory,

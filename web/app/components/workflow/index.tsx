@@ -40,7 +40,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import dynamic from '@/next/dynamic'
@@ -271,10 +271,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   useEffect(() => {
     return collaborationManager.onHistoryAction((_) => {
-      Toast.notify({
-        type: 'info',
-        message: t('collaboration.historyAction.generic', { ns: 'workflow' }),
-      })
+      toast.info(t('collaboration.historyAction.generic', { ns: 'workflow' }))
     })
   }, [t])
   const {
