@@ -199,28 +199,32 @@ class WorkflowToolManageService:
     def list_tenant_workflow_tools(cls, user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         List workflow tools.
+
         :param user_id: the user id
         :param tenant_id: the tenant id
         :return: the list of tools
         """
-        db_tools = db.session.scalars(
-            select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
-        ).all()
+
+        providers: list[WorkflowToolProvider] = []
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            providers = list(
+                _session.scalars(select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)).all()
+            )
 
         # Create a mapping from provider_id to app_id
-        provider_id_to_app_id = {provider.id: provider.app_id for provider in db_tools}
+        provider_id_to_app_id = {provider.id: provider.app_id for provider in providers}
 
         tools: list[WorkflowToolProviderController] = []
-        for provider in db_tools:
+        for provider in providers:
             try:
                 tools.append(ToolTransformService.workflow_provider_to_controller(provider))
             except Exception:
                 # skip deleted tools
                 logger.exception("Failed to load workflow tool provider %s", provider.id)
 
-        labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
+        labels = ToolLabelManager.get_tools_labels([tool for tool in tools if isinstance(tool, ToolProviderController)])
 
-        result = []
+        result: list[ToolProviderApiEntity] = []
 
         for tool in tools:
             workflow_app_id = provider_id_to_app_id.get(tool.provider_id)
