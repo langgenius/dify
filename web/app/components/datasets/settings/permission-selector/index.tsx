@@ -4,13 +4,13 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetPermission } from '@/models/datasets'
 import { cn } from '@/utils/classnames'

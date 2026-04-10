@@ -1560,11 +1560,6 @@
       "count": 1
     }
   },
-  "app/components/base/avatar/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/base/badge.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -1880,12 +1875,6 @@
     }
   },
   "app/components/base/chat/chat/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3385,7 +3374,7 @@
       "count": 3
     },
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
@@ -3485,12 +3474,7 @@
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/node.tsx": {
     "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "app/components/base/prompt-editor/plugins/workflow-variable-block/workflow-variable-block-replacement-block.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
+      "count": 2
     }
   },
   "app/components/base/prompt-log-modal/card.tsx": {
@@ -7913,12 +7897,6 @@
   "app/components/tools/workflow-tool/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 13
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/tools/workflow-tool/method-selector.tsx": {
@@ -11095,11 +11073,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/run/loop-log/loop-result-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/loop-result-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
@@ -11278,7 +11251,7 @@
   },
   "app/components/workflow/utils/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 10
+      "count": 9
     }
   },
   "app/components/workflow/utils/node-navigation.ts": {
