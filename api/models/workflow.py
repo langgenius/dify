@@ -61,7 +61,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsDCMixin, DefaultFieldsMixin, TypeBase
+from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
