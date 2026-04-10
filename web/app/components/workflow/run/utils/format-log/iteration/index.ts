@@ -2,17 +2,52 @@ import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import formatParallelNode from '../parallel'
 
+const getLatestIterationIndex = (iterationNode: NodeTracing) => {
+  const durationMap = iterationNode.execution_metadata?.iteration_duration_map
+  if (!durationMap)
+    return -1
+
+  let latestIndex = -1
+  for (const key of Object.keys(durationMap)) {
+    const index = Number.parseInt(key, 10)
+    if (!Number.isNaN(index) && index > latestIndex)
+      latestIndex = index
+  }
+
+  return latestIndex
+}
+
 export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
+  const latestIterationIndex = getLatestIterationIndex(iterationNode)
+  let lastResolvedIndex = -1
+
   childrenNodes.forEach((item) => {
     if (!item.execution_metadata)
       return
     const { iteration_index } = item.execution_metadata
-    const runIndex: number = iteration_index ?? Math.max(0, details.length - 1)
+    let runIndex: number
+
+    if (iteration_index !== undefined) {
+      runIndex = iteration_index
+    }
+    else if (latestIterationIndex > lastResolvedIndex) {
+      runIndex = latestIterationIndex
+    }
+    else if (lastResolvedIndex >= 0) {
+      const currentGroup = details[lastResolvedIndex] || []
+      const seenSameNodeInCurrentGroup = currentGroup.some(node => node.node_id === item.node_id)
+      runIndex = seenSameNodeInCurrentGroup ? lastResolvedIndex + 1 : lastResolvedIndex
+    }
+    else {
+      runIndex = 0
+    }
+
     if (!details[runIndex])
       details[runIndex] = []
 
     details[runIndex].push(item)
+    lastResolvedIndex = runIndex
   })
   return {
     ...iterationNode,
