@@ -9,7 +9,8 @@ from pydantic import ValidationError
 
 from core.rag.models.document import Document
 
-
+# TODO(wylswz): There's a known issue with namespace collision
+# https://github.com/langgenius/dify/issues/34732
 def _build_fake_opensearch_modules():
     opensearchpy = types.ModuleType("opensearchpy")
     opensearchpy_helpers = types.ModuleType("opensearchpy.helpers")
