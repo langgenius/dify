@@ -57,9 +57,7 @@ def _build_provider_configuration(
     provider_configuration.extract_secret_variables.return_value = ["api_key"]
     provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: credentials
     provider_configuration.get_provider_model_setting.return_value = (
-        None
-        if load_balancing_enabled is None
-        else MagicMock(load_balancing_enabled=load_balancing_enabled)
+        None if load_balancing_enabled is None else MagicMock(load_balancing_enabled=load_balancing_enabled)
     )
     return provider_configuration
 
