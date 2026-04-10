@@ -57,18 +57,23 @@ class TestPluginUploadFileApi:
         mock_tool_file_manager,
         mock_get_user,
         mock_verify_signature,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         dummy_file = DummyFile()
 
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-            },
-            file=dummy_file,
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "tenant_id": "tenant-1",
+                    "user_id": "user-1",
+                },
+                file=dummy_file,
+            ),
         )
 
         tool_file_manager_instance = mock_tool_file_manager.return_value
@@ -85,15 +90,19 @@ class TestPluginUploadFileApi:
         assert result["id"] == "file-id"
         assert result["preview_url"] == "signed-url"
 
-    def test_missing_file(self):
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-            }
+    def test_missing_file(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "tenant_id": "tenant-1",
+                    "user_id": "user-1",
+                }
+            ),
         )
 
         api = module.PluginUploadFileApi()
@@ -104,18 +113,22 @@ class TestPluginUploadFileApi:
 
     @patch.object(module, "get_user", return_value=DummyUser())
     @patch.object(module, "verify_plugin_file_signature", return_value=False)
-    def test_invalid_signature(self, mock_verify, mock_get_user):
+    def test_invalid_signature(self, mock_verify, mock_get_user, monkeypatch: pytest.MonkeyPatch):
         dummy_file = DummyFile()
 
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "bad",
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-            },
-            file=dummy_file,
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "bad",
+                    "tenant_id": "tenant-1",
+                    "user_id": "user-1",
+                },
+                file=dummy_file,
+            ),
         )
 
         api = module.PluginUploadFileApi()
@@ -132,18 +145,23 @@ class TestPluginUploadFileApi:
         mock_tool_file_manager,
         mock_verify,
         mock_get_user,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         dummy_file = DummyFile()
 
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-            },
-            file=dummy_file,
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "tenant_id": "tenant-1",
+                    "user_id": "user-1",
+                },
+                file=dummy_file,
+            ),
         )
 
         mock_tool_file_manager.return_value.create_file_by_raw.side_effect = (
@@ -164,18 +182,23 @@ class TestPluginUploadFileApi:
         mock_tool_file_manager,
         mock_verify,
         mock_get_user,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         dummy_file = DummyFile()
 
-        module.request = fake_request(
-            {
-                "timestamp": "123",
-                "nonce": "abc",
-                "sign": "sig",
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
-            },
-            file=dummy_file,
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "tenant_id": "tenant-1",
+                    "user_id": "user-1",
+                },
+                file=dummy_file,
+            ),
         )
 
         mock_tool_file_manager.return_value.create_file_by_raw.side_effect = (
