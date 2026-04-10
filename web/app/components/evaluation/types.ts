@@ -136,6 +136,7 @@ export type EvaluationResourceState = {
   metrics: EvaluationMetric[]
   judgmentConfig: JudgmentConfig
   activeBatchTab: BatchTestTab
+  uploadedFileId: string | null
   uploadedFileName: string | null
   batchRecords: BatchTestRecord[]
 }

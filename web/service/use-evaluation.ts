@@ -5,6 +5,7 @@ import {
   useInfiniteQuery,
   useMutation,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 
@@ -60,6 +61,18 @@ export const useAvailableEvaluationMetrics = (enabled = true) => {
 
 export const useEvaluationNodeInfoMutation = () => {
   return useMutation(consoleQuery.evaluation.nodeInfo.mutationOptions())
+}
+
+export const useStartEvaluationRunMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation(consoleQuery.evaluation.startRun.mutationOptions({
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.evaluation.logs.key(),
+      })
+    },
+  }))
 }
 
 export const useAvailableEvaluationWorkflows = (

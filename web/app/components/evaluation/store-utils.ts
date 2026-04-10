@@ -16,11 +16,13 @@ import type {
   EvaluationJudgmentCondition,
   EvaluationJudgmentConditionValue,
   EvaluationJudgmentConfig,
+  EvaluationRunRequest,
   NodeInfo,
 } from '@/types/evaluation'
 import { getEvaluationMockConfig } from './mock'
 import {
   buildConditionMetricOptions,
+  decodeModelSelection,
   encodeModelSelection,
   getComparisonOperators,
   getDefaultComparisonOperator,
@@ -389,6 +391,7 @@ export const buildInitialState = (_resourceType: EvaluationResourceType): Evalua
     metrics: [],
     judgmentConfig: createEmptyJudgmentConfig(),
     activeBatchTab: 'input-fields',
+    uploadedFileId: null,
     uploadedFileName: null,
     batchRecords: [],
   }
@@ -409,6 +412,100 @@ export const buildStateFromEvaluationConfig = (
       : null,
     metrics,
     judgmentConfig: normalizeJudgmentConfig(config, metrics),
+  }
+}
+
+const getApiComparisonOperator = (operator: ComparisonOperator) => {
+  if (operator === 'is null')
+    return 'null'
+
+  if (operator === 'is not null')
+    return 'not null'
+
+  return operator
+}
+
+const getCustomMetricScopeId = (metric: EvaluationMetric) => {
+  if (metric.kind !== 'custom-workflow')
+    return null
+
+  return metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? null
+}
+
+const buildCustomizedMetricsPayload = (metrics: EvaluationMetric[]): EvaluationRunRequest['customized_metrics'] => {
+  const customMetric = metrics.find(metric => metric.kind === 'custom-workflow')
+  const customConfig = customMetric?.customConfig
+  const evaluationWorkflowId = customMetric ? getCustomMetricScopeId(customMetric) : null
+
+  if (!customConfig || !evaluationWorkflowId)
+    return null
+
+  return {
+    evaluation_workflow_id: evaluationWorkflowId,
+    input_fields: Object.fromEntries(
+      customConfig.mappings
+        .filter((mapping): mapping is CustomMetricMapping & { inputVariableId: string, outputVariableId: string } =>
+          !!mapping.inputVariableId && !!mapping.outputVariableId,
+        )
+        .map(mapping => [mapping.inputVariableId, mapping.outputVariableId]),
+    ),
+    output_fields: customConfig.outputs.map(output => ({
+      variable: output.id,
+      value_type: output.valueType ?? undefined,
+    })),
+  }
+}
+
+const buildJudgmentConfigPayload = (resource: EvaluationResourceState): EvaluationRunRequest['judgment_config'] => {
+  const conditions = resource.judgmentConfig.conditions
+    .filter(condition => !!condition.variableSelector)
+    .map((condition) => {
+      const [scope, metricName] = condition.variableSelector!
+      const customMetric = resource.metrics.find(metric =>
+        metric.kind === 'custom-workflow'
+        && metric.customConfig?.workflowId === scope,
+      )
+
+      const customScopeId = customMetric ? getCustomMetricScopeId(customMetric) : null
+
+      return {
+        variable_selector: [customScopeId ?? scope, metricName],
+        comparison_operator: getApiComparisonOperator(condition.comparisonOperator),
+        ...(requiresComparisonValue(condition.comparisonOperator) ? { value: condition.value ?? undefined } : {}),
+      }
+    })
+
+  if (!conditions.length)
+    return null
+
+  return {
+    logical_operator: resource.judgmentConfig.logicalOperator,
+    conditions,
+  }
+}
+
+export const buildEvaluationRunRequest = (
+  resource: EvaluationResourceState,
+  fileId: string,
+): EvaluationRunRequest | null => {
+  const selectedModel = decodeModelSelection(resource.judgeModelId)
+
+  if (!selectedModel)
+    return null
+
+  return {
+    file_id: fileId,
+    evaluation_model: selectedModel.model,
+    evaluation_model_provider: selectedModel.provider,
+    default_metrics: resource.metrics
+      .filter(metric => metric.kind === 'builtin')
+      .map(metric => ({
+        metric: metric.optionId,
+        value_type: metric.valueType,
+        node_info_list: metric.nodeInfoList ?? [],
+      })),
+    customized_metrics: buildCustomizedMetricsPayload(resource.metrics),
+    judgment_config: buildJudgmentConfigPayload(resource),
   }
 }
 

@@ -76,6 +76,11 @@ type EvaluationStore = {
     value: string | string[] | boolean | null,
   ) => void
   setBatchTab: (resourceType: EvaluationResourceType, resourceId: string, tab: EvaluationResourceState['activeBatchTab']) => void
+  setUploadedFile: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    uploadedFile: { id: string, name: string } | null,
+  ) => void
   setUploadedFileName: (resourceType: EvaluationResourceType, resourceId: string, uploadedFileName: string | null) => void
   runBatchTest: (resourceType: EvaluationResourceType, resourceId: string) => void
 }
@@ -103,6 +108,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         [buildResourceKey(resourceType, resourceId)]: {
           ...buildStateFromEvaluationConfig(resourceType, config),
           activeBatchTab: state.resources[buildResourceKey(resourceType, resourceId)]?.activeBatchTab ?? 'input-fields',
+          uploadedFileId: state.resources[buildResourceKey(resourceType, resourceId)]?.uploadedFileId ?? null,
           uploadedFileName: state.resources[buildResourceKey(resourceType, resourceId)]?.uploadedFileName ?? null,
           batchRecords: state.resources[buildResourceKey(resourceType, resourceId)]?.batchRecords ?? [],
         },
@@ -369,10 +375,20 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
       })),
     }))
   },
+  setUploadedFile: (resourceType, resourceId, uploadedFile) => {
+    set(state => ({
+      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
+        ...resource,
+        uploadedFileId: uploadedFile?.id ?? null,
+        uploadedFileName: uploadedFile?.name ?? null,
+      })),
+    }))
+  },
   setUploadedFileName: (resourceType, resourceId, uploadedFileName) => {
     set(state => ({
       resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
         ...resource,
+        uploadedFileId: null,
         uploadedFileName,
       })),
     }))

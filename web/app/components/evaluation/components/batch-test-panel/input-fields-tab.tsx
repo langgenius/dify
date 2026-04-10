@@ -1,10 +1,15 @@
+import type { ChangeEvent } from 'react'
 import type { EvaluationResourceProps } from '../../types'
+import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { toast } from '@/app/components/base/ui/toast'
+import { upload } from '@/service/base'
+import { useStartEvaluationRunMutation } from '@/service/use-evaluation'
 import { getEvaluationMockConfig } from '../../mock'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
+import { buildEvaluationRunRequest } from '../../store-utils'
 
 type InputFieldsTabProps = EvaluationResourceProps & {
   isPanelReady: boolean
@@ -23,10 +28,38 @@ const InputFieldsTab = ({
     .filter(field => field.id.includes('.input.') || field.group.toLowerCase().includes('input'))
     .slice(0, 4)
   const displayedRequirementFields = requirementFields.length > 0 ? requirementFields : config.fieldOptions.slice(0, 4)
-  const uploadedFileName = useEvaluationResource(resourceType, resourceId).uploadedFileName
+  const resource = useEvaluationResource(resourceType, resourceId)
+  const uploadedFileId = resource.uploadedFileId
+  const uploadedFileName = resource.uploadedFileName
+  const setBatchTab = useEvaluationStore(state => state.setBatchTab)
+  const setUploadedFile = useEvaluationStore(state => state.setUploadedFile)
   const setUploadedFileName = useEvaluationStore(state => state.setUploadedFileName)
-  const runBatchTest = useEvaluationStore(state => state.runBatchTest)
+  const startRunMutation = useStartEvaluationRunMutation()
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      return upload({
+        xhr: new XMLHttpRequest(),
+        data: formData,
+      })
+    },
+    onSuccess: (uploadedFile) => {
+      setUploadedFile(resourceType, resourceId, {
+        id: uploadedFile.id,
+        name: typeof uploadedFile.name === 'string' ? uploadedFile.name : uploadedFileName ?? uploadedFile.id,
+      })
+    },
+    onError: () => {
+      setUploadedFile(resourceType, resourceId, null)
+      toast.error(t('batch.uploadError'))
+    },
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isFileUploading = uploadMutation.isPending
+  const isRunning = startRunMutation.isPending
+  const isRunDisabled = !isRunnable || !uploadedFileId || isFileUploading || isRunning
 
   const handleDownloadTemplate = () => {
     const content = ['case_id,input,expected', '1,Example input,Example output'].join('\n')
@@ -42,7 +75,51 @@ const InputFieldsTab = ({
       return
     }
 
-    runBatchTest(resourceType, resourceId)
+    if (isFileUploading) {
+      toast.warning(t('batch.uploading'))
+      return
+    }
+
+    if (!uploadedFileId) {
+      toast.warning(t('batch.fileRequired'))
+      return
+    }
+
+    const body = buildEvaluationRunRequest(resource, uploadedFileId)
+
+    if (!body) {
+      toast.warning(t('batch.validation'))
+      return
+    }
+
+    startRunMutation.mutate({
+      params: {
+        targetType: resourceType,
+        targetId: resourceId,
+      },
+      body,
+    }, {
+      onSuccess: () => {
+        toast.success(t('batch.runStarted'))
+        setBatchTab(resourceType, resourceId, 'history')
+      },
+      onError: () => {
+        toast.error(t('batch.runFailed'))
+      },
+    })
+  }
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      setUploadedFile(resourceType, resourceId, null)
+      return
+    }
+
+    setUploadedFileName(resourceType, resourceId, file.name)
+    uploadMutation.mutate(file)
   }
 
   return (
@@ -73,10 +150,7 @@ const InputFieldsTab = ({
           hidden
           type="file"
           accept=".csv,.xlsx"
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            setUploadedFileName(resourceType, resourceId, file?.name ?? null)
-          }}
+          onChange={handleFileChange}
         />
         {isPanelReady && (
           <button
@@ -86,7 +160,9 @@ const InputFieldsTab = ({
           >
             <span aria-hidden="true" className="i-ri-file-upload-line h-5 w-5 text-text-tertiary" />
             <div className="mt-2 system-sm-semibold text-text-primary">{t('batch.uploadTitle')}</div>
-            <div className="mt-1 system-xs-regular text-text-tertiary">{uploadedFileName ?? t('batch.uploadHint')}</div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {isFileUploading ? t('batch.uploading') : uploadedFileName ?? t('batch.uploadHint')}
+            </div>
           </button>
         )}
       </div>
@@ -95,7 +171,7 @@ const InputFieldsTab = ({
           {t('batch.validation')}
         </div>
       )}
-      <Button className="w-full justify-center" variant="primary" disabled={!isRunnable} onClick={handleRun}>
+      <Button className="w-full justify-center" variant="primary" disabled={isRunDisabled} loading={isRunning} onClick={handleRun}>
         {t('batch.run')}
       </Button>
     </div>
