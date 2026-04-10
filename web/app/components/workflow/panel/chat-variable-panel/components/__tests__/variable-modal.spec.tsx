@@ -150,13 +150,13 @@ describe('variable-modal', () => {
 
     await user.click(screen.getByText('workflow.chatVariable.modal.editInJSON'))
     await waitFor(() => {
-      expect(screen.getByText('Loading...')).toBeInTheDocument()
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument()
     })
     await user.click(screen.getByText('workflow.chatVariable.modal.editInForm'))
     expect(screen.getByDisplayValue('enabled')).toBeInTheDocument()
   })
 
-  it('should validate variable names on blur and preserve underscore replacement', () => {
+  it('should validate variable names on blur-sm and preserve underscore replacement', () => {
     renderVariableModal()
     const input = screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')
 

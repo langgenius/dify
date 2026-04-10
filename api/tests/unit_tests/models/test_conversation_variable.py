@@ -1,7 +1,8 @@
 from uuid import uuid4
 
-from factories import variable_factory
 from graphon.variables import SegmentType
+
+from factories import variable_factory
 from models import ConversationVariable
 
 

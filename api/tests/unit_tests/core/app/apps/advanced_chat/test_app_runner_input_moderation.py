@@ -93,6 +93,16 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
                 scalar=lambda *a, **k: MagicMock(),
             ),
         ),
+        sessionmaker=MagicMock(
+            return_value=MagicMock(
+                begin=MagicMock(
+                    return_value=MagicMock(
+                        __enter__=lambda s: MagicMock(scalars=MagicMock(return_value=MagicMock(all=lambda: []))),
+                        __exit__=lambda *a, **k: False,
+                    ),
+                ),
+            ),
+        ),
         select=MagicMock(),
         db=MagicMock(engine=MagicMock()),
         RedisChannel=MagicMock(),

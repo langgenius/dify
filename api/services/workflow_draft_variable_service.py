@@ -6,6 +6,19 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
 from typing import Any, ClassVar
 
+from graphon.enums import NodeType
+from graphon.file import File
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
+from graphon.variable_loader import VariableLoader
+from graphon.variables import Segment, StringSegment, VariableBase
+from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.segments import (
+    ArrayFileSegment,
+    FileSegment,
+)
+from graphon.variables.types import SegmentType
+from graphon.variables.utils import dumps_with_segments
 from sqlalchemy import Engine, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -26,19 +39,6 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
-from graphon.enums import NodeType
-from graphon.file.models import File
-from graphon.nodes import BuiltinNodeTypes
-from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
-from graphon.variable_loader import VariableLoader
-from graphon.variables import Segment, StringSegment, VariableBase
-from graphon.variables.consts import SELECTORS_LENGTH
-from graphon.variables.segments import (
-    ArrayFileSegment,
-    FileSegment,
-)
-from graphon.variables.types import SegmentType
-from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
@@ -800,8 +800,8 @@ class DraftVariableSaver:
     # technical variables from being exposed in the draft environment, particularly those
     # that aren't meant to be directly edited or viewed by users.
     _EXCLUDE_VARIABLE_NAMES_MAPPING: dict[NodeType, frozenset[str]] = {
-        BuiltinNodeTypes.LLM: frozenset(["finish_reason"]),
-        BuiltinNodeTypes.LOOP: frozenset(["loop_round"]),
+        BuiltinNodeTypes.LLM: frozenset(("finish_reason",)),
+        BuiltinNodeTypes.LOOP: frozenset(("loop_round",)),
     }
 
     # Database session used for persisting draft variables.
@@ -1075,9 +1075,8 @@ class DraftVariableSaver:
         )
         engine = bind = self._session.get_bind()
         assert isinstance(engine, Engine)
-        with Session(bind=engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:
             session.add(variable_file)
-            session.commit()
 
         return truncation_result.result, variable_file
 

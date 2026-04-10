@@ -28,7 +28,7 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
-from models.account import Tenant, TenantStatus
+from models.account import Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -155,7 +155,7 @@ class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
     def get(self):
-        payload = request.args.to_dict(flat=True)  # type: ignore
+        payload = request.args.to_dict(flat=True)
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
@@ -240,8 +240,10 @@ class CustomConfigWorkspaceApi(Resource):
         args = WorkspaceCustomConfigPayload.model_validate(payload)
         tenant = db.get_or_404(Tenant, current_tenant_id)
 
-        custom_config_dict = {
-            "remove_webapp_brand": args.remove_webapp_brand,
+        custom_config_dict: TenantCustomConfigDict = {
+            "remove_webapp_brand": args.remove_webapp_brand
+            if args.remove_webapp_brand is not None
+            else tenant.custom_config_dict.get("remove_webapp_brand", False),
             "replace_webapp_logo": args.replace_webapp_logo
             if args.replace_webapp_logo is not None
             else tenant.custom_config_dict.get("replace_webapp_logo"),

@@ -7,7 +7,7 @@ from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -26,7 +26,7 @@ from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()  # type: Any
+Base: Any = declarative_base()
 
 
 class RelytConfig(BaseModel):
@@ -79,7 +79,7 @@ class RelytVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             index_name = f"{self._collection_name}_embedding_index"
-            with Session(self.client) as session:
+            with sessionmaker(bind=self.client).begin() as session:
                 drop_statement = sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}"; """)
                 session.execute(drop_statement)
                 create_statement = sql_text(f"""
@@ -104,7 +104,6 @@ class RelytVector(BaseVector):
                                 $$);
                     """)
                 session.execute(index_statement)
-                session.commit()
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -208,9 +207,8 @@ class RelytVector(BaseVector):
             self.delete_by_uuids(ids)
 
     def delete(self):
-        with Session(self.client) as session:
+        with sessionmaker(bind=self.client).begin() as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}";"""))
-            session.commit()
 
     def text_exists(self, id: str) -> bool:
         with Session(self.client) as session:

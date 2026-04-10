@@ -9,8 +9,13 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import and_, func, literal, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -34,9 +39,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.entities.context_entities import DocumentContext
-from core.rag.entities.metadata_entities import Condition, MetadataCondition
+from core.rag.entities import Condition, DocumentContext, RetrievalSourceMetadata
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -66,11 +69,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import (
@@ -603,7 +602,7 @@ class DatasetRetrieval:
         planning_strategy: PlanningStrategy,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
     ):
         tools = []
         for dataset in available_datasets:
@@ -742,7 +741,7 @@ class DatasetRetrieval:
         reranking_enable: bool = True,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
         if not available_datasets:
@@ -885,7 +884,7 @@ class DatasetRetrieval:
                 self._send_trace_task(message_id, documents, timer)
                 return
 
-            with Session(db.engine) as session:
+            with sessionmaker(bind=db.engine).begin() as session:
                 # Collect all document_ids and batch fetch DatasetDocuments
                 document_ids = {
                     doc.metadata["document_id"]
@@ -976,7 +975,6 @@ class DatasetRetrieval:
                         {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
                         synchronize_session=False,
                     )
-                    session.commit()
 
             self._send_trace_task(message_id, documents, timer)
 
@@ -1024,8 +1022,13 @@ class DatasetRetrieval:
         """
         if not query and not attachment_ids:
             return
-        created_by_role = self._resolve_creator_user_role(user_from)
-        if created_by_role is None:
+        created_by = parse_uuid_str_or_none(user_id)
+        if created_by is None:
+            logger.debug(
+                "Skipping dataset query log: empty created_by user_id (user_from=%s, app_id=%s)",
+                user_from,
+                app_id,
+            )
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1041,8 +1044,8 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
-                    created_by_role=created_by_role,
-                    created_by=user_id,
+                    created_by_role=CreatorUserRole(user_from),
+                    created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
             if dataset_queries:
@@ -1057,7 +1060,7 @@ class DatasetRetrieval:
         top_k: int,
         all_documents: list[Document],
         document_ids_filter: list[str] | None = None,
-        metadata_condition: MetadataCondition | None = None,
+        metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
         with flask_app.app_context():
@@ -1333,8 +1336,8 @@ class DatasetRetrieval:
         metadata_model_config: ModelConfig,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict,
-    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
-        document_query = db.session.query(DatasetDocument).where(
+    ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
+        document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled == True,
@@ -1365,7 +1368,7 @@ class DatasetRetrieval:
                             value=filter.get("value"),
                         )
                     )
-                metadata_condition = MetadataCondition(
+                metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator
                     if metadata_filtering_conditions
                     else "or",  # type: ignore
@@ -1394,7 +1397,7 @@ class DatasetRetrieval:
                         expected_value,
                         filters,
                     )
-                metadata_condition = MetadataCondition(
+                metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator,
                     conditions=conditions,
                 )
@@ -1405,7 +1408,7 @@ class DatasetRetrieval:
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
-        documents = document_query.all()
+        documents = db.session.scalars(document_query).all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:
@@ -1717,7 +1720,7 @@ class DatasetRetrieval:
         self,
         flask_app: Flask,
         available_datasets: list[Dataset],
-        metadata_condition: MetadataCondition | None,
+        metadata_condition: MetadataFilteringCondition | None,
         metadata_filter_document_ids: dict[str, list[str]] | None,
         all_documents: list[Document],
         tenant_id: str,

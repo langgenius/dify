@@ -1,13 +1,17 @@
 import logging
-from typing import Any, Literal
+from typing import Literal
 
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Namespace, Resource, fields
+from graphon.enums import WorkflowExecutionStatus
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -30,9 +34,6 @@ from core.helper.trace_id_helper import get_external_trace_id
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
-from graphon.enums import WorkflowExecutionStatus
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import OptionalTimestampField, TimestampField
 from models.model import App, AppMode, EndUser
@@ -46,9 +47,7 @@ from services.workflow_app_service import WorkflowAppService
 logger = logging.getLogger(__name__)
 
 
-class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+class WorkflowRunPayload(WorkflowRunPayloadBase):
     response_mode: Literal["blocking", "streaming"] | None = None
 
 
@@ -314,7 +313,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,

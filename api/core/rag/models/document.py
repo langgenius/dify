@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 from graphon.file import File
+from pydantic import BaseModel, Field
 
 
 class ChildDocument(BaseModel):

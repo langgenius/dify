@@ -143,23 +143,6 @@ export type ParametersSchema = {
   description: Record<Locale, string>
 }
 
-export type PropertiesSchema = {
-  type: FormTypeEnum
-  name: string
-  scope: any
-  required: boolean
-  default: any
-  options: Array<{
-    value: string
-    label: Record<Locale, string>
-    icon?: string
-  }>
-  label: Record<Locale, string>
-  help: Record<Locale, string>
-  url: any
-  placeholder: any
-}
-
 export type TriggerEventParameter = {
   name: string
   label: TypeWithI18N
@@ -353,10 +336,6 @@ export type GitHubUrlInfo = {
 }
 
 // endpoint
-export type EndpointOperationResponse = {
-  result: 'success' | 'error'
-}
-
 export type EndpointsResponse = {
   endpoints: EndpointListItem[]
   has_more: boolean
@@ -364,12 +343,6 @@ export type EndpointsResponse = {
   total: number
   page: number
 }
-export type UpdateEndpointRequest = {
-  endpoint_id: string
-  settings: Record<string, any>
-  name: string
-}
-
 export enum InstallStep {
   uploading = 'uploading',
   uploadFailed = 'uploadFailed',
@@ -454,18 +427,10 @@ export type TaskStatusResponse = {
   task: PluginTask
 }
 
-export type PluginTasksResponse = {
-  tasks: PluginTask[]
-}
-
 export type MetaData = {
   repo: string
   version: string
   package: string
-}
-
-export type InstalledPluginListResponse = {
-  plugins: PluginDetail[]
 }
 
 export type InstalledPluginListWithTotalResponse = {

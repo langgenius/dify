@@ -5,10 +5,16 @@ import { useCheckValidated } from '../use-check-validated'
 
 const mockNotify = vi.fn()
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
+  },
 }))
 
 describe('useCheckValidated', () => {

@@ -2,9 +2,11 @@ import logging
 from typing import Literal
 
 from flask import request
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.controller_schemas import MessageFeedbackPayload
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -22,7 +24,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
-from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from models.enums import FeedbackRating
@@ -51,11 +52,6 @@ class MessageListQuery(BaseModel):
         if value is None:
             return value
         return uuid_value(value)
-
-
-class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
-    content: str | None = Field(default=None, description="Feedback content")
 
 
 class MessageMoreLikeThisQuery(BaseModel):

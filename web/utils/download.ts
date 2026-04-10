@@ -1,4 +1,4 @@
-export type DownloadUrlOptions = {
+type DownloadUrlOptions = {
   url: string
   fileName?: string
   rel?: string

@@ -1,22 +1,10 @@
 import base64
+import logging
 import uuid
 from collections.abc import Sequence
 from unittest import mock
 
 import pytest
-
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
-from core.app.llm.model_access import (
-    DifyCredentialsProvider,
-    DifyModelFactory,
-    build_dify_model_access,
-    fetch_model_config,
-)
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -79,6 +67,19 @@ from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
+from core.app.llm.model_access import (
+    DifyCredentialsProvider,
+    DifyModelFactory,
+    build_dify_model_access,
+    fetch_model_config,
+)
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.system_variables import default_system_variables
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -1261,6 +1262,10 @@ def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
 
 
 class TestSaveMultimodalOutputAndConvertResultToMarkdown:
+    class _UnknownItem:
+        def __str__(self) -> str:
+            return "<unknown-item>"
+
     def test_str_content(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
@@ -1330,18 +1335,23 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
     def test_unknown_content_type(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=frozenset(["hello world"]), file_saver=mock_file_saver, file_outputs=[]
+            contents=frozenset(("hello world",)), file_saver=mock_file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
         llm_node, mock_file_saver = llm_node_for_multimodal
-        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=[frozenset(["hello world"])], file_saver=mock_file_saver, file_outputs=[]
-        )
-        assert list(gen) == ["frozenset({'hello world'})"]
+        unknown_item = self._UnknownItem()
+
+        with caplog.at_level(logging.WARNING, logger="graphon.nodes.llm.node"):
+            gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
+                contents=[unknown_item], file_saver=mock_file_saver, file_outputs=[]
+            )
+            assert list(gen) == [str(unknown_item)]
+
+        assert "unknown item type encountered" in caplog.text
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 

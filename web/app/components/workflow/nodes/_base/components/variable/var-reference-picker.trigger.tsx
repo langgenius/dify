@@ -12,6 +12,7 @@ import AddButton from '@/app/components/base/button/add-button'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { cn } from '@/utils/classnames'
@@ -52,6 +53,7 @@ type Props = {
   schemaWithDynamicSelect?: Partial<CredentialFormSchema>
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
+  showErrorIcon?: boolean
   tooltipPopup: ReactNode
   triggerRef: React.RefObject<HTMLDivElement | null>
   type?: string
@@ -97,6 +99,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   schemaWithDynamicSelect,
   setControlFocus,
   setOpen,
+  showErrorIcon = false,
   tooltipPopup,
   triggerRef,
   type,
@@ -120,7 +123,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
         else
           setControlFocus(Date.now())
       }}
-      className={cn(className, 'group/picker-trigger-wrap relative !flex', !readonly && 'cursor-pointer')}
+      className={cn(className, 'group/picker-trigger-wrap relative flex!', !readonly && 'cursor-pointer')}
       data-testid="var-reference-picker-trigger"
     >
       <>
@@ -203,9 +206,12 @@ const VarReferencePickerTrigger: FC<Props> = ({
                                                   handleVariableJump(outputVarNodeId || '')
                                               }}
                                             >
-                                              <div className="h-3 px-[1px]">
+                                              <div className="h-3 px-px">
                                                 {'type' in (outputVarNode || {}) && outputVarNode?.type && (
-                                                  <div className="h-3 w-3" />
+                                                  <VarBlockIcon
+                                                    type={outputVarNode.type}
+                                                    className="text-text-primary"
+                                                  />
                                                 )}
                                               </div>
                                               <div
@@ -246,7 +252,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                                           >
                                             {type}
                                           </div>
-                                          {!('title' in (outputVarNode || {})) && <RiErrorWarningFill className="ml-0.5 h-3 w-3 text-text-destructive" />}
+                                          {showErrorIcon && <RiErrorWarningFill data-testid="var-reference-picker-error-icon" className="ml-0.5 h-3 w-3 text-text-destructive" />}
                                         </>
                                       )
                                     : (

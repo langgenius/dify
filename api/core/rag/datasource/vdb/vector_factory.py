@@ -4,11 +4,12 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 
 from configs import dify_config
 from core.model_manager import ModelManager
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
@@ -17,7 +18,6 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
 
@@ -30,8 +30,11 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
-        index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> VectorIndexStructDict:
+        index_struct_dict: VectorIndexStructDict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name},
+        }
         return index_struct_dict
 
 
@@ -277,7 +280,7 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+        upload_file: UploadFile | None = db.session.get(UploadFile, file_id)
 
         if not upload_file:
             return []

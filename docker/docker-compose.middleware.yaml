@@ -127,6 +127,8 @@ services:
     restart: always
     env_file:
       - ./middleware.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}

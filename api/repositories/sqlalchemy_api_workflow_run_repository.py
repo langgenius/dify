@@ -28,15 +28,15 @@ from decimal import Decimal
 from typing import Any, cast
 
 import sqlalchemy as sa
+from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.nodes.human_input.entities import FormDefinition
 from pydantic import ValidationError
 from sqlalchemy import and_, delete, func, null, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from graphon.nodes.human_input.entities import FormDefinition
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -45,7 +45,7 @@ from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -463,7 +463,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
+    ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
                 "runs": 0,
@@ -638,7 +638,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
+    ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
                 "runs": 0,

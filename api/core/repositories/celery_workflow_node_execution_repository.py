@@ -7,8 +7,8 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
-from typing import Union
 
+from graphon.entities import WorkflowNodeExecution
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -16,7 +16,6 @@ from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
-from graphon.entities.workflow_node_execution import WorkflowNodeExecution
 from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -54,7 +53,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):

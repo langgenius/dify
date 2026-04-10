@@ -3,7 +3,9 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from sqlalchemy.orm import Session
+from graphon.model_runtime.entities.provider_entities import FormType
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -16,7 +18,6 @@ from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.provider_entities import FormType
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
@@ -52,13 +53,12 @@ class DatasourceProviderService:
         """
         remove oauth custom client params
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             session.query(DatasourceOauthTenantParamConfig).filter_by(
                 tenant_id=tenant_id,
                 provider=datasource_provider_id.provider_name,
                 plugin_id=datasource_provider_id.plugin_id,
             ).delete()
-            session.commit()
 
     def decrypt_datasource_provider_credentials(
         self,
@@ -108,7 +108,7 @@ class DatasourceProviderService:
         """
         get credential by id
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             if credential_id:
                 datasource_provider = (
                     session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, id=credential_id).first()
@@ -155,7 +155,6 @@ class DatasourceProviderService:
                     datasource_provider=datasource_provider,
                 )
                 datasource_provider.expires_at = refreshed_credentials.expires_at
-                session.commit()
 
             return self.decrypt_datasource_provider_credentials(
                 tenant_id=tenant_id,
@@ -173,7 +172,7 @@ class DatasourceProviderService:
         """
         get all datasource credentials by provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             datasource_providers = (
                 session.query(DatasourceProvider)
                 .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
@@ -223,7 +222,6 @@ class DatasourceProviderService:
                     provider=provider,
                 )
                 real_credentials_list.append(real_credentials)
-            session.commit()
 
             return real_credentials_list
 
@@ -233,7 +231,7 @@ class DatasourceProviderService:
         """
         update datasource provider name
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             target_provider = (
                 session.query(DatasourceProvider)
                 .filter_by(
@@ -265,7 +263,6 @@ class DatasourceProviderService:
                 raise ValueError("Authorization name is already exists")
 
             target_provider.name = name
-            session.commit()
         return
 
     def set_default_datasource_provider(
@@ -274,7 +271,7 @@ class DatasourceProviderService:
         """
         set default datasource provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             # get provider
             target_provider = (
                 session.query(DatasourceProvider)
@@ -299,7 +296,6 @@ class DatasourceProviderService:
 
             # set new default provider
             target_provider.is_default = True
-            session.commit()
         return {"result": "success"}
 
     def setup_oauth_custom_client_params(
@@ -314,7 +310,7 @@ class DatasourceProviderService:
         """
         if client_params is None and enabled is None:
             return
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             tenant_oauth_client_params = (
                 session.query(DatasourceOauthTenantParamConfig)
                 .filter_by(
@@ -348,7 +344,6 @@ class DatasourceProviderService:
 
             if enabled is not None:
                 tenant_oauth_client_params.enabled = enabled
-            session.commit()
 
     def is_system_oauth_params_exist(self, datasource_provider_id: DatasourceProviderID) -> bool:
         """
@@ -367,16 +362,16 @@ class DatasourceProviderService:
         check if tenant oauth params is enabled
         """
         return (
-            db.session.query(DatasourceOauthTenantParamConfig)
-            .filter_by(
-                tenant_id=tenant_id,
-                provider=datasource_provider_id.provider_name,
-                plugin_id=datasource_provider_id.plugin_id,
-                enabled=True,
+            db.session.scalar(
+                select(func.count(DatasourceOauthTenantParamConfig.id)).where(
+                    DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
+                    DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
+                    DatasourceOauthTenantParamConfig.plugin_id == datasource_provider_id.plugin_id,
+                    DatasourceOauthTenantParamConfig.enabled == True,
+                )
             )
-            .count()
-            > 0
-        )
+            or 0
+        ) > 0
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
@@ -384,14 +379,14 @@ class DatasourceProviderService:
         """
         get tenant oauth client
         """
-        tenant_oauth_client_params = (
-            db.session.query(DatasourceOauthTenantParamConfig)
-            .filter_by(
-                tenant_id=tenant_id,
-                provider=datasource_provider_id.provider_name,
-                plugin_id=datasource_provider_id.plugin_id,
+        tenant_oauth_client_params = db.session.scalar(
+            select(DatasourceOauthTenantParamConfig)
+            .where(
+                DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
+                DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
+                DatasourceOauthTenantParamConfig.plugin_id == datasource_provider_id.plugin_id,
             )
-            .first()
+            .limit(1)
         )
         if tenant_oauth_client_params:
             encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
@@ -487,7 +482,7 @@ class DatasourceProviderService:
         """
         update datasource oauth provider
         """
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.OAUTH2.value}"
             with redis_client.lock(lock, timeout=20):
                 target_provider = (
@@ -534,7 +529,6 @@ class DatasourceProviderService:
                 target_provider.expires_at = expire_at
                 target_provider.encrypted_credentials = credentials
                 target_provider.avatar_url = avatar_url or target_provider.avatar_url
-                session.commit()
 
     def add_datasource_oauth_provider(
         self,
@@ -549,7 +543,7 @@ class DatasourceProviderService:
         add datasource oauth provider
         """
         credential_type = CredentialType.OAUTH2
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{credential_type.value}"
             with redis_client.lock(lock, timeout=60):
                 db_provider_name = name
@@ -603,7 +597,6 @@ class DatasourceProviderService:
                     expires_at=expire_at,
                 )
                 session.add(datasource_provider)
-                session.commit()
 
     def add_datasource_api_key_provider(
         self,
@@ -622,7 +615,7 @@ class DatasourceProviderService:
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
 
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
             with redis_client.lock(lock, timeout=20):
                 db_provider_name = name or self.generate_next_datasource_provider_name(
@@ -669,7 +662,6 @@ class DatasourceProviderService:
                     encrypted_credentials=credentials,
                 )
                 session.add(datasource_provider)
-                session.commit()
 
     def extract_secret_variables(self, tenant_id: str, provider_id: str, credential_type: CredentialType) -> list[str]:
         """
@@ -707,24 +699,27 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = (
-            db.session.query(DatasourceProvider)
+        datasource_providers: list[DatasourceProvider] = list(
+            db.session.scalars(
+                select(DatasourceProvider).where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.provider == provider,
+                    DatasourceProvider.plugin_id == plugin_id,
+                )
+            ).all()
+        )
+        if not datasource_providers:
+            return []
+        copy_credentials_list = []
+        default_provider = db.session.execute(
+            select(DatasourceProvider.id)
             .where(
                 DatasourceProvider.tenant_id == tenant_id,
                 DatasourceProvider.provider == provider,
                 DatasourceProvider.plugin_id == plugin_id,
             )
-            .all()
-        )
-        if not datasource_providers:
-            return []
-        copy_credentials_list = []
-        default_provider = (
-            db.session.query(DatasourceProvider.id)
-            .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
             .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
-            .first()
-        )
+        ).first()
         default_provider_id = default_provider.id if default_provider else None
         for datasource_provider in datasource_providers:
             encrypted_credentials = datasource_provider.encrypted_credentials
@@ -880,14 +875,14 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = (
-            db.session.query(DatasourceProvider)
-            .where(
-                DatasourceProvider.tenant_id == tenant_id,
-                DatasourceProvider.provider == provider,
-                DatasourceProvider.plugin_id == plugin_id,
-            )
-            .all()
+        datasource_providers: list[DatasourceProvider] = list(
+            db.session.scalars(
+                select(DatasourceProvider).where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.provider == provider,
+                    DatasourceProvider.plugin_id == plugin_id,
+                )
+            ).all()
         )
         if not datasource_providers:
             return []
@@ -922,7 +917,7 @@ class DatasourceProviderService:
         update datasource credentials.
         """
 
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             datasource_provider = (
                 session.query(DatasourceProvider)
                 .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
@@ -976,7 +971,6 @@ class DatasourceProviderService:
                         encrypted_credentials[key] = value
 
                 datasource_provider.encrypted_credentials = encrypted_credentials
-            session.commit()
 
     def remove_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str) -> None:
         """
@@ -987,10 +981,15 @@ class DatasourceProviderService:
         :param plugin_id: plugin id
         :return:
         """
-        datasource_provider = (
-            db.session.query(DatasourceProvider)
-            .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
-            .first()
+        datasource_provider = db.session.scalar(
+            select(DatasourceProvider)
+            .where(
+                DatasourceProvider.tenant_id == tenant_id,
+                DatasourceProvider.id == auth_id,
+                DatasourceProvider.provider == provider,
+                DatasourceProvider.plugin_id == plugin_id,
+            )
+            .limit(1)
         )
         if datasource_provider:
             db.session.delete(datasource_provider)

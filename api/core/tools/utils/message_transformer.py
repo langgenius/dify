@@ -8,11 +8,11 @@ from uuid import UUID
 
 import numpy as np
 import pytz
+from graphon.file import File, FileTransferMethod, FileType
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import parse_file_reference
-from graphon.file import File, FileTransferMethod, FileType
 from libs.login import current_user
 from models import Account
 
@@ -118,7 +118,8 @@ class ToolFileMessageTransformer:
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
-                assert isinstance(message.message.blob, bytes)
+                if not isinstance(message.message.blob, bytes):
+                    raise TypeError(f"Expected blob to be bytes, got {type(message.message.blob).__name__}")
                 tool_file_manager = ToolFileManager()
                 tool_file = tool_file_manager.create_file_by_raw(
                     user_id=user_id,

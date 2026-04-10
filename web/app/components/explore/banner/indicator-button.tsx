@@ -87,7 +87,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
       {isNextSlide && !isActive && (
         <span
           key={resetKey}
-          className="absolute inset-[-1px] rounded-[7px]"
+          className="absolute -inset-px rounded-[7px]"
           style={{
             background: `conic-gradient(
               from 0deg,

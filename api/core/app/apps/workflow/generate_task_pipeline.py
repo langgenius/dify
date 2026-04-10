@@ -4,7 +4,10 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from sqlalchemy.orm import Session
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -58,9 +61,6 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
-from graphon.entities.workflow_start_reason import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -252,13 +252,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     @contextmanager
     def _database_session(self):
         """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            yield session
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""

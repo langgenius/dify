@@ -148,7 +148,10 @@ describe('HITLInputVariableBlockComponent', () => {
         editor!.update(() => {
           $getRoot().selectEnd()
         })
-        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, createWorkflowNodesMap())
+        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+          workflowNodesMap: createWorkflowNodesMap(),
+          availableVariables: [],
+        })
       })
 
       expect(handled).toBe(true)

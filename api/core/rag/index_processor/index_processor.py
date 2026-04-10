@@ -12,7 +12,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
+from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 
 from .index_processor_factory import IndexProcessorFactory
@@ -35,7 +35,10 @@ class IndexProcessor:
         if "parent_mode" in preview:
             data.parent_mode = preview["parent_mode"]
 
-        for item in preview["preview"]:
+        # Different index processors return different preview shapes:
+        # - paragraph/parent-child processors: {"preview": [...]}
+        # - QA processor: {"qa_preview": [...]} (no "preview" key)
+        for item in preview.get("preview", []):
             if "content" in item and "child_chunks" in item:
                 data.preview.append(
                     PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None)
@@ -44,6 +47,10 @@ class IndexProcessor:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
             elif "content" in item:
                 data.preview.append(PreviewItem(content=item["content"], child_chunks=None, summary=None))
+
+        for item in preview.get("qa_preview", []):
+            if "question" in item and "answer" in item:
+                data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
         return data
 
     def index_and_clean(
@@ -54,7 +61,7 @@ class IndexProcessor:
         chunks: Mapping[str, Any],
         batch: Any,
         summary_index_setting: SummaryIndexSettingDict | None = None,
-    ):
+    ) -> IndexingResultDict:
         with session_factory.create_session() as session:
             document = session.query(Document).filter_by(id=document_id).first()
             if not document:
@@ -122,7 +129,7 @@ class IndexProcessor:
                 }
             )
 
-        return {
+        result: IndexingResultDict = {
             "dataset_id": dataset_id,
             "dataset_name": dataset_name_value,
             "batch": batch,
@@ -131,6 +138,7 @@ class IndexProcessor:
             "created_at": created_at_value.timestamp(),
             "display_status": "completed",
         }
+        return result
 
     def get_preview_output(
         self,
