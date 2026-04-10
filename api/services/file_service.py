@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
-from typing import Literal, Union
+from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from graphon.file import helpers as file_helpers
@@ -52,7 +52,7 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:
