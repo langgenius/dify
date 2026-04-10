@@ -86,11 +86,11 @@ class DbMigrationAutoRenewLock:
     def name(self) -> str:
         return self._name
 
-    def acquire(self, **kwargs: Any) -> bool:
+    def acquire(self, *args: Any, **kwargs: Any) -> bool:
         """
         Acquire the lock and start heartbeat renewal on success.
 
-        Accepts the same keyword arguments as redis-py ``Lock.acquire()``.
+        Accepts the same args/kwargs as redis-py `Lock.acquire()`.
         """
         # Prevent accidental double-acquire which could leave the previous heartbeat thread running.
         if self._acquired:
@@ -103,7 +103,7 @@ class DbMigrationAutoRenewLock:
                 timeout=self._ttl_seconds,
                 thread_local=False,
             )
-        acquired = bool(self._lock.acquire(**kwargs))
+        acquired = bool(self._lock.acquire(*args, **kwargs))
         self._acquired = acquired
         if acquired:
             self._start_heartbeat()
