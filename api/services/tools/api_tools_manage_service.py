@@ -276,24 +276,42 @@ class ApiToolManageService:
         privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
-    ):
+    ) -> dict[str, Any]:
         """
-        update api tool provider
+        Update an existing API tool provider.
+
+        :param user_id: The ID of the user updating the provider.
+        :param tenant_id: The ID of the workspace/tenant.
+        :param provider_name: The new name of the API tool provider.
+        :param original_provider: The original name of the API tool provider.
+        :param icon: The icon configuration for the provider.
+        :param credentials: The credentials for the provider.
+        :param _schema_type: The type of schema (e.g., OpenAPI).
+        :param schema: The raw schema string.
+        :param privacy_policy: The privacy policy URL or text.
+        :param custom_disclaimer: Custom disclaimer text.
+        :param labels: A list of labels for the provider.
+        :param session: Optional SQLAlchemy session.
+        :return: A dictionary indicating the result status.
         """
+
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = db.session.scalar(
-            select(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == original_provider,
+        # create new session with automatic transaction management
+        provider: ApiToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider = _session.scalar(
+                select(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == original_provider,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
-
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
+
         # parse openapi to tool bundle
         extra_info: dict[str, str] = {}
         # extra info like description will be set here
@@ -336,8 +354,8 @@ class ApiToolManageService:
         credentials = dict(encrypter.encrypt(credentials))
         provider.credentials_str = json.dumps(credentials)
 
-        db.session.add(provider)
-        db.session.commit()
+        with sessionmaker(db.engine).begin() as _session:
+            _session.add(provider)
 
         # delete cache
         cache.delete()
