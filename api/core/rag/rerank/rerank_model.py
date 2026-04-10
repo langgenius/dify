@@ -138,23 +138,29 @@ class RerankModelRunner(BaseRerankRunner):
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
-                        docs.append(MultimodalRerankInput(
-                            content=document_file_base64,
-                            content_type=document.metadata["doc_type"],
-                        ))
+                        docs.append(
+                            MultimodalRerankInput(
+                                content=document_file_base64,
+                                content_type=document.metadata["doc_type"],
+                            )
+                        )
                 else:
-                    docs.append(MultimodalRerankInput(
-                        content=document.page_content,
-                        content_type=document.metadata.get("doc_type") or DocType.TEXT,
-                    ))
+                    docs.append(
+                        MultimodalRerankInput(
+                            content=document.page_content,
+                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
+                        )
+                    )
                 doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
-                    docs.append(MultimodalRerankInput(
-                        content=document.page_content,
-                        content_type=document.metadata.get("doc_type") or DocType.TEXT,
-                    ))
+                    docs.append(
+                        MultimodalRerankInput(
+                            content=document.page_content,
+                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
+                        )
+                    )
                     unique_documents.append(document)
 
         documents = unique_documents
