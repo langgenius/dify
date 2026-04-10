@@ -163,3 +163,15 @@ def test_tool_label_manager_get_tools_labels_batch():
 
     # Verify the final dictionary mapping
     assert labels == {"api-1": ["search", "news"], "wf-1": ["utilities"]}
+
+
+def test_tool_label_manager_get_tools_labels_unsupported():
+    """
+    Negative Test: Ensure get_tools_labels raises ValueError if the list contains
+    unsupported controller types, even alongside valid ones.
+    """
+    api = _api_controller("api-1")
+
+    # Passing a list with one valid controller and one invalid object()
+    with pytest.raises(ValueError, match="Unsupported tool type"):
+        ToolLabelManager.get_tools_labels([api, object()])  # type: ignore[list-item]
