@@ -426,9 +426,7 @@ def test_get_workflow_run_node_executions_should_use_end_user_tenant_id(
     # Arrange
     node_repo, _, _ = repository_factory_mocks
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    monkeypatch.setattr(
-        service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1"))
-    )
+    monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1")))
 
     class FakeEndUser:
         def __init__(self, tenant_id: str) -> None:
@@ -461,9 +459,7 @@ def test_get_workflow_run_node_executions_should_use_account_current_tenant_id(
     # Arrange
     node_repo, _, _ = repository_factory_mocks
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    monkeypatch.setattr(
-        service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1"))
-    )
+    monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1")))
     app_model = _app_model(id="app-1")
     user = _account(current_tenant_id="tenant-account")
     e1 = MagicMock(spec=WorkflowNodeExecution)
@@ -491,9 +487,7 @@ def test_get_workflow_run_node_executions_should_raise_when_resolved_tenant_id_i
 ) -> None:
     # Arrange
     service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
-    monkeypatch.setattr(
-        service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1"))
-    )
+    monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=MagicMock(spec=WorkflowRun, id="run-1")))
     app_model = _app_model(id="app-1")
     user = _account(current_tenant_id=None)
 
