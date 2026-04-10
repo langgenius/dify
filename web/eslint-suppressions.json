@@ -11128,11 +11128,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/run/loop-log/loop-result-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/workflow/run/loop-result-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
