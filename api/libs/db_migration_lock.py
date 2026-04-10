@@ -111,7 +111,12 @@ class DbMigrationAutoRenewLock:
             )
         acquire_kwargs = {
             k: v
-            for k, v in {"sleep": sleep, "blocking": blocking, "blocking_timeout": blocking_timeout, "token": token}.items()
+            for k, v in {
+                "sleep": sleep,
+                "blocking": blocking,
+                "blocking_timeout": blocking_timeout,
+                "token": token,
+            }.items()
             if v is not None
         }
         acquired = bool(self._lock.acquire(**acquire_kwargs))  # type: ignore[arg-type]
