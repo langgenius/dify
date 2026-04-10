@@ -148,6 +148,7 @@ def test_chat_message_list_success(
         account.id,
         created_at_offset_seconds=1,
     )
+    second_id = second.id  # capture before session detaches
 
     with patch(
         "controllers.console.app.message.attach_message_extra_contents",
@@ -165,7 +166,7 @@ def test_chat_message_list_success(
     assert payload["limit"] == 1
     assert payload["has_more"] is True
     assert len(payload["data"]) == 1
-    assert payload["data"][0]["id"] == second.id
+    assert payload["data"][0]["id"] == second_id
 
 
 def test_message_feedback_not_found(
