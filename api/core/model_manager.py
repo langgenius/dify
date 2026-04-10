@@ -6,7 +6,7 @@ from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
-from graphon.model_runtime.entities.rerank_entities import RerankResult
+from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -172,10 +172,10 @@ class ModelInstance:
                 function=self.model_type_instance.invoke,
                 model=self.model_name,
                 credentials=self.credentials,
-                prompt_messages=prompt_messages,
+                prompt_messages=list(prompt_messages),
                 model_parameters=model_parameters,
-                tools=tools,
-                stop=stop,
+                tools=list(tools) if tools else None,
+                stop=list(stop) if stop else None,
                 stream=stream,
                 callbacks=callbacks,
             ),
@@ -197,8 +197,8 @@ class ModelInstance:
             function=self.model_type_instance.get_num_tokens,
             model=self.model_name,
             credentials=self.credentials,
-            prompt_messages=prompt_messages,
-            tools=tools,
+            prompt_messages=list(prompt_messages),
+            tools=list(tools) if tools else None,
         )
 
     def invoke_text_embedding(
@@ -289,8 +289,8 @@ class ModelInstance:
 
     def invoke_multimodal_rerank(
         self,
-        query: dict,
-        docs: list[dict],
+        query: MultimodalRerankInput,
+        docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
         top_n: int | None = None,
     ) -> RerankResult:
@@ -365,7 +365,7 @@ class ModelInstance:
             voice=voice,
         )
 
-    def _round_robin_invoke[T](self, function: Callable[..., T], *args, **kwargs) -> T:
+    def _round_robin_invoke[**P, R](self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
         Round-robin invoke
         :param function: function to invoke
@@ -403,9 +403,8 @@ class ModelInstance:
                 continue
 
             try:
-                if "credentials" in kwargs:
-                    del kwargs["credentials"]
-                return function(*args, **kwargs, credentials=lb_config.credentials)
+                kwargs["credentials"] = lb_config.credentials
+                return function(*args, **kwargs)
             except InvokeRateLimitError as e:
                 # expire in 60 seconds
                 self.load_balancing_manager.cooldown(lb_config, expire=60)
