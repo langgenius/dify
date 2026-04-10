@@ -11,10 +11,7 @@ import services
 from configs import dify_config
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import (
-    api_key_item_model,
-    api_key_list_model,
-)
+from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
@@ -785,23 +782,20 @@ class DatasetApiKeyApi(Resource):
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
-    @console_ns.response(200, "API keys retrieved successfully", api_key_list_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_key_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         keys = db.session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return {"items": keys}
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @marshal_with(api_key_item_model)
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
@@ -828,7 +822,7 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return api_token, 200
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
