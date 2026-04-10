@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -38,6 +37,12 @@ def _make_valid_email_config():
         subject="Subj",
         body="Body",
     )
+
+
+def _feature_flags(*, email_delivery_enabled: bool) -> MagicMock:
+    m = MagicMock()
+    m.human_input_email_delivery_enabled = email_delivery_enabled
+    return m
 
 
 def test_build_form_link():
@@ -125,7 +130,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=False),
+            lambda _tenant_id: _feature_flags(email_delivery_enabled=False),
         )
         handler = EmailDeliveryTestHandler(session_factory=MagicMock())
         context = DeliveryTestContext(
@@ -140,7 +145,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id: _feature_flags(email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: False)
 
@@ -157,7 +162,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id: _feature_flags(email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
@@ -176,7 +181,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id: _feature_flags(email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
@@ -212,7 +217,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id: _feature_flags(email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()

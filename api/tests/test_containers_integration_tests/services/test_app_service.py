@@ -1270,12 +1270,14 @@ class TestAppService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test get_app_meta returns empty tool_icons when workflow is None."""
-        from types import SimpleNamespace
+        from typing import cast
+        from unittest.mock import MagicMock
 
+        from models.model import App
         from services.app_service import AppService
 
         app_service = AppService()
-        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
+        workflow_app = cast(App, MagicMock(spec=App, mode="workflow", workflow=None))
 
         meta = app_service.get_app_meta(workflow_app)
         assert meta == {"tool_icons": {}}
@@ -1284,12 +1286,14 @@ class TestAppService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test get_app_meta returns empty tool_icons when app_model_config is None."""
-        from types import SimpleNamespace
+        from typing import cast
+        from unittest.mock import MagicMock
 
+        from models.model import App
         from services.app_service import AppService
 
         app_service = AppService()
-        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
+        chat_app = cast(App, MagicMock(spec=App, mode="chat", app_model_config=None))
 
         meta = app_service.get_app_meta(chat_app)
         assert meta == {"tool_icons": {}}

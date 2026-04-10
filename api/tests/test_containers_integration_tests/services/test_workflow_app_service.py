@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -1627,7 +1627,7 @@ class TestWorkflowAppService:
 
 class TestLogView:
     def test_details_and_proxy_attributes(self):
-        log = SimpleNamespace(id="log-1", status="succeeded")
+        log = cast(WorkflowAppLog, MagicMock(spec=WorkflowAppLog, id="log-1", status="succeeded"))
         view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
 
         assert view.details == {"trigger_metadata": {"type": "plugin"}}

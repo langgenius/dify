@@ -7,6 +7,7 @@ document, and segment service test modules that exercise
 
 import json
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -137,9 +138,25 @@ __all__ = [
     "_make_upload_knowledge_config",
     "create_autospec",
     "json",
+    "mock_account",
+    "mock_dataset",
     "patch",
     "pytest",
 ]
+
+
+def mock_account(**kwargs: Any) -> Account:
+    m = MagicMock(spec=Account)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(Account, m)
+
+
+def mock_dataset(**kwargs: Any) -> Dataset:
+    m = MagicMock(spec=Dataset)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(Dataset, m)
 
 
 def _make_session_context(session: MagicMock) -> MagicMock:

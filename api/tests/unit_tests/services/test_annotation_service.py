@@ -12,6 +12,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 
@@ -55,7 +56,10 @@ def _make_setting(setting_id: str = "setting-1", with_detail: bool = True) -> Ma
     setting.score_threshold = 0.5
     setting.collection_binding_id = "collection-1"
     if with_detail:
-        setting.collection_binding_detail = SimpleNamespace(provider_name="provider-a", model_name="model-a")
+        detail = MagicMock(spec=DatasetCollectionBinding)
+        detail.provider_name = "provider-a"
+        detail.model_name = "model-a"
+        setting.collection_binding_detail = cast(DatasetCollectionBinding, detail)
     else:
         setting.collection_binding_detail = None
     return setting

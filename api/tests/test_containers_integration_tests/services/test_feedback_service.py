@@ -2,14 +2,16 @@
 
 import json
 from datetime import datetime
-from types import SimpleNamespace
+from typing import cast
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 
 from extensions.ext_database import db
+from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, Conversation, Message
+from models.model import App, Conversation, Message, MessageFeedback
 from services.feedback_service import FeedbackService
 
 
@@ -42,34 +44,35 @@ class TestFeedbackService:
             created_at=datetime(2024, 1, 1, 10, 0, 0),
         )
 
-        # Use SimpleNamespace to avoid ORM model constructor issues
-        user_feedback = SimpleNamespace(
-            id="user-feedback-id",
-            app_id=app_id,
-            conversation_id="test-conversation-id",
-            message_id="test-message-id",
-            rating=FeedbackRating.LIKE,
-            from_source=FeedbackFromSource.USER,
-            content="Great answer!",
-            from_end_user_id="user-123",
-            from_account_id=None,
-            from_account=None,  # Mock account object
-            created_at=datetime(2024, 1, 1, 10, 5, 0),
-        )
+        user_feedback = MagicMock(spec=MessageFeedback)
+        user_feedback.id = "user-feedback-id"
+        user_feedback.app_id = app_id
+        user_feedback.conversation_id = "test-conversation-id"
+        user_feedback.message_id = "test-message-id"
+        user_feedback.rating = FeedbackRating.LIKE
+        user_feedback.from_source = FeedbackFromSource.USER
+        user_feedback.content = "Great answer!"
+        user_feedback.from_end_user_id = "user-123"
+        user_feedback.from_account_id = None
+        user_feedback.from_account = None
+        user_feedback.created_at = datetime(2024, 1, 1, 10, 5, 0)
+        user_feedback = cast(MessageFeedback, user_feedback)
 
-        admin_feedback = SimpleNamespace(
-            id="admin-feedback-id",
-            app_id=app_id,
-            conversation_id="test-conversation-id",
-            message_id="test-message-id",
-            rating=FeedbackRating.DISLIKE,
-            from_source=FeedbackFromSource.ADMIN,
-            content="Could be more detailed",
-            from_end_user_id=None,
-            from_account_id="admin-456",
-            from_account=SimpleNamespace(name="Admin User"),  # Mock account object
-            created_at=datetime(2024, 1, 1, 10, 10, 0),
-        )
+        admin_acct = MagicMock(spec=Account)
+        admin_acct.name = "Admin User"
+        admin_feedback = MagicMock(spec=MessageFeedback)
+        admin_feedback.id = "admin-feedback-id"
+        admin_feedback.app_id = app_id
+        admin_feedback.conversation_id = "test-conversation-id"
+        admin_feedback.message_id = "test-message-id"
+        admin_feedback.rating = FeedbackRating.DISLIKE
+        admin_feedback.from_source = FeedbackFromSource.ADMIN
+        admin_feedback.content = "Could be more detailed"
+        admin_feedback.from_end_user_id = None
+        admin_feedback.from_account_id = "admin-456"
+        admin_feedback.from_account = cast(Account, admin_acct)
+        admin_feedback.created_at = datetime(2024, 1, 1, 10, 10, 0)
+        admin_feedback = cast(MessageFeedback, admin_feedback)
 
         return {
             "app": app,
@@ -285,19 +288,18 @@ class TestFeedbackService:
     def test_export_feedbacks_unicode_content(self, mock_db_session, sample_data):
         """Test exporting feedback with unicode content (Chinese characters)."""
 
-        # Create feedback with Chinese content (use SimpleNamespace to avoid ORM constructor constraints)
-        chinese_feedback = SimpleNamespace(
-            id="chinese-feedback-id",
-            app_id=sample_data["app"].id,
-            conversation_id="test-conversation-id",
-            message_id="test-message-id",
-            rating=FeedbackRating.DISLIKE,
-            from_source=FeedbackFromSource.USER,
-            content="回答不够详细，需要更多信息",
-            from_end_user_id="user-123",
-            from_account_id=None,
-            created_at=datetime(2024, 1, 1, 10, 5, 0),
-        )
+        chinese_feedback = MagicMock(spec=MessageFeedback)
+        chinese_feedback.id = "chinese-feedback-id"
+        chinese_feedback.app_id = sample_data["app"].id
+        chinese_feedback.conversation_id = "test-conversation-id"
+        chinese_feedback.message_id = "test-message-id"
+        chinese_feedback.rating = FeedbackRating.DISLIKE
+        chinese_feedback.from_source = FeedbackFromSource.USER
+        chinese_feedback.content = "回答不够详细，需要更多信息"
+        chinese_feedback.from_end_user_id = "user-123"
+        chinese_feedback.from_account_id = None
+        chinese_feedback.created_at = datetime(2024, 1, 1, 10, 5, 0)
+        chinese_feedback = cast(MessageFeedback, chinese_feedback)
 
         # Create Chinese message
         chinese_message = Message(

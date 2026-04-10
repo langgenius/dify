@@ -234,7 +234,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import Event
-from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -248,7 +247,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from models.enums import CreatorUserRole
-from models.model import AppMode
+from models.model import AppMode, Message
 from models.workflow import WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services import workflow_event_snapshot_service as service_module
@@ -377,7 +376,8 @@ class _PauseEntity(WorkflowPauseEntity):
 
 def test_get_message_context_should_return_none_when_no_message() -> None:
     # Arrange
-    session = SimpleNamespace(scalar=MagicMock(return_value=None))
+    session = MagicMock()
+    session.scalar.return_value = None
     session_maker = _SessionMaker(session)
 
     # Act
@@ -389,13 +389,13 @@ def test_get_message_context_should_return_none_when_no_message() -> None:
 
 def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
     # Arrange
-    message = SimpleNamespace(
-        id="msg-1",
-        conversation_id="conv-1",
-        created_at=None,
-        answer="answer",
-    )
-    session = SimpleNamespace(scalar=MagicMock(return_value=message))
+    message = MagicMock(spec=Message)
+    message.id = "msg-1"
+    message.conversation_id = "conv-1"
+    message.created_at = None
+    message.answer = "answer"
+    session = MagicMock()
+    session.scalar.return_value = message
     session_maker = _SessionMaker(session)
 
     # Act
@@ -609,12 +609,13 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
-    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
-    factory = SimpleNamespace(
-        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
-        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
-    )
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause = MagicMock()
+    node_repo = MagicMock()
+    node_repo.get_execution_snapshots_by_workflow_run = MagicMock(return_value=[])
+    factory = MagicMock()
+    factory.create_api_workflow_run_repository = MagicMock(return_value=workflow_run_repo)
+    factory.create_api_workflow_node_execution_repository = MagicMock(return_value=node_repo)
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(
@@ -665,12 +666,13 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
-    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
-    factory = SimpleNamespace(
-        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
-        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
-    )
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause = MagicMock()
+    node_repo = MagicMock()
+    node_repo.get_execution_snapshots_by_workflow_run = MagicMock(return_value=[])
+    factory = MagicMock()
+    factory.create_api_workflow_run_repository = MagicMock(return_value=workflow_run_repo)
+    factory.create_api_workflow_node_execution_repository = MagicMock(return_value=node_repo)
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
@@ -719,12 +721,13 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
-    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
-    factory = SimpleNamespace(
-        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
-        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
-    )
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause = MagicMock()
+    node_repo = MagicMock()
+    node_repo.get_execution_snapshots_by_workflow_run = MagicMock(return_value=[])
+    factory = MagicMock()
+    factory.create_api_workflow_run_repository = MagicMock(return_value=workflow_run_repo)
+    factory.create_api_workflow_node_execution_repository = MagicMock(return_value=node_repo)
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
@@ -762,12 +765,13 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(side_effect=RuntimeError("boom")))
-    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
-    factory = SimpleNamespace(
-        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
-        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
-    )
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause = MagicMock(side_effect=RuntimeError("boom"))
+    node_repo = MagicMock()
+    node_repo.get_execution_snapshots_by_workflow_run = MagicMock(return_value=[])
+    factory = MagicMock()
+    factory.create_api_workflow_run_repository = MagicMock(return_value=workflow_run_repo)
+    factory.create_api_workflow_node_execution_repository = MagicMock(return_value=node_repo)
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))

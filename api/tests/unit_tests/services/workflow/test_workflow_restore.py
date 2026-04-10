@@ -1,6 +1,8 @@
 import json
-from types import SimpleNamespace
+from typing import cast
+from unittest.mock import MagicMock
 
+from models import Account
 from models.workflow import Workflow
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
@@ -67,7 +69,7 @@ def test_apply_published_workflow_snapshot_to_draft_copies_serialized_features_w
         app_id="app-id",
         source_workflow=source_workflow,
         draft_workflow=None,
-        account=SimpleNamespace(id="account-id"),
+        account=cast(Account, MagicMock(spec=Account, id="account-id")),
         updated_at_factory=lambda: source_workflow.updated_at,
     )
 

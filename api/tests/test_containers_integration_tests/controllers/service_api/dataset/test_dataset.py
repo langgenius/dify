@@ -14,8 +14,8 @@ since these test controller-level behavior.
 """
 
 import uuid
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from typing import cast
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -704,8 +704,12 @@ class TestDatasetTagsApiGet:
 
         mock_current_user.__class__ = Account
         mock_current_user.current_tenant_id = "tenant-1"
-        mock_tag = SimpleNamespace(id="tag-1", name="Test Tag", type="knowledge", binding_count="0")
-        mock_tag_svc.get_tags.return_value = [mock_tag]
+        tag_row = MagicMock(spec=Tag)
+        tag_row.id = "tag-1"
+        tag_row.name = "Test Tag"
+        tag_row.type = TagType.KNOWLEDGE
+        tag_row.binding_count = "0"
+        mock_tag_svc.get_tags.return_value = [cast(Tag, tag_row)]
 
         with app.test_request_context("/datasets/tags", method="GET"):
             api = DatasetTagsApi()
@@ -770,8 +774,11 @@ class TestDatasetTagsApiPost:
         mock_current_user.__class__ = Account
         mock_current_user.has_edit_permission = True
         mock_current_user.is_dataset_editor = True
-        mock_tag = SimpleNamespace(id="tag-new", name="New Tag", type="knowledge")
-        mock_tag_svc.save_tags.return_value = mock_tag
+        tag_row = MagicMock(spec=Tag)
+        tag_row.id = "tag-new"
+        tag_row.name = "New Tag"
+        tag_row.type = TagType.KNOWLEDGE
+        mock_tag_svc.save_tags.return_value = cast(Tag, tag_row)
 
         with app.test_request_context(
             "/datasets/tags",
@@ -823,8 +830,11 @@ class TestDatasetTagsApiPatch:
         mock_current_user.has_edit_permission = True
         mock_current_user.is_dataset_editor = True
 
-        mock_tag = SimpleNamespace(id="tag-1", name="Updated Tag", type="knowledge")
-        mock_tag_svc.update_tags.return_value = mock_tag
+        tag_row = MagicMock(spec=Tag)
+        tag_row.id = "tag-1"
+        tag_row.name = "Updated Tag"
+        tag_row.type = TagType.KNOWLEDGE
+        mock_tag_svc.update_tags.return_value = cast(Tag, tag_row)
         mock_tag_svc.get_tag_binding_count.return_value = 5
         mock_service_api_ns.payload = {"name": "Updated Tag", "tag_id": "tag-1"}
 

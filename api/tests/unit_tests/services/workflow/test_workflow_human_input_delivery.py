@@ -1,5 +1,5 @@
 import uuid
-from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,12 +15,26 @@ from core.workflow.human_input_compat import (
     ExternalRecipient,
     MemberRecipient,
 )
+from models import Account, App
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 
 
 def _make_service() -> WorkflowService:
     return WorkflowService(session_maker=sessionmaker())
+
+
+def _app_model() -> App:
+    app_model = MagicMock(spec=App)
+    app_model.tenant_id = "tenant-1"
+    app_model.id = "app-1"
+    return cast(App, app_model)
+
+
+def _account() -> Account:
+    account = MagicMock(spec=Account)
+    account.id = "account-1"
+    return cast(Account, account)
 
 
 def _build_node_config(delivery_methods: list[EmailDeliveryMethod], *, legacy: bool = False) -> NodeConfigDict:
@@ -62,8 +76,8 @@ def _make_email_method(enabled: bool = True, debug_mode: bool = False) -> EmailD
 def test_human_input_delivery_requires_draft_workflow():
     service = _make_service()
     service.get_draft_workflow = MagicMock(return_value=None)  # type: ignore[method-assign]
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
+    app_model = _app_model()
+    account = _account()
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         service.test_human_input_delivery(
@@ -97,8 +111,8 @@ def test_human_input_delivery_allows_disabled_method(monkeypatch: pytest.MonkeyP
         MagicMock(return_value=test_service_instance),
     )
 
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
+    app_model = _app_model()
+    account = _account()
 
     service.test_human_input_delivery(
         app_model=app_model,
@@ -133,8 +147,8 @@ def test_human_input_delivery_dispatches_to_test_service(monkeypatch: pytest.Mon
         MagicMock(return_value=test_service_instance),
     )
 
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
+    app_model = _app_model()
+    account = _account()
 
     service.test_human_input_delivery(
         app_model=app_model,
@@ -172,8 +186,8 @@ def test_human_input_delivery_debug_mode_overrides_recipients(monkeypatch: pytes
         MagicMock(return_value=test_service_instance),
     )
 
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
+    app_model = _app_model()
+    account = _account()
 
     service.test_human_input_delivery(
         app_model=app_model,

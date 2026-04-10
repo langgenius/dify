@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -47,22 +46,29 @@ def _build_provider_configuration(
     provider_schema: ProviderCredentialSchema | None = None,
 ) -> MagicMock:
     provider_configuration = MagicMock()
-    provider_configuration.provider = SimpleNamespace(
-        provider="openai",
-        model_credential_schema=model_schema,
-        provider_credential_schema=provider_schema,
-    )
-    provider_configuration.custom_configuration = SimpleNamespace(provider=custom_provider)
+    prov = MagicMock()
+    prov.provider = "openai"
+    prov.model_credential_schema = model_schema
+    prov.provider_credential_schema = provider_schema
+    provider_configuration.provider = prov
+    custom_cfg = MagicMock()
+    custom_cfg.provider = custom_provider
+    provider_configuration.custom_configuration = custom_cfg
     provider_configuration.extract_secret_variables.return_value = ["api_key"]
     provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: credentials
     provider_configuration.get_provider_model_setting.return_value = (
-        None if load_balancing_enabled is None else SimpleNamespace(load_balancing_enabled=load_balancing_enabled)
+        None
+        if load_balancing_enabled is None
+        else MagicMock(load_balancing_enabled=load_balancing_enabled)
     )
     return provider_configuration
 
 
 def _load_balancing_model_config(**kwargs: Any) -> LoadBalancingModelConfig:
-    return cast(LoadBalancingModelConfig, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=LoadBalancingModelConfig)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(LoadBalancingModelConfig, m)
 
 
 @pytest.fixture
@@ -70,7 +76,9 @@ def service(mocker: MockerFixture) -> ModelLoadBalancingService:
     # Arrange
     provider_manager = MagicMock()
     mocker.patch("services.model_load_balancing_service.create_plugin_provider_manager", return_value=provider_manager)
-    model_assembly = SimpleNamespace(provider_manager=provider_manager, model_provider_factory=MagicMock())
+    model_assembly = MagicMock()
+    model_assembly.provider_manager = provider_manager
+    model_assembly.model_provider_factory = MagicMock()
     mocker.patch("services.model_load_balancing_service.create_plugin_model_assembly", return_value=model_assembly)
     svc = ModelLoadBalancingService()
     svc.provider_manager = provider_manager
@@ -151,7 +159,7 @@ def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_fo
         provider_schema=_build_provider_credential_schema(),
     )
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    config = SimpleNamespace(
+    config = _load_balancing_model_config(
         id="cfg-1",
         name="primary",
         encrypted_config=json.dumps({"api_key": "encrypted-key"}),
@@ -202,14 +210,14 @@ def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate
         provider_schema=_build_provider_credential_schema(),
     )
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    normal_config = SimpleNamespace(
+    normal_config = _load_balancing_model_config(
         id="cfg-1",
         name="normal",
         encrypted_config=json.dumps({"api_key": "bad-encrypted"}),
         credential_id="cred-1",
         enabled=True,
     )
-    inherit_config = SimpleNamespace(
+    inherit_config = _load_balancing_model_config(
         id="cfg-2",
         name="__inherit__",
         encrypted_config="not-json",
@@ -288,7 +296,7 @@ def test_get_load_balancing_config_should_return_obfuscated_payload_when_config_
         "masked": credentials.get("api_key", "")
     }
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    config = SimpleNamespace(id="cfg-1", name="primary", encrypted_config="not-json", enabled=True)
+    config = _load_balancing_model_config(id="cfg-1", name="primary", encrypted_config="not-json", enabled=True)
     mock_db.session.scalar.return_value = config
 
     # Act
@@ -441,7 +449,7 @@ def test_update_load_balancing_configs_should_raise_value_error_when_existing_co
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    current_config = SimpleNamespace(id="cfg-1")
+    current_config = _load_balancing_model_config(id="cfg-1")
     mock_db.session.scalars.return_value.all.return_value = [current_config]
 
     # Act + Assert
@@ -463,7 +471,9 @@ def test_update_load_balancing_configs_should_raise_value_error_when_credentials
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config = SimpleNamespace(id="cfg-1", name="old", enabled=True, encrypted_config=None, updated_at=None)
+    existing_config = _load_balancing_model_config(
+        id="cfg-1", name="old", enabled=True, encrypted_config=None, updated_at=None
+    )
     mock_db.session.scalars.return_value.all.return_value = [existing_config]
 
     # Act + Assert
@@ -496,14 +506,14 @@ def test_update_load_balancing_configs_should_update_existing_create_new_and_del
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config_1 = SimpleNamespace(
+    existing_config_1 = _load_balancing_model_config(
         id="cfg-1",
         name="existing-one",
         enabled=True,
         encrypted_config=json.dumps({"api_key": "old"}),
         updated_at=None,
     )
-    existing_config_2 = SimpleNamespace(
+    existing_config_2 = _load_balancing_model_config(
         id="cfg-2",
         name="existing-two",
         enabled=True,
@@ -577,7 +587,7 @@ def test_update_load_balancing_configs_should_create_from_existing_provider_cred
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
     mock_db.session.scalars.return_value.all.return_value = []
-    credential_record = SimpleNamespace(credential_name="Main Credential", encrypted_config='{"api_key":"enc"}')
+    credential_record = MagicMock(credential_name="Main Credential", encrypted_config='{"api_key":"enc"}')
     mock_db.session.scalar.return_value = credential_record
 
     # Act
@@ -645,7 +655,7 @@ def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_
     # Arrange
     provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
     service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config = SimpleNamespace(id="cfg-1")
+    existing_config = _load_balancing_model_config(id="cfg-1")
     mock_db.session.scalar.return_value = existing_config
     mock_validate = mocker.patch.object(service, "_custom_credentials_validate")
 

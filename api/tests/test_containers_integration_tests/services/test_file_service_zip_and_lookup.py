@@ -9,8 +9,8 @@ Covers:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any
+from typing import cast
+from unittest.mock import MagicMock
 from uuid import uuid4
 from zipfile import ZipFile
 
@@ -42,12 +42,19 @@ def _create_upload_file(db_session, *, tenant_id: str, key: str, name: str) -> U
     return upload_file
 
 
+def _upload_file_stub(*, name: str, key: str) -> UploadFile:
+    upload_file = MagicMock(spec=UploadFile)
+    upload_file.name = name
+    upload_file.key = key
+    return cast(UploadFile, upload_file)
+
+
 def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure ZIP entry names are safe and unique while preserving extensions."""
-    upload_files: list[Any] = [
-        SimpleNamespace(name="a/b.txt", key="k1"),
-        SimpleNamespace(name="c/b.txt", key="k2"),
-        SimpleNamespace(name="../b.txt", key="k3"),
+    upload_files: list[UploadFile] = [
+        _upload_file_stub(name="a/b.txt", key="k1"),
+        _upload_file_stub(name="c/b.txt", key="k2"),
+        _upload_file_stub(name="../b.txt", key="k3"),
     ]
 
     data_by_key: dict[str, list[bytes]] = {"k1": [b"one"], "k2": [b"two"], "k3": [b"three"]}

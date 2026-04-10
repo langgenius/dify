@@ -564,7 +564,6 @@ class TestWebhookServiceUnit:
 # === Merged from test_webhook_service_additional.py ===
 
 
-from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -581,8 +580,8 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from models.enums import AppTriggerStatus
-from models.model import App
-from models.trigger import WorkflowWebhookTrigger
+from models.model import App, EndUser
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as service_module
@@ -637,21 +636,43 @@ def flask_app() -> Flask:
 
 
 def _patch_session(monkeypatch: pytest.MonkeyPatch, session: Any) -> None:
-    monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=MagicMock(), session=MagicMock()))
+    monkeypatch.setattr(service_module, "db", MagicMock(engine=MagicMock(), session=MagicMock()))
     monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext(session))
     monkeypatch.setattr(service_module, "sessionmaker", lambda *args, **kwargs: _SessionmakerContext(session))
 
 
 def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
-    return cast(WorkflowWebhookTrigger, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=WorkflowWebhookTrigger)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(WorkflowWebhookTrigger, m)
 
 
 def _workflow(**kwargs: Any) -> Workflow:
-    return cast(Workflow, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=Workflow)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(Workflow, m)
 
 
 def _app(**kwargs: Any) -> App:
-    return cast(App, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=App)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(App, m)
+
+
+def _webhook_trigger_row(*, app_id: str = "app-1", node_id: str = "node-1") -> WorkflowWebhookTrigger:
+    m = MagicMock(spec=WorkflowWebhookTrigger)
+    m.app_id = app_id
+    m.node_id = node_id
+    return cast(WorkflowWebhookTrigger, m)
+
+
+def _app_trigger_row(*, status: AppTriggerStatus) -> AppTrigger:
+    m = MagicMock(spec=AppTrigger)
+    m.status = status
+    return cast(AppTrigger, m)
 
 
 def test_get_webhook_trigger_and_workflow_should_raise_when_webhook_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -669,7 +690,7 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_not_foun
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
+    webhook_trigger = _webhook_trigger_row()
     fake_session = MagicMock()
     fake_session.scalar.side_effect = [webhook_trigger, None]
     _patch_session(monkeypatch, fake_session)
@@ -683,8 +704,8 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_rate_lim
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
-    app_trigger = SimpleNamespace(status=AppTriggerStatus.RATE_LIMITED)
+    webhook_trigger = _webhook_trigger_row()
+    app_trigger = _app_trigger_row(status=AppTriggerStatus.RATE_LIMITED)
     fake_session = MagicMock()
     fake_session.scalar.side_effect = [webhook_trigger, app_trigger]
     _patch_session(monkeypatch, fake_session)
@@ -698,8 +719,8 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_disabled
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
-    app_trigger = SimpleNamespace(status=AppTriggerStatus.DISABLED)
+    webhook_trigger = _webhook_trigger_row()
+    app_trigger = _app_trigger_row(status=AppTriggerStatus.DISABLED)
     fake_session = MagicMock()
     fake_session.scalar.side_effect = [webhook_trigger, app_trigger]
     _patch_session(monkeypatch, fake_session)
@@ -711,8 +732,8 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_disabled
 
 def test_get_webhook_trigger_and_workflow_should_raise_when_workflow_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
-    app_trigger = SimpleNamespace(status=AppTriggerStatus.ENABLED)
+    webhook_trigger = _webhook_trigger_row()
+    app_trigger = _app_trigger_row(status=AppTriggerStatus.ENABLED)
     fake_session = MagicMock()
     fake_session.scalar.side_effect = [webhook_trigger, app_trigger, None]
     _patch_session(monkeypatch, fake_session)
@@ -726,8 +747,8 @@ def test_get_webhook_trigger_and_workflow_should_return_values_for_non_debug_mod
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
-    app_trigger = SimpleNamespace(status=AppTriggerStatus.ENABLED)
+    webhook_trigger = _webhook_trigger_row()
+    app_trigger = _app_trigger_row(status=AppTriggerStatus.ENABLED)
     workflow = MagicMock()
     workflow.get_node_config_by_id.return_value = {"data": {"key": "value"}}
 
@@ -746,7 +767,7 @@ def test_get_webhook_trigger_and_workflow_should_return_values_for_non_debug_mod
 
 def test_get_webhook_trigger_and_workflow_should_return_values_for_debug_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
-    webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
+    webhook_trigger = _webhook_trigger_row()
     workflow = MagicMock()
     workflow.get_node_config_by_id.return_value = {"data": {"mode": "debug"}}
 
@@ -889,7 +910,7 @@ def test_create_file_from_binary_should_call_tool_file_manager_and_file_factory(
     # Arrange
     webhook_trigger = _workflow_trigger(created_by="user-1", tenant_id="tenant-1")
     manager = MagicMock()
-    manager.create_file_by_raw.return_value = SimpleNamespace(id="tool-file-1")
+    manager.create_file_by_raw.return_value = MagicMock(id="tool-file-1")
     monkeypatch.setattr(service_module, "ToolFileManager", MagicMock(return_value=manager))
     expected_file = MagicMock()
     monkeypatch.setattr(service_module.file_factory, "build_from_mapping", MagicMock(return_value=expected_file))
@@ -1079,11 +1100,14 @@ def test_trigger_workflow_execution_should_trigger_async_workflow_successfully(m
     session = MagicMock()
     _patch_session(monkeypatch, session)
 
-    end_user = SimpleNamespace(id="end-user-1")
+    end_user = MagicMock(spec=EndUser)
+    end_user.id = "end-user-1"
     monkeypatch.setattr(
         service_module.EndUserService, "get_or_create_end_user_by_type", MagicMock(return_value=end_user)
     )
-    quota_type = SimpleNamespace(TRIGGER=SimpleNamespace(consume=MagicMock()))
+    quota_type = MagicMock()
+    quota_type.TRIGGER = MagicMock()
+    quota_type.TRIGGER.consume = MagicMock()
     monkeypatch.setattr(service_module, "QuotaType", quota_type)
     trigger_async_mock = MagicMock()
     monkeypatch.setattr(service_module.AsyncWorkflowService, "trigger_workflow_async", trigger_async_mock)
@@ -1113,12 +1137,12 @@ def test_trigger_workflow_execution_should_mark_tenant_rate_limited_when_quota_e
     monkeypatch.setattr(
         service_module.EndUserService,
         "get_or_create_end_user_by_type",
-        MagicMock(return_value=SimpleNamespace(id="end-user-1")),
+        MagicMock(return_value=MagicMock(spec=EndUser, id="end-user-1")),
     )
-    quota_type = SimpleNamespace(
-        TRIGGER=SimpleNamespace(
-            consume=MagicMock(side_effect=QuotaExceededError(feature="trigger", tenant_id="tenant-1", required=1))
-        )
+    quota_type = MagicMock()
+    quota_type.TRIGGER = MagicMock()
+    quota_type.TRIGGER.consume = MagicMock(
+        side_effect=QuotaExceededError(feature="trigger", tenant_id="tenant-1", required=1)
     )
     monkeypatch.setattr(service_module, "QuotaType", quota_type)
     mark_rate_limited_mock = MagicMock()
@@ -1214,10 +1238,14 @@ def test_sync_webhook_relationships_should_create_missing_records_and_delete_sta
             self.added: list[Any] = []
             self.deleted: list[Any] = []
             self.commit_count = 0
-            self.existing_records = [SimpleNamespace(node_id="node-stale")]
+            stale = MagicMock()
+            stale.node_id = "node-stale"
+            self.existing_records = [stale]
 
         def scalars(self, _stmt: Any) -> Any:
-            return SimpleNamespace(all=lambda: self.existing_records)
+            out = MagicMock()
+            out.all.return_value = self.existing_records
+            return out
 
         def add(self, obj: Any) -> None:
             self.added.append(obj)
@@ -1272,7 +1300,9 @@ def test_sync_webhook_relationships_should_log_when_lock_release_fails(monkeypat
 
     class _Session:
         def scalars(self, _stmt: Any) -> Any:
-            return SimpleNamespace(all=lambda: [])
+            out = MagicMock()
+            out.all.return_value = []
+            return out
 
         def commit(self) -> None:
             return None

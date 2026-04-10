@@ -42,15 +42,24 @@ def converter() -> WorkflowConverter:
 
 
 def _app_model(**kwargs: Any) -> App:
-    return cast(App, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=App)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(App, m)
 
 
 def _account(**kwargs: Any) -> Account:
-    return cast(Account, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=Account)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(Account, m)
 
 
 def _app_model_config(**kwargs: Any) -> AppModelConfig:
-    return cast(AppModelConfig, SimpleNamespace(**kwargs))
+    m = MagicMock(spec=AppModelConfig)
+    for k, v in kwargs.items():
+        setattr(m, k, v)
+    return cast(AppModelConfig, m)
 
 
 def _build_start_graph() -> dict[str, Any]:

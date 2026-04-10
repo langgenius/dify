@@ -1,18 +1,21 @@
 import base64
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 import yaml
 from graphon.enums import BuiltinNodeTypes
 
+from core.plugin.entities.plugin import PluginDependency
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
 from models import Account, App, AppMode
-from models.model import IconType
+from models.model import AppModelConfig, IconType
+from models.workflow import Workflow
 from services import app_dsl_service
 from services.app_dsl_service import (
     AppDslService,
@@ -34,19 +37,25 @@ class _FakeHttpResponse:
             raise self._raises
 
 
-def _account_mock(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> MagicMock:
+def _account_mock(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> Account:
     account = MagicMock(spec=Account)
     account.current_tenant_id = tenant_id
     account.id = account_id
-    return account
+    return cast(Account, account)
 
 
-def _app_mock(**kwargs: object) -> MagicMock:
-    """Create a MagicMock with spec=App for type-safe test doubles."""
+def _app_mock(**kwargs: object) -> App:
+    """Create an App-typed test double backed by MagicMock."""
     app = MagicMock(spec=App)
     for key, value in kwargs.items():
         setattr(app, key, value)
-    return app
+    return cast(App, app)
+
+
+def _app_model_config_mock(model_config: dict) -> AppModelConfig:
+    app_model_config = MagicMock(spec=AppModelConfig)
+    app_model_config.to_dict.return_value = model_config
+    return cast(AppModelConfig, app_model_config)
 
 
 def _yaml_dump(data: dict) -> str:
@@ -498,16 +507,18 @@ def test_create_or_update_app_new_app_requires_tenant():
 
 
 def test_create_or_update_app_creates_workflow_app_and_saves_dependencies(monkeypatch):
-    class DummyApp(SimpleNamespace):
-        pass
+    def _fake_app(*_args: object, **_kwargs: object) -> App:
+        return cast(App, MagicMock(spec=App))
 
-    monkeypatch.setattr(app_dsl_service, "App", DummyApp)
+    monkeypatch.setattr(app_dsl_service, "App", _fake_app)
 
     sent: list[tuple[str, object]] = []
     monkeypatch.setattr(app_dsl_service.app_was_created, "send", lambda app, account: sent.append((app.id, account.id)))
 
     workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = SimpleNamespace(unique_hash="uh")
+    draft_wf = MagicMock(spec=Workflow)
+    draft_wf.unique_hash = "uh"
+    workflow_service.get_draft_workflow.return_value = draft_wf
     monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
 
     monkeypatch.setattr(
@@ -595,11 +606,17 @@ def test_create_or_update_app_chat_requires_model_config():
 
 
 def test_create_or_update_app_chat_creates_model_config_and_sends_event(monkeypatch):
-    class DummyModelConfig(SimpleNamespace):
-        def from_model_config_dict(self, _cfg: dict):
-            return self
+    class _StubAppModelConfig:
+        def __init__(self, **kwargs: object):
+            self._kwargs = kwargs
 
-    monkeypatch.setattr(app_dsl_service, "AppModelConfig", DummyModelConfig)
+        def from_model_config_dict(self, _cfg: dict) -> AppModelConfig:
+            m = MagicMock(spec=AppModelConfig)
+            for k, v in self._kwargs.items():
+                setattr(m, k, v)
+            return cast(AppModelConfig, m)
+
+    monkeypatch.setattr(app_dsl_service, "AppModelConfig", _StubAppModelConfig)
 
     sent: list[str] = []
     monkeypatch.setattr(
@@ -678,7 +695,7 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
         icon_background="#fff",
         description="d",
         use_icon_as_answer_icon=False,
-        app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
+        app_model_config=_app_model_config_mock({"agent_mode": {"tools": []}}),
     )
     AppDslService.export_dsl(chat_app)
     assert model_calls == [True]
@@ -741,7 +758,8 @@ def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
         }
     }
 
-    workflow = SimpleNamespace(to_dict=lambda *, include_secret: workflow_dict)
+    workflow = MagicMock(spec=Workflow)
+    workflow.to_dict = lambda *, include_secret: workflow_dict
     workflow_service = MagicMock()
     workflow_service.get_draft_workflow.return_value = workflow
     monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
@@ -808,7 +826,7 @@ def test_append_model_config_export_data_filters_credential_id(monkeypatch):
     )
     monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
-    app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
+    app_model_config = _app_model_config_mock({"agent_mode": {"tools": [{"credential_id": "secret"}]}})
     app_model = _app_mock(tenant_id="tenant-1", app_model_config=app_model_config)
     export_data: dict = {}
 
@@ -926,12 +944,16 @@ def test_get_leaked_dependencies_empty_returns_empty():
 
 
 def test_get_leaked_dependencies_delegates(monkeypatch):
+    dep = PluginDependency.model_validate(
+        {"type": "package", "value": {"plugin_unique_identifier": "acme/foo", "version": "1.0.0"}}
+    )
+
     monkeypatch.setattr(
         app_dsl_service.DependenciesAnalysisService,
         "get_leaked_dependencies",
-        lambda *, tenant_id, dependencies: [SimpleNamespace(tenant_id=tenant_id, deps=dependencies)],
+        lambda *, tenant_id, dependencies: [dep],
     )
-    res = AppDslService.get_leaked_dependencies("tenant-1", [SimpleNamespace(id="x")])
+    res = AppDslService.get_leaked_dependencies("tenant-1", [dep])
     assert len(res) == 1
 
 

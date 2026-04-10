@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -17,19 +17,29 @@ from controllers.web.conversation import (
     ConversationUnPinApi,
 )
 from controllers.web.error import NotChatAppError
+from models.model import App, Conversation, EndUser
 from services.errors.conversation import ConversationNotExistsError
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _app(*, mode: str) -> App:
+    app_model = MagicMock(spec=App)
+    app_model.id = "app-1"
+    app_model.mode = mode
+    return cast(App, app_model)
 
 
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+def _chat_app() -> App:
+    return _app(mode="chat")
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _completion_app() -> App:
+    return _app(mode="completion")
+
+
+def _end_user() -> EndUser:
+    end_user = MagicMock(spec=EndUser)
+    end_user.id = "eu-1"
+    return cast(EndUser, end_user)
 
 
 class TestConversationListApi:
@@ -45,16 +55,19 @@ class TestConversationListApi:
     @patch("controllers.web.conversation.WebConversationService.pagination_by_last_id")
     def test_happy_path(self, mock_paginate: MagicMock, app) -> None:
         conv_id = str(uuid4())
-        conv = SimpleNamespace(
-            id=conv_id,
-            name="Test",
-            inputs={},
-            status="normal",
-            introduction="",
-            created_at=1700000000,
-            updated_at=1700000000,
-        )
-        mock_paginate.return_value = SimpleNamespace(limit=20, has_more=False, data=[conv])
+        conv = MagicMock(spec=Conversation)
+        conv.id = conv_id
+        conv.name = "Test"
+        conv.inputs = {}
+        conv.status = "normal"
+        conv.introduction = ""
+        conv.created_at = 1700000000
+        conv.updated_at = 1700000000
+        page = MagicMock()
+        page.limit = 20
+        page.has_more = False
+        page.data = [conv]
+        mock_paginate.return_value = page
 
         with app.test_request_context("/conversations?limit=20"):
             result = ConversationListApi().get(_chat_app(), _end_user())
@@ -105,15 +118,14 @@ class TestConversationRenameApi:
     def test_rename_success(self, mock_ns: MagicMock, mock_rename: MagicMock, app) -> None:
         c_id = uuid4()
         mock_ns.payload = {"name": "New Name", "auto_generate": False}
-        conv = SimpleNamespace(
-            id=str(c_id),
-            name="New Name",
-            inputs={},
-            status="normal",
-            introduction="",
-            created_at=1700000000,
-            updated_at=1700000000,
-        )
+        conv = MagicMock(spec=Conversation)
+        conv.id = str(c_id)
+        conv.name = "New Name"
+        conv.inputs = {}
+        conv.status = "normal"
+        conv.introduction = ""
+        conv.created_at = 1700000000
+        conv.updated_at = 1700000000
         mock_rename.return_value = conv
 
         with app.test_request_context(f"/conversations/{c_id}/name", method="POST", json={"name": "New Name"}):

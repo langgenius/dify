@@ -1,10 +1,11 @@
 import json
-from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import services.async_workflow_service as async_workflow_service_module
+from models import Account, EndUser
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
@@ -78,6 +79,8 @@ class TestAsyncWorkflowService:
         mock_professional_task = MagicMock()
         mock_team_task = MagicMock()
         mock_sandbox_task = MagicMock()
+        quota_type_mock = MagicMock()
+        quota_type_mock.WORKFLOW = quota_workflow
 
         with (
             patch.object(
@@ -91,11 +94,7 @@ class TestAsyncWorkflowService:
                 async_workflow_service_module.AsyncWorkflowService,
                 "_get_workflow",
             ) as mock_get_workflow,
-            patch.object(
-                async_workflow_service_module,
-                "QuotaType",
-                new=SimpleNamespace(WORKFLOW=quota_workflow),
-            ),
+            patch.object(async_workflow_service_module, "QuotaType", new=quota_type_mock),
             patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
             patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
             patch.object(async_workflow_service_module, "execute_workflow_sandbox") as mock_sandbox_task,
@@ -205,10 +204,11 @@ class TestAsyncWorkflowService:
         task_result = MagicMock(id="task-123")
         mocks["sandbox_task"].delay.return_value = task_result
 
-        user = SimpleNamespace(id="end-user-123")
+        end_user = MagicMock(spec=EndUser)
+        end_user.id = "end-user-123"
 
         # Act
-        AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
+        AsyncWorkflowService.trigger_workflow_async(session=session, user=end_user, trigger_data=trigger_data)
 
         # Assert
         created_log = mocks["repo"].create.call_args[0][0]
@@ -231,7 +231,7 @@ class TestAsyncWorkflowService:
             with pytest.raises(WorkflowNotFoundError, match="App not found: missing-app"):
                 AsyncWorkflowService.trigger_workflow_async(
                     session=session,
-                    user=SimpleNamespace(id="user-123"),
+                    user=cast(Account, MagicMock(spec=Account, id="user-123")),
                     trigger_data=trigger_data,
                 )
 
@@ -263,7 +263,7 @@ class TestAsyncWorkflowService:
         ):
             AsyncWorkflowService.trigger_workflow_async(
                 session=session,
-                user=SimpleNamespace(id="user-123"),
+                user=cast(Account, MagicMock(spec=Account, id="user-123")),
                 trigger_data=trigger_data,
             )
 
@@ -287,7 +287,7 @@ class TestAsyncWorkflowService:
             with pytest.raises(ValueError, match="Trigger log not found: missing-log"):
                 AsyncWorkflowService.reinvoke_trigger(
                     session=session,
-                    user=SimpleNamespace(id="user-123"),
+                    user=cast(Account, MagicMock(spec=Account, id="user-123")),
                     workflow_trigger_log_id="missing-log",
                 )
 
@@ -315,7 +315,7 @@ class TestAsyncWorkflowService:
                 return_value=expected_response,
             ) as mock_trigger_workflow_async,
         ):
-            user = SimpleNamespace(id="user-123")
+            user = cast(Account, MagicMock(spec=Account, id="user-123"))
 
             # Act
             response = AsyncWorkflowService.reinvoke_trigger(
@@ -361,7 +361,7 @@ class TestAsyncWorkflowService:
         mock_sessionmaker.return_value.begin.return_value = mock_session_context
 
         with (
-            patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=fake_engine)),
+            patch.object(async_workflow_service_module, "db", new=MagicMock(engine=fake_engine)),
             patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
@@ -396,7 +396,7 @@ class TestAsyncWorkflowService:
         mock_sessionmaker.return_value.begin.return_value = mock_session_context
 
         with (
-            patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=MagicMock())),
+            patch.object(async_workflow_service_module, "db", new=MagicMock(engine=MagicMock())),
             patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
@@ -440,7 +440,7 @@ class TestAsyncWorkflowService:
         mock_sessionmaker.return_value.begin.return_value = mock_session_context
 
         with (
-            patch.object(async_workflow_service_module, "db", new=SimpleNamespace(engine=MagicMock())),
+            patch.object(async_workflow_service_module, "db", new=MagicMock(engine=MagicMock())),
             patch.object(async_workflow_service_module, "sessionmaker", mock_sessionmaker),
             patch.object(
                 async_workflow_service_module,
