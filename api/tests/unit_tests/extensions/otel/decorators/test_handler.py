@@ -142,7 +142,7 @@ class TestSpanHandlerWrapper:
         def test_func():
             return "result"
 
-        result = handler.wrapper(tracer, test_func, (), {})
+        result = handler.wrapper(tracer, test_func)
 
         assert result == "result"
         spans = memory_span_exporter.get_finished_spans()
@@ -159,7 +159,7 @@ class TestSpanHandlerWrapper:
         def test_func():
             return "result"
 
-        handler.wrapper(tracer, test_func, (), {})
+        handler.wrapper(tracer, test_func)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -174,7 +174,7 @@ class TestSpanHandlerWrapper:
         def test_func():
             return "result"
 
-        handler.wrapper(tracer, test_func, (), {})
+        handler.wrapper(tracer, test_func)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -190,7 +190,7 @@ class TestSpanHandlerWrapper:
             raise ValueError("test error")
 
         with pytest.raises(ValueError, match="test error"):
-            handler.wrapper(tracer, test_func, (), {})
+            handler.wrapper(tracer, test_func)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -208,7 +208,7 @@ class TestSpanHandlerWrapper:
             raise ValueError("test error")
 
         with pytest.raises(ValueError):
-            handler.wrapper(tracer, test_func, (), {})
+            handler.wrapper(tracer, test_func)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -225,7 +225,7 @@ class TestSpanHandlerWrapper:
             raise ValueError("test error")
 
         with pytest.raises(ValueError, match="test error"):
-            handler.wrapper(tracer, test_func, (), {})
+            handler.wrapper(tracer, test_func)
 
     @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_passes_arguments_correctly(self, tracer_provider_with_memory_exporter, memory_span_exporter):
@@ -236,7 +236,7 @@ class TestSpanHandlerWrapper:
         def test_func(a, b, c=10):
             return a + b + c
 
-        result = handler.wrapper(tracer, test_func, (1, 2), {"c": 3})
+        result = handler.wrapper(tracer, test_func, 1, 2, c=3)
 
         assert result == 6
 
@@ -249,7 +249,7 @@ class TestSpanHandlerWrapper:
         def my_function(x):
             return x * 2
 
-        result = handler.wrapper(tracer, my_function, (5,), {})
+        result = handler.wrapper(tracer, my_function, 5)
 
         assert result == 10
         spans = memory_span_exporter.get_finished_spans()

@@ -70,14 +70,11 @@ class TestAppGenerateHandler:
         handler.wrapper(
             tracer,
             dummy_func,
-            (),
-            {
-                "app_model": mock_app_model,
-                "user": mock_account_user,
-                "args": {"workflow_id": test_workflow_id},
-                "invoke_from": InvokeFrom.DEBUGGER,
-                "streaming": False,
-            },
+            app_model=mock_app_model,
+            user=mock_account_user,
+            args={"workflow_id": test_workflow_id},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=False,
         )
 
         spans = memory_span_exporter.get_finished_spans()

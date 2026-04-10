@@ -59,13 +59,13 @@ class SpanHandler:
         except Exception:
             return None
 
-    def wrapper[T](
+    def wrapper[**P, R](
         self,
         tracer: Tracer,
-        wrapped: Callable[..., T],
-        args: tuple[object, ...],
-        kwargs: Mapping[str, object],
-    ) -> T:
+        wrapped: Callable[P, R],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> R:
         """
         Fully control the wrapper behavior.
 
