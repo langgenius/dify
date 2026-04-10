@@ -570,7 +570,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         result = service.confirm_import(import_id=import_id, account=_account_mock())
         assert result.status == ImportStatus.FAILED
-        assert "Invalid import information" in result.error
+        assert "validation error" in result.error
 
     def test_confirm_import_exception_returns_failed(self, db_session_with_containers):
         import_id = str(uuid4())
