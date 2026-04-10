@@ -42,13 +42,6 @@ const Header = () => {
     else
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
-  const handleDownloadGraphImportLog = useCallback(() => {
-    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
-      .then(({ collaborationManager }) => {
-        collaborationManager.downloadGraphImportLog()
-      })
-      .catch(() => {})
-  }, [])
 
   const renderLogo = () => (
     <h1>
