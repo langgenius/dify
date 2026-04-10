@@ -897,16 +897,11 @@ class RecommendedApp(TypeBase):
         default="en-US",
     )
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        insert_default=func.current_timestamp(),
-        server_default=func.current_timestamp(),
-        init=False,
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         nullable=False,
-        insert_default=func.current_timestamp(),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
         init=False,
