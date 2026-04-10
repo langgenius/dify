@@ -137,14 +137,15 @@ def test_create_collection_executes_create_sql_and_sets_cache(tidb_module, monke
 
     session = MagicMock()
 
-    class _SessionCtx:
+    class _BeginCtx:
         def __enter__(self):
             return session
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(tidb_module, "Session", lambda _engine: _SessionCtx())
+    mock_sm = MagicMock(begin=MagicMock(return_value=_BeginCtx()))
+    monkeypatch.setattr(tidb_module, "sessionmaker", lambda **kwargs: mock_sm)
 
     vector = tidb_module.TiDBVector.__new__(tidb_module.TiDBVector)
     vector._collection_name = "collection_1"
@@ -153,11 +154,9 @@ def test_create_collection_executes_create_sql_and_sets_cache(tidb_module, monke
 
     vector._create_collection(3)
 
-    session.begin.assert_called_once()
     sql = str(session.execute.call_args.args[0])
     assert "VECTOR<FLOAT>(3)" in sql
     assert "VEC_L2_DISTANCE" in sql
-    session.commit.assert_called_once()
     tidb_module.redis_client.set.assert_called_once()
 
 
@@ -396,23 +395,22 @@ def test_search_by_vector_filters_and_scores(tidb_module, monkeypatch):
 def test_delete_drops_table(tidb_module, monkeypatch):
     session = MagicMock()
     session.execute.return_value = None
-    session.commit = MagicMock()
 
-    class _SessionCtx:
+    class _BeginCtx:
         def __enter__(self):
             return session
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(tidb_module, "Session", lambda _engine: _SessionCtx())
+    mock_sm = MagicMock(begin=MagicMock(return_value=_BeginCtx()))
+    monkeypatch.setattr(tidb_module, "sessionmaker", lambda **kwargs: mock_sm)
     vector = tidb_module.TiDBVector.__new__(tidb_module.TiDBVector)
     vector._collection_name = "collection_1"
     vector._engine = MagicMock()
     vector.delete()
     drop_sql = str(session.execute.call_args.args[0])
     assert "DROP TABLE IF EXISTS collection_1" in drop_sql
-    session.commit.assert_called_once()
 
 
 def test_tidb_factory_uses_existing_or_generated_collection(tidb_module, monkeypatch):
