@@ -1673,7 +1673,7 @@ class DocumentSegmentSummary(TypeBase):
     summary_index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     summary_index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
-    status: Mapped[str] = mapped_column(
+    status: Mapped[SummaryStatus] = mapped_column(
         EnumText(SummaryStatus, length=32),
         nullable=False,
         server_default=sa.text("'generating'"),
