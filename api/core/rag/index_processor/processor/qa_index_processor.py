@@ -4,8 +4,7 @@ import logging
 import re
 import threading
 import uuid
-from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 import pandas as pd
 from flask import Flask, current_app
@@ -34,6 +33,12 @@ from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
+
+
+class QAFormatPreviewDict(TypedDict):
+    chunk_structure: str
+    qa_preview: list[dict[str, Any]]
+    total_segments: int
 
 
 class QAIndexProcessor(BaseIndexProcessor):
@@ -230,16 +235,17 @@ class QAIndexProcessor(BaseIndexProcessor):
             else:
                 raise ValueError("Indexing technique must be high quality.")
 
-    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> QAFormatPreviewDict:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         preview = []
         for qa_chunk in qa_chunks.qa_chunks:
             preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
-        return {
+        result: QAFormatPreviewDict = {
             "chunk_structure": IndexStructureType.QA_INDEX,
             "qa_preview": preview,
             "total_segments": len(qa_chunks.qa_chunks),
         }
+        return result
 
     def generate_summary_preview(
         self,

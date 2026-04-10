@@ -39,6 +39,25 @@ class _FakeSession:
         return None
 
 
+class _FakeBeginContext:
+    def __init__(self, session):
+        self._session = session
+
+    def __enter__(self):
+        return self._session
+
+    def __exit__(self, exc_type, exc, tb):
+        return None
+
+
+def _patch_both(monkeypatch, module, session):
+    """Patch both Session and sessionmaker on the module."""
+    monkeypatch.setattr(module, "Session", lambda _client: session)
+    monkeypatch.setattr(
+        module, "sessionmaker", lambda **kwargs: MagicMock(begin=MagicMock(return_value=_FakeBeginContext(session)))
+    )
+
+
 @pytest.fixture
 def relyt_module(monkeypatch):
     for name, module in _build_fake_relyt_modules().items():
@@ -108,13 +127,13 @@ def test_create_collection_cache_and_sql_execution(relyt_module, monkeypatch):
 
     monkeypatch.setattr(relyt_module.redis_client, "get", MagicMock(return_value=1))
     session = _FakeSession()
-    monkeypatch.setattr(relyt_module, "Session", lambda _client: session)
+    _patch_both(monkeypatch, relyt_module, session)
     vector.create_collection(3)
     session.execute.assert_not_called()
 
     monkeypatch.setattr(relyt_module.redis_client, "get", MagicMock(return_value=None))
     session = _FakeSession()
-    monkeypatch.setattr(relyt_module, "Session", lambda _client: session)
+    _patch_both(monkeypatch, relyt_module, session)
     vector.create_collection(3)
     executed_sql = [str(call.args[0]) for call in session.execute.call_args_list]
     assert any("DROP TABLE IF EXISTS" in sql for sql in executed_sql)
@@ -265,15 +284,15 @@ def test_search_by_vector_filters_by_score_and_ids(relyt_module):
 
 
 # 8. delete commits session
-def test_delete_commits_session(relyt_module, monkeypatch):
+def test_delete_drops_table(relyt_module, monkeypatch):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
     vector._collection_name = "collection_1"
     vector.client = MagicMock()
     vector.embedding_dimension = 3
     session = _FakeSession()
-    monkeypatch.setattr(relyt_module, "Session", lambda _client: session)
+    _patch_both(monkeypatch, relyt_module, session)
     vector.delete()
-    session.commit.assert_called_once()
+    session.execute.assert_called_once()
 
 
 def test_relyt_factory_existing_and_generated_collection(relyt_module, monkeypatch):
