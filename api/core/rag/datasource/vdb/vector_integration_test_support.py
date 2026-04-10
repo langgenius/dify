@@ -12,6 +12,7 @@ import uuid
 
 import pytest
 
+from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
@@ -34,8 +35,9 @@ def get_example_document(doc_id: str) -> Document:
 
 
 class AbstractVectorTest:
+    vector: BaseVector
+
     def __init__(self):
-        self.vector = None
         self.dataset_id = str(uuid.uuid4())
         self.collection_name = Dataset.gen_collection_name_by_id(self.dataset_id) + "_test"
         self.example_doc_id = str(uuid.uuid4())
