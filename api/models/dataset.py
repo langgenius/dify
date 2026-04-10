@@ -1665,6 +1665,13 @@ class DocumentSegmentSummary(TypeBase):
         sa.Index("document_segment_summaries_status_idx", "status"),
     )
 
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # corresponds to DocumentSegment.id or parent chunk id
@@ -1683,12 +1690,6 @@ class DocumentSegmentSummary(TypeBase):
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        nullable=False,
-        insert_default=lambda: str(uuid4()),
-        default_factory=lambda: str(uuid4()),
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

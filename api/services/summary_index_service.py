@@ -338,7 +338,6 @@ class SummaryIndexService:
                                     summary_record_id,
                                 )
                                 summary_record_in_session = DocumentSegmentSummary(
-                                    id=summary_record_id,  # Use the same ID if available
                                     dataset_id=dataset.id,
                                     document_id=segment.document_id,
                                     chunk_id=segment.id,
@@ -349,6 +348,7 @@ class SummaryIndexService:
                                     status=SummaryStatus.COMPLETED,
                                     enabled=True,
                                 )
+                                summary_record_in_session.id = summary_record_id
                                 session.add(summary_record_in_session)
                                 logger.info(
                                     "Created new summary record (id=%s) for segment %s after vectorization",
