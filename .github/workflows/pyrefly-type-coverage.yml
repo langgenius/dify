@@ -1,0 +1,120 @@
+name: Pyrefly Type Coverage
+
+on:
+  pull_request:
+    paths:
+      - 'api/**/*.py'
+
+permissions:
+  contents: read
+
+jobs:
+  pyrefly-type-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python & UV
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run pyrefly report on PR branch
+        run: |
+          uv run --directory api --dev pyrefly report 2>/dev/null > /tmp/pyrefly_report_pr.tmp && \
+            mv /tmp/pyrefly_report_pr.tmp /tmp/pyrefly_report_pr.json || \
+            echo '{}' > /tmp/pyrefly_report_pr.json
+
+      - name: Save helper script from base branch
+        run: |
+          git show ${{ github.event.pull_request.base.sha }}:api/libs/pyrefly_type_coverage.py > /tmp/pyrefly_type_coverage.py 2>/dev/null \
+            || cp api/libs/pyrefly_type_coverage.py /tmp/pyrefly_type_coverage.py
+
+      - name: Checkout base branch
+        run: git checkout ${{ github.base_ref }}
+
+      - name: Run pyrefly report on base branch
+        run: |
+          uv run --directory api --dev pyrefly report 2>/dev/null > /tmp/pyrefly_report_base.tmp && \
+            mv /tmp/pyrefly_report_base.tmp /tmp/pyrefly_report_base.json || \
+            echo '{}' > /tmp/pyrefly_report_base.json
+
+      - name: Generate coverage comparison
+        id: coverage
+        run: |
+          comment_body="$(uv run --directory api python /tmp/pyrefly_type_coverage.py \
+            --base /tmp/pyrefly_report_base.json \
+            < /tmp/pyrefly_report_pr.json)"
+
+          {
+            echo "### Pyrefly Type Coverage"
+            echo ""
+            echo "$comment_body"
+          } | tee -a "$GITHUB_STEP_SUMMARY" > /tmp/type_coverage_comment.md
+
+          # Save structured data for the fork-PR comment workflow
+          cp /tmp/pyrefly_report_pr.json pr_report.json
+          cp /tmp/pyrefly_report_base.json base_report.json
+
+      - name: Save PR number
+        run: |
+          echo ${{ github.event.pull_request.number }} > pr_number.txt
+
+      - name: Upload type coverage artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: pyrefly_type_coverage
+          path: |
+            pr_report.json
+            base_report.json
+            pr_number.txt
+
+      - name: Comment PR with type coverage
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = '### Pyrefly Type Coverage';
+            let body;
+            try {
+              body = fs.readFileSync('/tmp/type_coverage_comment.md', { encoding: 'utf8' });
+            } catch {
+              body = `${marker}\n\n_Coverage report unavailable._`;
+            }
+            const prNumber = context.payload.pull_request.number;
+
+            // Update existing comment if one exists, otherwise create new
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const existing = comments.find(c => c.body.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }
