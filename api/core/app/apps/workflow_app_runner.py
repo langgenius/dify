@@ -129,9 +129,18 @@ class WorkflowBasedAppRunner:
             arch_name = machine().lower()
             os_enum = OperatingSystem.LINUX if os_name == "linux" else OperatingSystem.DARWIN
             arch_enum = Arch.ARM64 if arch_name in ("arm64", "aarch64") else Arch.AMD64
-            DifyCliLocator().resolve(os_enum, arch_enum)
+            cli_binary = DifyCliLocator().resolve(os_enum, arch_enum)
+
+            # Also resolve linux binary for Docker containers
+            cli_binary_linux = None
+            if os_name != "linux":
+                try:
+                    cli_binary_linux = DifyCliLocator().resolve(OperatingSystem.LINUX, arch_enum)
+                except FileNotFoundError:
+                    pass
 
             from core.sandbox.builder import _get_sandbox_class
+            from core.virtual_environment.__base.helpers import submit_command, with_connection, pipeline
             vm_class = _get_sandbox_class(SandboxType(provider.provider_type))
             vm = vm_class(
                 tenant_id=tenant_id,
@@ -150,6 +159,18 @@ class WorkflowBasedAppRunner:
                 app_id=app_id,
                 assets_id=app_id,
             )
+
+            from core.sandbox.entities.config import DifyCli as DifyCliPaths
+            from io import BytesIO
+            cli_paths = DifyCliPaths(sandbox.id)
+            vm_binary = cli_binary_linux if (vm.metadata.os == OperatingSystem.LINUX and cli_binary_linux) else cli_binary
+            with open(vm_binary.path, "rb") as f:
+                pipeline(vm).add(["mkdir", "-p", cli_paths.bin_dir]).execute(raise_on_error=True)
+                vm.upload_file(cli_paths.bin_path, BytesIO(f.read()))
+            with with_connection(vm) as conn:
+                submit_command(vm, conn, ["chmod", "+x", cli_paths.bin_path]).result(timeout=10)
+            logger.info("[SANDBOX] CLI binary uploaded to container: %s", cli_paths.bin_path)
+
             sandbox.mount()
             sandbox.mark_ready()
 
@@ -159,6 +180,7 @@ class WorkflowBasedAppRunner:
             logger.debug("[SANDBOX] DifyCli binary not found, skipping sandbox creation")
             return None
         except Exception:
+            logger.warning("[SANDBOX] Failed to create sandbox", exc_info=True)
             return None
 
     def _build_sandbox_layer(self) -> GraphEngineLayer | None:
