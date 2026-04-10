@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import uuid
-from typing import Any
+from typing import Any, TypedDict
 
 import jieba.posseg as pseg  # type: ignore
 import numpy
@@ -23,6 +23,18 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 oracledb.defaults.fetch_lobs = False
+
+
+class _OraclePoolParams(TypedDict, total=False):
+    user: str
+    password: str
+    dsn: str
+    min: int
+    max: int
+    increment: int
+    config_dir: str | None
+    wallet_location: str | None
+    wallet_password: str | None
 
 
 class OracleVectorConfig(BaseModel):
@@ -127,22 +139,18 @@ class OracleVector(BaseVector):
             return connection
 
     def _create_connection_pool(self, config: OracleVectorConfig):
-        pool_params = {
-            "user": config.user,
-            "password": config.password,
-            "dsn": config.dsn,
-            "min": 1,
-            "max": 5,
-            "increment": 1,
-        }
+        pool_params = _OraclePoolParams(
+            user=config.user,
+            password=config.password,
+            dsn=config.dsn,
+            min=1,
+            max=5,
+            increment=1,
+        )
         if config.is_autonomous:
-            pool_params.update(
-                {
-                    "config_dir": config.config_dir,
-                    "wallet_location": config.wallet_location,
-                    "wallet_password": config.wallet_password,
-                }
-            )
+            pool_params["config_dir"] = config.config_dir
+            pool_params["wallet_location"] = config.wallet_location
+            pool_params["wallet_password"] = config.wallet_password
         return oracledb.create_pool(**pool_params)
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):

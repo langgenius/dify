@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -92,7 +92,7 @@ class MilvusVector(BaseVector):
     def _load_collection_fields(self, fields: list[str] | None = None):
         if fields is None:
             # Load collection fields from remote server
-            collection_info = self._client.describe_collection(self._collection_name)
+            collection_info = cast(dict[str, Any], self._client.describe_collection(self._collection_name))
             fields = [field["name"] for field in collection_info["fields"]]
         # Since primary field is auto-id, no need to track it
         self._fields = [f for f in fields if f != Field.PRIMARY_KEY]
@@ -106,7 +106,8 @@ class MilvusVector(BaseVector):
             return False
 
         try:
-            milvus_version = self._client.get_server_version()
+            milvus_version_raw = self._client.get_server_version()
+            milvus_version = milvus_version_raw if isinstance(milvus_version_raw, str) else str(milvus_version_raw)
             # Check if it's Zilliz Cloud - it supports full-text search with Milvus 2.5 compatibility
             if "Zilliz Cloud" in milvus_version:
                 return True

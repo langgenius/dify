@@ -85,7 +85,7 @@ class JiebaKeywordTableHandler:
                 if self._lcut:
                     tokens = self._lcut(sentence)
                 elif callable(cut):
-                    tokens = list(cut(sentence))
+                    tokens = list(cast("list[str]", cut(sentence)))
                 else:
                     tokens = re.findall(r"\w+", sentence)
 
@@ -106,7 +106,7 @@ class JiebaKeywordTableHandler:
         """Extract keywords with JIEBA tfidf."""
         keywords = self._tfidf.extract_tags(
             sentence=text,
-            topK=max_keywords_per_chunk,
+            topK=max_keywords_per_chunk or 10,
         )
         # jieba.analyse.extract_tags returns list[Any] when withFlag is False by default.
         keywords = cast(list[str], keywords)
