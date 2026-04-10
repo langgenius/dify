@@ -66,12 +66,15 @@ def build_file_from_stored_mapping(
     record_id = resolve_file_record_id(mapping)
     transfer_method = FileTransferMethod.value_of(mapping["transfer_method"])
 
-    if transfer_method == FileTransferMethod.TOOL_FILE and record_id:
-        mapping["tool_file_id"] = record_id
-    elif transfer_method in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL] and record_id:
-        mapping["upload_file_id"] = record_id
-    elif transfer_method == FileTransferMethod.DATASOURCE_FILE and record_id:
-        mapping["datasource_file_id"] = record_id
+    match transfer_method:
+        case FileTransferMethod.TOOL_FILE if record_id:
+            mapping["tool_file_id"] = record_id
+        case FileTransferMethod.LOCAL_FILE | FileTransferMethod.REMOTE_URL if record_id:
+            mapping["upload_file_id"] = record_id
+        case FileTransferMethod.DATASOURCE_FILE if record_id:
+            mapping["datasource_file_id"] = record_id
+        case _:
+            pass
 
     if transfer_method == FileTransferMethod.REMOTE_URL and record_id is None:
         remote_url = mapping.get("remote_url")
