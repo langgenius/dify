@@ -113,14 +113,6 @@ const Header = () => {
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
       </div>
       <div className="flex min-w-0 flex-1 items-center justify-end pr-3 pl-2 min-[1280px]:pl-3">
-        <button
-          type="button"
-          data-testid="workflow-import-log-download"
-          className="top-1/2 left-full ml-1 h-3 w-3 -translate-y-1/2 opacity-0"
-          aria-hidden="true"
-          tabIndex={-1}
-          onClick={handleDownloadGraphImportLog}
-        />
         <EnvNav />
         <div className="mr-2">
           <PluginsNav />

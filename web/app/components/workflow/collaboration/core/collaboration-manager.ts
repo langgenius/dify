@@ -118,6 +118,7 @@ export class CollaborationManager {
   private reactFlowStore: ReactFlowStore | null = null
   private isLeader = false
   private leaderId: string | null = null
+  private onlineUsers: OnlineUser[] = []
   private cursors: Record<string, CursorPosition> = {}
   private nodePanelPresence: NodePanelPresenceMap = {}
   private activeConnections = new Set<string>()
@@ -557,6 +558,7 @@ export class CollaborationManager {
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
+    this.onlineUsers = []
     this.nodePanelPresence = {}
     this.isUndoRedoInProgress = false
     this.rejoinInProgress = false
@@ -1345,6 +1347,7 @@ export class CollaborationManager {
         if (data.leader && typeof data.leader === 'string')
           this.leaderId = data.leader
 
+        this.onlineUsers = data.users
         this.eventEmitter.emit('onlineUsers', data.users)
         this.eventEmitter.emit('cursors', { ...this.cursors })
       }
@@ -1383,10 +1386,12 @@ export class CollaborationManager {
 
     socket.on('disconnect', (reason) => {
       this.cursors = {}
+      this.onlineUsers = []
       this.isLeader = false
       this.leaderId = null
       this.pendingInitialSync = false
       this.eventEmitter.emit('stateChange', { isConnected: false, disconnectReason: reason })
+      this.eventEmitter.emit('onlineUsers', [])
       this.eventEmitter.emit('cursors', {})
     })
 
