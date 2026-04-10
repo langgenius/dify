@@ -2,24 +2,8 @@ import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import formatParallelNode from '../parallel'
 
-const getLatestLoopIndex = (loopNode: NodeTracing) => {
-  const durationMap = loopNode.execution_metadata?.loop_duration_map
-  if (!durationMap)
-    return -1
-
-  let latestIndex = -1
-  for (const key of Object.keys(durationMap)) {
-    const index = Number.parseInt(key, 10)
-    if (!Number.isNaN(index) && index > latestIndex)
-      latestIndex = index
-  }
-
-  return latestIndex
-}
-
 export function addChildrenToLoopNode(loopNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const detailsByKey = new Map<string, NodeTracing[]>()
-  const latestLoopIndex = getLatestLoopIndex(loopNode)
   let lastResolvedIndex = -1
   const order: string[] = []
 
@@ -45,9 +29,6 @@ export function addChildrenToLoopNode(loopNode: NodeTracing, childrenNodes: Node
     }
     else if (loop_index !== undefined) {
       runIndex = loop_index
-    }
-    else if (latestLoopIndex > lastResolvedIndex) {
-      runIndex = latestLoopIndex
     }
     else if (lastResolvedIndex >= 0) {
       const currentGroup = detailsByKey.get(String(lastResolvedIndex)) || []

@@ -48,4 +48,21 @@ describe('loop', () => {
     expect(result.details![0]).toEqual([child0])
     expect(result.details![1]).toEqual([child1, streaming])
   })
+
+  it('should not jump to the latest loop when an earlier item is missing loop_index', () => {
+    const parent = {
+      node_id: 'loop1',
+      node_type: 'loop',
+      execution_metadata: {
+        loop_duration_map: { 0: 1.2, 1: 0.4 },
+      },
+    } as unknown as NodeTracing
+    const code0 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 0 } } as unknown as NodeTracing
+    const tool = { node_id: 'tool', execution_metadata: { loop_id: 'loop1' } } as unknown as NodeTracing
+    const code1 = { node_id: 'code', execution_metadata: { loop_id: 'loop1', loop_index: 1 } } as unknown as NodeTracing
+
+    const result = addChildrenToLoopNode(parent, [code0, tool, code1])
+    expect(result.details![0]).toEqual([code0, tool])
+    expect(result.details![1]).toEqual([code1])
+  })
 })
