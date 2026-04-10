@@ -1,8 +1,7 @@
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any
 
-from opentelemetry.trace import SpanKind, Status, StatusCode
+from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 from opentelemetry.util.types import AttributeValue
 
 from extensions.otel.decorators.handler import SpanHandler
@@ -17,7 +16,7 @@ class AppGenerateHandler(SpanHandler):
 
     def wrapper[T](
         self,
-        tracer: Any,
+        tracer: Tracer,
         wrapped: Callable[..., T],
         args: tuple[object, ...],
         kwargs: Mapping[str, object],

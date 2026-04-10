@@ -2,7 +2,7 @@ import inspect
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from opentelemetry.trace import SpanKind, Status, StatusCode
+from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 
 
 class SpanHandler:
@@ -16,9 +16,9 @@ class SpanHandler:
     exceptions. Handlers can override the wrapper method to customize behavior.
     """
 
-    _signature_cache: dict[Callable[..., Any], inspect.Signature] = {}
+    _signature_cache: dict[Callable[..., object], inspect.Signature] = {}
 
-    def _build_span_name(self, wrapped: Callable[..., Any]) -> str:
+    def _build_span_name(self, wrapped: Callable[..., object]) -> str:
         """
         Build the span name from the wrapped function.
 
@@ -61,7 +61,7 @@ class SpanHandler:
 
     def wrapper[T](
         self,
-        tracer: Any,
+        tracer: Tracer,
         wrapped: Callable[..., T],
         args: tuple[object, ...],
         kwargs: Mapping[str, object],
