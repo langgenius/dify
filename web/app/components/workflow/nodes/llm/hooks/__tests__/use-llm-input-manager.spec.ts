@@ -58,6 +58,25 @@ const defaultConfig: LLMDefaultConfig = {
 }
 
 describe('use-llm-input-manager', () => {
+  it('ignores default configs that do not define prompt templates', () => {
+    const handleSetInputs = vi.fn()
+    const { result } = renderHook(() => useLLMInputManager({
+      inputs: createPayload(),
+      doSetInputs: handleSetInputs,
+      defaultConfig: {},
+      isChatModel: true,
+    }))
+
+    const draftPayload = createPayload()
+
+    act(() => {
+      result.current.appendDefaultPromptConfig(draftPayload, {})
+    })
+
+    expect(draftPayload.prompt_template).toEqual(createPayload().prompt_template)
+    expect(handleSetInputs).not.toHaveBeenCalled()
+  })
+
   it('hydrates the default chat prompt when the payload has no prompt template', async () => {
     const handleSetInputs = vi.fn()
 

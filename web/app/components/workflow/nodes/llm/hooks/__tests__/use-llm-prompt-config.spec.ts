@@ -50,6 +50,79 @@ const createSetInputs = (inputRef: MutableRefObject<LLMNodeType>) => {
 }
 
 describe('use-llm-prompt-config', () => {
+  it('initializes prompt config storage when it is missing or incomplete', () => {
+    const missingConfigRef = {
+      current: createPayload({
+        prompt_template: [{
+          role: PromptRole.user,
+          text: 'Template',
+          edition_type: EditionType.jinja2,
+          jinja2_text: '{{ city }}',
+        }],
+        prompt_config: undefined as unknown as LLMNodeType['prompt_config'],
+      }),
+    } as MutableRefObject<LLMNodeType>
+    const handleMissingConfigInputs = createSetInputs(missingConfigRef)
+
+    const { result: missingConfigResult } = renderHook(() => useLLMPromptConfig({
+      inputs: missingConfigRef.current,
+      inputRef: missingConfigRef,
+      isChatMode: true,
+      isChatModel: true,
+      setInputs: handleMissingConfigInputs,
+    }))
+
+    act(() => {
+      missingConfigResult.current.handleAddEmptyVariable()
+    })
+
+    expect(handleMissingConfigInputs).toHaveBeenCalledWith(expect.objectContaining({
+      prompt_config: {
+        jinja2_variables: [{
+          variable: '',
+          value_selector: [],
+        }],
+      },
+    }))
+
+    const missingVariablesRef = {
+      current: createPayload({
+        prompt_template: [{
+          role: PromptRole.user,
+          text: 'Template',
+          edition_type: EditionType.jinja2,
+          jinja2_text: '{{ budget }}',
+        }],
+        prompt_config: {} as LLMNodeType['prompt_config'],
+      }),
+    } as MutableRefObject<LLMNodeType>
+    const handleMissingVariablesInputs = createSetInputs(missingVariablesRef)
+
+    const { result: missingVariablesResult } = renderHook(() => useLLMPromptConfig({
+      inputs: missingVariablesRef.current,
+      inputRef: missingVariablesRef,
+      isChatMode: true,
+      isChatModel: true,
+      setInputs: handleMissingVariablesInputs,
+    }))
+
+    act(() => {
+      missingVariablesResult.current.handleAddVariable({
+        variable: 'budget',
+        value_selector: ['start', 'budget'],
+      })
+    })
+
+    expect(handleMissingVariablesInputs).toHaveBeenCalledWith(expect.objectContaining({
+      prompt_config: {
+        jinja2_variables: [{
+          variable: 'budget',
+          value_selector: ['start', 'budget'],
+        }],
+      },
+    }))
+  })
+
   it('derives chat prompt status and filters the supported variable types', () => {
     const inputRef = {
       current: createPayload({
