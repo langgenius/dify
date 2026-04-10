@@ -27,7 +27,7 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
-from libs.helper import RateLimiter, TokenManager
+from libs.helper import RateLimiter, TokenData, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -355,7 +355,7 @@ class AccountService:
         if token_data is None:
             return False
 
-        if token_data["code"] != code:
+        if token_data.get("code") != code:
             return False
 
         return True
@@ -757,19 +757,19 @@ class AccountService:
         TokenManager.revoke_token(token, "owner_transfer")
 
     @classmethod
-    def get_reset_password_data(cls, token: str) -> dict[str, Any] | None:
+    def get_reset_password_data(cls, token: str) -> TokenData | None:
         return TokenManager.get_token_data(token, "reset_password")
 
     @classmethod
-    def get_email_register_data(cls, token: str) -> dict[str, Any] | None:
+    def get_email_register_data(cls, token: str) -> TokenData | None:
         return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
-    def get_change_email_data(cls, token: str) -> dict[str, Any] | None:
+    def get_change_email_data(cls, token: str) -> TokenData | None:
         return TokenManager.get_token_data(token, "change_email")
 
     @classmethod
-    def get_owner_transfer_data(cls, token: str) -> dict[str, Any] | None:
+    def get_owner_transfer_data(cls, token: str) -> TokenData | None:
         return TokenManager.get_token_data(token, "owner_transfer")
 
     @classmethod
@@ -815,7 +815,7 @@ class AccountService:
         return query_session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
 
     @classmethod
-    def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
+    def get_email_code_login_data(cls, token: str) -> TokenData | None:
         return TokenManager.get_token_data(token, "email_code_login")
 
     @classmethod
