@@ -1,8 +1,9 @@
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
@@ -10,8 +11,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
 from services.account_service import RegisterService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ActivateCheckQuery(BaseModel):
@@ -39,8 +38,7 @@ class ActivatePayload(BaseModel):
         return timezone(value)
 
 
-for model in (ActivateCheckQuery, ActivatePayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+register_schema_models(console_ns, ActivateCheckQuery, ActivatePayload)
 
 
 @console_ns.route("/activate/check")
@@ -48,17 +46,6 @@ class ActivateCheckApi(Resource):
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
     @console_ns.expect(console_ns.models[ActivateCheckQuery.__name__])
-    @console_ns.response(
-        200,
-        "Success",
-        console_ns.model(
-            "ActivationCheckResponse",
-            {
-                "is_valid": fields.Boolean(description="Whether token is valid"),
-                "data": fields.Raw(description="Activation data if valid"),
-            },
-        ),
-    )
     def get(self):
         args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
@@ -92,16 +79,6 @@ class ActivateApi(Resource):
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
     @console_ns.expect(console_ns.models[ActivatePayload.__name__])
-    @console_ns.response(
-        200,
-        "Account activated successfully",
-        console_ns.model(
-            "ActivationResponse",
-            {
-                "result": fields.String(description="Operation result"),
-            },
-        ),
-    )
     @console_ns.response(400, "Already activated or invalid token")
     def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
