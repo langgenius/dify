@@ -195,9 +195,7 @@ class ExternalDatasetService:
                         raise ValueError(f"{parameter.get('name')} is required")
 
     @staticmethod
-    def process_external_api(
-        settings: ExternalKnowledgeApiSetting, files: dict[str, Any] | None
-    ) -> httpx.Response:
+    def process_external_api(settings: ExternalKnowledgeApiSetting, files: dict[str, Any] | None) -> httpx.Response:
         """
         do http request depending on api bundle
         """
