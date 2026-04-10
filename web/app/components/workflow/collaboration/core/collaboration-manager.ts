@@ -722,18 +722,6 @@ export class CollaborationManager {
     })
   }
 
-  emitGraphViewActive(isActive: boolean): void {
-    this.graphViewActive = isActive
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
-      return
-
-    this.sendCollaborationEvent({
-      type: 'graph_view_active',
-      data: { active: isActive },
-      timestamp: Date.now(),
-    })
-  }
-
   emitHistoryAction(action: 'undo' | 'redo' | 'jump'): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
       return
