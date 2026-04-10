@@ -108,8 +108,22 @@ class TestWorkflowCollaborationService:
         repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
         repository.get_current_leader.return_value = "sid-old"
         repository.list_sessions.return_value = [
-            {"user_id": "u-2", "username": "B", "avatar": None, "sid": "sid-2", "connected_at": 1, "graph_active": True},
-            {"user_id": "u-3", "username": "C", "avatar": None, "sid": "sid-3", "connected_at": 2, "graph_active": True},
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-2",
+                "connected_at": 1,
+                "graph_active": True,
+            },
+            {
+                "user_id": "u-3",
+                "username": "C",
+                "avatar": None,
+                "sid": "sid-3",
+                "connected_at": 2,
+                "graph_active": True,
+            },
         ]
         payload = {"type": "sync_request", "data": {"reason": "join"}, "timestamp": 123}
 

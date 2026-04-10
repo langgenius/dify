@@ -584,9 +584,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 5
     }
   },
   "app/components/app/app-publisher/publish-with-multiple-model.tsx": {
@@ -7915,11 +7912,6 @@
       "count": 3
     }
   },
-  "app/components/workflow-app/components/workflow-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow-app/components/workflow-onboarding-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -8320,11 +8312,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/hooks-store/store.ts": {
-    "ts/no-explicit-any": {
-      "count": 6
-    }
-  },
   "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
     "react/error-boundaries": {
       "count": 1
@@ -8354,11 +8341,6 @@
     }
   },
   "app/components/workflow/hooks/use-inspect-vars-crud-common.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/hooks/use-node-data-update.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8404,11 +8386,8 @@
     }
   },
   "app/components/workflow/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
@@ -10944,11 +10923,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
-    }
-  },
-  "app/components/workflow/panel/version-history-panel/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/workflow/panel/version-history-panel/loading/index.tsx": {
