@@ -62,6 +62,17 @@ const Modal = ({
     <PortalToFollowElem open>
       <PortalToFollowElemContent
         className={cn('z-9998 flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
+        // PortalToFollowElem is a tooltip/dropdown primitive built on floating-ui.
+        // This Modal uses it without a `PortalToFollowElemTrigger`, so floating-ui
+        // has no reference element to anchor against and its computed
+        // `position: absolute` + `transform` inline styles become unreliable.
+        // In most contexts the overlay still ends up covering the viewport, but
+        // when the Modal renders inside another overlay (e.g. a base-ui Dialog
+        // whose Popup has its own `transform`), the computed position collapses
+        // the overlay into a narrow strip instead of a full-viewport backdrop.
+        // See #34803. Override the computed position with plain viewport-fixed
+        // values so the modal overlay is always anchored to the viewport.
+        style={{ position: 'fixed', inset: 0, transform: 'none' }}
         onClick={clickOutsideNotClose ? noop : onClose}
       >
         <div
