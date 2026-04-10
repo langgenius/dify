@@ -15,8 +15,12 @@ def mock_session(monkeypatch: pytest.MonkeyPatch) -> Mock:
     context_manager.__exit__.return_value = False
     mock_db = MagicMock()
     mock_db.engine = Mock()
+    empty_scalars = Mock()
+    empty_scalars.all.return_value = []
+    session.scalars.return_value = empty_scalars
     monkeypatch.setattr(service_module, "Session", Mock(return_value=context_manager))
     monkeypatch.setattr(service_module, "db", mock_db)
+    monkeypatch.setattr(service_module.send_workflow_comment_mention_email_task, "delay", Mock())
     return session
 
 
@@ -34,6 +38,40 @@ class TestWorkflowCommentService:
     def test_validate_content_rejects_too_long(self) -> None:
         with pytest.raises(ValueError):
             WorkflowCommentService._validate_content("a" * 1001)
+
+    def test_build_mention_email_payloads_skips_accounts_without_email(self, mock_session: Mock) -> None:
+        account_without_email = Mock()
+        account_without_email.email = None
+        account_without_email.name = "No Email"
+        account_without_email.interface_language = "en-US"
+
+        account_with_email = Mock()
+        account_with_email.email = "user@example.com"
+        account_with_email.name = ""
+        account_with_email.interface_language = None
+
+        mock_session.scalar.side_effect = ["My App", "Commenter"]
+        mock_session.scalars.return_value = _mock_scalars([account_without_email, account_with_email])
+
+        payloads = WorkflowCommentService._build_mention_email_payloads(
+            session=mock_session,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            mentioner_id="user-1",
+            mentioned_user_ids=["user-2"],
+            content="hello",
+        )
+
+        assert payloads == [
+            {
+                "language": "en-US",
+                "to": "user@example.com",
+                "mentioned_name": "user@example.com",
+                "commenter_name": "Commenter",
+                "app_name": "My App",
+                "comment_content": "hello",
+            }
+        ]
 
     def test_create_comment_creates_mentions(self, mock_session: Mock) -> None:
         comment = Mock()
@@ -109,6 +147,37 @@ class TestWorkflowCommentService:
         assert mock_session.delete.call_count == 2
         assert mock_session.add.call_count == 1
         mock_session.commit.assert_called_once()
+
+    def test_update_comment_notifies_only_new_mentions(self, mock_session: Mock) -> None:
+        comment = Mock()
+        comment.id = "comment-1"
+        comment.created_by = "owner"
+        mock_session.scalar.return_value = comment
+
+        existing_mention = Mock()
+        existing_mention.mentioned_user_id = "user-2"
+        mock_session.scalars.return_value = _mock_scalars([existing_mention])
+
+        with (
+            patch.object(service_module, "uuid_value", side_effect=[True, True]),
+            patch.object(
+                WorkflowCommentService,
+                "_build_mention_email_payloads",
+                return_value=[],
+            ) as build_payloads_mock,
+            patch.object(WorkflowCommentService, "_dispatch_mention_emails") as dispatch_mock,
+        ):
+            WorkflowCommentService.update_comment(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                user_id="owner",
+                content="updated",
+                mentioned_user_ids=["user-2", "user-3"],
+            )
+
+        assert build_payloads_mock.call_args.kwargs["mentioned_user_ids"] == ["user-3"]
+        dispatch_mock.assert_called_once_with([])
 
     def test_delete_comment_raises_forbidden(self, mock_session: Mock) -> None:
         comment = Mock()
