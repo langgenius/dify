@@ -742,8 +742,8 @@ class WorkflowRun(Base):
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
-        "WorkflowPause",
-        primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
+        lambda: WorkflowPause,
+        primaryjoin=lambda: WorkflowRun.id == orm.foreign(WorkflowPause.workflow_run_id),
         uselist=False,
         # require explicit preloading.
         lazy="raise",
@@ -1996,13 +1996,14 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
         default=None,
     )
 
-    # Relationship to WorkflowRun
+    # Relationship to WorkflowRun (uses lambda to resolve across Base/TypeBase registries)
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+        lambda: WorkflowRun,
         foreign_keys=[workflow_run_id],
         # require explicit preloading.
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
+        primaryjoin=lambda: WorkflowPause.workflow_run_id == WorkflowRun.id,
         back_populates="pause",
         init=False,
     )
