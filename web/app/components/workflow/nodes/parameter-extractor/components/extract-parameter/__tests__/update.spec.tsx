@@ -30,7 +30,6 @@ describe('parameter-extractor/extract-parameter/update', () => {
   })
 
   it('opens from the add trigger and saves a new parameter', async () => {
-    const user = userEvent.setup()
     const handleSave = vi.fn()
 
     render(
@@ -42,21 +41,29 @@ describe('parameter-extractor/extract-parameter/update', () => {
 
     const existingDialogs = screen.queryAllByRole('dialog').length
 
-    await user.click(screen.getByTestId('add-button'))
+    fireEvent.click(screen.getByTestId('add-button'))
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
       expect(nextDialogs.length).toBeGreaterThan(existingDialogs)
       return nextDialogs
     })
     const dialog = dialogs.at(-1)!
+    const nameInput = within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')
+    const descriptionInput = within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')
 
-    fireEvent.change(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
+    fireEvent.change(nameInput, {
       target: { value: 'budget' },
     })
-    fireEvent.change(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder'), {
+    fireEvent.change(descriptionInput, {
       target: { value: 'Budget amount' },
     })
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
+
+    await waitFor(() => {
+      expect(nameInput).toHaveValue('budget')
+      expect(descriptionInput).toHaveValue('Budget amount')
+    })
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
 
     await waitFor(() => {
       expect(handleSave).toHaveBeenCalledWith({
