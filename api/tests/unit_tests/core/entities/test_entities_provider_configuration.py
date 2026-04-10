@@ -1647,9 +1647,7 @@ def test_switch_active_provider_credential_rolls_back_on_error() -> None:
     provider_record = SimpleNamespace(id="provider-1", credential_id=None, updated_at=None)
 
     with _patched_session(session):
-        with patch.object(
-            ProviderConfiguration, "_get_provider_record", side_effect=RuntimeError("boom")
-        ):
+        with patch.object(ProviderConfiguration, "_get_provider_record", side_effect=RuntimeError("boom")):
             with pytest.raises(RuntimeError, match="boom"):
                 configuration.switch_active_provider_credential("cred-1")
 
