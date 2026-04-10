@@ -54,8 +54,10 @@ def _load_plugin_factory(vector_type: str) -> type[AbstractVectorFactory] | None
 
 
 def _unsupported(vector_type: str) -> ValueError:
+    installed = sorted(ep.name for ep in _vector_backend_entry_points())
+    available_msg = f" Installed backends: {', '.join(installed)}." if installed else " No backends installed."
     return ValueError(
-        f"Vector store {vector_type} is not supported. "
+        f"Vector store {vector_type!r} is not supported.{available_msg} "
         "Install a plugin (uv sync --group vdb-all, or vdb-<backend> per api/pyproject.toml), "
         "or register a dify.vector_backends entry point."
     )
