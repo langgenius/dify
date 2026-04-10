@@ -79,6 +79,29 @@ class WorkflowCollaborationService:
         if not event_type:
             return {"msg": "invalid event type"}, 400
 
+        if event_type == "sync_request":
+            leader_sid = self._repository.get_current_leader(workflow_id)
+            if leader_sid and self.is_session_active(workflow_id, leader_sid):
+                target_sid = leader_sid
+            else:
+                if leader_sid:
+                    self._repository.delete_leader(workflow_id)
+                target_sid = self._select_active_leader(workflow_id, preferred_sid=sid)
+                if target_sid:
+                    self._repository.set_leader(workflow_id, target_sid)
+                    self.broadcast_leader_change(workflow_id, target_sid)
+
+            if not target_sid:
+                return {"msg": "no_active_leader"}, 200
+
+            self._socketio.emit(
+                "collaboration_update",
+                {"type": event_type, "userId": user_id, "data": event_data, "timestamp": timestamp},
+                room=target_sid,
+            )
+
+            return {"msg": "sync_request_forwarded"}, 200
+
         self._socketio.emit(
             "collaboration_update",
             {"type": event_type, "userId": user_id, "data": event_data, "timestamp": timestamp},
@@ -176,6 +199,14 @@ class WorkflowCollaborationService:
 
         self._repository.set_leader(workflow_id, sid)
         self.broadcast_leader_change(workflow_id, sid)
+
+    def _select_active_leader(self, workflow_id: str, preferred_sid: str | None = None) -> str | None:
+        session_sids = [sid for sid in self._repository.get_session_sids(workflow_id) if self.is_session_active(workflow_id, sid)]
+        if not session_sids:
+            return None
+        if preferred_sid and preferred_sid in session_sids:
+            return preferred_sid
+        return session_sids[0]
 
     def is_session_active(self, workflow_id: str, sid: str) -> bool:
         if not sid:
