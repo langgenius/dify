@@ -6366,9 +6366,6 @@
     }
   },
   "app/components/header/header-wrapper.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -7651,11 +7648,6 @@
     }
   },
   "app/components/signin/countdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/splash.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }

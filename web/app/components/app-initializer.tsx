@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import Cookies from 'js-cookie'
 import { parseAsBoolean, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
@@ -25,7 +25,6 @@ export const AppInitializer = ({
   const searchParams = useSearchParams()
   // Tokens are now stored in cookies, no need to check localStorage
   const pathname = usePathname()
-  const [init, setInit] = useState(false)
   const [oauthNewUser] = useQueryState(
     'oauth_new_user',
     parseAsBoolean.withOptions({ history: 'replace' }),
@@ -87,10 +86,7 @@ export const AppInitializer = ({
         const redirectUrl = resolvePostLoginRedirect()
         if (redirectUrl) {
           location.replace(redirectUrl)
-          return
         }
-
-        setInit(true)
       }
       catch {
         router.replace('/signin')
@@ -98,5 +94,5 @@ export const AppInitializer = ({
     })()
   }, [isSetupFinished, router, pathname, searchParams, oauthNewUser])
 
-  return init ? children : null
+  return children
 }
