@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING, Any, Union
 
 import redis
 from redis import RedisError
+from redis.backoff import ExponentialWithJitterBackoff  # type: ignore
 from redis.cache import CacheConfig
 from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
+from redis.retry import Retry
 from redis.sentinel import Sentinel
 
 from configs import dify_config
@@ -158,8 +160,41 @@ def _get_cache_configuration() -> CacheConfig | None:
     return CacheConfig()
 
 
+def _get_retry_policy() -> Retry:
+    """Build the shared retry policy for Redis connections."""
+    return Retry(
+        backoff=ExponentialWithJitterBackoff(
+            base=dify_config.REDIS_RETRY_BACKOFF_BASE,
+            cap=dify_config.REDIS_RETRY_BACKOFF_CAP,
+        ),
+        retries=dify_config.REDIS_RETRY_RETRIES,
+    )
+
+
+def _get_connection_health_params() -> dict[str, Any]:
+    """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
+    return {
+        "retry": _get_retry_policy(),
+        "socket_timeout": dify_config.REDIS_SOCKET_TIMEOUT,
+        "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
+        "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+    }
+
+
+def _get_cluster_connection_health_params() -> dict[str, Any]:
+    """Get retry and timeout parameters for Redis Cluster clients.
+
+    RedisCluster does not support ``health_check_interval`` as a constructor
+    keyword (it is silently stripped by ``cleanup_kwargs``), so it is excluded
+    here. Only ``retry``, ``socket_timeout``, and ``socket_connect_timeout``
+    are passed through.
+    """
+    params = _get_connection_health_params()
+    return {k: v for k, v in params.items() if k != "health_check_interval"}
+
+
 def _get_base_redis_params() -> dict[str, Any]:
-    """Get base Redis connection parameters."""
+    """Get base Redis connection parameters including retry and health policy."""
     return {
         "username": dify_config.REDIS_USERNAME,
         "password": dify_config.REDIS_PASSWORD or None,
@@ -169,6 +204,7 @@ def _get_base_redis_params() -> dict[str, Any]:
         "decode_responses": False,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
         "cache_config": _get_cache_configuration(),
+        **_get_connection_health_params(),
     }
 
 
@@ -215,6 +251,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
         "password": dify_config.REDIS_CLUSTERS_PASSWORD,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
         "cache_config": _get_cache_configuration(),
+        **_get_cluster_connection_health_params(),
     }
     if dify_config.REDIS_MAX_CONNECTIONS:
         cluster_kwargs["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
@@ -226,7 +263,8 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 
-    redis_params.update(
+    params = {**redis_params}
+    params.update(
         {
             "host": dify_config.REDIS_HOST,
             "port": dify_config.REDIS_PORT,
@@ -235,28 +273,31 @@ def _create_standalone_client(redis_params: dict[str, Any]) -> Union[redis.Redis
     )
 
     if dify_config.REDIS_MAX_CONNECTIONS:
-        redis_params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
+        params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
 
     if ssl_kwargs:
-        redis_params.update(ssl_kwargs)
+        params.update(ssl_kwargs)
 
-    pool = redis.ConnectionPool(**redis_params)
+    pool = redis.ConnectionPool(**params)
     client: redis.Redis = redis.Redis(connection_pool=pool)
     return client
 
 
 def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | RedisCluster:
     max_conns = dify_config.REDIS_MAX_CONNECTIONS
-    if use_clusters:
-        if max_conns:
-            return RedisCluster.from_url(pubsub_url, max_connections=max_conns)
-        else:
-            return RedisCluster.from_url(pubsub_url)
 
+    if use_clusters:
+        health_params = _get_cluster_connection_health_params()
+        kwargs: dict[str, Any] = {**health_params}
+        if max_conns:
+            kwargs["max_connections"] = max_conns
+        return RedisCluster.from_url(pubsub_url, **kwargs)
+
+    health_params = _get_connection_health_params()
+    kwargs = {**health_params}
     if max_conns:
-        return redis.Redis.from_url(pubsub_url, max_connections=max_conns)
-    else:
-        return redis.Redis.from_url(pubsub_url)
+        kwargs["max_connections"] = max_conns
+    return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
 def init_app(app: DifyApp):

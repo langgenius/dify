@@ -70,4 +70,10 @@ describe('Slider', () => {
     const sliderWrapper = container.querySelector('.outer-test')
     expect(sliderWrapper).toBeInTheDocument()
   })
+
+  it('should not render prehydration script tags', () => {
+    const { container } = render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
+
+    expect(container.querySelector('script')).not.toBeInTheDocument()
+  })
 })

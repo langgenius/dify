@@ -6,9 +6,20 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     MCPServerParameterType,
     PluginParameter,
@@ -18,9 +29,17 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+
+
+class EmojiIconDict(TypedDict):
+    background: str
+    content: str
+
+
+emoji_icon_adapter: TypeAdapter[EmojiIconDict] = TypeAdapter(EmojiIconDict)
 
 
 class ToolLabelEnum(StrEnum):
@@ -408,15 +427,6 @@ class ToolEntity(BaseModel):
     @classmethod
     def _normalize_output_schema(cls, value: Mapping[str, object] | None) -> Mapping[str, object]:
         return value or {}
-
-
-class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
-    )
-    credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
-    )
 
 
 class ToolProviderEntity(BaseModel):

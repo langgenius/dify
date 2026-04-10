@@ -1,9 +1,11 @@
 import logging
 import time
+from typing import cast
 
 import click
 from celery import shared_task
 from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -73,7 +75,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
             try:
                 # Fetch dataset in a fresh session to avoid DetachedInstanceError
                 with session_factory.create_session() as session:
-                    dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+                    dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                     if not dataset:
                         logger.warning("Dataset not found for vector index cleanup, dataset_id: %s", dataset_id)
                     else:
@@ -92,14 +94,16 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         # ============ Step 3: Delete metadata binding (separate short transaction) ============
         try:
             with session_factory.create_session() as session:
-                deleted_count = (
-                    session.query(DatasetMetadataBinding)
-                    .where(
-                        DatasetMetadataBinding.dataset_id == dataset_id,
-                        DatasetMetadataBinding.document_id.in_(document_ids),
-                    )
-                    .delete(synchronize_session=False)
+                result = cast(
+                    CursorResult,
+                    session.execute(
+                        delete(DatasetMetadataBinding).where(
+                            DatasetMetadataBinding.dataset_id == dataset_id,
+                            DatasetMetadataBinding.document_id.in_(document_ids),
+                        )
+                    ),
                 )
+                deleted_count = result.rowcount
                 session.commit()
                 logger.debug("Deleted %d metadata bindings for dataset_id: %s", deleted_count, dataset_id)
         except Exception:

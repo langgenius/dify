@@ -407,8 +407,7 @@ class TestTencentDataTrace:
             mock_db.engine = "engine"
             with patch("core.ops.tencent_trace.tencent_trace.Session") as mock_session_ctx:
                 session = mock_session_ctx.return_value.__enter__.return_value
-                session.scalar.side_effect = [app, account]
-                session.query.return_value.filter_by.return_value.first.return_value = tenant_join
+                session.scalar.side_effect = [app, account, tenant_join]
 
                 with patch(
                     "core.ops.tencent_trace.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"

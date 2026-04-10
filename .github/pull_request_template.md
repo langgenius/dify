@@ -7,6 +7,7 @@
 ## Summary
 
 <!-- Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change. -->
+<!-- If this PR was created by an automated agent, add `From <Tool Name>` as the final line of the description. Example: `From Codex`. -->
 
 ## Screenshots
 
@@ -20,4 +21,4 @@
 - [x] I understand that this PR may be closed in case there was no previous discussion or issues. (This doesn't apply to typos!)
 - [x] I've added a test for each change that was introduced, and I tried as much as possible to make a single atomic change.
 - [x] I've updated the documentation accordingly.
-- [x] I ran `make lint` and `make type-check` (backend) and `cd web && npx lint-staged` (frontend) to appease the lint gods
+- [x] I ran `make lint` and `make type-check` (backend) and `cd web && pnpm exec vp staged` (frontend) to appease the lint gods
