@@ -1335,6 +1335,9 @@ export class CollaborationManager {
       return
 
     try {
+      if (this.getNodes().length === 0 && this.getEdges().length === 0)
+        return
+
       const snapshot = this.doc.export({ mode: 'snapshot' })
       this.sendGraphEvent(snapshot)
     }
