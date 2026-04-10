@@ -36,6 +36,7 @@ export const useInputFieldsActions = ({
   const { t } = useTranslation('evaluation')
   const resource = useEvaluationResource(resourceType, resourceId)
   const setBatchTab = useEvaluationStore(state => state.setBatchTab)
+  const setSelectedRunId = useEvaluationStore(state => state.setSelectedRunId)
   const setUploadedFile = useEvaluationStore(state => state.setUploadedFile)
   const setUploadedFileName = useEvaluationStore(state => state.setUploadedFileName)
   const startRunMutation = useStartEvaluationRunMutation()
@@ -115,8 +116,9 @@ export const useInputFieldsActions = ({
       },
       body,
     }, {
-      onSuccess: () => {
+      onSuccess: (run) => {
         toast.success(t('batch.runStarted'))
+        setSelectedRunId(resourceType, resourceId, run.id)
         setIsUploadPopoverOpen(false)
         setBatchTab(resourceType, resourceId, 'history')
       },

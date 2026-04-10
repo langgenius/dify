@@ -138,6 +138,7 @@ export type EvaluationResourceState = {
   activeBatchTab: BatchTestTab
   uploadedFileId: string | null
   uploadedFileName: string | null
+  selectedRunId: string | null
   batchRecords: BatchTestRecord[]
 }
 

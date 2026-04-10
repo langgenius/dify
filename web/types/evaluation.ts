@@ -83,6 +83,9 @@ export type EvaluationLogFile = {
 }
 
 export type EvaluationLog = {
+  id?: string
+  run_id?: string
+  evaluation_run_id?: string
   created_at: string
   created_by: string
   test_file: EvaluationLogFile

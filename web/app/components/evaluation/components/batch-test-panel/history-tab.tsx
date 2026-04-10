@@ -1,7 +1,7 @@
 import type { EvaluationResourceProps } from '../../types'
-import type { EvaluationLogFile } from '@/types/evaluation'
+import type { EvaluationLog, EvaluationLogFile } from '@/types/evaluation'
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Pagination from '@/app/components/base/pagination'
 import {
@@ -11,7 +11,9 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
+import { useEvaluationResource, useEvaluationStore } from '../../store'
 
 const PAGE_SIZE = 16
 const LOADING_ROW_IDS = ['1', '2', '3', '4', '5', '6']
@@ -23,12 +25,18 @@ const formatCreatedAt = (createdAt: string) => {
   return createdAt.includes('T') ? createdAt.slice(0, 10) : createdAt
 }
 
+const getLogRunId = (record: EvaluationLog) => {
+  return record.run_id ?? record.evaluation_run_id ?? record.id ?? null
+}
+
 const HistoryTab = ({
   resourceType,
   resourceId,
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
   const [page, setPage] = useState(0)
+  const resource = useEvaluationResource(resourceType, resourceId)
+  const setSelectedRunId = useEvaluationStore(state => state.setSelectedRunId)
   const logsQuery = useQuery({
     ...consoleQuery.evaluation.logs.queryOptions({
       input: {
@@ -58,9 +66,18 @@ const HistoryTab = ({
       downloadUrl({ url: fileInfo.download_url, fileName: file.name })
     },
   })
-  const records = logsQuery.data?.data ?? []
+  const records = useMemo(() => logsQuery.data?.data ?? [], [logsQuery.data?.data])
   const total = logsQuery.data?.total ?? 0
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
+
+  useEffect(() => {
+    if (resource.selectedRunId)
+      return
+
+    const firstRunId = records.map(getLogRunId).find((runId): runId is string => !!runId)
+    if (firstRunId)
+      setSelectedRunId(resourceType, resourceId, firstRunId)
+  }, [records, resource.selectedRunId, resourceId, resourceType, setSelectedRunId])
 
   return (
     <div className="flex min-h-full flex-col">
@@ -98,7 +115,19 @@ const HistoryTab = ({
               </tr>
             ))}
             {!isInitialLoading && records.map(record => (
-              <tr key={`${record.created_at}-${record.test_file.id}`} className="border-b border-divider-subtle">
+              <tr
+                key={`${record.created_at}-${record.test_file.id}`}
+                className={cn(
+                  'border-b border-divider-subtle',
+                  getLogRunId(record) && 'cursor-pointer hover:bg-state-base-hover',
+                  getLogRunId(record) === resource.selectedRunId && 'bg-background-default-subtle',
+                )}
+                onClick={() => {
+                  const runId = getLogRunId(record)
+                  if (runId)
+                    setSelectedRunId(resourceType, resourceId, runId)
+                }}
+              >
                 <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{formatCreatedAt(record.created_at)}</td>
                 <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{record.created_by}</td>
                 <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{record.version || '-'}</td>
@@ -115,6 +144,7 @@ const HistoryTab = ({
                           type="button"
                           aria-label={t('history.actions.open')}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                          onClick={event => event.stopPropagation()}
                         />
                       )}
                     >
@@ -123,7 +153,10 @@ const HistoryTab = ({
                     <DropdownMenuContent popupClassName="w-[180px] rounded-lg border-[0.5px] border-components-panel-border py-1 shadow-lg">
                       <DropdownMenuItem
                         className="gap-2"
-                        onClick={() => fileDownloadMutation.mutate(record.test_file)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          fileDownloadMutation.mutate(record.test_file)
+                        }}
                       >
                         <span aria-hidden="true" className="i-ri-file-download-line h-4 w-4" />
                         {t('history.actions.downloadTestFile')}
@@ -131,7 +164,11 @@ const HistoryTab = ({
                       <DropdownMenuItem
                         className="gap-2"
                         disabled={!record.result_file}
-                        onClick={() => record.result_file && fileDownloadMutation.mutate(record.result_file)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          if (record.result_file)
+                            fileDownloadMutation.mutate(record.result_file)
+                        }}
                       >
                         <span aria-hidden="true" className="i-ri-download-2-line h-4 w-4" />
                         {t('history.actions.downloadResultFile')}

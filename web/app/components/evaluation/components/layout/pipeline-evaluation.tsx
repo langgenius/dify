@@ -84,7 +84,10 @@ const PipelineEvaluation = ({
       </div>
 
       <div className="min-h-0 flex-1 bg-background-default">
-        <PipelineResultsPanel />
+        <PipelineResultsPanel
+          resourceType={resourceType}
+          resourceId={resourceId}
+        />
       </div>
     </div>
   )

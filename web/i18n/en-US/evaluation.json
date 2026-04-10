@@ -115,6 +115,18 @@
   "metrics.update": "Update",
   "pipeline.passIf": "Pass if \u2265",
   "pipeline.uploadAndRun": "Upload & Run Test",
+  "results.columns.actual": "Actual Result",
+  "results.columns.expected": "Expect Result",
+  "results.columns.query": "Query Content",
   "results.empty": "No evaluation results yet.",
+  "results.export": "Export",
+  "results.loadFailed": "Failed to load evaluation results.",
+  "results.metricThreshold": "{{metric}} \u2265 {{threshold}}",
+  "results.noResult": "No Result",
+  "results.queryCount_one": "{{count}} query",
+  "results.queryCount_other": "{{count}} queries",
+  "results.status.failed": "Failed",
+  "results.status.passed": "Passed",
+  "results.title": "Test Details",
   "title": "Evaluation"
 }

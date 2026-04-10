@@ -394,6 +394,7 @@ export const buildInitialState = (_resourceType: EvaluationResourceType): Evalua
     activeBatchTab: 'input-fields',
     uploadedFileId: null,
     uploadedFileName: null,
+    selectedRunId: null,
     batchRecords: [],
   }
 }

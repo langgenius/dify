@@ -82,6 +82,7 @@ type EvaluationStore = {
     uploadedFile: { id: string, name: string } | null,
   ) => void
   setUploadedFileName: (resourceType: EvaluationResourceType, resourceId: string, uploadedFileName: string | null) => void
+  setSelectedRunId: (resourceType: EvaluationResourceType, resourceId: string, runId: string | null) => void
   runBatchTest: (resourceType: EvaluationResourceType, resourceId: string) => void
 }
 
@@ -110,6 +111,7 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
           activeBatchTab: state.resources[buildResourceKey(resourceType, resourceId)]?.activeBatchTab ?? 'input-fields',
           uploadedFileId: state.resources[buildResourceKey(resourceType, resourceId)]?.uploadedFileId ?? null,
           uploadedFileName: state.resources[buildResourceKey(resourceType, resourceId)]?.uploadedFileName ?? null,
+          selectedRunId: state.resources[buildResourceKey(resourceType, resourceId)]?.selectedRunId ?? null,
           batchRecords: state.resources[buildResourceKey(resourceType, resourceId)]?.batchRecords ?? [],
         },
       },
@@ -390,6 +392,14 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         ...resource,
         uploadedFileId: null,
         uploadedFileName,
+      })),
+    }))
+  },
+  setSelectedRunId: (resourceType, resourceId, runId) => {
+    set(state => ({
+      resources: updateResourceState(state.resources, resourceType, resourceId, resource => ({
+        ...resource,
+        selectedRunId: runId,
       })),
     }))
   },
