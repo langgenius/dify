@@ -5,7 +5,6 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import * as React from 'react'
@@ -27,7 +26,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { toast } from '@/app/components/base/ui/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -68,10 +66,9 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
 type AppCardProps = {
   app: App
   onRefresh?: () => void
-  onlineUsers?: WorkflowOnlineUser[]
 }
 
-const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
+const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -363,19 +360,6 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.updated_at, app.created_at, t])
 
-  const onlineUserAvatars = useMemo(() => {
-    if (!onlineUsers.length)
-      return []
-
-    return onlineUsers
-      .map(user => ({
-        id: user.user_id || user.sid || '',
-        name: user.username || 'User',
-        avatar_url: user.avatar || undefined,
-      }))
-      .filter(user => !!user.id)
-  }, [onlineUsers])
-
   return (
     <>
       <div
@@ -426,11 +410,6 @@ const AppCard = ({ app, onRefresh, onlineUsers = [] }: AppCardProps) => {
               <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
                 <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
               </Tooltip>
-            )}
-          </div>
-          <div>
-            {onlineUserAvatars.length > 0 && (
-              <UserAvatarList users={onlineUserAvatars} maxVisible={3} size={20} />
             )}
           </div>
         </div>

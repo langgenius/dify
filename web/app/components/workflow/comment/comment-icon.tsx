@@ -221,7 +221,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
                 <UserAvatarList
                   users={participants}
                   maxVisible={3}
-                  size={24}
+                  size="sm"
                 />
               </div>
             </div>

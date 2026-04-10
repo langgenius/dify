@@ -150,7 +150,7 @@ const CommentsPanel = () => {
                   <UserAvatarList
                     users={c.participants}
                     maxVisible={3}
-                    size={24}
+                    size="sm"
                   />
                   <div className="ml-2 flex items-center">
                     {c.resolved

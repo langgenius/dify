@@ -279,7 +279,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                 <UserAvatarList
                   users={viewingUsers}
                   maxVisible={3}
-                  size={24}
+                  size="sm"
                 />
               </div>
             )}

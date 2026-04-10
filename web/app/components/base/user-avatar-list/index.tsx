@@ -1,6 +1,7 @@
 import type { FC } from 'react'
+import type { AvatarSize } from '@/app/components/base/ui/avatar'
 import { memo } from 'react'
-import Avatar from '@/app/components/base/avatar'
+import Avatar from '@/app/components/base/ui/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 
@@ -13,15 +14,26 @@ type User = {
 type UserAvatarListProps = {
   users: User[]
   maxVisible?: number
-  size?: number
+  size?: AvatarSize
   className?: string
   showCount?: boolean
+}
+
+const avatarSizeToPx: Record<AvatarSize, number> = {
+  'xxs': 16,
+  'xs': 20,
+  'sm': 24,
+  'md': 32,
+  'lg': 36,
+  'xl': 40,
+  '2xl': 48,
+  '3xl': 64,
 }
 
 export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   users,
   maxVisible = 3,
-  size = 24,
+  size = 'sm',
   className = '',
   showCount = true,
 }) => {
@@ -64,8 +76,8 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
           className="flex items-center justify-center rounded-full bg-gray-500 text-[10px] leading-none text-white ring-2 ring-components-panel-bg"
           style={{
             zIndex: 0,
-            width: size,
-            height: size,
+            width: avatarSizeToPx[size],
+            height: avatarSizeToPx[size],
           }}
         >
           +

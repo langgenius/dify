@@ -509,7 +509,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 <UserAvatarList
                   users={viewingUsers}
                   maxVisible={3}
-                  size={24}
+                  size="sm"
                 />
               </div>
             )}

@@ -35,7 +35,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/avatar', () => ({
+vi.mock('@/app/components/base/ui/avatar', () => ({
   default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 

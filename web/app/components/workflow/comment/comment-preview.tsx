@@ -38,7 +38,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
         <UserAvatarList
           users={participants}
           maxVisible={3}
-          size={24}
+          size="sm"
         />
       </div>
 
