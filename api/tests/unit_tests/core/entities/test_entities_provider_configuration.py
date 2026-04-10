@@ -1618,9 +1618,7 @@ def test_update_provider_credential_rolls_back_on_error() -> None:
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
-            with patch.object(
-                ProviderConfiguration, "validate_provider_credentials", side_effect=RuntimeError("boom")
-            ):
+            with patch.object(ProviderConfiguration, "validate_provider_credentials", side_effect=RuntimeError("boom")):
                 with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
                     with pytest.raises(RuntimeError, match="boom"):
                         configuration.update_provider_credential({"api_key": "raw"}, "cred-1", "Main")
