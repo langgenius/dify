@@ -2822,6 +2822,10 @@ class DocumentService:
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
+            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+                if not knowledge_config.process_rule.rules.parent_mode:
+                    knowledge_config.process_rule.rules.parent_mode = "paragraph"
+
             if not knowledge_config.process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")
 
