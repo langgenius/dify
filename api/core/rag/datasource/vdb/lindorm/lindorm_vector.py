@@ -7,6 +7,7 @@ from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 from tenacity import retry, stop_after_attempt, wait_exponential
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -24,6 +25,14 @@ logging.getLogger("lindorm").setLevel(logging.WARN)
 
 ROUTING_FIELD = "routing_field"
 UGC_INDEX_PREFIX = "ugc_index"
+
+
+class LindormOpenSearchParamsDict(TypedDict, total=False):
+    hosts: str | None
+    use_ssl: bool
+    pool_maxsize: int
+    timeout: int
+    http_auth: tuple[str, str]
 
 
 class LindormVectorStoreConfig(BaseModel):
@@ -44,13 +53,13 @@ class LindormVectorStoreConfig(BaseModel):
             raise ValueError("config PASSWORD is required")
         return values
 
-    def to_opensearch_params(self) -> dict[str, Any]:
-        params: dict[str, Any] = {
-            "hosts": self.hosts,
-            "use_ssl": False,
-            "pool_maxsize": 128,
-            "timeout": 30,
-        }
+    def to_opensearch_params(self) -> LindormOpenSearchParamsDict:
+        params = LindormOpenSearchParamsDict(
+            hosts=self.hosts,
+            use_ssl=False,
+            pool_maxsize=128,
+            timeout=30,
+        )
         if self.username and self.password:
             params["http_auth"] = (self.username, self.password)
         return params
