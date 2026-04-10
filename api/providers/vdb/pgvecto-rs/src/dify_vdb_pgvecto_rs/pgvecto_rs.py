@@ -12,12 +12,12 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
 from configs import dify_config
-from dify_vdb_pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from dify_vdb_pgvecto_rs.collection import CollectionORM
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 

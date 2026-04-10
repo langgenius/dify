@@ -1,8 +1,8 @@
 import pytest
-
 from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVector, TiDBVectorConfig
-from models.dataset import Document
 from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text
+
+from models.dataset import Document
 
 pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 

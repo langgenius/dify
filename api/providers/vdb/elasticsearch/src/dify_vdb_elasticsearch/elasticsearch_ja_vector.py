@@ -4,14 +4,14 @@ from typing import Any
 
 from flask import current_app
 
+from core.rag.datasource.vdb.field import Field
+from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from dify_vdb_elasticsearch.elasticsearch_vector import (
     ElasticSearchConfig,
     ElasticSearchVector,
     ElasticSearchVectorFactory,
 )
-from core.rag.datasource.vdb.field import Field
-from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 

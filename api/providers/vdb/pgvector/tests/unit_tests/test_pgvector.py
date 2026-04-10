@@ -2,10 +2,10 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import dify_vdb_pgvector.pgvector as pgvector_module
+import pytest
 from dify_vdb_pgvector.pgvector import PGVector, PGVectorConfig
+
 from core.rag.models.document import Document
 
 

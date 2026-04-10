@@ -1,9 +1,10 @@
 from dify_vdb_oracle.oraclevector import OracleVector, OracleVectorConfig
-from core.rag.models.document import Document
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
     get_example_text,
 )
+from core.rag.models.document import Document
 
 
 class OracleVectorTest(AbstractVectorTest):

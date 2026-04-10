@@ -2,13 +2,12 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from qdrant_client.http import models as rest
-from qdrant_client.http.exceptions import UnexpectedResponse
-
 from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
     TidbOnQdrantConfig,
     TidbOnQdrantVector,
 )
+from qdrant_client.http import models as rest
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 
 class TestTidbOnQdrantVectorDeleteByIds:

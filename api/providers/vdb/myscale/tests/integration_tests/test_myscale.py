@@ -1,4 +1,5 @@
 from dify_vdb_myscale.myscale_vector import MyScaleConfig, MyScaleVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )

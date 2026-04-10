@@ -1,6 +1,7 @@
 """Integration tests for IRIS vector database."""
 
 from dify_vdb_iris.iris_vector import IrisVector, IrisVectorConfig
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )

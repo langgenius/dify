@@ -1,6 +1,7 @@
 from dify_vdb_upstash.upstash_vector import UpstashVector, UpstashVectorConfig
-from core.rag.models.document import Document
 from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text
+
+from core.rag.models.document import Document
 
 pytest_plugins = ("tests.integration_tests.vdb.__mock.upstashvectordb",)
 

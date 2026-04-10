@@ -4,13 +4,13 @@ import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
-
 import dify_vdb_analyticdb.analyticdb_vector_openapi as openapi_module
+import pytest
 from dify_vdb_analyticdb.analyticdb_vector_openapi import (
     AnalyticdbVectorOpenAPI,
     AnalyticdbVectorOpenAPIConfig,
 )
+
 from core.rag.models.document import Document
 
 

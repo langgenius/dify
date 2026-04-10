@@ -1,4 +1,5 @@
 from dify_vdb_huawei_cloud.huawei_cloud_vector import HuaweiCloudVector, HuaweiCloudVectorConfig
+
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
 
 

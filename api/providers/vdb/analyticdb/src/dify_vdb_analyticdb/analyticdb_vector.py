@@ -2,16 +2,16 @@ import json
 from typing import Any
 
 from configs import dify_config
-from dify_vdb_analyticdb.analyticdb_vector_openapi import (
-    AnalyticdbVectorOpenAPI,
-    AnalyticdbVectorOpenAPIConfig,
-)
-from dify_vdb_analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySql, AnalyticdbVectorBySqlConfig
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from dify_vdb_analyticdb.analyticdb_vector_openapi import (
+    AnalyticdbVectorOpenAPI,
+    AnalyticdbVectorOpenAPIConfig,
+)
+from dify_vdb_analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySql, AnalyticdbVectorBySqlConfig
 from models.dataset import Dataset
 
 

@@ -14,9 +14,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from dify_vdb_weaviate import weaviate_vector as weaviate_vector_module
 from dify_vdb_weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+
 from core.rag.models.document import Document
 
 

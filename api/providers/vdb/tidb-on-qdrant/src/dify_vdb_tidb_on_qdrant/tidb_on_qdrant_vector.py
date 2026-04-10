@@ -24,12 +24,12 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
-from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding

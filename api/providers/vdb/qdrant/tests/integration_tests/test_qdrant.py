@@ -1,10 +1,11 @@
 import uuid
 
 from dify_vdb_qdrant.qdrant_vector import QdrantConfig, QdrantVector
-from core.rag.models.document import Document
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )
+from core.rag.models.document import Document
 
 
 class QdrantVectorTest(AbstractVectorTest):

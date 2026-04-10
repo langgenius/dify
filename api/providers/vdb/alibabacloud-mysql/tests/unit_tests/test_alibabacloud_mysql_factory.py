@@ -1,9 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector as alibaba_module
+import pytest
 from dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector import AlibabaCloudMySQLVectorFactory
 
 

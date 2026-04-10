@@ -1,4 +1,5 @@
 from dify_vdb_pgvector.pgvector import PGVector, PGVectorConfig
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )

@@ -1,4 +1,5 @@
 from dify_vdb_weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )

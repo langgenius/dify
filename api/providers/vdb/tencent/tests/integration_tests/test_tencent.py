@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 from dify_vdb_tencent.tencent_vector import TencentConfig, TencentVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
 
 mock_client = MagicMock()

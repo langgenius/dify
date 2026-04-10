@@ -1,4 +1,5 @@
 from dify_vdb_matrixone.matrixone_vector import MatrixoneConfig, MatrixoneVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )

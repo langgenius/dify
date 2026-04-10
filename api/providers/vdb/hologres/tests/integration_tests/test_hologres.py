@@ -2,12 +2,11 @@ import os
 import uuid
 from typing import cast
 
+from dify_vdb_hologres.hologres_vector import HologresVector, HologresVectorConfig
 from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
 
-from dify_vdb_hologres.hologres_vector import HologresVector, HologresVectorConfig
-from core.rag.models.document import Document
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
-
+from core.rag.models.document import Document
 
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 

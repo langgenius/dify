@@ -1,8 +1,8 @@
 import time
 
 import psycopg2
-
 from dify_vdb_opengauss.opengauss import OpenGauss, OpenGaussConfig
+
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
 )

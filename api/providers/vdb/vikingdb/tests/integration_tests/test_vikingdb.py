@@ -1,4 +1,5 @@
 from dify_vdb_vikingdb.vikingdb_vector import VikingDBConfig, VikingDBVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
 
 

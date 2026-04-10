@@ -3,11 +3,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector import (
     AlibabaCloudMySQLVector,
     AlibabaCloudMySQLVectorConfig,
 )
+
 from core.rag.models.document import Document
 
 try:

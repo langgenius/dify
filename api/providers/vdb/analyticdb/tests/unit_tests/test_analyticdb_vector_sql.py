@@ -2,14 +2,14 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import dify_vdb_analyticdb.analyticdb_vector_sql as sql_module
 import psycopg2.errors
 import pytest
-
-import dify_vdb_analyticdb.analyticdb_vector_sql as sql_module
 from dify_vdb_analyticdb.analyticdb_vector_sql import (
     AnalyticdbVectorBySql,
     AnalyticdbVectorBySqlConfig,
 )
+
 from core.rag.models.document import Document
 
 

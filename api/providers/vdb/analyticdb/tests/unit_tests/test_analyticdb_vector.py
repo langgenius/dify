@@ -1,12 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import dify_vdb_analyticdb.analyticdb_vector as analyticdb_module
+import pytest
 from dify_vdb_analyticdb.analyticdb_vector import AnalyticdbVector, AnalyticdbVectorFactory
 from dify_vdb_analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAPIConfig
 from dify_vdb_analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
+
 from core.rag.models.document import Document
 
 

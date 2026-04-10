@@ -2,10 +2,10 @@ import contextlib
 import os
 
 import pytest
-
 from dify_vdb_clickzetta.clickzetta_vector import ClickzettaConfig, ClickzettaVector
-from core.rag.models.document import Document
+
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
+from core.rag.models.document import Document
 
 
 class TestClickzettaVector(AbstractVectorTest):

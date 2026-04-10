@@ -1,4 +1,5 @@
 from dify_vdb_baidu.baidu_vector import BaiduConfig, BaiduVector
+
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
 
 
