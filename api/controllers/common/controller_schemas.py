@@ -48,9 +48,25 @@ class SavedMessageCreatePayload(BaseModel):
 # --- Workflow schemas ---
 
 
+class DefaultBlockConfigQuery(BaseModel):
+    q: str | None = None
+
+
+class WorkflowListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, le=99999)
+    limit: int = Field(default=10, ge=1, le=100)
+    user_id: str | None = None
+    named_only: bool = False
+
+
 class WorkflowRunPayload(BaseModel):
     inputs: dict[str, Any]
     files: list[dict[str, Any]] | None = None
+
+
+class WorkflowUpdatePayload(BaseModel):
+    marked_name: str | None = Field(default=None, max_length=20)
+    marked_comment: str | None = Field(default=None, max_length=100)
 
 
 # --- Audio schemas ---
