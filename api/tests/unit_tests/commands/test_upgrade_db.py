@@ -38,7 +38,7 @@ def test_upgrade_db_skips_when_lock_not_acquired(monkeypatch, capsys):
     assert "Database migration skipped" in captured.out
 
     system_commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=1234, thread_local=False)
-    lock.acquire.assert_called_once_with(blocking=False)
+    lock.acquire.assert_called_once_with(sleep=None, blocking=False, blocking_timeout=None, token=None)
     lock.release.assert_not_called()
 
 
@@ -62,7 +62,7 @@ def test_upgrade_db_failure_not_masked_by_lock_release(monkeypatch, capsys):
     assert "Database migration failed: boom" in captured.out
 
     system_commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=321, thread_local=False)
-    lock.acquire.assert_called_once_with(blocking=False)
+    lock.acquire.assert_called_once_with(sleep=None, blocking=False, blocking_timeout=None, token=None)
     lock.release.assert_called_once()
 
 
@@ -83,7 +83,7 @@ def test_upgrade_db_success_ignores_lock_not_owned_on_release(monkeypatch, capsy
     assert "Database migration successful!" in captured.out
 
     system_commands.redis_client.lock.assert_called_once_with(name="db_upgrade_lock", timeout=999, thread_local=False)
-    lock.acquire.assert_called_once_with(blocking=False)
+    lock.acquire.assert_called_once_with(sleep=None, blocking=False, blocking_timeout=None, token=None)
     lock.release.assert_called_once()
 
 
