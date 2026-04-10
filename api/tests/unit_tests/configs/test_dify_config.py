@@ -138,7 +138,8 @@ def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("INNER_API_KEY", "test-inner-api-key")
 
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
     assert config.INNER_API is False
     assert isinstance(config.INNER_API_KEY, str)
     assert len(config.INNER_API_KEY) > 0
@@ -156,7 +157,8 @@ def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_EXTRAS", "options=-c search_path=myschema")
 
     # Create config
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     # Get engine options
     engine_options = config.SQLALCHEMY_ENGINE_OPTIONS
@@ -184,7 +186,8 @@ def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("REDIS_DB", "2")
     monkeypatch.setenv("REDIS_USE_SSL", "true")
 
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
@@ -202,7 +205,8 @@ def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("PUBSUB_REDIS_URL", "redis://pubsub-host:6381/5")
 
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
 
     assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
 
@@ -219,8 +223,9 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("REDIS_HOST", "")
 
+    # Disable `.env` loading to ensure test stability across environments
     with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
-        _ = DifyConfig().normalized_pubsub_redis_url
+        _ = DifyConfig(_env_file=None).normalized_pubsub_redis_url
 
 
 @pytest.mark.parametrize(
@@ -274,7 +279,8 @@ def test_celery_broker_url_with_special_chars_password(
     monkeypatch.setenv("CELERY_BROKER_URL", broker_url)
 
     # Create config and verify the URL is stored correctly
-    config = DifyConfig()
+    # Disable `.env` loading to ensure test stability across environments
+    config = DifyConfig(_env_file=None)
     assert broker_url == config.CELERY_BROKER_URL
 
     # Test actual parsing behavior using kombu's parse_url (same as production)
