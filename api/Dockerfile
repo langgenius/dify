@@ -24,7 +24,7 @@ RUN apt-get update \
 # Install Python dependencies (workspace members under providers/vdb/)
 COPY pyproject.toml uv.lock ./
 COPY providers ./providers
-RUN uv sync --group vdb-all --locked --no-dev
+RUN uv sync --locked --no-dev
 
 # production stage
 FROM base AS production
