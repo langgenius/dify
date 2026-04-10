@@ -117,7 +117,7 @@ def bench_metadata_query(client, table, doc_id, with_index=False):
         try:
             client.perform_raw_text_sql(f"CREATE INDEX idx_metadata_doc_id ON `{table}` ((metadata->>'$.document_id'))")
         except Exception:
-            pass  # already exists
+            logger.debug("Index idx_metadata_doc_id already exists, skipping creation")
 
     sql = text(f"SELECT id FROM `{table}` WHERE metadata->>'$.document_id' = :val")
     times = []

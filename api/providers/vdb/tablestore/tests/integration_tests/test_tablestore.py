@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 
@@ -13,6 +14,8 @@ from core.rag.datasource.vdb.vector_integration_test_support import (
     get_example_document,
     get_example_text,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TableStoreVectorTest(AbstractVectorTest):
@@ -88,7 +91,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         try:
             self.vector.delete()
         except Exception:
-            pass
+            logger.debug("Failed to delete vector store during test setup, it may not exist yet")
 
         return super().run_all_tests()
 
