@@ -1555,7 +1555,17 @@ class TestDatasetApiKeyApi:
         method = unwrap(api.get)
 
         mock_key_1 = MagicMock(spec=ApiToken)
+        mock_key_1.id = "key-1"
+        mock_key_1.type = "dataset"
+        mock_key_1.token = "ds-abc"
+        mock_key_1.last_used_at = None
+        mock_key_1.created_at = None
         mock_key_2 = MagicMock(spec=ApiToken)
+        mock_key_2.id = "key-2"
+        mock_key_2.type = "dataset"
+        mock_key_2.token = "ds-def"
+        mock_key_2.last_used_at = None
+        mock_key_2.created_at = None
 
         with (
             app.test_request_context("/"),
@@ -1570,8 +1580,8 @@ class TestDatasetApiKeyApi:
         ):
             response = method(api)
 
-        assert "items" in response
-        assert response["items"] == [mock_key_1, mock_key_2]
+        assert "data" in response
+        assert len(response["data"]) == 2
 
     def test_post_create_api_key_success(self, app):
         api = DatasetApiKeyApi()
@@ -1603,9 +1613,9 @@ class TestDatasetApiKeyApi:
             response, status = method(api)
 
         assert status == 200
-        assert isinstance(response, ApiToken)
-        assert response.token == "dataset-abc123"
-        assert response.type == "dataset"
+        assert isinstance(response, dict)
+        assert response["token"] == "dataset-abc123"
+        assert response["type"] == "dataset"
 
     def test_post_exceed_max_keys(self, app):
         api = DatasetApiKeyApi()
