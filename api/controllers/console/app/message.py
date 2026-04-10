@@ -9,7 +9,6 @@ from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
-from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,

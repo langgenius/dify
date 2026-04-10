@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from flask_restx import fields
 from pydantic import Field
 
 from fields.base import ResponseModel
