@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, TypedDict
+from typing import Any, Literal, TypedDict
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, field_validator
@@ -17,7 +17,7 @@ class DatasourceApiEntity(BaseModel):
     output_schema: dict | None = None
 
 
-ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
+ToolProviderTypeApiLiteral = Literal["builtin", "api", "workflow"] | None
 
 
 class DatasourceProviderApiEntityDict(TypedDict):

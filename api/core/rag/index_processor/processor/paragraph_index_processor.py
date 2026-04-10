@@ -3,8 +3,7 @@
 import logging
 import re
 import uuid
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +52,12 @@ from services.account_service import AccountService
 from services.summary_index_service import SummaryIndexService
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+class ParagraphFormatPreviewDict(TypedDict):
+    chunk_structure: str
+    preview: list[dict[str, Any]]
+    total_segments: int
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
@@ -266,16 +271,17 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
-    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+    def format_preview(self, chunks: Any) -> ParagraphFormatPreviewDict:
         if isinstance(chunks, list):
             preview = []
             for content in chunks:
                 preview.append({"content": content})
-            return {
+            result: ParagraphFormatPreviewDict = {
                 "chunk_structure": IndexStructureType.PARAGRAPH_INDEX,
                 "preview": preview,
                 "total_segments": len(chunks),
             }
+            return result
         else:
             raise ValueError("Chunks is not a list")
 
