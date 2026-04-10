@@ -587,9 +587,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -5556,6 +5553,11 @@
       "count": 4
     }
   },
+  "app/components/evaluation/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "app/components/explore/app-card/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
@@ -5564,11 +5566,6 @@
   "app/components/explore/app-list/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/evaluation/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
@@ -7665,13 +7662,13 @@
       "count": 1
     }
   },
-  "app/components/splash.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
+  "app/components/snippets/components/snippet-main.tsx": {
+    "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/snippets/components/snippet-main.tsx": {
-    "ts/no-explicit-any": {
+  "app/components/splash.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -11913,11 +11910,6 @@
   "service/use-endpoints.ts": {
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "service/use-evaluation.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
     }
   },
   "service/use-flow.ts": {

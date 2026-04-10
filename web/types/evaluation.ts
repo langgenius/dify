@@ -167,6 +167,18 @@ export type AvailableEvaluationWorkflowsResponse = {
   has_more: boolean
 }
 
+export type EvaluationWorkflowAssociatedTargetType = 'app' | 'snippets' | 'knowledge_base'
+
+export type EvaluationWorkflowAssociatedTarget = {
+  target_type: EvaluationWorkflowAssociatedTargetType
+  target_id: string
+  target_name: string
+}
+
+export type EvaluationWorkflowAssociatedTargetsResponse = {
+  items: EvaluationWorkflowAssociatedTarget[]
+}
+
 export type EvaluationNodeInfoRequest = {
   metrics?: string[]
 }

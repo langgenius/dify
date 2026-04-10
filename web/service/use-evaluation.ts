@@ -2,6 +2,7 @@ import type { EvaluationResourceType } from '@/app/components/evaluation/types'
 import type { AvailableEvaluationWorkflowsResponse, EvaluationConfig } from '@/types/evaluation'
 import {
   keepPreviousData,
+  skipToken,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -56,6 +57,24 @@ export const useEvaluationConfig = (
 export const useAvailableEvaluationMetrics = (enabled = true) => {
   return useQuery(consoleQuery.evaluation.availableMetrics.queryOptions({
     enabled,
+  }))
+}
+
+export const useEvaluationWorkflowAssociatedTargets = (
+  workflowId: string | undefined,
+  options?: { enabled?: boolean },
+) => {
+  return useQuery(consoleQuery.evaluation.associatedTargets.queryOptions({
+    input: workflowId
+      ? {
+          params: {
+            workflowId,
+          },
+        }
+      : skipToken,
+    enabled: Boolean(workflowId) && (options?.enabled ?? true),
+    refetchOnWindowFocus: false,
+    retry: false,
   }))
 }
 

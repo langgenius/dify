@@ -13,6 +13,7 @@ import type {
   EvaluationRunRequest,
   EvaluationTargetType,
   EvaluationVersionDetailResponse,
+  EvaluationWorkflowAssociatedTargetsResponse,
 } from '@/types/evaluation'
 import { type } from '@orpc/contract'
 import { base } from '../base'
@@ -289,6 +290,18 @@ export const availableEvaluationWorkflowsContract = base
     }
   }>())
   .output(type<AvailableEvaluationWorkflowsResponse>())
+
+export const evaluationWorkflowAssociatedTargetsContract = base
+  .route({
+    path: '/workspaces/current/evaluation-workflows/{workflowId}/associated-targets',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      workflowId: string
+    }
+  }>())
+  .output(type<EvaluationWorkflowAssociatedTargetsResponse>())
 
 export const evaluationFileContract = base
   .route({

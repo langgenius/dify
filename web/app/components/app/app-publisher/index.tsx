@@ -1,5 +1,6 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { EvaluationWorkflowAssociatedTarget } from '@/types/evaluation'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
 import { useKeyPress } from 'ahooks'
@@ -28,11 +29,13 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
+import { useEvaluationWorkflowAssociatedTargets } from '@/service/use-evaluation'
 import { AppModeEnum, AppTypeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { toast } from '../../base/ui/toast'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
+import EvaluationWorkflowSwitchConfirmDialog from './evaluation-workflow-switch-confirm-dialog'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
@@ -122,6 +125,8 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
+  const [showEvaluationWorkflowSwitchConfirm, setShowEvaluationWorkflowSwitchConfirm] = useState(false)
+  const [evaluationWorkflowSwitchTargets, setEvaluationWorkflowSwitchTargets] = useState<EvaluationWorkflowAssociatedTarget[]>([])
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
@@ -138,6 +143,10 @@ const AppPublisher = ({
     ? WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
     : undefined
   const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
+  const {
+    refetch: refetchEvaluationWorkflowAssociatedTargets,
+    isFetching: isFetchingEvaluationWorkflowAssociatedTargets,
+  } = useEvaluationWorkflowAssociatedTargets(appDetail?.id, { enabled: false })
   const workflowTypeSwitchDisabledReason = useMemo(() => {
     if (workflowTypeSwitchConfig?.targetType !== AppTypeEnum.EVALUATION)
       return undefined
@@ -234,13 +243,9 @@ const AppPublisher = ({
     }
   }, [appDetail, setAppDetail])
 
-  const handleWorkflowTypeSwitch = useCallback(async () => {
+  const performWorkflowTypeSwitch = useCallback(async () => {
     if (!appDetail?.id || !workflowTypeSwitchConfig)
-      return
-    if (workflowTypeSwitchDisabledReason) {
-      toast.error(workflowTypeSwitchDisabledReason)
-      return
-    }
+      return false
 
     try {
       await convertWorkflowType({
@@ -263,9 +268,57 @@ const AppPublisher = ({
 
       if (publishedAt)
         setOpen(false)
+
+      setShowEvaluationWorkflowSwitchConfirm(false)
+      setEvaluationWorkflowSwitchTargets([])
+      return true
     }
-    catch { }
-  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig, workflowTypeSwitchDisabledReason])
+    catch {
+      return false
+    }
+  }, [appDetail?.id, convertWorkflowType, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
+
+  const handleWorkflowTypeSwitch = useCallback(async () => {
+    if (!appDetail?.id || !workflowTypeSwitchConfig)
+      return
+    if (workflowTypeSwitchDisabledReason) {
+      toast.error(workflowTypeSwitchDisabledReason)
+      return
+    }
+
+    if (appDetail.type === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
+      const associatedTargetsResult = await refetchEvaluationWorkflowAssociatedTargets()
+
+      if (associatedTargetsResult.isError) {
+        toast.error(t('common.switchToStandardWorkflowConfirm.loadFailed', { ns: 'workflow' }))
+        return
+      }
+
+      const associatedTargets = associatedTargetsResult.data?.items ?? []
+      if (associatedTargets.length > 0) {
+        setEvaluationWorkflowSwitchTargets(associatedTargets)
+        setShowEvaluationWorkflowSwitchConfirm(true)
+        return
+      }
+    }
+
+    await performWorkflowTypeSwitch()
+  }, [
+    appDetail?.id,
+    appDetail?.type,
+    performWorkflowTypeSwitch,
+    refetchEvaluationWorkflowAssociatedTargets,
+    t,
+    workflowTypeSwitchConfig,
+    workflowTypeSwitchDisabledReason,
+  ])
+
+  const handleEvaluationWorkflowSwitchConfirmOpenChange = useCallback((nextOpen: boolean) => {
+    setShowEvaluationWorkflowSwitchConfirm(nextOpen)
+
+    if (!nextOpen)
+      setEvaluationWorkflowSwitchTargets([])
+  }, [])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -323,7 +376,7 @@ const AppPublisher = ({
               startNodeLimitExceeded={startNodeLimitExceeded}
               upgradeHighlightStyle={upgradeHighlightStyle}
               workflowTypeSwitchConfig={workflowTypeSwitchConfig}
-              workflowTypeSwitchDisabled={publishDisabled || published || isConvertingWorkflowType || Boolean(workflowTypeSwitchDisabledReason)}
+              workflowTypeSwitchDisabled={publishDisabled || published || isConvertingWorkflowType || isFetchingEvaluationWorkflowAssociatedTargets || Boolean(workflowTypeSwitchDisabledReason)}
               workflowTypeSwitchDisabledReason={workflowTypeSwitchDisabledReason}
               onWorkflowTypeSwitch={handleWorkflowTypeSwitch}
             />
@@ -372,6 +425,13 @@ const AppPublisher = ({
         />
         {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
       </PortalToFollowElem>
+      <EvaluationWorkflowSwitchConfirmDialog
+        open={showEvaluationWorkflowSwitchConfirm}
+        targets={evaluationWorkflowSwitchTargets}
+        loading={isConvertingWorkflowType}
+        onOpenChange={handleEvaluationWorkflowSwitchConfirmOpenChange}
+        onConfirm={() => void performWorkflowTypeSwitch()}
+      />
     </>
   )
 }

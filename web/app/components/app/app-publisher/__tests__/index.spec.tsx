@@ -16,6 +16,7 @@ const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
 const mockConvertWorkflowType = vi.fn()
+const mockRefetchEvaluationWorkflowAssociatedTargets = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -27,6 +28,7 @@ const ahooksMocks = vi.hoisted(() => ({
 }))
 
 let mockAppDetail: Record<string, any> | null = null
+let mockEvaluationWorkflowAssociatedTargets: Record<string, any> | undefined
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -93,6 +95,14 @@ vi.mock('@/service/use-apps', () => ({
   useConvertWorkflowTypeMutation: () => ({
     mutateAsync: (...args: unknown[]) => mockConvertWorkflowType(...args),
     isPending: false,
+  }),
+}))
+
+vi.mock('@/service/use-evaluation', () => ({
+  useEvaluationWorkflowAssociatedTargets: () => ({
+    data: mockEvaluationWorkflowAssociatedTargets,
+    refetch: mockRefetchEvaluationWorkflowAssociatedTargets,
+    isFetching: false,
   }),
 }))
 
@@ -198,6 +208,11 @@ describe('AppPublisher', () => {
       access_mode: AccessMode.PUBLIC,
     })
     mockConvertWorkflowType.mockResolvedValue({})
+    mockEvaluationWorkflowAssociatedTargets = { items: [] }
+    mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValue({
+      data: { items: [] },
+      isError: false,
+    })
     mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
       await resolver()
     })
@@ -516,6 +531,106 @@ describe('AppPublisher', () => {
       switchLabelKey: 'common.switchToStandardWorkflow',
       tipKey: 'common.switchToStandardWorkflowTip',
     })
+  })
+
+  it('should confirm before switching an evaluation workflow with associated targets to a standard workflow', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      type: AppTypeEnum.EVALUATION,
+    }
+    mockEvaluationWorkflowAssociatedTargets = {
+      items: [
+        {
+          target_type: 'app',
+          target_id: 'dependent-app-1',
+          target_name: 'Dependent App',
+        },
+        {
+          target_type: 'knowledge_base',
+          target_id: 'knowledge-1',
+          target_name: 'Knowledge Base',
+        },
+      ],
+    }
+    mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
+      data: mockEvaluationWorkflowAssociatedTargets,
+      isError: false,
+    })
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
+
+    await waitFor(() => {
+      expect(mockRefetchEvaluationWorkflowAssociatedTargets).toHaveBeenCalledTimes(1)
+    })
+    expect(mockConvertWorkflowType).not.toHaveBeenCalled()
+    expect(screen.getByText('Dependent App')).toBeInTheDocument()
+    expect(screen.getByText('Knowledge Base')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.switchToStandardWorkflowConfirm.switch' }))
+
+    await waitFor(() => {
+      expect(mockConvertWorkflowType).toHaveBeenCalledWith({
+        params: { appId: 'app-1' },
+        query: { target_type: AppTypeEnum.WORKFLOW },
+      })
+    })
+  })
+
+  it('should switch an evaluation workflow directly when there are no associated targets', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      type: AppTypeEnum.EVALUATION,
+    }
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
+
+    await waitFor(() => {
+      expect(mockRefetchEvaluationWorkflowAssociatedTargets).toHaveBeenCalledTimes(1)
+      expect(mockConvertWorkflowType).toHaveBeenCalledWith({
+        params: { appId: 'app-1' },
+        query: { target_type: AppTypeEnum.WORKFLOW },
+      })
+    })
+    expect(screen.queryByText('common.switchToStandardWorkflowConfirm.title')).not.toBeInTheDocument()
+  })
+
+  it('should block switching an evaluation workflow when associated targets fail to load', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      type: AppTypeEnum.EVALUATION,
+    }
+    mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
+      data: undefined,
+      isError: true,
+    })
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('common.switchToStandardWorkflowConfirm.loadFailed')
+    })
+    expect(mockConvertWorkflowType).not.toHaveBeenCalled()
   })
 
   it('should block switching to evaluation workflow when restricted nodes exist', async () => {
