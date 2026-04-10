@@ -42,32 +42,43 @@ class WorkflowToolManageService:
         labels: list[str] | None = None,
     ):
         # check if the name is unique
-        existing_workflow_tool_provider = db.session.scalar(
-            select(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == tenant_id,
-                # name or app_id
-                or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
+        existing_workflow_tool_provider: WorkflowToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            # query if the name or app_id exists
+            existing_workflow_tool_provider = _session.scalar(
+                select(WorkflowToolProvider)
+                .where(
+                    WorkflowToolProvider.tenant_id == tenant_id,
+                    # name or app_id
+                    or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
 
+        # if the name or app_id exists raise error
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        app: App | None = db.session.scalar(
-            select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1)
-        )
+        # query the app
+        app: App | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            app = _session.scalar(select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1))
 
+        # if not found raise error
         if app is None:
             raise ValueError(f"App {workflow_app_id} not found")
 
+        # query the workflow
         workflow: Workflow | None = app.workflow
+
+        # if not found raise error
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
+        # check if workflow configuration is synced
         WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
+        # create workflow tool provider
         workflow_tool_provider = WorkflowToolProvider(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -86,13 +97,15 @@ class WorkflowToolManageService:
         except Exception as e:
             raise ValueError(str(e))
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            session.add(workflow_tool_provider)
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            _session.add(workflow_tool_provider)
 
+        # keep the session open to make orm instances in the same session
         if labels is not None:
             ToolLabelManager.update_tool_labels(
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
+
         return {"result": "success"}
 
     @classmethod
