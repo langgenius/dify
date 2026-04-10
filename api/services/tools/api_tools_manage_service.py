@@ -399,7 +399,7 @@ class ApiToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_api_tool_provider(user_id: str, tenant_id: str, provider: str):
+    def get_api_tool_provider(user_id: str, tenant_id: str, provider: str) -> dict[str, Any]:
         """
         Get API tool provider details.
 
