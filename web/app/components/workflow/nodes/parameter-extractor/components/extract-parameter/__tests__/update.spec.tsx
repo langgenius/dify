@@ -1,5 +1,5 @@
 import type { Param } from '../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/components/base/ui/toast'
 import { ParamType } from '../../../types'
@@ -41,14 +41,15 @@ describe('parameter-extractor/extract-parameter/update', () => {
     )
 
     await user.click(screen.getByTestId('add-button'))
-    await screen.findByRole('button', { name: 'common.operation.add' })
-    fireEvent.change(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
+    const dialog = await screen.findByRole('dialog')
+
+    fireEvent.change(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder'), {
       target: { value: 'budget' },
     })
-    fireEvent.change(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder'), {
+    fireEvent.change(within(dialog).getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder'), {
       target: { value: 'Budget amount' },
     })
-    await user.click(await screen.findByRole('button', { name: 'common.operation.add' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
 
     await waitFor(() => {
       expect(handleSave).toHaveBeenCalledWith({
