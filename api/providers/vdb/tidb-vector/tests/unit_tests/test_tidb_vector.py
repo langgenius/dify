@@ -12,7 +12,7 @@ from core.rag.models.document import Document
 
 @pytest.fixture
 def tidb_module():
-    import core.rag.datasource.vdb.tidb_vector.tidb_vector as module
+    import dify_vdb_tidb_vector.tidb_vector as module
 
     return importlib.reload(module)
 

@@ -38,11 +38,11 @@ def _build_fake_upstash_module():
 @pytest.fixture
 def upstash_module(monkeypatch):
     # Remove patched modules if present
-    for modname in ["upstash_vector", "core.rag.datasource.vdb.upstash.upstash_vector"]:
+    for modname in ["upstash_vector", "dify_vdb_upstash.upstash_vector"]:
         if modname in sys.modules:
             monkeypatch.delitem(sys.modules, modname, raising=False)
     monkeypatch.setitem(sys.modules, "upstash_vector", _build_fake_upstash_module())
-    module = importlib.import_module("core.rag.datasource.vdb.upstash.upstash_vector")
+    module = importlib.import_module("dify_vdb_upstash.upstash_vector")
     return module
 
 

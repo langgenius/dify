@@ -5,6 +5,13 @@ import pytest
 from extensions import ext_redis
 
 
+@pytest.fixture(autouse=True)
+def _init_mock_redis():
+    """Ensure redis_client has a backing client so __getattr__ never raises."""
+    if ext_redis.redis_client._client is None:
+        ext_redis.redis_client.initialize(MagicMock())
+
+
 @pytest.fixture
 def setup_mock_redis():
     ext_redis.redis_client.get = MagicMock(return_value=None)
