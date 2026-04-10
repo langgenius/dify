@@ -62,7 +62,11 @@ class ToolLabelManager:
     def get_tool_labels(cls, controller: ToolProviderController) -> list[str]:
         """
         Get tool labels
+
+        :param controller: tool provider controller
+        :return: list of tool labels (str)
         """
+
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
             provider_id = controller.provider_id
         elif isinstance(controller, BuiltinToolProviderController):
@@ -73,9 +77,11 @@ class ToolLabelManager:
             ToolLabelBinding.tool_id == provider_id,
             ToolLabelBinding.tool_type == controller.provider_type,
         )
-        labels = db.session.scalars(stmt).all()
 
-        return list(labels)
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            labels: list[str] = list(_session.scalars(stmt).all())
+
+        return labels
 
     @classmethod
     def get_tools_labels(cls, tool_providers: list[ToolProviderController]) -> dict[str, list[str]]:
