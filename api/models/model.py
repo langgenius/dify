@@ -913,11 +913,7 @@ class TrialApp(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        insert_default=func.current_timestamp(),
-        server_default=func.current_timestamp(),
-        init=False,
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     trial_limit: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=3)
 
@@ -941,11 +937,7 @@ class AccountTrialAppRecord(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        insert_default=func.current_timestamp(),
-        server_default=func.current_timestamp(),
-        init=False,
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
     @property
