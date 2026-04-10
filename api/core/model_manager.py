@@ -125,10 +125,10 @@ class ModelInstance:
     @overload
     def invoke_llm(
         self,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        stop: Sequence[str] | None = None,
         stream: Literal[False] = False,
         callbacks: list[Callback] | None = None,
     ) -> LLMResult: ...
@@ -136,10 +136,10 @@ class ModelInstance:
     @overload
     def invoke_llm(
         self,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
         callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]: ...
