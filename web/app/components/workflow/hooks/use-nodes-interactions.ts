@@ -627,7 +627,6 @@ export const useNodesInteractions = () => {
   )
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
-
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
       if (getNodesReadOnly())
@@ -766,7 +765,7 @@ export const useNodesInteractions = () => {
         })
         draft.splice(currentNodeIndex, 1)
       })
-      setNodes(newNodes)
+      setNodes(newNodes, true, 'nodes:perform-batch-cascade-delete')
       const newEdges = produce(edges, (draft) => {
         return draft.filter(
           edge =>
@@ -2116,7 +2115,7 @@ export const useNodesInteractions = () => {
 
     const shouldBroadcast = collaborationManager.isConnected()
     setEdges(edges, shouldBroadcast)
-    setNodes(nodes, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast, 'nodes:history-back')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('undo')
     workflowStore.setState({ edgeMenu: undefined })
@@ -2141,7 +2140,7 @@ export const useNodesInteractions = () => {
 
     const shouldBroadcast = collaborationManager.isConnected()
     setEdges(edges, shouldBroadcast)
-    setNodes(nodes, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
     if (shouldBroadcast)
       collaborationManager.emitHistoryAction('redo')
     workflowStore.setState({ edgeMenu: undefined })

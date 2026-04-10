@@ -45,7 +45,7 @@ export const usePerformRestore = () => {
     const currentNodes = collaborationManager.getNodes()
     const currentEdges = collaborationManager.getEdges()
 
-    collaborationManager.setNodes(currentNodes, nodes)
+    collaborationManager.setNodes(currentNodes, nodes, 'leader-restore:apply-graph')
     collaborationManager.setEdges(currentEdges, edges)
     collaborationManager.refreshGraphSynchronously()
 

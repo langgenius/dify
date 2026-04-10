@@ -42,10 +42,17 @@ const Header = () => {
     else
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+  const handleDownloadGraphImportLog = useCallback(() => {
+    void import('@/app/components/workflow/collaboration/core/collaboration-manager')
+      .then(({ collaborationManager }) => {
+        collaborationManager.downloadGraphImportLog()
+      })
+      .catch(() => {})
+  }, [])
 
   const renderLogo = () => (
     <h1>
-      <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden whitespace-nowrap px-0.5 indent-[-9999px]">
+      <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden px-0.5 indent-[-9999px] whitespace-nowrap">
         {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
           ? (
@@ -91,7 +98,7 @@ const Header = () => {
 
   return (
     <div className="flex h-[56px] items-center">
-      <div className="flex min-w-0 flex-1 items-center pl-3 pr-2 min-[1280px]:pr-3">
+      <div className="flex min-w-0 flex-1 items-center pr-2 pl-3 min-[1280px]:pr-3">
         {renderLogo()}
         <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
         <WorkspaceProvider>
@@ -105,7 +112,15 @@ const Header = () => {
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
       </div>
-      <div className="flex min-w-0 flex-1 items-center justify-end pl-2 pr-3 min-[1280px]:pl-3">
+      <div className="flex min-w-0 flex-1 items-center justify-end pr-3 pl-2 min-[1280px]:pl-3">
+        <button
+          type="button"
+          data-testid="workflow-import-log-download"
+          className="top-1/2 left-full ml-1 h-3 w-3 -translate-y-1/2 opacity-0"
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={handleDownloadGraphImportLog}
+        />
         <EnvNav />
         <div className="mr-2">
           <PluginsNav />
