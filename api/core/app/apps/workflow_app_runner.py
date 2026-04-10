@@ -106,25 +106,58 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_sandbox_context(tenant_id: str, user_id: str, app_id: str) -> dict[str, Any] | None:
-        """Create a sandbox and inject it into run_context if a provider is configured."""
+        """Create a sandbox and inject it into run_context if a provider is configured
+        AND the DifyCli binary is available for the current platform."""
         try:
             from core.app.entities.app_invoke_entities import DIFY_SANDBOX_CONTEXT_KEY
+            from core.sandbox.bash.dify_cli import DifyCliLocator
             from core.sandbox.builder import SandboxBuilder
             from core.sandbox.entities.sandbox_type import SandboxType
             from core.sandbox.storage.noop_storage import NoopSandboxStorage
+            from core.virtual_environment.__base.entities import Arch, OperatingSystem
+            from platform import machine, system as os_system
             from services.sandbox.sandbox_provider_service import SandboxProviderService
 
             provider = SandboxProviderService.get_sandbox_provider(tenant_id)
-            sandbox = (
-                SandboxBuilder(tenant_id, SandboxType(provider.provider_type))
-                .user(user_id)
-                .app(app_id)
-                .options(provider.config or {})
-                .storage(NoopSandboxStorage(), assets_id=app_id)
-                .build()
+            sandbox_type = SandboxType(provider.provider_type)
+
+            if sandbox_type == SandboxType.LOCAL:
+                logger.debug("[SANDBOX] Local provider not supported under gevent worker, skipping")
+                return None
+
+            os_name = os_system().lower()
+            arch_name = machine().lower()
+            os_enum = OperatingSystem.LINUX if os_name == "linux" else OperatingSystem.DARWIN
+            arch_enum = Arch.ARM64 if arch_name in ("arm64", "aarch64") else Arch.AMD64
+            DifyCliLocator().resolve(os_enum, arch_enum)
+
+            from core.sandbox.builder import _get_sandbox_class
+            vm_class = _get_sandbox_class(SandboxType(provider.provider_type))
+            vm = vm_class(
+                tenant_id=tenant_id,
+                options=provider.config or {},
+                environments={},
+                user_id=user_id,
             )
+            vm.open_enviroment()
+
+            from core.sandbox.sandbox import Sandbox
+            sandbox = Sandbox(
+                vm=vm,
+                storage=NoopSandboxStorage(),
+                tenant_id=tenant_id,
+                user_id=user_id,
+                app_id=app_id,
+                assets_id=app_id,
+            )
+            sandbox.mount()
+            sandbox.mark_ready()
+
             logger.info("[SANDBOX] Created sandbox for tenant=%s, provider=%s", tenant_id, provider.provider_type)
             return {DIFY_SANDBOX_CONTEXT_KEY: sandbox}
+        except FileNotFoundError:
+            logger.debug("[SANDBOX] DifyCli binary not found, skipping sandbox creation")
+            return None
         except Exception:
             return None
 

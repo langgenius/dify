@@ -281,6 +281,11 @@ class CliApiConfig(BaseSettings):
         default="http://localhost:5001",
     )
 
+    SANDBOX_DIFY_CLI_ROOT: str = Field(
+        description="Root directory containing dify-cli binaries (dify-cli-{os}-{arch}).",
+        default="",
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
