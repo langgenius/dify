@@ -84,7 +84,7 @@ class AWSCodeInterpreterEnvironment(VirtualEnvironment):
         - ``session_timeout_seconds``: optional; defaults to 900 (15 min).
     """
 
-    _WORKDIR = "/home/user"
+    _WORKDIR = "/tmp"
 
     class OptionsKey(StrEnum):
         AWS_ACCESS_KEY_ID = "aws_access_key_id"
@@ -180,18 +180,23 @@ class AWSCodeInterpreterEnvironment(VirtualEnvironment):
             session_id,
         )
 
-        # Detect architecture and OS via a quick command.
+        # Detect architecture, OS, and actual working directory.
         arch = Arch.AMD64
         operating_system = OperatingSystem.LINUX
         try:
-            result = self._invoke(client, code_interpreter_id, session_id, "executeCommand", {"command": "uname -m -s"})
+            result = self._invoke(client, code_interpreter_id, session_id, "executeCommand",
+                                  {"command": "uname -m -s && pwd"})
             system_info = (result.get("stdout") or "").strip()
-            parts = system_info.split()
+            lines = system_info.split("\n")
+            parts = lines[0].split() if lines else []
             if len(parts) >= 2:
                 operating_system = self._convert_operating_system(parts[0])
                 arch = self._convert_architecture(parts[1])
             elif len(parts) == 1:
                 arch = self._convert_architecture(parts[0])
+            if len(lines) > 1 and lines[-1].startswith("/"):
+                self._WORKDIR = lines[-1].strip()
+                logger.info("Detected working directory: %s", self._WORKDIR)
         except Exception:
             logger.warning("Failed to detect platform info, defaulting to Linux/AMD64")
 
