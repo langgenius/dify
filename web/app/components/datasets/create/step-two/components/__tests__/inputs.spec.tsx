@@ -45,10 +45,7 @@ describe('DelimiterInput', () => {
     fireEvent.change(input, { target: { value: finalValue } })
     expect(onChange).not.toHaveBeenCalled()
 
-    fireEvent.compositionEnd(input, {
-      target: { value: finalValue },
-      currentTarget: { value: finalValue },
-    })
+    fireEvent.compositionEnd(input)
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange.mock.calls[0][0].target.value).toBe(finalValue)
   })

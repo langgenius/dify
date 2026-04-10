@@ -63,10 +63,11 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
           isComposing.current = true
           setCompositionValue(String(value ?? ''))
         }}
-        onCompositionEnd={(e) => {
+        onCompositionEnd={() => {
           isComposing.current = false
+          const committed = compositionValue
           setCompositionValue('')
-          onChange?.({ ...e, target: e.currentTarget } as React.ChangeEvent<HTMLInputElement>)
+          onChange?.({ target: { value: committed } } as React.ChangeEvent<HTMLInputElement>)
         }}
         {...rest}
       />
