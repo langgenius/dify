@@ -293,14 +293,12 @@ def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 
-    params = {**redis_params}
-    params.update(
-        {
-            "host": dify_config.REDIS_HOST,
-            "port": dify_config.REDIS_PORT,
-            "connection_class": connection_class,
-        }
-    )
+    params: dict[str, Any] = {
+        **redis_params,
+        "host": dify_config.REDIS_HOST,
+        "port": dify_config.REDIS_PORT,
+        "connection_class": connection_class,
+    }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
         params["max_connections"] = dify_config.REDIS_MAX_CONNECTIONS
