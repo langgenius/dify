@@ -36,7 +36,7 @@ function AvatarRoot({
   return (
     <BaseAvatar.Root
       className={cn(
-        'relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-primary-600',
+        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-600 select-none',
         avatarSizeClasses[size].root,
         className,
       )}
@@ -53,7 +53,7 @@ function AvatarImage({
 }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
-      className={cn('absolute inset-0 size-full object-cover', className)}
+      className={cn('inset-0 absolute size-full object-cover', className)}
       {...props}
     />
   )

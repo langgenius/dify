@@ -3,7 +3,7 @@ import type { Member } from '@/models/common'
 import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/avatar'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { cn } from '@/utils/classnames'
 
 type Props = {
