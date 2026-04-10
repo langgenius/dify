@@ -125,6 +125,16 @@ def test_tool_label_manager_get_tool_labels_for_builtin_and_db():
         assert labels == ["search", "news"]
 
 
+def test_tool_label_manager_get_tool_labels_unsupported():
+    """
+    Negative Test: Ensure get_tool_labels raises ValueError for unsupported controller types.
+    This protects the internal API contract against accidental regressions during refactoring.
+    """
+    # Passing a generic object() which doesn't match Api, Workflow, or Builtin controllers.
+    with pytest.raises(ValueError, match="Unsupported tool type"):
+        ToolLabelManager.get_tool_labels(object())  # type: ignore[arg-type]
+
+
 # Test batch processing and mapping
 def test_tool_label_manager_get_tools_labels_batch():
     assert ToolLabelManager.get_tools_labels([]) == {}
