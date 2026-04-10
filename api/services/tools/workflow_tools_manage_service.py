@@ -310,15 +310,18 @@ class WorkflowToolManageService:
     def _get_workflow_tool(cls, tenant_id: str, db_tool: WorkflowToolProvider | None):
         """
         Get a workflow tool.
+
         :db_tool: the database tool
         :return: the tool
         """
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = db.session.scalar(
-            select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
-        )
+        workflow_app: App | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            workflow_app = _session.scalar(
+                select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
+            )
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
