@@ -1,5 +1,4 @@
 import base64
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -242,7 +241,9 @@ def test_import_app_pending_stores_import_info_in_redis():
 def test_import_app_completed_uses_declared_dependencies(monkeypatch):
     dependencies_payload = [{"id": "langgenius/google", "version": "1.0.0"}]
 
-    plugin_deps = [SimpleNamespace(model_dump=lambda: dependencies_payload[0])]
+    _dep_mock = MagicMock()
+    _dep_mock.model_dump.return_value = dependencies_payload[0]
+    plugin_deps = [_dep_mock]
     monkeypatch.setattr(
         app_dsl_service.PluginDependency,
         "model_validate",
@@ -290,7 +291,7 @@ def test_import_app_legacy_versions_extract_dependencies(monkeypatch, has_workfl
     monkeypatch.setattr(
         app_dsl_service.DependenciesAnalysisService,
         "generate_latest_dependencies",
-        lambda deps: [SimpleNamespace(model_dump=lambda: {"dep": deps[0]})],
+        lambda deps: [MagicMock(model_dump=MagicMock(return_value={"dep": deps[0]}))],
     )
 
     created_app = _app_mock(id="app-legacy", mode=AppMode.WORKFLOW.value, tenant_id="tenant-1")
@@ -444,12 +445,12 @@ def test_create_or_update_app_existing_app_updates_fields(monkeypatch):
     monkeypatch.setattr(
         app_dsl_service.variable_factory,
         "build_environment_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="env"),
+        lambda _m: MagicMock(kind="env"),
     )
     monkeypatch.setattr(
         app_dsl_service.variable_factory,
         "build_conversation_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="conv"),
+        lambda _m: MagicMock(kind="conv"),
     )
 
     app = _app_mock(
@@ -498,8 +499,10 @@ def test_create_or_update_app_new_app_requires_tenant():
 
 
 def test_create_or_update_app_creates_workflow_app_and_saves_dependencies(monkeypatch):
-    class DummyApp(SimpleNamespace):
-        pass
+    class DummyApp:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     monkeypatch.setattr(app_dsl_service, "App", DummyApp)
 
@@ -507,18 +510,18 @@ def test_create_or_update_app_creates_workflow_app_and_saves_dependencies(monkey
     monkeypatch.setattr(app_dsl_service.app_was_created, "send", lambda app, account: sent.append((app.id, account.id)))
 
     workflow_service = MagicMock()
-    workflow_service.get_draft_workflow.return_value = SimpleNamespace(unique_hash="uh")
+    workflow_service.get_draft_workflow.return_value = MagicMock(unique_hash="uh")
     monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
 
     monkeypatch.setattr(
         app_dsl_service.variable_factory,
         "build_environment_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="env"),
+        lambda _m: MagicMock(kind="env"),
     )
     monkeypatch.setattr(
         app_dsl_service.variable_factory,
         "build_conversation_variable_from_mapping",
-        lambda _m: SimpleNamespace(kind="conv"),
+        lambda _m: MagicMock(kind="conv"),
     )
 
     monkeypatch.setattr(
@@ -595,7 +598,11 @@ def test_create_or_update_app_chat_requires_model_config():
 
 
 def test_create_or_update_app_chat_creates_model_config_and_sends_event(monkeypatch):
-    class DummyModelConfig(SimpleNamespace):
+    class DummyModelConfig:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
         def from_model_config_dict(self, _cfg: dict):
             return self
 
@@ -678,7 +685,7 @@ def test_export_dsl_delegates_by_mode(monkeypatch):
         icon_background="#fff",
         description="d",
         use_icon_as_answer_icon=False,
-        app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
+        app_model_config=MagicMock(to_dict=MagicMock(return_value={"agent_mode": {"tools": []}})),
     )
     AppDslService.export_dsl(chat_app)
     assert model_calls == [True]
@@ -741,7 +748,8 @@ def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
         }
     }
 
-    workflow = SimpleNamespace(to_dict=lambda *, include_secret: workflow_dict)
+    workflow = MagicMock()
+    workflow.to_dict = lambda *, include_secret: workflow_dict
     workflow_service = MagicMock()
     workflow_service.get_draft_workflow.return_value = workflow
     monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
@@ -759,7 +767,7 @@ def test_append_workflow_export_data_filters_and_overrides(monkeypatch):
         app_dsl_service.DependenciesAnalysisService,
         "generate_dependencies",
         lambda *, tenant_id, dependencies: [
-            SimpleNamespace(model_dump=lambda: {"tenant": tenant_id, "dep": dependencies[0]})
+            MagicMock(model_dump=MagicMock(return_value={"tenant": tenant_id, "dep": dependencies[0]}))
         ],
     )
     monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
@@ -803,12 +811,13 @@ def test_append_model_config_export_data_filters_credential_id(monkeypatch):
         app_dsl_service.DependenciesAnalysisService,
         "generate_dependencies",
         lambda *, tenant_id, dependencies: [
-            SimpleNamespace(model_dump=lambda: {"tenant": tenant_id, "dep": dependencies[0]})
+            MagicMock(model_dump=MagicMock(return_value={"tenant": tenant_id, "dep": dependencies[0]}))
         ],
     )
     monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
-    app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
+    app_model_config = MagicMock()
+    app_model_config.to_dict.return_value = {"agent_mode": {"tools": [{"credential_id": "secret"}]}}
     app_model = _app_mock(tenant_id="tenant-1", app_model_config=app_model_config)
     export_data: dict = {}
 
@@ -834,29 +843,27 @@ def test_extract_dependencies_from_workflow_graph_covers_all_node_types(monkeypa
         lambda provider: f"model:{provider}",
     )
 
-    monkeypatch.setattr(app_dsl_service.ToolNodeData, "model_validate", lambda _d: SimpleNamespace(provider_id="p1"))
+    monkeypatch.setattr(app_dsl_service.ToolNodeData, "model_validate", lambda _d: MagicMock(provider_id="p1"))
     monkeypatch.setattr(
-        app_dsl_service.LLMNodeData, "model_validate", lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m1"))
+        app_dsl_service.LLMNodeData, "model_validate", lambda _d: MagicMock(model=MagicMock(provider="m1"))
     )
     monkeypatch.setattr(
         app_dsl_service.QuestionClassifierNodeData,
         "model_validate",
-        lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m2")),
+        lambda _d: MagicMock(model=MagicMock(provider="m2")),
     )
     monkeypatch.setattr(
         app_dsl_service.ParameterExtractorNodeData,
         "model_validate",
-        lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m3")),
+        lambda _d: MagicMock(model=MagicMock(provider="m3")),
     )
 
     def kr_validate(_d):
-        return SimpleNamespace(
+        weights = MagicMock(vector_setting=MagicMock(embedding_provider_name="m4"))
+        multi_config = MagicMock(reranking_mode="weighted_score", weights=weights, reranking_model=None)
+        return MagicMock(
             retrieval_mode="multiple",
-            multiple_retrieval_config=SimpleNamespace(
-                reranking_mode="weighted_score",
-                weights=SimpleNamespace(vector_setting=SimpleNamespace(embedding_provider_name="m4")),
-                reranking_model=None,
-            ),
+            multiple_retrieval_config=multi_config,
             single_retrieval_config=None,
         )
 
@@ -929,9 +936,9 @@ def test_get_leaked_dependencies_delegates(monkeypatch):
     monkeypatch.setattr(
         app_dsl_service.DependenciesAnalysisService,
         "get_leaked_dependencies",
-        lambda *, tenant_id, dependencies: [SimpleNamespace(tenant_id=tenant_id, deps=dependencies)],
+        lambda *, tenant_id, dependencies: [MagicMock(tenant_id=tenant_id, deps=dependencies)],
     )
-    res = AppDslService.get_leaked_dependencies("tenant-1", [SimpleNamespace(id="x")])
+    res = AppDslService.get_leaked_dependencies("tenant-1", [MagicMock(id="x")])
     assert len(res) == 1
 
 
