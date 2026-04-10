@@ -3,6 +3,8 @@
   "batch.downloadTemplate": "Download Excel Template",
   "batch.emptyHistory": "No test history yet.",
   "batch.fileRequired": "Upload an evaluation dataset file before running the test.",
+  "batch.loadingInputFields": "Loading input fields...",
+  "batch.noInputFields": "No published start node input fields found.",
   "batch.noticeDescription": "Configuration incomplete. Select the Judge Model and Metrics on the left to generate your batch test template.",
   "batch.noticeTitle": "Quick start",
   "batch.requirementsDescription": "The input variables required to run this batch test. Ensure your uploaded dataset matches these fields.",
