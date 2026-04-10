@@ -4,7 +4,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -121,7 +121,7 @@ class WorkflowType(StrEnum):
         raise ValueError(f"invalid workflow type value {value}")
 
     @classmethod
-    def from_app_mode(cls, app_mode: Union[str, "AppMode"]) -> "WorkflowType":
+    def from_app_mode(cls, app_mode: "str | AppMode") -> "WorkflowType":
         """
         Get workflow type from app mode.
 
@@ -1051,7 +1051,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
                     )
         return extras
 
-    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> Optional["WorkflowNodeExecutionOffload"]:
+    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> "WorkflowNodeExecutionOffload | None":
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)
 
     @property
