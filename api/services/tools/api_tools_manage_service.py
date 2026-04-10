@@ -419,10 +419,21 @@ class ApiToolManageService:
         parameters: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
-    ):
+    ) -> dict[str, Any]:
         """
-        test api tool before adding api tool provider
+        Test an API tool before adding the API tool provider.
+
+        :param tenant_id: The ID of the workspace/tenant.
+        :param provider_name: The name of the API tool provider.
+        :param tool_name: The name of the specific tool to test.
+        :param credentials: The credentials for the provider.
+        :param parameters: The parameters to pass to the tool.
+        :param schema_type: The type of schema (e.g., OpenAPI).
+        :param schema: The raw schema string.
+        :param session: Optional SQLAlchemy session.
+        :return: A dictionary containing the result or error message.
         """
+
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema_type}")
 
@@ -436,18 +447,21 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider = db.session.scalar(
-            select(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
+        # create new session with automatic transaction management to get the provider
+        provider: ApiToolProvider | None = None
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            provider = _session.scalar(
+                select(ApiToolProvider)
+                .where(
+                    ApiToolProvider.tenant_id == tenant_id,
+                    ApiToolProvider.name == provider_name,
+                )
+                .limit(1)
             )
-            .limit(1)
-        )
 
-        if not db_provider:
+        if provider is None:
             # create a fake db provider
-            db_provider = ApiToolProvider(
+            provider = ApiToolProvider(
                 tenant_id="",
                 user_id="",
                 name="",
@@ -466,12 +480,12 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
         # create provider entity
-        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
+        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
         # decrypt credentials
-        if db_provider.id:
+        if provider.id:
             encrypter, _ = create_tool_provider_encrypter(
                 tenant_id=tenant_id,
                 controller=provider_controller,
