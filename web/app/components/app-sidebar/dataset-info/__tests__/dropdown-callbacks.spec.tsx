@@ -18,6 +18,7 @@ const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
+const mockToast = vi.fn()
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -109,6 +110,10 @@ vi.mock('@/service/use-pipeline', () => ({
 vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: (...args: unknown[]) => mockToast(...args),
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
@@ -224,5 +229,50 @@ describe('Dropdown callback coverage', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
     })
+  })
+
+  it('should show the used-by-app confirmation copy when the dataset is referenced by apps', async () => {
+    const user = userEvent.setup()
+    mockCheckIsUsedInApp.mockResolvedValueOnce({ is_using: true })
+
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByText('common.operation.delete'))
+
+    await waitFor(() => {
+      expect(screen.getByText('dataset.datasetUsedByApp')).toBeInTheDocument()
+    })
+  })
+
+  it('should surface an export failure toast when pipeline export fails', async () => {
+    const user = userEvent.setup()
+    mockExportPipeline.mockRejectedValueOnce(new Error('export failed'))
+
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('app.exportFailed', { type: 'error' })
+    })
+  })
+
+  it('should surface the backend message when checking app usage fails', async () => {
+    const user = userEvent.setup()
+    mockCheckIsUsedInApp.mockRejectedValueOnce({
+      json: vi.fn().mockResolvedValue({ message: 'check failed' }),
+    })
+
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByText('common.operation.delete'))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('check failed', { type: 'error' })
+    })
+    expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
   })
 })

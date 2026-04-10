@@ -117,6 +117,37 @@ class RedisConfig(BaseSettings):
         default=None,
     )
 
+    REDIS_RETRY_RETRIES: NonNegativeInt = Field(
+        description="Maximum number of retries per Redis command on "
+        "transient failures (ConnectionError, TimeoutError, socket.timeout)",
+        default=3,
+    )
+
+    REDIS_RETRY_BACKOFF_BASE: PositiveFloat = Field(
+        description="Base delay in seconds for exponential backoff between retries",
+        default=1.0,
+    )
+
+    REDIS_RETRY_BACKOFF_CAP: PositiveFloat = Field(
+        description="Maximum backoff delay in seconds between retries",
+        default=10.0,
+    )
+
+    REDIS_SOCKET_TIMEOUT: PositiveFloat | None = Field(
+        description="Socket timeout in seconds for Redis read/write operations",
+        default=5.0,
+    )
+
+    REDIS_SOCKET_CONNECT_TIMEOUT: PositiveFloat | None = Field(
+        description="Socket timeout in seconds for Redis connection establishment",
+        default=5.0,
+    )
+
+    REDIS_HEALTH_CHECK_INTERVAL: NonNegativeInt = Field(
+        description="Interval in seconds between Redis connection health checks (0 to disable)",
+        default=30,
+    )
+
     @field_validator("REDIS_MAX_CONNECTIONS", mode="before")
     @classmethod
     def _empty_string_to_none_for_max_conns(cls, v):

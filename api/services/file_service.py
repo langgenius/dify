@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
-from typing import Literal, Union
+from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from graphon.file import helpers as file_helpers
@@ -52,7 +52,7 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:
@@ -132,8 +132,8 @@ class FileService:
         return file_size <= file_size_limit
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = (
-            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
+        upload_file = self._session_maker(expire_on_commit=False).scalar(
+            select(UploadFile).where(UploadFile.id == file_id).limit(1)
         )
         if not upload_file:
             raise NotFound("File not found")
@@ -178,7 +178,7 @@ class FileService:
         Return a short text preview extracted from a document file.
         """
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")
@@ -200,7 +200,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -220,7 +220,7 @@ class FileService:
             raise NotFound("File not found or signature is invalid")
 
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -231,7 +231,7 @@ class FileService:
 
     def get_public_image_preview(self, file_id: str):
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -247,7 +247,7 @@ class FileService:
 
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")
