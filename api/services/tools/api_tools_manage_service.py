@@ -516,14 +516,21 @@ class ApiToolManageService:
     @staticmethod
     def list_api_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
         """
-        list api tools
+        List all API tools for a specific tenant.
+
+        :param tenant_id: The ID of the workspace/tenant.
+        :return: A list of ToolProviderApiEntity objects.
         """
         # get all api providers
-        db_providers = db.session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
+        # create new session with automatic transaction management
+        providers: list[ApiToolProvider] = []
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            providers = list(
+                _session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
+            )
 
         result: list[ToolProviderApiEntity] = []
-
-        for provider in db_providers:
+        for provider in providers:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
             labels = ToolLabelManager.get_tool_labels(provider_controller)
