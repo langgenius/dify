@@ -165,3 +165,171 @@ Open the HTML report locally with:
 ```bash
 open cucumber-report/report.html
 ```
+
+## Writing new scenarios
+
+### Workflow
+
+1. Create a `.feature` file under `features/<capability>/`
+2. Add step definitions under `features/step-definitions/<capability>/`
+3. Reuse existing steps from `common/` and other definition files before writing new ones
+4. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
+5. Run `pnpm -C e2e check` before committing
+
+### Feature file conventions
+
+Tag every feature with a capability tag and an auth tag:
+
+```gherkin
+@datasets @authenticated
+Feature: Create dataset
+  Scenario: Create a new empty dataset
+    Given I am signed in as the default E2E admin
+    When I open the datasets page
+    ...
+```
+
+- Capability tags (`@apps`, `@auth`, `@datasets`, …) group related scenarios for selective runs
+- Auth tags control the `Before` hook behavior:
+  - `@authenticated` — injects the shared auth storageState into the BrowserContext
+  - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
+- `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
+- `@skip` — excluded from all runs
+
+Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
+
+### Step definition conventions
+
+```typescript
+import { When, Then } from '@cucumber/cucumber'
+import { expect } from '@playwright/test'
+import type { DifyWorld } from '../../support/world'
+
+When('I open the datasets page', async function (this: DifyWorld) {
+  await this.getPage().goto('/datasets')
+})
+```
+
+Rules:
+
+- Always type `this` as `DifyWorld` for proper context access
+- Use `async function` (not arrow functions — Cucumber binds `this`)
+- One step = one user-visible action or one assertion
+- Keep steps stateless across scenarios; use `DifyWorld` properties for in-scenario state
+
+### Locator priority
+
+Follow the Playwright recommended locator strategy, in order of preference:
+
+| Priority | Locator | Example | When to use |
+|---|---|---|---|
+| 1 | `getByRole` | `getByRole('button', { name: 'Create' })` | Default choice — accessible and resilient |
+| 2 | `getByLabel` | `getByLabel('App name')` | Form inputs with visible labels |
+| 3 | `getByPlaceholder` | `getByPlaceholder('Enter name')` | Inputs without visible labels |
+| 4 | `getByText` | `getByText('Welcome')` | Static text content |
+| 5 | `getByTestId` | `getByTestId('workflow-canvas')` | Only when no semantic locator works |
+
+Avoid raw CSS/XPath selectors. They break when the DOM structure changes.
+
+### Assertions
+
+Use `@playwright/test` `expect` — it auto-waits and retries until the condition is met or the timeout expires:
+
+```typescript
+// URL assertion
+await expect(page).toHaveURL(/\/datasets\/[a-f0-9-]+\/documents/)
+
+// Element visibility
+await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
+
+// Element state
+await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled()
+
+// Negation
+await expect(page.getByText('Loading')).not.toBeVisible()
+```
+
+Do not use manual `waitForTimeout` or polling loops. If you need a longer wait for a specific assertion, pass `{ timeout: 30_000 }` to the assertion.
+
+### Cucumber expressions
+
+Use Cucumber expression parameter types to extract values from Gherkin steps:
+
+| Type | Pattern | Example step |
+|---|---|---|
+| `{string}` | Quoted string | `I select the "Workflow" app type` |
+| `{int}` | Integer | `I should see {int} items` |
+| `{float}` | Decimal | `the progress is {float} percent` |
+| `{word}` | Single word | `I click the {word} tab` |
+
+Prefer `{string}` for UI labels, names, and text content — it maps naturally to Gherkin's quoted values.
+
+### Scoping locators
+
+When the page has multiple similar elements, scope locators to a container:
+
+```typescript
+When('I fill in the app name in the dialog', async function (this: DifyWorld) {
+  const dialog = this.getPage().getByRole('dialog')
+  await dialog.getByPlaceholder('Give your app a name').fill('My App')
+})
+```
+
+### Failure diagnostics
+
+The `After` hook automatically captures on failure:
+
+- Full-page screenshot (PNG)
+- Page HTML dump
+- Console errors and page errors
+
+Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
+
+## Reusable step reference
+
+Check existing steps before writing new ones. Steps in `common/` are designed for broad reuse.
+
+### Authentication (`common/auth.steps.ts`)
+
+| Step | Type | Description |
+|---|---|---|
+| `Given I am signed in as the default E2E admin` | Given | Start authenticated session with shared admin state |
+| `Given I am not signed in` | Given | Start clean unauthenticated session |
+
+### Navigation and assertions (`common/navigation.steps.ts`)
+
+| Step | Type | Description |
+|---|---|---|
+| `When I open the apps console` | When | Navigate to `/apps` |
+| `Then I should stay on the apps console` | Then | Assert URL matches `/apps` |
+| `Then I should be redirected to the signin page` | Then | Assert URL matches `/signin` |
+| `Then I should see the {string} button` | Then | Assert a button with the given label is visible |
+| `Then I should not see the {string} button` | Then | Assert a button with the given label is not visible |
+| `Then I should see the {string} text` | Then | Assert text is visible (30s timeout) |
+
+### App creation (`apps/create-app.steps.ts`)
+
+| Step | Type | Description |
+|---|---|---|
+| `When I start creating a blank app` | When | Click "Create from Blank" |
+| `When I enter a unique E2E app name` | When | Fill app name with `E2E App {timestamp}` |
+| `When I confirm app creation` | When | Click the "Create" button |
+| `When I select the {string} app type` | When | Select an app type in the dialog (e.g. `"Workflow"`, `"Chatbot"`) |
+| `When I expand the beginner app types` | When | Click "More basic app types" toggle |
+| `Then I should land on the app editor` | Then | Assert URL matches `/app/.../workflow` or `/configuration` |
+| `Then I should land on the workflow editor` | Then | Assert URL matches `/app/.../workflow` |
+| `Then I should land on the app configuration page` | Then | Assert URL matches `/app/.../configuration` |
+
+### Sign out (`auth/sign-out.steps.ts`)
+
+| Step | Type | Description |
+|---|---|---|
+| `When I open the account menu` | When | Click the "Account" button |
+| `When I sign out` | When | Click "Log out" in the account menu |
+| `Then I should be on the sign-in page` | Then | Assert URL matches `/signin` and "Sign in" button is visible |
+
+### Smoke / install (`smoke/install.steps.ts`)
+
+| Step | Type | Description |
+|---|---|---|
+| `Given the last authentication bootstrap came from a fresh install` | Given | Assert the auth session mode is `install` |
