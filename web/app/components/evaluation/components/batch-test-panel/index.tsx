@@ -76,7 +76,7 @@ const BatchTestPanel = ({
             onUploadFileNameChange={uploadedFileName => setUploadedFileName(resourceType, resourceId, uploadedFileName)}
           />
         )}
-        {resource.activeBatchTab === 'history' && <HistoryTab batchRecords={resource.batchRecords} />}
+        {resource.activeBatchTab === 'history' && <HistoryTab resourceType={resourceType} resourceId={resourceId} />}
       </div>
     </div>
   )

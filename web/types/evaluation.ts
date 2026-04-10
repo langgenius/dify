@@ -77,6 +77,19 @@ export type EvaluationRun = {
   created_at: number
 }
 
+export type EvaluationLogFile = {
+  id: string
+  name: string
+}
+
+export type EvaluationLog = {
+  created_at: string
+  created_by: string
+  test_file: EvaluationLogFile
+  result_file: EvaluationLogFile | null
+  version: string
+}
+
 export type EvaluationRunMetric = {
   name?: string
   value?: unknown
@@ -97,7 +110,7 @@ export type EvaluationRunItem = {
 }
 
 export type EvaluationLogsResponse = {
-  data: EvaluationRun[]
+  data: EvaluationLog[]
   total: number
   page: number
   page_size: number
