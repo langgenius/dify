@@ -39,7 +39,7 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]
     ),
-  ] as AvailableNodesMetaData['nodes'], [isChatMode, startNodeMetaData])
+  ], [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
@@ -60,7 +60,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       },
     }
-  }) as AvailableNodesMetaData['nodes'], [mergedNodesMetaData, t, docLink])
+  }), [mergedNodesMetaData, t, docLink])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

@@ -71,7 +71,7 @@ const ActionList = ({
             className='w-full'
             onClick={() => setShowSettingAuth(true)}
             disabled={!isCurrentWorkspaceManager}
-          >{t('nodes.tool.authorize', { ns: 'workflow' })}</Button>
+          >{t('workflow.nodes.tool.authorize')}</Button>
         )} */}
       </div>
       {/* <div className='flex flex-col gap-2'>

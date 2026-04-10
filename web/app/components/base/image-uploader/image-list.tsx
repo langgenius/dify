@@ -1,3 +1,4 @@
+/* eslint-disable next/no-img-element */
 import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
 import { useState } from 'react'

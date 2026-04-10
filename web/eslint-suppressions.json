@@ -78,11 +78,6 @@
       "count": 1
     }
   },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view.tsx": {
-    "style/no-trailing-spaces": {
-      "count": 1
-    }
-  },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/chart-view.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -589,6 +584,9 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
     }
   },
   "app/components/app/app-publisher/publish-with-multiple-model.tsx": {
@@ -1371,17 +1369,9 @@
       "count": 1
     }
   },
-  "app/components/apps/__tests__/list.spec.tsx": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
-    }
-  },
   "app/components/apps/app-card.tsx": {
     "no-restricted-imports": {
       "count": 3
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
     },
     "react/component-hook-factories": {
       "count": 1
@@ -1568,11 +1558,6 @@
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
-    }
-  },
-  "app/components/base/avatar/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/base/badge.tsx": {
@@ -2657,7 +2642,7 @@
   },
   "app/components/base/icons/src/public/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/base/icons/src/public/thought/index.ts": {
@@ -7930,6 +7915,11 @@
       "count": 3
     }
   },
+  "app/components/workflow-app/components/workflow-main.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/workflow-app/components/workflow-onboarding-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -8330,6 +8320,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/hooks-store/store.ts": {
+    "ts/no-explicit-any": {
+      "count": 6
+    }
+  },
   "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
     "react/error-boundaries": {
       "count": 1
@@ -8337,7 +8332,7 @@
   },
   "app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 29
+      "count": 25
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
@@ -8353,17 +8348,17 @@
       "count": 3
     }
   },
-  "app/components/workflow/hooks/use-edges-interactions.ts": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/hooks/use-helpline.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/workflow/hooks/use-inspect-vars-crud-common.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/hooks/use-node-data-update.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -8409,8 +8404,11 @@
     }
   },
   "app/components/workflow/index.tsx": {
-    "ts/no-explicit-any": {
+    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
@@ -9867,11 +9865,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/knowledge-retrieval/use-config.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
@@ -10088,11 +10081,8 @@
     }
   },
   "app/components/workflow/nodes/llm/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 1
     }
   },
   "app/components/workflow/nodes/llm/types.ts": {
@@ -10105,7 +10095,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/llm/use-single-run-form-params.ts": {
@@ -10956,6 +10946,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/panel/version-history-panel/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 2
+    }
+  },
   "app/components/workflow/panel/version-history-panel/loading/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
@@ -11068,11 +11063,6 @@
     },
     "unicorn/prefer-number-properties": {
       "count": 1
-    }
-  },
-  "app/components/workflow/run/loop-log/loop-result-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/workflow/run/loop-result-panel.tsx": {
@@ -11661,17 +11651,6 @@
   },
   "context/web-app-context.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "contract/console/apps.ts": {
-    "style/eol-last": {
-      "count": 1
-    },
-    "style/no-multiple-empty-lines": {
-      "count": 1
-    },
-    "style/no-trailing-spaces": {
       "count": 1
     }
   },

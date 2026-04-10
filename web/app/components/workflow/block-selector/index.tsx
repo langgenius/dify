@@ -35,7 +35,7 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
 
       return true
     })
-  }, [availableNodesMetaData?.nodes]) as NodeSelectorProps['blocks']
+  }, [availableNodesMetaData?.nodes])
 
   return (
     <NodeSelector
