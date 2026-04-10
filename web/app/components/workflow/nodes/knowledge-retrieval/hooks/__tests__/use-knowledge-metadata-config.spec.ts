@@ -187,4 +187,73 @@ describe('use-knowledge-metadata-config', () => {
     expect(setInputs).toHaveBeenNthCalledWith(1, initialPayload)
     expect(setInputs).toHaveBeenNthCalledWith(2, initialPayload)
   })
+
+  it('falls back to chat mode, preserves completion params, and toggles or back to and', () => {
+    const initialPayload = createPayload({
+      metadata_filtering_conditions: {
+        logical_operator: LogicalOperator.or,
+        conditions: [{
+          id: 'condition-existing',
+          metadata_id: 'meta-1',
+          name: 'topic',
+          comparison_operator: ComparisonOperator.is,
+          value: 'city',
+        }],
+      },
+      metadata_model_config: {
+        provider: 'openai',
+        name: 'gpt-4.1-mini',
+        mode: AppModeEnum.CHAT,
+        completion_params: { temperature: 0.9 },
+      },
+    })
+    const { inputRef, setInputs } = createState(initialPayload)
+    const { result } = renderHook(() => useKnowledgeMetadataConfig({
+      id: 'knowledge-node',
+      inputRef,
+      setInputs,
+    }))
+
+    act(() => {
+      result.current.handleToggleConditionLogicalOperator()
+      result.current.handleMetadataModelChange({
+        provider: 'anthropic',
+        modelId: 'claude-sonnet',
+      })
+    })
+
+    expect(inputRef.current.metadata_filtering_conditions?.logical_operator).toBe(LogicalOperator.and)
+    expect(inputRef.current.metadata_model_config).toEqual({
+      provider: 'anthropic',
+      name: 'claude-sonnet',
+      mode: AppModeEnum.CHAT,
+      completion_params: { temperature: 0.9 },
+    })
+  })
+
+  it('handles missing metadata condition containers when removing or updating', () => {
+    const initialPayload = createPayload({
+      metadata_filtering_conditions: undefined,
+    })
+    const { inputRef, setInputs } = createState(initialPayload)
+    const { result } = renderHook(() => useKnowledgeMetadataConfig({
+      id: 'knowledge-node',
+      inputRef,
+      setInputs,
+    }))
+
+    act(() => {
+      result.current.handleRemoveCondition('missing-condition')
+      result.current.handleUpdateCondition('missing-condition', {
+        id: 'missing-condition',
+        metadata_id: 'meta-x',
+        name: 'missing',
+        comparison_operator: ComparisonOperator.isNot,
+        value: 'unused',
+      })
+    })
+
+    expect(setInputs).toHaveBeenNthCalledWith(1, initialPayload)
+    expect(setInputs).toHaveBeenNthCalledWith(2, initialPayload)
+  })
 })
