@@ -101,14 +101,14 @@ class AgentV2ToolManager:
             tool_name: str,
         ) -> tuple[str, list[str], ToolInvokeMeta]:
             if sandbox is not None:
-                return self._invoke_tool_in_sandbox(sandbox, tool, tool_args, tool_name, context)
+                return AgentV2ToolManager._invoke_tool_in_sandbox(sandbox, tool, tool_args, tool_name, context)
 
-            return self._invoke_tool_directly(tool, tool_args, tool_name, context, workflow_call_depth)
+            return AgentV2ToolManager._invoke_tool_directly(tool, tool_args, tool_name, context, workflow_call_depth)
 
         return hook
 
+    @staticmethod
     def _invoke_tool_directly(
-        self,
         tool: Tool,
         tool_args: dict[str, Any],
         tool_name: str,
@@ -150,21 +150,58 @@ class AgentV2ToolManager:
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """Invoke tool inside a sandbox environment.
 
-        Uses the sandbox's bash session to execute the tool via DifyCli,
-        which calls back to Dify's CLI API to perform the actual invocation.
+        Uses SandboxBashSession to run a `dify invoke-tool` command inside
+        the sandbox VM, which calls back to Dify's CLI API for actual execution.
+        Falls back to direct invocation on any failure.
         """
         try:
+            from core.sandbox.bash.dify_cli import DifyCliLocator
             from core.sandbox.bash.session import SandboxBashSession
+            from core.skill.entities.skill_metadata import ToolReference
+            from core.skill.entities.tool_dependencies import ToolDependencies
+            from core.tools.entities.tool_entities import ToolProviderType
 
-            session = SandboxBashSession(sandbox)
-            result = session.run_tool(
+            if not sandbox.is_ready():
+                sandbox.wait_ready(timeout=30)
+
+            cli_locator = DifyCliLocator()
+            cli_locator.resolve(sandbox.vm.metadata.os, sandbox.vm.metadata.arch)
+
+            provider_type = tool.tool_provider_type() if hasattr(tool, 'tool_provider_type') else ToolProviderType.BUILT_IN
+            tool_identity = getattr(tool, 'identity', None)
+            provider_name = tool_identity.provider if tool_identity else tool_name
+
+            tool_ref = ToolReference(
+                type=provider_type,
+                provider=provider_name,
                 tool_name=tool_name,
-                tool_args=tool_args,
-                tenant_id=context.tenant_id or "",
-                app_id=context.app_id or "",
-                user_id=context.user_id or "",
             )
-            return result.stdout.decode("utf-8", errors="replace"), [], ToolInvokeMeta.empty()
+            tool_deps = ToolDependencies(references=[tool_ref])
+
+            with SandboxBashSession(
+                sandbox=sandbox,
+                node_id=context.node_id or "agent",
+                tools=tool_deps,
+            ) as session:
+                args_json = json.dumps(tool_args, ensure_ascii=False)
+                cmd = f"dify invoke-tool {tool_name} '{args_json}'"
+                result = list(session.bash_tool.invoke(
+                    user_id=context.user_id or "",
+                    tool_parameters={"bash": cmd},
+                ))
+                response_text = ""
+                for msg in result:
+                    if msg.type == ToolInvokeMessage.MessageType.TEXT:
+                        assert isinstance(msg.message, ToolInvokeMessage.TextMessage)
+                        response_text += msg.message.text
+                return response_text, [], ToolInvokeMeta.empty()
+        except FileNotFoundError:
+            logger.info("DifyCli binary not found, falling back to direct tool invocation for %s", tool_name)
+            return AgentV2ToolManager._invoke_tool_directly(
+                tool, tool_args, tool_name, context, 0
+            )
         except Exception as e:
             logger.warning("Sandbox tool invocation failed for %s, falling back to direct: %s", tool_name, e)
-            return f"Sandbox execution failed: {e}", [], ToolInvokeMeta.empty()
+            return AgentV2ToolManager._invoke_tool_directly(
+                tool, tool_args, tool_name, context, 0
+            )

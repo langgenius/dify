@@ -21,14 +21,17 @@ class SkillInitializer(SyncSandboxInitializer):
     """
 
     def initialize(self, sandbox: Sandbox, ctx: SandboxInitializeContext) -> None:
-        # Draft path: bundle already populated by DraftAppAssetsInitializer.
         if sandbox.attrs.has(SkillAttrs.BUNDLE):
             return
 
-        # Published path: load from Redis/S3.
-        bundle = SkillManager.load_bundle(
-            ctx.tenant_id,
-            ctx.app_id,
-            ctx.assets_id,
-        )
-        sandbox.attrs.set(SkillAttrs.BUNDLE, bundle)
+        try:
+            bundle = SkillManager.load_bundle(
+                ctx.tenant_id,
+                ctx.app_id,
+                ctx.assets_id,
+            )
+            sandbox.attrs.set(SkillAttrs.BUNDLE, bundle)
+        except FileNotFoundError:
+            logger.debug("No skill bundle found for app %s, skipping skill initialization", ctx.app_id)
+        except Exception:
+            logger.warning("Failed to load skill bundle for app %s, skipping", ctx.app_id, exc_info=True)

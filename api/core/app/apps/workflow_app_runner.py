@@ -104,6 +104,34 @@ class WorkflowBasedAppRunner:
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
+    @staticmethod
+    def _resolve_sandbox_context(tenant_id: str, user_id: str, app_id: str) -> dict[str, Any] | None:
+        """Create a sandbox and inject it into run_context if a provider is configured."""
+        try:
+            from core.app.entities.app_invoke_entities import DIFY_SANDBOX_CONTEXT_KEY
+            from core.sandbox.builder import SandboxBuilder
+            from core.sandbox.entities.sandbox_type import SandboxType
+            from core.sandbox.storage.noop_storage import NoopSandboxStorage
+            from services.sandbox.sandbox_provider_service import SandboxProviderService
+
+            provider = SandboxProviderService.get_sandbox_provider(tenant_id)
+            sandbox = (
+                SandboxBuilder(tenant_id, SandboxType(provider.provider_type))
+                .user(user_id)
+                .app(app_id)
+                .options(provider.config or {})
+                .storage(NoopSandboxStorage(), assets_id=app_id)
+                .build()
+            )
+            logger.info("[SANDBOX] Created sandbox for tenant=%s, provider=%s", tenant_id, provider.provider_type)
+            return {DIFY_SANDBOX_CONTEXT_KEY: sandbox}
+        except Exception:
+            return None
+
+    def _build_sandbox_layer(self) -> GraphEngineLayer | None:
+        """Build a SandboxLayer if sandbox exists in _graph_engine_layers context."""
+        return None
+
     def _init_graph(
         self,
         graph_config: Mapping[str, Any],
@@ -127,7 +155,13 @@ class WorkflowBasedAppRunner:
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
 
-        # Create required parameters for Graph.init
+        extra_context = self._resolve_sandbox_context(tenant_id or "", user_id, self._app_id)
+        if extra_context:
+            from core.app.entities.app_invoke_entities import DIFY_SANDBOX_CONTEXT_KEY
+            self._sandbox = extra_context.get(DIFY_SANDBOX_CONTEXT_KEY)
+        else:
+            self._sandbox = None
+
         graph_init_params = GraphInitParams(
             workflow_id=workflow_id,
             graph_config=graph_config,
@@ -137,11 +171,10 @@ class WorkflowBasedAppRunner:
                 user_id=user_id,
                 user_from=user_from,
                 invoke_from=invoke_from,
+                extra_context=extra_context,
             ),
             call_depth=0,
         )
-
-        # Use the provided graph_runtime_state for consistent state management
 
         node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,

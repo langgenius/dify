@@ -231,6 +231,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 user_id=dify_ctx.user_id,
                 app_id=dify_ctx.app_id,
                 tenant_id=dify_ctx.tenant_id,
+                node_id=self.id,
                 conversation_id=get_system_text(
                     self.graph_runtime_state.variable_pool,
                     SystemVariableKey.CONVERSATION_ID,
