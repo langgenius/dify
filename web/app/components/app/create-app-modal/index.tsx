@@ -370,6 +370,10 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
       title: t('types.workflow', { ns: 'app' }),
       description: t('newApp.workflowUserDescription', { ns: 'app' }),
     },
+    [AppModeEnum.AGENT]: {
+      title: t('types.agent', { ns: 'app' }),
+      description: t('newApp.agentV2ShortDescription', { ns: 'app' }),
+    },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
   return (
@@ -390,6 +394,7 @@ function AppScreenShot({ mode, show }: { mode: AppModeEnum, show: boolean }) {
     [AppModeEnum.AGENT_CHAT]: 'Agent',
     [AppModeEnum.COMPLETION]: 'TextGenerator',
     [AppModeEnum.WORKFLOW]: 'Workflow',
+    [AppModeEnum.AGENT]: 'Agent',
   }
   return (
     <picture>
