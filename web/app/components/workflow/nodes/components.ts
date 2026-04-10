@@ -2,6 +2,8 @@ import type { ComponentType } from 'react'
 import { BlockEnum } from '../types'
 import AgentNode from './agent/node'
 import AgentPanel from './agent/panel'
+import AgentV2Node from './agent-v2/node'
+import AgentV2Panel from './agent-v2/panel'
 import AnswerNode from './answer/node'
 import AnswerPanel from './answer/panel'
 import AssignerNode from './assigner/node'
@@ -72,6 +74,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
   [BlockEnum.Agent]: AgentNode,
+  [BlockEnum.AgentV2]: AgentV2Node,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
   [BlockEnum.HumanInput]: HumanInputNode,
@@ -101,6 +104,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
   [BlockEnum.Agent]: AgentPanel,
+  [BlockEnum.AgentV2]: AgentV2Panel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
   [BlockEnum.HumanInput]: HumanInputPanel,

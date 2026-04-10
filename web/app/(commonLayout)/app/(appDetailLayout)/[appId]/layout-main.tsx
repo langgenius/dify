@@ -140,10 +140,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       router.replace(`/app/${appId}/overview`)
       return
     }
-    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
+    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT || res.mode === AppModeEnum.AGENT) && (pathname).endsWith('configuration')) {
       router.replace(`/app/${appId}/workflow`)
     }
-    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
+    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT && res.mode !== AppModeEnum.AGENT) && (pathname).endsWith('workflow')) {
       router.replace(`/app/${appId}/configuration`)
     }
     else {

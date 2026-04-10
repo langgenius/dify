@@ -1,7 +1,7 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
+import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill, RiRobot2Fill } from '@remixicon/react'
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -143,6 +143,19 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     )}
                     onClick={() => {
                       setAppMode(AppModeEnum.ADVANCED_CHAT)
+                    }}
+                  />
+                  <AppTypeCard
+                    active={appMode === AppModeEnum.AGENT}
+                    title={t('types.agent', { ns: 'app' })}
+                    description={t('newApp.agentV2ShortDescription', { ns: 'app' })}
+                    icon={(
+                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
+                        <RiRobot2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                      </div>
+                    )}
+                    onClick={() => {
+                      setAppMode(AppModeEnum.AGENT)
                     }}
                   />
                 </div>
