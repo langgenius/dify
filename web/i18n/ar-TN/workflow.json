@@ -109,6 +109,7 @@
   "chatVariable.panelTitle": "متغيرات المحادثة",
   "chatVariable.storedContent": "المحتوى المخزن",
   "chatVariable.updatedAt": "تم التحديث في ",
+  "collaboration.historyAction.generic": "قام متعاون بعملية تراجع/إعادة",
   "comments.actions.deleteReply": "حذف الرد",
   "comments.actions.editReply": "تعديل الرد",
   "comments.actions.addComment": "Add Comment",

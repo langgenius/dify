@@ -109,6 +109,7 @@
   "chatVariable.panelTitle": "Gesprächsvariablen",
   "chatVariable.storedContent": "Gespeicherter Inhalt",
   "chatVariable.updatedAt": "Aktualisiert am ",
+  "collaboration.historyAction.generic": "Ein Mitbearbeiter hat Rückgängig/Wiederholen ausgeführt",
   "comments.actions.deleteReply": "Antwort löschen",
   "comments.actions.editReply": "Antwort bearbeiten",
   "comments.actions.addComment": "Add Comment",

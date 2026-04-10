@@ -109,6 +109,7 @@
   "chatVariable.panelTitle": "Konuşma Değişkenleri",
   "chatVariable.storedContent": "Depolanan içerik",
   "chatVariable.updatedAt": "Güncellenme zamanı: ",
+  "collaboration.historyAction.generic": "Bir işbirlikçi geri alma/yeniden yapma gerçekleştirdi",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
   "comments.actions.addComment": "Add Comment",

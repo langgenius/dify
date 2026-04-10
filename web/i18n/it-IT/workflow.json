@@ -109,6 +109,7 @@
   "chatVariable.panelTitle": "Variabili di Conversazione",
   "chatVariable.storedContent": "Contenuto memorizzato",
   "chatVariable.updatedAt": "Aggiornato il ",
+  "collaboration.historyAction.generic": "Un collaboratore ha eseguito annulla/ripristina",
   "comments.actions.deleteReply": "Elimina risposta",
   "comments.actions.editReply": "Modifica risposta",
   "comments.actions.addComment": "Add Comment",

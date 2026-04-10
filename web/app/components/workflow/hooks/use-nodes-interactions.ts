@@ -96,7 +96,11 @@ export const useNodesInteractions = () => {
   })
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
-  const { saveStateToHistory, undo } = useWorkflowHistory()
+  const {
+    saveStateToHistory,
+    undo,
+    redo,
+  } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
@@ -2104,15 +2108,17 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
-    // Use collaborative undo from Loro
-    collaborationManager.undo()
+    undo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0)
       return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
-    setEdges(edges)
-    setNodes(nodes)
+    const shouldBroadcast = collaborationManager.isConnected()
+    setEdges(edges, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast)
+    if (shouldBroadcast)
+      collaborationManager.emitHistoryAction('undo')
     workflowStore.setState({ edgeMenu: undefined })
   }, [
     collaborativeWorkflow,
@@ -2127,17 +2133,21 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
-    // Use collaborative redo from Loro
-    collaborationManager.redo()
+    redo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0)
       return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
-    setEdges(edges)
-    setNodes(nodes)
+    const shouldBroadcast = collaborationManager.isConnected()
+    setEdges(edges, shouldBroadcast)
+    setNodes(nodes, shouldBroadcast)
+    if (shouldBroadcast)
+      collaborationManager.emitHistoryAction('redo')
     workflowStore.setState({ edgeMenu: undefined })
   }, [
+    collaborativeWorkflow,
+    redo,
     workflowStore,
     workflowHistoryStore,
     getNodesReadOnly,

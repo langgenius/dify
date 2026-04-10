@@ -40,6 +40,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import Toast from '@/app/components/base/toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import dynamic from '@/next/dynamic'
@@ -196,6 +197,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   onlineUsers,
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -266,6 +268,15 @@ export const Workflow: FC<WorkflowProps> = memo(({
       }
     })
   }, [edges, nodes, setEdges, setNodes, store])
+
+  useEffect(() => {
+    return collaborationManager.onHistoryAction((_) => {
+      Toast.notify({
+        type: 'info',
+        message: t('collaboration.historyAction.generic', { ns: 'workflow' }),
+      })
+    })
+  }, [t])
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -300,7 +311,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const setPendingCommentState = useStore(s => s.setPendingComment)
   const isCommentInputActive = Boolean(pendingComment) || isCommentPlacing
-  const { t } = useTranslation()
   const visibleComments = useMemo(() => {
     if (showResolvedComments)
       return comments

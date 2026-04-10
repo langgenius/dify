@@ -109,6 +109,7 @@
   "chatVariable.panelTitle": "Variabel Percakapan",
   "chatVariable.storedContent": "Konten yang disimpan",
   "chatVariable.updatedAt": "Diperbarui pada",
+  "collaboration.historyAction.generic": "Seorang kolaborator melakukan urungkan/ulang",
   "comments.actions.deleteReply": "Hapus balasan",
   "comments.actions.editReply": "Edit balasan",
   "comments.actions.addComment": "Add Comment",

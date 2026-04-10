@@ -109,6 +109,7 @@
   "chatVariable.panelTitle": "Zmienne Konwersacji",
   "chatVariable.storedContent": "Przechowywana zawartość",
   "chatVariable.updatedAt": "Zaktualizowano ",
+  "collaboration.historyAction.generic": "Współpracownik wykonał cofnięcie/ponowienie",
   "comments.actions.deleteReply": "Delete reply",
   "comments.actions.editReply": "Edit reply",
   "comments.actions.addComment": "Add Comment",
