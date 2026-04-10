@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-vdb-matrixone"
+version = "1.13.3"
+requires-python = "~=3.12.0"
+dependencies = [
+    "mo-vector~=0.1.13",
+]
+description = "Dify vector store backend (dify-vdb-matrixone)."
+
+[project.entry-points."dify.vector_backends"]
+matrixone = "dify_vdb_matrixone.matrixone_vector:MatrixoneVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

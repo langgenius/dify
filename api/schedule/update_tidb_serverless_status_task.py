@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 import app
 from configs import dify_config
-from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
+from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-vdb-relyt"
+version = "1.13.3"
+requires-python = "~=3.12.0"
+dependencies = []
+description = "Dify vector store backend (dify-vdb-relyt)."
+
+[project.entry-points."dify.vector_backends"]
+relyt = "dify_vdb_relyt.relyt_vector:RelytVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

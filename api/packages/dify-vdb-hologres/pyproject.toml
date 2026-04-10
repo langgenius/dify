@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-vdb-hologres"
+version = "1.13.3"
+requires-python = "~=3.12.0"
+dependencies = [
+    "holo-search-sdk>=0.4.1",
+]
+description = "Dify vector store backend (dify-vdb-hologres)."
+
+[project.entry-points."dify.vector_backends"]
+hologres = "dify_vdb_hologres.hologres_vector:HologresVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

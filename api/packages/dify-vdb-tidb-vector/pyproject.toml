@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-vdb-tidb-vector"
+version = "1.13.3"
+requires-python = "~=3.12.0"
+dependencies = [
+    "tidb-vector==0.0.15",
+]
+description = "Dify vector store backend (dify-vdb-tidb-vector)."
+
+[project.entry-points."dify.vector_backends"]
+tidb_vector = "dify_vdb_tidb_vector.tidb_vector:TiDBVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

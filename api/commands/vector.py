@@ -344,7 +344,7 @@ def add_qdrant_index(field: str):
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
 
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
+        from dify_vdb_qdrant.qdrant_vector import PathQdrantParams, QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:

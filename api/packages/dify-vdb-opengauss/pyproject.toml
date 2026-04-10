@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-vdb-opengauss"
+version = "1.13.3"
+requires-python = "~=3.12.0"
+dependencies = []
+description = "Dify vector store backend (dify-vdb-opengauss)."
+
+[project.entry-points."dify.vector_backends"]
+opengauss = "dify_vdb_opengauss.opengauss:OpenGaussFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

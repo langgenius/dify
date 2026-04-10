@@ -6,19 +6,19 @@ cd "$SCRIPT_DIR/../.."
 
 PYTEST_TIMEOUT="${PYTEST_TIMEOUT:-180}"
 
-pytest --timeout "${PYTEST_TIMEOUT}" api/tests/integration_tests/vdb/chroma \
-  api/tests/integration_tests/vdb/milvus \
-  api/tests/integration_tests/vdb/pgvecto_rs \
-  api/tests/integration_tests/vdb/pgvector \
-  api/tests/integration_tests/vdb/qdrant \
-  api/tests/integration_tests/vdb/weaviate \
-  api/tests/integration_tests/vdb/elasticsearch \
-  api/tests/integration_tests/vdb/vikingdb \
-  api/tests/integration_tests/vdb/baidu \
-  api/tests/integration_tests/vdb/tcvectordb \
-  api/tests/integration_tests/vdb/upstash \
-  api/tests/integration_tests/vdb/couchbase \
-  api/tests/integration_tests/vdb/oceanbase \
-  api/tests/integration_tests/vdb/tidb_vector \
-  api/tests/integration_tests/vdb/huawei \
-  api/tests/integration_tests/vdb/hologres \
+pytest --timeout "${PYTEST_TIMEOUT}" api/packages/dify-vdb-chroma/tests \
+  api/packages/dify-vdb-milvus/tests \
+  api/packages/dify-vdb-pgvecto-rs/tests \
+  api/packages/dify-vdb-pgvector/tests \
+  api/packages/dify-vdb-qdrant/tests \
+  api/packages/dify-vdb-weaviate/tests \
+  api/packages/dify-vdb-elasticsearch/tests \
+  api/packages/dify-vdb-vikingdb/tests \
+  api/packages/dify-vdb-baidu/tests \
+  api/packages/dify-vdb-tencent/tests \
+  api/packages/dify-vdb-upstash/tests \
+  api/packages/dify-vdb-couchbase/tests \
+  api/packages/dify-vdb-oceanbase/tests \
+  api/packages/dify-vdb-tidb-vector/tests \
+  api/packages/dify-vdb-huawei-cloud/tests \
+  api/packages/dify-vdb-hologres/tests \
