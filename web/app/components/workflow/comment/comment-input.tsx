@@ -148,18 +148,14 @@ export const CommentInput: FC<CommentInputProps> = memo(({
           className="relative shrink-0 cursor-move"
           onPointerDown={handleDragPointerDown}
         >
-          <div className="relative h-8 w-8 overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500">
-            <div className="absolute inset-[2px] overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur">
-              <div className="flex h-full w-full items-center justify-center">
-                <div className="h-6 w-6 overflow-hidden rounded-full">
-                  <Avatar
-                    avatar={userProfile.avatar_url}
-                    name={userProfile.name}
-                    size={24}
-                    className="h-full w-full"
-                  />
-                </div>
-              </div>
+          <div className="relative aspect-square h-8 w-8 shrink-0 rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500 p-[2px]">
+            <div className="flex size-full items-center justify-center overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur p-[2px]">
+              <Avatar
+                avatar={userProfile.avatar_url}
+                name={userProfile.name}
+                size={24}
+                className="block size-full rounded-full"
+              />
             </div>
           </div>
         </div>
