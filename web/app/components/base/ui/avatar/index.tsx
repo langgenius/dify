@@ -19,7 +19,7 @@ export type AvatarSize = keyof typeof avatarSizeClasses
 export type AvatarProps = {
   name: string
   avatar: string | null
-  size?: AvatarSize | number
+  size?: AvatarSize
   className?: string
   textClassName?: string
   onError?: (hasError: boolean) => void
@@ -28,13 +28,10 @@ export type AvatarProps = {
 }
 
 type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
-  size?: AvatarSize | number
+  size?: AvatarSize
   hasAvatar?: boolean
   backgroundColor?: string
 }
-
-const isAvatarPresetSize = (size: AvatarSize | number): size is AvatarSize =>
-  typeof size === 'string'
 
 function AvatarRoot({
   size = 'md',
@@ -45,7 +42,6 @@ function AvatarRoot({
   ...props
 }: AvatarRootProps) {
   const resolvedStyle: React.CSSProperties = {
-    ...(typeof size === 'number' ? { width: `${size}px`, height: `${size}px` } : {}),
     ...(backgroundColor && !hasAvatar ? { backgroundColor } : {}),
     ...style,
   }
@@ -64,7 +60,7 @@ function AvatarRoot({
 }
 
 type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
-  size?: AvatarSize | number
+  size?: AvatarSize
   textClassName?: string
 }
 
@@ -76,9 +72,6 @@ function AvatarFallback({
   ...props
 }: AvatarFallbackProps) {
   const resolvedStyle: React.CSSProperties = {
-    ...(typeof size === 'number'
-      ? { fontSize: `${Math.round(size * 0.4)}px`, lineHeight: 1 }
-      : {}),
     ...style,
   }
 
@@ -86,7 +79,7 @@ function AvatarFallback({
     <BaseAvatar.Fallback
       className={cn(
         'flex size-full items-center justify-center font-medium text-white',
-        isAvatarPresetSize(size) && avatarSizeClasses[size].text,
+        avatarSizeClasses[size].text,
         textClassName,
         className,
       )}
