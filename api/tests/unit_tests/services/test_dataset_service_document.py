@@ -1069,7 +1069,6 @@ class TestDocumentServiceCreateValidation:
         assert len(knowledge_config.process_rule.rules.pre_processing_rules) == 1
         assert knowledge_config.process_rule.rules.pre_processing_rules[0].enabled is False
 
-
     def test_process_rule_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
         knowledge_config = KnowledgeConfig(
             indexing_technique="economy",
