@@ -13,6 +13,30 @@ permissions:
   contents: read
 
 jobs:
+  contributor-docs:
+    name: Contributor Docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        with:
+          files: |
+            CONTRIBUTING.md
+            .github/pull_request_template.md
+            .github/workflows/style.yml
+            dev/check-agent-pr-guidance
+
+      - name: Validate automated agent PR guidance
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: ./dev/check-agent-pr-guidance
+
   python-style:
     name: Python Style
     runs-on: ubuntu-latest

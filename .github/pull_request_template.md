@@ -21,3 +21,5 @@
 - [x] I've added a test for each change that was introduced, and I tried as much as possible to make a single atomic change.
 - [x] I've updated the documentation accordingly.
 - [x] I ran `make lint` and `make type-check` (backend) and `cd web && pnpm exec vp staged` (frontend) to appease the lint gods
+
+<!-- If this PR was created by an automated agent, add `From <Tool Name>` as the final line of this description. Example: `From Codex`. -->
