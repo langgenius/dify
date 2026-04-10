@@ -4,7 +4,6 @@ import urllib.parse
 import httpx
 from flask import current_app, redirect, request
 from flask_restx import Resource
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -180,8 +179,7 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
     account: Account | None = Account.get_by_openid(provider, user_info.id)
 
     if not account:
-        with sessionmaker(db.engine).begin() as session:
-            account = AccountService.get_account_by_email_with_case_fallback(user_info.email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(user_info.email)
 
     return account
 

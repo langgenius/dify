@@ -173,7 +173,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         @contextmanager
         def _fake_session():
-            yield SimpleNamespace()
+            yield SimpleNamespace(execute=lambda *args, **kwargs: None)
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
         monkeypatch.setattr(pipeline, "_get_message", lambda **kwargs: SimpleNamespace())
