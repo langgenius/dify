@@ -148,18 +148,23 @@ class ExternalDatasetService:
         db.session.commit()
 
     @staticmethod
-    def external_knowledge_api_use_check(external_knowledge_api_id: str) -> tuple[bool, int]:
+    def external_knowledge_api_use_check(external_knowledge_api_id: str, tenant_id: str) -> tuple[bool, int]:
+        """
+        Return usage for an external knowledge API within a single tenant.
+
+        The caller already scopes access by tenant, so this query must do the
+        same; otherwise the endpoint becomes a cross-tenant UUID oracle.
+        """
         count = (
             db.session.scalar(
                 select(func.count(ExternalKnowledgeBindings.id)).where(
-                    ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id
+                    ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id,
+                    ExternalKnowledgeBindings.tenant_id == tenant_id,
                 )
             )
             or 0
         )
-        if count > 0:
-            return True, count
-        return False, 0
+        return count > 0, count
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
