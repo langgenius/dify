@@ -262,6 +262,8 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                continue
             else:
                 parts.append(str(response.message))
 
