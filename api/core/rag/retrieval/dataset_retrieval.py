@@ -14,7 +14,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMU
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from sqlalchemy import and_, func, literal, or_, select
+from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import (
@@ -276,8 +276,8 @@ class DatasetRetrieval:
             document_ids = [i.segment.document_id for i in records]
 
             with session_factory.create_session() as session:
-                datasets = session.query(Dataset).where(Dataset.id.in_(dataset_ids)).all()
-                documents = session.query(DatasetDocument).where(DatasetDocument.id.in_(document_ids)).all()
+                datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+                documents = session.scalars(select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))).all()
 
             dataset_map = {i.id: i for i in datasets}
             document_map = {i.id: i for i in documents}
@@ -971,9 +971,11 @@ class DatasetRetrieval:
 
                 # Batch update hit_count for all segments
                 if segment_ids_to_update:
-                    session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids_to_update)).update(
-                        {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
-                        synchronize_session=False,
+                    session.execute(
+                        update(DocumentSegment)
+                        .where(DocumentSegment.id.in_(segment_ids_to_update))
+                        .values(hit_count=DocumentSegment.hit_count + 1)
+                        .execution_options(synchronize_session=False)
                     )
 
             self._send_trace_task(message_id, documents, timer)
@@ -1822,7 +1824,7 @@ class DatasetRetrieval:
     def _get_available_datasets(self, tenant_id: str, dataset_ids: list[str]) -> list[Dataset]:
         with session_factory.create_session() as session:
             subquery = (
-                session.query(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
+                select(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
                 .where(
                     DocumentModel.indexing_status == "completed",
                     DocumentModel.enabled == True,
@@ -1834,13 +1836,12 @@ class DatasetRetrieval:
                 .subquery()
             )
 
-            results = (
-                session.query(Dataset)
+            results = session.scalars(
+                select(Dataset)
                 .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
                 .where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
                 .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
-                .all()
-            )
+            ).all()
 
         available_datasets = []
         for dataset in results:
