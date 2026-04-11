@@ -102,9 +102,11 @@ class ClearFreePlanTenantExpiredLogs:
                 logger.exception("Failed to save %s records", table_name)
 
             session.execute(
-                delete(model).where(
+                delete(model)
+                .where(
                     model.id.in_(record_ids),  # type: ignore
-                ).execution_options(synchronize_session=False)
+                )
+                .execution_options(synchronize_session=False)
             )
 
             click.echo(
@@ -409,11 +411,14 @@ class ClearFreePlanTenantExpiredLogs:
 
                     tenant_count = 0
                     for test_interval in test_intervals:
-                        tenant_count = session.scalar(
-                            select(func.count(Tenant.id)).where(
-                                Tenant.created_at.between(current_time, current_time + test_interval)
+                        tenant_count = (
+                            session.scalar(
+                                select(func.count(Tenant.id)).where(
+                                    Tenant.created_at.between(current_time, current_time + test_interval)
+                                )
                             )
-                        ) or 0
+                            or 0
+                        )
                         if tenant_count <= 100:
                             interval = test_interval
                             break
