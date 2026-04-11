@@ -31,7 +31,6 @@ ProgressToken = str | int
 Cursor = str
 Role = Literal["user", "assistant"]
 RequestId = Annotated[int | str, Field(union_mode="left_to_right")]
-type AnyFunction = Callable[..., Any]
 
 
 class RequestParams(BaseModel):

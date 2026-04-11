@@ -1069,6 +1069,33 @@ class TestDocumentServiceCreateValidation:
         assert len(knowledge_config.process_rule.rules.pre_processing_rules) == 1
         assert knowledge_config.process_rule.rules.pre_processing_rules[0].enabled is False
 
+    def test_process_rule_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(
+                info_list=InfoList(
+                    data_source_type="upload_file",
+                    file_info_list=FileInfo(file_ids=["file-1"]),
+                )
+            ),
+            process_rule=ProcessRule(
+                mode="hierarchical",
+                rules=Rule(
+                    pre_processing_rules=[
+                        PreProcessingRule(id="remove_extra_spaces", enabled=True),
+                    ],
+                    segmentation=Segmentation(separator="\n", max_tokens=1024),
+                    subchunk_segmentation=Segmentation(separator="\n", max_tokens=512),
+                ),
+            ),
+        )
+
+        DocumentService.process_rule_args_validate(knowledge_config)
+
+        assert knowledge_config.process_rule is not None
+        assert knowledge_config.process_rule.rules is not None
+        assert knowledge_config.process_rule.rules.parent_mode == "paragraph"
+
 
 class TestDocumentServiceSaveDocumentWithDatasetId:
     """Unit tests for non-SQL validation branches in save_document_with_dataset_id."""
