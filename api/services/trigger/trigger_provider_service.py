@@ -3,7 +3,7 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session, sessionmaker
@@ -40,6 +40,10 @@ from models.trigger import (
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
+
+
+class VerifyCredentialsResult(TypedDict):
+    verified: bool
 
 
 class TriggerProviderService:
@@ -792,7 +796,7 @@ class TriggerProviderService:
         provider_id: TriggerProviderID,
         subscription_id: str,
         credentials: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> VerifyCredentialsResult:
         """
         Verify credentials for an existing subscription without updating it.
 
