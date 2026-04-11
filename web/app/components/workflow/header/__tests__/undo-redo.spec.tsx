@@ -2,13 +2,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import UndoRedo from '../undo-redo'
 
 const mockUnsubscribe = vi.fn()
-const mockCanUndo = vi.fn()
-const mockCanRedo = vi.fn()
-const mockOnUndoRedoStateChange = vi.fn()
 const mockHandleUndo = vi.fn()
 const mockHandleRedo = vi.fn()
 
-let latestUndoRedoListener: ((state: { canUndo: boolean, canRedo: boolean }) => void) | undefined
+let latestTemporalListener: ((state: { pastStates: unknown[], futureStates: unknown[] }) => void) | undefined
 let mockNodesReadOnly = false
 
 vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({
@@ -23,20 +20,17 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 
 vi.mock('@/app/components/workflow/workflow-history-store', () => ({
   useWorkflowHistoryStore: () => ({
+    store: {
+      temporal: {
+        subscribe: (listener: (state: { pastStates: unknown[], futureStates: unknown[] }) => void) => {
+          latestTemporalListener = listener
+          return mockUnsubscribe
+        },
+      },
+    },
     shortcutsEnabled: true,
     setShortcutsEnabled: vi.fn(),
   }),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: {
-    canUndo: () => mockCanUndo(),
-    canRedo: () => mockCanRedo(),
-    onUndoRedoStateChange: (listener: (state: { canUndo: boolean, canRedo: boolean }) => void) => {
-      latestUndoRedoListener = listener
-      return mockOnUndoRedoStateChange(listener)
-    },
-  },
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -51,19 +45,16 @@ describe('UndoRedo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
-    latestUndoRedoListener = undefined
-    mockCanUndo.mockReturnValue(false)
-    mockCanRedo.mockReturnValue(false)
-    mockOnUndoRedoStateChange.mockReturnValue(mockUnsubscribe)
+    latestTemporalListener = undefined
   })
 
   it('enables undo and redo when history exists and triggers the callbacks', () => {
     render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
 
     act(() => {
-      latestUndoRedoListener?.({
-        canUndo: true,
-        canRedo: true,
+      latestTemporalListener?.({
+        pastStates: [{}],
+        futureStates: [{}],
       })
     })
 
@@ -95,9 +86,9 @@ describe('UndoRedo', () => {
     const redoButton = screen.getByRole('button', { name: 'workflow.common.redo' })
 
     act(() => {
-      latestUndoRedoListener?.({
-        canUndo: true,
-        canRedo: true,
+      latestTemporalListener?.({
+        pastStates: [{}],
+        futureStates: [{}],
       })
     })
 

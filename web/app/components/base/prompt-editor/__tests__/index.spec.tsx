@@ -69,6 +69,7 @@ vi.mock('lexical', async (importOriginal) => {
       getChildren: () => mocks.rootLines.map(line => ({
         getTextContent: () => line,
       })),
+      getAllTextNodes: () => [],
     }),
     TextNode: class TextNode {
       __text: string
