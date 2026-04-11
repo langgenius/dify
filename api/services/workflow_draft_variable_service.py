@@ -19,7 +19,7 @@ from graphon.variables.segments import (
 )
 from graphon.variables.types import SegmentType
 from graphon.variables.utils import dumps_with_segments
-from sqlalchemy import Engine, orm, select
+from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
@@ -222,11 +222,10 @@ class WorkflowDraftVariableService:
         )
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
-        return (
-            self._session.query(WorkflowDraftVariable)
+        return self._session.scalar(
+            select(WorkflowDraftVariable)
             .options(orm.selectinload(WorkflowDraftVariable.variable_file))
             .where(WorkflowDraftVariable.id == variable_id)
-            .first()
         )
 
     def get_draft_variables_by_selectors(
@@ -254,8 +253,8 @@ class WorkflowDraftVariableService:
         # Alternatively, a `SELECT` statement could be constructed for each selector and
         # combined using `UNION` to fetch all rows.
         # Benchmarking indicates that both approaches yield comparable performance.
-        query = (
-            self._session.query(WorkflowDraftVariable)
+        return self._session.scalars(
+            select(WorkflowDraftVariable)
             .options(
                 orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
                     WorkflowDraftVariableFile.upload_file
@@ -266,8 +265,7 @@ class WorkflowDraftVariableService:
                 WorkflowDraftVariable.user_id == user_id,
                 or_(*ors),
             )
-        )
-        return query.all()
+        ).all()
 
     def list_variables_without_values(
         self, app_id: str, page: int, limit: int, user_id: str
@@ -277,19 +275,20 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.user_id == user_id,
         ]
         total = None
-        query = self._session.query(WorkflowDraftVariable).where(*criteria)
+        base_stmt = select(WorkflowDraftVariable).where(*criteria)
         if page == 1:
-            total = query.count()
-        variables = (
+            from sqlalchemy import func as sa_func
+
+            total = self._session.scalar(select(sa_func.count()).select_from(base_stmt.subquery()))
+        variables = self._session.scalars(
             # Do not load the `value` field
-            query.options(
+            base_stmt.options(
                 orm.defer(WorkflowDraftVariable.value, raiseload=True),
             )
             .order_by(WorkflowDraftVariable.created_at.desc())
             .limit(limit)
             .offset((page - 1) * limit)
-            .all()
-        )
+        ).all()
 
         return WorkflowDraftVariableList(variables=variables, total=total)
 
@@ -299,12 +298,12 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.node_id == node_id,
             WorkflowDraftVariable.user_id == user_id,
         ]
-        query = self._session.query(WorkflowDraftVariable).where(*criteria)
-        variables = (
-            query.options(orm.selectinload(WorkflowDraftVariable.variable_file))
+        variables = self._session.scalars(
+            select(WorkflowDraftVariable)
+            .options(orm.selectinload(WorkflowDraftVariable.variable_file))
+            .where(*criteria)
             .order_by(WorkflowDraftVariable.created_at.desc())
-            .all()
-        )
+        ).all()
         return WorkflowDraftVariableList(variables=variables)
 
     def list_node_variables(self, app_id: str, node_id: str, user_id: str) -> WorkflowDraftVariableList:
@@ -326,8 +325,8 @@ class WorkflowDraftVariableService:
         return self._get_variable(app_id, node_id, name, user_id=user_id)
 
     def _get_variable(self, app_id: str, node_id: str, name: str, user_id: str) -> WorkflowDraftVariable | None:
-        return (
-            self._session.query(WorkflowDraftVariable)
+        return self._session.scalar(
+            select(WorkflowDraftVariable)
             .options(orm.selectinload(WorkflowDraftVariable.variable_file))
             .where(
                 WorkflowDraftVariable.app_id == app_id,
@@ -335,7 +334,6 @@ class WorkflowDraftVariableService:
                 WorkflowDraftVariable.name == name,
                 WorkflowDraftVariable.user_id == user_id,
             )
-            .first()
         )
 
     def update_variable(
@@ -488,21 +486,15 @@ class WorkflowDraftVariableService:
         self._session.delete(variable)
 
     def delete_user_workflow_variables(self, app_id: str, user_id: str):
-        (
-            self._session.query(WorkflowDraftVariable)
-            .where(
+        self._session.execute(
+            delete(WorkflowDraftVariable).where(
                 WorkflowDraftVariable.app_id == app_id,
                 WorkflowDraftVariable.user_id == user_id,
             )
-            .delete(synchronize_session=False)
         )
 
     def delete_app_workflow_variables(self, app_id: str):
-        (
-            self._session.query(WorkflowDraftVariable)
-            .where(WorkflowDraftVariable.app_id == app_id)
-            .delete(synchronize_session=False)
-        )
+        self._session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app_id))
 
     def delete_workflow_draft_variable_file(self, deletions: list[DraftVarFileDeletion]):
         variable_files_query = (
@@ -540,14 +532,12 @@ class WorkflowDraftVariableService:
         return self._delete_node_variables(app_id, node_id, user_id=user_id)
 
     def _delete_node_variables(self, app_id: str, node_id: str, user_id: str):
-        (
-            self._session.query(WorkflowDraftVariable)
-            .where(
+        self._session.execute(
+            delete(WorkflowDraftVariable).where(
                 WorkflowDraftVariable.app_id == app_id,
                 WorkflowDraftVariable.node_id == node_id,
                 WorkflowDraftVariable.user_id == user_id,
             )
-            .delete(synchronize_session=False)
         )
 
     def _get_conversation_id_from_draft_variable(self, app_id: str, user_id: str) -> str | None:
@@ -588,13 +578,11 @@ class WorkflowDraftVariableService:
         conv_id = self._get_conversation_id_from_draft_variable(workflow.app_id, account_id)
 
         if conv_id is not None:
-            conversation = (
-                self._session.query(Conversation)
-                .where(
+            conversation = self._session.scalar(
+                select(Conversation).where(
                     Conversation.id == conv_id,
                     Conversation.app_id == workflow.app_id,
                 )
-                .first()
             )
             # Only return the conversation ID if it exists and is valid (has a correspond conversation record in DB).
             if conversation is not None:
