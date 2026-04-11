@@ -975,6 +975,7 @@ class DatasetRetrieval:
                         update(DocumentSegment)
                         .where(DocumentSegment.id.in_(segment_ids_to_update))
                         .values(hit_count=DocumentSegment.hit_count + 1)
+                        .execution_options(synchronize_session=False)
                     )
 
             self._send_trace_task(message_id, documents, timer)
