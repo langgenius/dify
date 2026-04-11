@@ -58,8 +58,8 @@ export type AppPublisherProps = {
   debugWithMultipleModel?: boolean
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
-  onPublish?: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void> | void
-  onRestore?: () => Promise<void> | void
+  onPublish?: (params?: any) => Promise<any> | any
+  onRestore?: () => Promise<any> | any
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
   toolPublished?: boolean
