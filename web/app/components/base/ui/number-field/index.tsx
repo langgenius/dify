@@ -4,7 +4,6 @@ import type { VariantProps } from 'class-variance-authority'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 export const NumberField = BaseNumberField.Root
@@ -188,18 +187,19 @@ type NumberFieldButtonVariantProps = Omit<
 
 export type NumberFieldButtonProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Increment> & NumberFieldButtonVariantProps
 
+const incrementAriaLabel = 'Increment value'
+const decrementAriaLabel = 'Decrement value'
+
 export function NumberFieldIncrement({
   className,
   children,
   size = 'regular',
   ...props
 }: NumberFieldButtonProps) {
-  const { t } = useTranslation()
-
   return (
     <BaseNumberField.Increment
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.increment', { ns: 'common' }))}
+      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
@@ -213,12 +213,10 @@ export function NumberFieldDecrement({
   size = 'regular',
   ...props
 }: NumberFieldButtonProps) {
-  const { t } = useTranslation()
-
   return (
     <BaseNumberField.Decrement
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.decrement', { ns: 'common' }))}
+      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}
