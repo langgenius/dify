@@ -238,6 +238,7 @@ class TestDeleteCustomizedPipelineTemplate:
             from sqlalchemy import select
 
             from extensions.ext_database import db as ext_db
+
             remaining = ext_db.session.scalar(
                 select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id)
             )
