@@ -9,15 +9,6 @@ export type OnlineUser = {
   sid: string
 }
 
-export type WorkflowOnlineUsers = {
-  workflow_id: string
-  users: OnlineUser[]
-}
-
-export type OnlineUserListResponse = {
-  data: WorkflowOnlineUsers[]
-}
-
 export type CursorPosition = {
   x: number
   y: number
@@ -46,11 +37,6 @@ export type CollaborationState = {
   nodePanelPresence: NodePanelPresenceMap
   disconnectReason?: string
   error?: string
-}
-
-export type GraphSyncData = {
-  nodes: Node[]
-  edges: Edge[]
 }
 
 export type CollaborationEventType

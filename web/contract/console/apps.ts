@@ -25,4 +25,3 @@ export const workflowOnlineUsersContract = base
     }
   }>())
   .output(type<WorkflowOnlineUsersResponse>())
-  

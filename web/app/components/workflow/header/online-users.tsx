@@ -3,7 +3,7 @@ import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useReactFlow } from 'reactflow'
-import Avatar from '@/app/components/base/ui/avatar'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import {
   Popover,
   PopoverContent,

@@ -184,7 +184,8 @@ const UpdateDSLModal = ({
       if (isImportCompleted(status)) {
         await handleCompletedImport(status, app_id)
         // Notify other collaboration clients about the workflow update
-        collaborationManager.emitWorkflowUpdate(app_id)
+        if (app_id)
+          collaborationManager.emitWorkflowUpdate(app_id)
       }
       else if (status === DSLImportStatus.FAILED) {
         setLoading(false)

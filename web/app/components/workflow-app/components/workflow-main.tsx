@@ -240,7 +240,7 @@ const WorkflowMain = ({
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
 
-  const hooksStore = useMemo<Partial<HooksStoreShape>>(() => {
+  const hooksStore = useMemo(() => {
     return {
       syncWorkflowDraftWhenPageClose,
       doSyncWorkflowDraft,
@@ -326,7 +326,7 @@ const WorkflowMain = ({
         edges={edges}
         viewport={viewport}
         onWorkflowDataUpdate={handleWorkflowDataUpdate}
-        hooksStore={hooksStore}
+        hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
         cursors={filteredCursors}
         myUserId={myUserId}
         onlineUsers={onlineUsers}

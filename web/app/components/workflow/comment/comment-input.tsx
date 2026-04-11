@@ -1,7 +1,7 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Avatar from '@/app/components/base/ui/avatar'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
 import { MentionInput } from './mention-input'

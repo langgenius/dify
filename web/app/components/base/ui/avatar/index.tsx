@@ -141,5 +141,3 @@ export const Avatar = ({
     </AvatarRoot>
   )
 }
-
-export default Avatar

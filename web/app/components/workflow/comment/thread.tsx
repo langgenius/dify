@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import Avatar from '@/app/components/base/ui/avatar'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,

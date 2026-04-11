@@ -13,7 +13,7 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 type RestoreCallbacks = SyncCallback
 
-export const usePerformRestore = () => {
+const usePerformRestore = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const appDetail = useAppStore.getState().appDetail
   const featuresStore = useFeaturesStore()

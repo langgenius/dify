@@ -2639,7 +2639,7 @@
   },
   "app/components/base/icons/src/public/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 6
     }
   },
   "app/components/base/icons/src/public/thought/index.ts": {
@@ -8312,6 +8312,11 @@
       "count": 1
     }
   },
+  "app/components/workflow/hooks-store/store.ts": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
     "react/error-boundaries": {
       "count": 1
@@ -8319,7 +8324,7 @@
   },
   "app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 25
+      "count": 27
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {

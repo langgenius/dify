@@ -103,7 +103,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
         })
       }
     }
-    
+
     toast(t(`actionMsg.${message}`, { ns: 'common' }) as string, { type })
   }
 

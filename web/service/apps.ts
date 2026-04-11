@@ -13,12 +13,11 @@ export const fetchWorkflowOnlineUsers = async ({ workflowIds }: { workflowIds: s
   if (!workflowIds.length)
     return {}
 
-  const params = { workflow_ids: workflowIds.join(',') }
   const response = await consoleClient.apps.workflowOnlineUsers({
-    query: params,
+    query: { workflow_ids: workflowIds.join(',') },
   })
 
-  if (!response || !response.data)
+  if (!response?.data)
     return {}
 
   if (Array.isArray(response.data)) {

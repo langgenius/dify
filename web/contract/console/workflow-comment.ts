@@ -110,7 +110,7 @@ export type CreateReplyParams = {
   mentioned_user_ids?: string[]
 }
 
-export const workflowCommentListContract = base
+const workflowCommentListContract = base
   .route({
     path: '/apps/{appId}/workflow/comments',
     method: 'GET',
@@ -122,7 +122,7 @@ export const workflowCommentListContract = base
   }>())
   .output(type<{ data: WorkflowCommentList[] }>())
 
-export const workflowCommentCreateContract = base
+const workflowCommentCreateContract = base
   .route({
     path: '/apps/{appId}/workflow/comments',
     method: 'POST',
@@ -135,7 +135,7 @@ export const workflowCommentCreateContract = base
   }>())
   .output(type<WorkflowCommentCreateRes>())
 
-export const workflowCommentDetailContract = base
+const workflowCommentDetailContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}',
     method: 'GET',
@@ -148,7 +148,7 @@ export const workflowCommentDetailContract = base
   }>())
   .output(type<WorkflowCommentDetail>())
 
-export const workflowCommentUpdateContract = base
+const workflowCommentUpdateContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}',
     method: 'PUT',
@@ -162,7 +162,7 @@ export const workflowCommentUpdateContract = base
   }>())
   .output(type<WorkflowCommentUpdateRes>())
 
-export const workflowCommentDeleteContract = base
+const workflowCommentDeleteContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}',
     method: 'DELETE',
@@ -175,7 +175,7 @@ export const workflowCommentDeleteContract = base
   }>())
   .output(type<CommonResponse>())
 
-export const workflowCommentResolveContract = base
+const workflowCommentResolveContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}/resolve',
     method: 'POST',
@@ -188,7 +188,7 @@ export const workflowCommentResolveContract = base
   }>())
   .output(type<WorkflowCommentResolveRes>())
 
-export const workflowCommentReplyCreateContract = base
+const workflowCommentReplyCreateContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}/replies',
     method: 'POST',
@@ -202,7 +202,7 @@ export const workflowCommentReplyCreateContract = base
   }>())
   .output(type<WorkflowCommentReply>())
 
-export const workflowCommentReplyUpdateContract = base
+const workflowCommentReplyUpdateContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}/replies/{replyId}',
     method: 'PUT',
@@ -217,7 +217,7 @@ export const workflowCommentReplyUpdateContract = base
   }>())
   .output(type<WorkflowCommentReply>())
 
-export const workflowCommentReplyDeleteContract = base
+const workflowCommentReplyDeleteContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/{commentId}/replies/{replyId}',
     method: 'DELETE',
@@ -231,7 +231,7 @@ export const workflowCommentReplyDeleteContract = base
   }>())
   .output(type<CommonResponse>())
 
-export const workflowCommentMentionUsersContract = base
+const workflowCommentMentionUsersContract = base
   .route({
     path: '/apps/{appId}/workflow/comments/mention-users',
     method: 'GET',

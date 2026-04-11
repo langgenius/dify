@@ -36,8 +36,8 @@ const {
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
-  mockUpdateEnvironmentVariables: vi.fn(() => Promise.resolve({})),
-  mockGetSocket: vi.fn(() => null),
+  mockUpdateEnvironmentVariables: vi.fn<(payload: { appId: string, environmentVariables: EnvironmentVariable[] }) => Promise<unknown>>(() => Promise.resolve({})),
+  mockGetSocket: vi.fn<(appId: string) => { emit: (event: string, payload: unknown) => void } | null>(() => null),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({

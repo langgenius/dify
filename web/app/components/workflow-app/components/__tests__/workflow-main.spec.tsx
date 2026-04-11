@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -116,9 +117,23 @@ vi.mock('@/app/components/workflow', () => ({
         <button
           type="button"
           onClick={() => onWorkflowDataUpdate?.({
+            nodes: [],
+            edges: [],
             features: { file_upload: { enabled: true } },
-            conversation_variables: [{ id: 'conversation-1' }],
-            environment_variables: [{ id: 'env-1' }],
+            conversation_variables: [{
+              id: 'conversation-1',
+              name: 'conversation-1',
+              value_type: ChatVarType.String,
+              value: '',
+              description: '',
+            }],
+            environment_variables: [{
+              id: 'env-1',
+              name: 'env-1',
+              value: '',
+              value_type: 'string',
+              description: '',
+            }],
           })}
         >
           update-workflow-data
@@ -126,14 +141,22 @@ vi.mock('@/app/components/workflow', () => ({
         <button
           type="button"
           onClick={() => onWorkflowDataUpdate?.({
-            conversation_variables: [{ id: 'conversation-only' }],
+            nodes: [],
+            edges: [],
+            conversation_variables: [{
+              id: 'conversation-only',
+              name: 'conversation-only',
+              value_type: ChatVarType.String,
+              value: '',
+              description: '',
+            }],
           })}
         >
           update-conversation-only
         </button>
         <button
           type="button"
-          onClick={() => onWorkflowDataUpdate?.({})}
+          onClick={() => onWorkflowDataUpdate?.({ nodes: [], edges: [] })}
         >
           update-empty-payload
         </button>

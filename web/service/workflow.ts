@@ -100,14 +100,6 @@ export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, n
   return items
 }
 
-// Environment Variables API
-export const fetchEnvironmentVariables = async (appId: string): Promise<EnvironmentVariable[]> => {
-  const response = await consoleClient.workflowDraft.environmentVariables({
-    params: { appId },
-  })
-  return response.items
-}
-
 export const updateEnvironmentVariables = ({ appId, environmentVariables }: {
   appId: string
   environmentVariables: EnvironmentVariable[]

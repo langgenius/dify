@@ -134,7 +134,7 @@ const DelayedFeatures = () => {
   return <Features />
 }
 
-const renderFeatures = (options?: Omit<Parameters<typeof renderWorkflowFlowComponent>[1], 'nodes' | 'edges'>) => {
+const renderFeatures = (options?: Omit<NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>, 'nodes' | 'edges'>) => {
   const mergedInitialStoreState = {
     appId: 'app-1',
     ...(options?.initialStoreState || {}),

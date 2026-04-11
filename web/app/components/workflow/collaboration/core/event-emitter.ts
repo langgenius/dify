@@ -1,4 +1,4 @@
-export type EventHandler<T = unknown> = (data: T) => void
+type EventHandler<T = unknown> = (data: T) => void
 
 export class EventEmitter {
   private events: Map<string, Set<EventHandler<unknown>>> = new Map()

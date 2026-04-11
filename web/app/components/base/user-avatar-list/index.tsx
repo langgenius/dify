@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { AvatarSize } from '@/app/components/base/ui/avatar'
 import { memo } from 'react'
-import Avatar from '@/app/components/base/ui/avatar'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 
