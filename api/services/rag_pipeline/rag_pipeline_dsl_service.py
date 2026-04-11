@@ -599,6 +599,7 @@ class RagPipelineDslService:
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
+            .limit(1)
         )
 
         # create draft workflow if not found
