@@ -81,6 +81,7 @@ class WorkflowCollaborationService:
 
         if event_type == "sync_request":
             leader_sid = self._repository.get_current_leader(workflow_id)
+            target_sid: str | None
             if leader_sid and self.is_session_active(workflow_id, leader_sid):
                 target_sid = leader_sid
             else:

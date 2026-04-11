@@ -61,6 +61,7 @@ class TestWorkflowCommentService:
             mentioned_user_ids=["user-2"],
             content="hello",
         )
+        expected_app_url = f"{service_module.dify_config.CONSOLE_WEB_URL.rstrip('/')}/app/app-1/workflow"
 
         assert payloads == [
             {
@@ -70,6 +71,7 @@ class TestWorkflowCommentService:
                 "commenter_name": "Commenter",
                 "app_name": "My App",
                 "comment_content": "hello",
+                "app_url": expected_app_url,
             }
         ]
 
