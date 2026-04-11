@@ -23,7 +23,7 @@ class SummaryIndex:
     ) -> None:
         if is_preview:
             with session_factory.create_session() as session:
-                dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id))
+                dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                 if not dataset or dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                     return
 
@@ -36,7 +36,7 @@ class SummaryIndex:
                 if not document_id:
                     return
 
-                document = session.scalar(select(Document).where(Document.id == document_id))
+                document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
                 # Skip qa_model documents
                 if document is None or document.doc_form == "qa_model":
                     return
@@ -74,7 +74,7 @@ class SummaryIndex:
             def process_segment(segment_id: str) -> None:
                 """Process a single segment in a thread with a fresh DB session."""
                 with session_factory.create_session() as session:
-                    segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id))
+                    segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
                     if segment is None:
                         return
                     try:

@@ -63,11 +63,11 @@ class IndexProcessor:
         summary_index_setting: SummaryIndexSettingDict | None = None,
     ) -> IndexingResultDict:
         with session_factory.create_session() as session:
-            document = session.scalar(select(Document).where(Document.id == document_id))
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not document:
                 raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id))
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
@@ -153,11 +153,11 @@ class IndexProcessor:
         doc_language = None
         with session_factory.create_session() as session:
             if document_id:
-                document = session.scalar(select(Document).where(Document.id == document_id))
+                document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             else:
                 document = None
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id))
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
