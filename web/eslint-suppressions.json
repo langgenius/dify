@@ -584,6 +584,9 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 5
     }
   },
   "app/components/app/app-publisher/publish-with-multiple-model.tsx": {
