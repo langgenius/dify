@@ -102,6 +102,7 @@ class TestConversationStatusCount:
         message = Message(
             app_id=app.id,
             conversation_id=conversation.id,
+            _inputs={},
             query="Test query",
             message={"role": "user", "content": "Test query"},
             answer="Test answer",
