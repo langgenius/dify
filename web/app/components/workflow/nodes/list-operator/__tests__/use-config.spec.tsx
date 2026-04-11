@@ -7,15 +7,30 @@ import { OrderBy } from '../types'
 import useConfig from '../use-config'
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
+const mockGetNodes = vi.hoisted(() => vi.fn())
+const mockGetBeforeNodesInSameBranch = vi.hoisted(() => vi.fn())
 const mockGetCurrentVariableType = vi.hoisted(() => vi.fn())
 
+let mockNodesReadOnly = false
+let mockIsChatMode = false
+
+vi.mock('reactflow', async () => {
+  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
+  return {
+    ...actual,
+    useStoreApi: () => ({
+      getState: () => ({
+        getNodes: mockGetNodes,
+      }),
+    }),
+  }
+})
+
 vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useIsChatMode: () => false,
+  useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
+  useIsChatMode: () => mockIsChatMode,
   useWorkflow: () => ({
-    getBeforeNodesInSameBranch: () => [
-      { id: 'start-node', data: { title: 'Start', type: BlockEnum.Start } },
-    ],
+    getBeforeNodesInSameBranch: (...args: unknown[]) => mockGetBeforeNodesInSameBranch(...args),
   }),
   useWorkflowVariables: () => ({
     getCurrentVariableType: (...args: unknown[]) => mockGetCurrentVariableType(...args),
@@ -26,33 +41,18 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<ListFilterNodeType>(mockSetInputs),
 }))
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useStoreApi: () => ({
-      getState: () => ({
-        getNodes: () => [
-          { id: 'list-node', parentId: 'iteration-parent' },
-          { id: 'iteration-parent', data: { title: 'Iteration', type: BlockEnum.Iteration } },
-        ],
-      }),
-    }),
-  }
-})
-
 const createPayload = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNodeType => ({
   title: 'List Filter',
   desc: '',
   type: BlockEnum.ListFilter,
-  variable: ['node-1', 'items'],
-  var_type: VarType.arrayString,
-  item_var_type: VarType.string,
+  variable: ['start', 'files'],
+  var_type: VarType.arrayFile,
+  item_var_type: VarType.file,
   filter_by: {
-    enabled: true,
+    enabled: false,
     conditions: [{
       key: '',
-      comparison_operator: ComparisonOperator.equal,
+      comparison_operator: ComparisonOperator.contains,
       value: '',
     }],
   },
@@ -63,120 +63,141 @@ const createPayload = (overrides: Partial<ListFilterNodeType> = {}): ListFilterN
   order_by: {
     enabled: false,
     key: '',
-    value: OrderBy.DESC,
+    value: OrderBy.ASC,
   },
   limit: {
     enabled: false,
     size: 10,
   },
+  isInIteration: false,
+  isInLoop: false,
   ...overrides,
 })
 
-describe('useConfig', () => {
+describe('list-operator/use-config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetCurrentVariableType.mockReturnValue(VarType.arrayString)
+    mockNodesReadOnly = false
+    mockIsChatMode = false
+    mockGetBeforeNodesInSameBranch.mockReturnValue([{ id: 'before-node' }])
+    mockGetNodes.mockReturnValue([{ id: 'list-node' }])
+    mockGetCurrentVariableType.mockImplementation(({ valueSelector }: { valueSelector: string[] }) => {
+      if (valueSelector[1] === 'files')
+        return VarType.arrayFile
+      if (valueSelector[1] === 'numbers')
+        return VarType.arrayNumber
+      return VarType.arrayString
+    })
   })
 
-  it('should expose derived variable metadata and filter array-like vars', () => {
+  it('should expose derived state and update inputs through the helper pipeline', () => {
     const { result } = renderHook(() => useConfig('list-node', createPayload()))
 
     expect(result.current.readOnly).toBe(false)
-    expect(result.current.varType).toBe(VarType.arrayString)
-    expect(result.current.itemVarType).toBe(VarType.string)
-    expect(result.current.itemVarTypeShowName).toBe('String')
-    expect(result.current.hasSubVariable).toBe(false)
-    expect(result.current.filterVar({ type: VarType.arrayBoolean } as never)).toBe(true)
+    expect(result.current.varType).toBe(VarType.arrayFile)
+    expect(result.current.itemVarType).toBe(VarType.file)
+    expect(result.current.itemVarTypeShowName).toBe('File')
+    expect(result.current.hasSubVariable).toBe(true)
+    expect(result.current.filterVar({ type: VarType.arrayString } as never)).toBe(true)
     expect(result.current.filterVar({ type: VarType.object } as never)).toBe(false)
-  })
 
-  it('should reset filter conditions when the variable changes to file arrays', () => {
-    mockGetCurrentVariableType.mockReturnValue(VarType.arrayFile)
-    const payload = createPayload({
-      order_by: {
-        enabled: true,
-        key: '',
-        value: OrderBy.DESC,
-      },
-    })
-    const { result } = renderHook(() => useConfig('list-node', payload))
-
-    result.current.handleVarChanges(['node-2', 'files'])
-
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variable: ['node-2', 'files'],
-      var_type: VarType.arrayFile,
-      item_var_type: VarType.file,
-      filter_by: {
-        enabled: true,
-        conditions: [{
-          key: 'name',
-          comparison_operator: ComparisonOperator.contains,
-          value: '',
-        }],
-      },
-      order_by: expect.objectContaining({
-        key: 'name',
-      }),
-    }))
-  })
-
-  it('should update filter, extract, limit and order-by settings', () => {
-    const { result } = renderHook(() => useConfig('list-node', createPayload()))
-
-    result.current.handleFilterEnabledChange(false)
+    result.current.handleVarChanges(['node-2', 'numbers'])
+    result.current.handleFilterEnabledChange(true)
     result.current.handleFilterChange({
       key: 'size',
       comparison_operator: ComparisonOperator.largerThan,
-      value: 3,
+      value: '2',
     })
-    result.current.handleLimitChange({ enabled: true, size: 5 })
+    result.current.handleLimitChange({ enabled: true, size: 3 })
     result.current.handleExtractsEnabledChange(true)
-    result.current.handleExtractsChange('2')
+    result.current.handleExtractsChange('5')
     result.current.handleOrderByEnabledChange(true)
     result.current.handleOrderByKeyChange('size')
-    result.current.handleOrderByTypeChange(OrderBy.ASC)()
+    result.current.handleOrderByTypeChange(OrderBy.DESC)()
 
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      filter_by: expect.objectContaining({ enabled: false }),
+      variable: ['node-2', 'numbers'],
+      var_type: VarType.arrayNumber,
+      item_var_type: VarType.number,
+    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      filter_by: expect.objectContaining({
+        enabled: true,
+      }),
     }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       filter_by: expect.objectContaining({
         conditions: [{
           key: 'size',
           comparison_operator: ComparisonOperator.largerThan,
-          value: 3,
+          value: '2',
         }],
       }),
     }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      limit: { enabled: true, size: 5 },
+      limit: { enabled: true, size: 3 },
     }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       extract_by: { enabled: true, serial: '1' },
     }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      extract_by: { enabled: false, serial: '2' },
+      extract_by: { enabled: false, serial: '5' },
     }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       order_by: expect.objectContaining({
         enabled: true,
+        key: 'name',
         value: OrderBy.ASC,
-        key: '',
       }),
     }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       order_by: expect.objectContaining({
-        enabled: false,
         key: 'size',
+      }),
+    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      order_by: expect.objectContaining({
         value: OrderBy.DESC,
       }),
     }))
+  })
+
+  it('should derive parent nodes from iteration and loop contexts', () => {
+    mockNodesReadOnly = true
+    mockIsChatMode = true
+    mockGetNodes.mockReturnValue([
+      { id: 'list-node', parentId: 'iteration-parent' },
+      { id: 'iteration-parent' },
+      { id: 'loop-node', parentId: 'loop-parent' },
+      { id: 'loop-parent' },
+    ])
+
+    const { result: iterationResult } = renderHook(() => useConfig('list-node', createPayload({
+      isInIteration: true,
+      variable: ['iteration', 'files'],
+    })))
+    const { result: loopResult } = renderHook(() => useConfig('loop-node', createPayload({
+      isInLoop: true,
+      isInIteration: false,
+      variable: ['loop', 'names'],
+    })))
+
+    iterationResult.current.handleVarChanges(['iteration', 'files'])
+    loopResult.current.handleOrderByEnabledChange(true)
+
+    expect(iterationResult.current.readOnly).toBe(true)
+    expect(mockGetCurrentVariableType).toHaveBeenCalledWith(expect.objectContaining({
+      parentNode: expect.objectContaining({ id: 'iteration-parent' }),
+      isChatMode: true,
+    }))
+    expect(mockGetCurrentVariableType).toHaveBeenCalledWith(expect.objectContaining({
+      parentNode: expect.objectContaining({ id: 'loop-parent' }),
+      valueSelector: ['loop', 'names'],
+    }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       order_by: expect.objectContaining({
-        enabled: false,
+        enabled: true,
         key: '',
-        value: OrderBy.ASC,
       }),
     }))
   })

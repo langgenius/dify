@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import Any, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -555,7 +555,7 @@ class RagPipelineService:
             workflow_node_execution.id
         )
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
@@ -569,7 +569,6 @@ class RagPipelineService:
                 process_data=workflow_node_execution.process_data,
                 outputs=workflow_node_execution.outputs,
             )
-            session.commit()
         if isinstance(workflow_node_execution_db_model, WorkflowNodeExecutionModel):
             enqueue_draft_node_execution_trace(
                 execution=workflow_node_execution_db_model,
@@ -1325,7 +1324,7 @@ class RagPipelineService:
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
@@ -1339,7 +1338,6 @@ class RagPipelineService:
                 process_data=workflow_node_execution.process_data,
                 outputs=workflow_node_execution.outputs,
             )
-            session.commit()
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution_db_model,
             outputs=workflow_node_execution.outputs,
@@ -1389,7 +1387,7 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(self, dataset: Dataset, document: Document, user: Union[Account, EndUser]):
+    def retry_error_document(self, dataset: Dataset, document: Document, user: Account | EndUser):
         """
         Retry error document
         """
