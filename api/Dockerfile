@@ -55,6 +55,14 @@ ARG NODE_PACKAGE_VERSION=22.21.0-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
+    # Create /home/dify explicitly: `useradd -r` skips home-directory creation
+    # even though the passwd entry still points at /home/dify, which breaks
+    # tools that expect the user's HOME to exist on disk. Notably, Gunicorn
+    # 25's control socket writes into HOME and fails with
+    # `[Errno 13] Permission denied: '/home/dify'` if this directory is
+    # missing. See #34463.
+    mkdir -p /home/dify && \
+    chown dify:dify /home/dify && \
     chown -R dify:dify /app
 
 RUN \
