@@ -487,14 +487,20 @@ class WorkflowDraftVariableService:
 
     def delete_user_workflow_variables(self, app_id: str, user_id: str):
         self._session.execute(
-            delete(WorkflowDraftVariable).where(
+            delete(WorkflowDraftVariable)
+            .where(
                 WorkflowDraftVariable.app_id == app_id,
                 WorkflowDraftVariable.user_id == user_id,
             )
+            .execution_options(synchronize_session=False)
         )
 
     def delete_app_workflow_variables(self, app_id: str):
-        self._session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app_id))
+        self._session.execute(
+            delete(WorkflowDraftVariable)
+            .where(WorkflowDraftVariable.app_id == app_id)
+            .execution_options(synchronize_session=False)
+        )
 
     def delete_workflow_draft_variable_file(self, deletions: list[DraftVarFileDeletion]):
         variable_files_query = (
@@ -533,11 +539,13 @@ class WorkflowDraftVariableService:
 
     def _delete_node_variables(self, app_id: str, node_id: str, user_id: str):
         self._session.execute(
-            delete(WorkflowDraftVariable).where(
+            delete(WorkflowDraftVariable)
+            .where(
                 WorkflowDraftVariable.app_id == app_id,
                 WorkflowDraftVariable.node_id == node_id,
                 WorkflowDraftVariable.user_id == user_id,
             )
+            .execution_options(synchronize_session=False)
         )
 
     def _get_conversation_id_from_draft_variable(self, app_id: str, user_id: str) -> str | None:
