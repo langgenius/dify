@@ -234,14 +234,14 @@ def patch_sqlalchemy_session(monkeypatch):
         ctx = DummySessionContext(args[0] if args else None)
 
         class _BeginContext:
-            def __enter__(self_ctx):
+            def __enter__(self):
                 return ctx
 
-            def __exit__(self_ctx, *a):
+            def __exit__(self, *a):
                 return False
 
         class _Factory:
-            def begin(self_factory):
+            def begin(self):
                 return _BeginContext()
 
         return _Factory()
