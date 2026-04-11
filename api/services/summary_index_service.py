@@ -808,7 +808,7 @@ class SummaryIndexService:
             if segment_ids:
                 stmt = stmt.where(DocumentSegment.id.in_(segment_ids))
 
-            segments = session.scalars(stmt).all()
+            segments = list(session.scalars(stmt).all())
 
             if not segments:
                 logger.info("No segments found for document %s", document.id)
@@ -1288,7 +1288,7 @@ class SummaryIndexService:
             if segment_ids:
                 stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
 
-            return session.scalars(stmt).all()
+            return list(session.scalars(stmt).all())
 
     @staticmethod
     def get_document_summary_index_status(document_id: str, dataset_id: str, tenant_id: str) -> str | None:
@@ -1305,13 +1305,13 @@ class SummaryIndexService:
         """
         # Get all segments for this document (excluding qa_model and re_segment)
         with session_factory.create_session() as session:
-            segment_ids = session.scalars(
+            segment_ids = list(session.scalars(
                 select(DocumentSegment.id).where(
                     DocumentSegment.document_id == document_id,
                     DocumentSegment.status != "re_segment",
                     DocumentSegment.tenant_id == tenant_id,
                 )
-            ).all()
+            ).all())
 
         if not segment_ids:
             return None
