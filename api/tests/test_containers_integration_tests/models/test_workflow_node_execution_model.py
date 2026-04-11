@@ -97,9 +97,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=created_by,
         )
 
-    def test_created_by_account_returns_account_when_role_is_account(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_created_by_account_returns_account_when_role_is_account(self, db_session_with_containers: Session) -> None:
         """created_by_account returns the Account row when role is ACCOUNT."""
         account = self._create_account(db_session_with_containers)
         app = self._create_app(db_session_with_containers, str(uuid4()), account.id)
@@ -116,9 +114,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         assert result is not None
         assert result.id == account.id
 
-    def test_created_by_account_returns_none_when_role_is_end_user(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_created_by_account_returns_none_when_role_is_end_user(self, db_session_with_containers: Session) -> None:
         """created_by_account returns None when role is END_USER, even if an Account exists."""
         account = self._create_account(db_session_with_containers)
         app = self._create_app(db_session_with_containers, str(uuid4()), account.id)
@@ -155,9 +151,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         assert result is not None
         assert result.id == end_user.id
 
-    def test_created_by_end_user_returns_none_when_role_is_account(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_created_by_end_user_returns_none_when_role_is_account(self, db_session_with_containers: Session) -> None:
         """created_by_end_user returns None when role is ACCOUNT, even if an EndUser exists."""
         account = self._create_account(db_session_with_containers)
         tenant_id = str(uuid4())
