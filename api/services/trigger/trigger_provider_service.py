@@ -156,12 +156,15 @@ class TriggerProviderService:
                 lock_key = f"trigger_provider_create_lock:{tenant_id}_{provider_id}"
                 with redis_client.lock(lock_key, timeout=20):
                     # Check provider count limit
-                    provider_count = session.scalar(
-                        select(func.count(TriggerSubscription.id)).where(
-                            TriggerSubscription.tenant_id == tenant_id,
-                            TriggerSubscription.provider_id == str(provider_id),
+                    provider_count = (
+                        session.scalar(
+                            select(func.count(TriggerSubscription.id)).where(
+                                TriggerSubscription.tenant_id == tenant_id,
+                                TriggerSubscription.provider_id == str(provider_id),
+                            )
                         )
-                    ) or 0
+                        or 0
+                    )
 
                     if provider_count >= cls.__MAX_TRIGGER_PROVIDER_COUNT__:
                         raise ValueError(
@@ -345,9 +348,7 @@ class TriggerProviderService:
                 )
             else:
                 subscription = session.scalar(
-                    select(TriggerSubscription)
-                    .where(TriggerSubscription.tenant_id == tenant_id)
-                    .limit(1)
+                    select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id).limit(1)
                 )
             if subscription:
                 provider_controller = TriggerManager.get_trigger_provider(
@@ -819,9 +820,7 @@ class TriggerProviderService:
         """
         with Session(db.engine, expire_on_commit=False) as session:
             subscription = session.scalar(
-                select(TriggerSubscription)
-                .where(TriggerSubscription.endpoint_id == endpoint_id)
-                .limit(1)
+                select(TriggerSubscription).where(TriggerSubscription.endpoint_id == endpoint_id).limit(1)
             )
             if not subscription:
                 return None
