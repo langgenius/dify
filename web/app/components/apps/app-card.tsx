@@ -5,6 +5,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import * as React from 'react'
@@ -27,6 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -65,10 +67,11 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
 
 type AppCardProps = {
   app: App
+  onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
 }
 
-const AppCard = ({ app, onRefresh }: AppCardProps) => {
+const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -360,6 +363,20 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.updated_at, app.created_at, t])
 
+  const onlinePresenceUsers = useMemo(() => {
+    return onlineUsers
+      .map((user, index) => {
+        const id = user.user_id || user.sid || `${app.id}-online-${index}`
+        const name = user.username || user.user_id || user.sid || `${index + 1}`
+        return {
+          id,
+          name,
+          avatar_url: user.avatar || null,
+        }
+      })
+      .filter(user => Boolean(user.id))
+  }, [app.id, onlineUsers])
+
   return (
     <>
       <div
@@ -389,6 +406,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               <div>·</div>
               <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
             </div>
+            {onlinePresenceUsers.length > 0 && (
+              <div className="mt-1">
+                <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={4} />
+              </div>
+            )}
           </div>
           <div className="flex h-5 w-5 shrink-0 items-center justify-center">
             {app.access_mode === AccessMode.PUBLIC && (

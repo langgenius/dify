@@ -1,9 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
+import type { WorkflowOnlineUser } from '@/models/app'
 import { useDebounceFn } from 'ahooks'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
@@ -15,6 +16,7 @@ import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
+import { fetchWorkflowOnlineUsers } from '@/service/apps'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -68,6 +70,7 @@ const List: FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
+  const [workflowOnlineUsersMap, setWorkflowOnlineUsersMap] = useState<Record<string, WorkflowOnlineUser[]>>({})
   const setKeywords = useCallback((keywords: string) => {
     setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
@@ -183,6 +186,44 @@ const List: FC<Props> = ({
   }, [isCreatedByMe, setQuery])
 
   const pages = data?.pages ?? []
+  const workflowIds = useMemo(() => {
+    const ids = new Set<string>()
+    pages.forEach((page) => {
+      page.data?.forEach((app) => {
+        const workflowId = app.workflow?.id
+        if (workflowId)
+          ids.add(workflowId)
+      })
+    })
+    return Array.from(ids)
+  }, [pages])
+
+  const refreshWorkflowOnlineUsers = useCallback(async () => {
+    if (!workflowIds.length)
+      return
+
+    try {
+      const onlineUsersMap = await fetchWorkflowOnlineUsers({ workflowIds })
+      setWorkflowOnlineUsersMap(onlineUsersMap)
+    }
+    catch {
+      setWorkflowOnlineUsersMap({})
+    }
+  }, [workflowIds])
+
+  useEffect(() => {
+    void refreshWorkflowOnlineUsers()
+  }, [refreshWorkflowOnlineUsers])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void refetch()
+      void refreshWorkflowOnlineUsers()
+    }, 10000)
+
+    return () => window.clearInterval(timer)
+  }, [refetch, refreshWorkflowOnlineUsers])
+
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   // Show skeleton during initial load or when refetching with no previous data
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
@@ -242,7 +283,12 @@ const List: FC<Props> = ({
 
             if (hasAnyApp) {
               return pages.flatMap(({ data: apps }) => apps).map(app => (
-                <AppCard key={app.id} app={app} onRefresh={refetch} />
+                <AppCard
+                  key={app.id}
+                  app={app}
+                  onlineUsers={app.workflow?.id ? (workflowOnlineUsersMap[app.workflow.id] ?? []) : []}
+                  onRefresh={refetch}
+                />
               ))
             }
 
