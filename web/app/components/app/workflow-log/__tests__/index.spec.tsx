@@ -34,6 +34,12 @@ import Logs from '../index'
 
 vi.mock('@/service/use-log')
 
+let mockSearchParams = new URLSearchParams()
+const mockReplace = vi.fn((href: string) => {
+  const queryString = href.split('?')[1] || ''
+  mockSearchParams = new URLSearchParams(queryString)
+})
+
 vi.mock('ahooks', () => ({
   useDebounce: <T,>(value: T) => value,
   useDebounceFn: (fn: (value: string) => void) => ({ run: fn }),
@@ -50,6 +56,12 @@ vi.mock('ahooks', () => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
+    replace: mockReplace,
+  }),
+  usePathname: () => '/app/test-app-id/logs',
+  useSearchParams: () => ({
+    get: (key: string) => mockSearchParams.get(key),
+    toString: () => mockSearchParams.toString(),
   }),
 }))
 
@@ -253,6 +265,7 @@ describe('Logs Container', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSearchParams = new URLSearchParams()
   })
 
   // --------------------------------------------------------------------------
@@ -422,6 +435,23 @@ describe('Logs Container', () => {
       const callArg = getMockCallParams()
       expect(callArg?.params).not.toHaveProperty('status')
     })
+
+    it('should initialize keyword from workflow_run_id query param', () => {
+      mockSearchParams = new URLSearchParams('workflow_run_id=run-123')
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      const callArg = getMockCallParams()
+      expect(callArg?.params).toMatchObject({
+        keyword: 'run-123',
+      })
+      expect(screen.getByDisplayValue('run-123')).toBeInTheDocument()
+    })
   })
 
   // --------------------------------------------------------------------------
@@ -497,6 +527,28 @@ describe('Logs Container', () => {
           keyword: 'test-keyword',
         })
       })
+      expect(mockReplace).toHaveBeenLastCalledWith('/app/test-app-id/logs?workflow_run_id=test-keyword', { scroll: false })
+    })
+
+    it('should remove workflow_run_id and reset page when keyword is cleared', async () => {
+      const user = userEvent.setup()
+      mockSearchParams = new URLSearchParams('workflow_run_id=run-123&page=3')
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      await user.clear(searchInput)
+
+      await waitFor(() => {
+        const lastCall = getMockCallParams()
+        expect(lastCall?.params).not.toHaveProperty('keyword')
+      })
+      expect(mockReplace).toHaveBeenLastCalledWith('/app/test-app-id/logs', { scroll: false })
     })
   })
 
