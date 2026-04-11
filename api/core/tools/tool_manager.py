@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from graphon.runtime import VariablePool
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from typing_extensions import TypedDict
 from yarl import URL
 
@@ -240,7 +240,7 @@ class ToolManager:
                             raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
 
                     if builtin_provider is None:
-                        with Session(db.engine) as session:
+                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                             builtin_provider = session.scalar(
                                 sa.select(BuiltinToolProvider)
                                 .where(
@@ -347,7 +347,7 @@ class ToolManager:
                 workflow_provider_stmt = select(WorkflowToolProvider).where(
                     WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
                 )
-                with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                     workflow_provider = session.scalar(workflow_provider_stmt)
 
                 if workflow_provider is None:
