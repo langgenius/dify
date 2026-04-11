@@ -141,8 +141,6 @@ const createComment = (): WorkflowCommentDetail => ({
       avatar_url: 'alice.png',
     },
     created_at: 2,
-    updated_at: 2,
-    mentions: [],
   }],
 })
 

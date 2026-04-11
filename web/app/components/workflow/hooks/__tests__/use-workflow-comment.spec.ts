@@ -285,7 +285,7 @@ describe('useWorkflowComment', () => {
       position_x: 50,
       position_y: 80,
     }
-    mockGetNodes.mockReturnValue([{ id: 'node-1', data: { selected: true } }])
+    mockGetNodes.mockReturnValue([{ id: 'node-1', data: { selected: true } }] as never)
     mockFetchWorkflowComment.mockResolvedValue({
       ...baseCommentDetail(),
       id: commentB.id,

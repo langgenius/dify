@@ -579,6 +579,7 @@ describe('useNodesInteractions', () => {
       result.current.handleNodeDrag(
         { stopPropagation: vi.fn() } as never,
         currentNodes[0] as Node,
+        currentNodes as Node[],
       )
       result.current.handleNodeSelect('drag-node-2')
       result.current.handleNodeConnect({

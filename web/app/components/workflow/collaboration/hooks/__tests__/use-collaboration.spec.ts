@@ -38,9 +38,9 @@ vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
     connect: (...args: unknown[]) => mockConnect(...args),
     disconnect: (...args: unknown[]) => mockDisconnect(...args),
-    isConnected: (...args: unknown[]) => mockIsConnected(...args),
+    isConnected: () => mockIsConnected(),
     emitCursorMove: (...args: unknown[]) => mockEmitCursorMove(...args),
-    getLeaderId: (...args: unknown[]) => mockGetLeaderId(...args),
+    getLeaderId: () => mockGetLeaderId(),
     onStateChange: (callback: (state: { isConnected?: boolean, disconnectReason?: string, error?: string }) => void) => {
       onStateChangeCallback = callback
       return unsubscribeState
@@ -99,7 +99,7 @@ describe('useCollaboration', () => {
     })
 
     onStateChangeCallback?.({ isConnected: true })
-    onUsersCallback?.([{ user_id: 'u1', user_name: 'U1', avatar_url: '', sid: 'sid-1' } as OnlineUser])
+    onUsersCallback?.([{ user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' } as OnlineUser])
     onCursorCallback?.({ u1: { x: 10, y: 20, userId: 'u1', timestamp: 1 } })
     onPresenceCallback?.({ nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } } })
     onLeaderCallback?.(true)

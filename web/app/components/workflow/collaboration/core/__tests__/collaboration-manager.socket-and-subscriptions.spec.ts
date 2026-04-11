@@ -25,6 +25,14 @@ type LoroSubscribeEvent = {
   by?: string
 }
 
+type UndoManagerLike = {
+  canUndo: () => boolean
+  canRedo: () => boolean
+  undo: () => boolean
+  redo: () => boolean
+  clear: () => void
+}
+
 type MockSocket = {
   id: string
   connected: boolean
@@ -38,12 +46,14 @@ type CollaborationManagerInternals = {
   doc: LoroDoc | null
   nodesMap: LoroMap | null
   edgesMap: LoroMap | null
+  undoManager: UndoManagerLike | null
   activeConnections: Set<string>
   currentAppId: string | null
   reactFlowStore: ReactFlowStore | null
   eventEmitter: {
     emit: (event: string, ...args: unknown[]) => void
   }
+  isUndoRedoInProgress: boolean
   isLeader: boolean
   leaderId: string | null
   pendingInitialSync: boolean
@@ -444,11 +454,11 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     let reactFlowNodes: Node[] = [{
       ...initialNode,
-      data: {
+      data: ({
         ...initialNode.data,
         selected: true,
         _localMeta: 'keep-me',
-      },
+      } as Node['data'] & Record<string, unknown>),
     }]
     let reactFlowEdges: Edge[] = [edge]
     const setNodesSpy = vi.fn((nodes: Node[]) => {
@@ -466,8 +476,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
       }),
     }
 
-    let nodesSubscribeHandler: ((event: LoroSubscribeEvent) => void) | null = null
-    let edgesSubscribeHandler: ((event: LoroSubscribeEvent) => void) | null = null
+    let nodesSubscribeHandler: (event: LoroSubscribeEvent) => void = () => {}
+    let edgesSubscribeHandler: (event: LoroSubscribeEvent) => void = () => {}
     vi.spyOn(internals.nodesMap as object as { subscribe: (handler: (event: LoroSubscribeEvent) => void) => void }, 'subscribe')
       .mockImplementation((handler: (event: LoroSubscribeEvent) => void) => {
         nodesSubscribeHandler = handler
@@ -477,20 +487,23 @@ describe('CollaborationManager socket and subscription behavior', () => {
         edgesSubscribeHandler = handler
       })
 
-    let importedGraph: { nodes: Node[], edges: Edge[] } | null = null
+    const importedGraphs: Array<{ nodes: Node[], edges: Edge[] }> = []
     manager.onGraphImport((payload) => {
-      importedGraph = payload
+      importedGraphs.push(payload)
     })
 
     internals.setupSubscriptions()
-    nodesSubscribeHandler?.({ by: 'local' })
-    nodesSubscribeHandler?.({ by: 'import' })
-    edgesSubscribeHandler?.({ by: 'import' })
+    nodesSubscribeHandler({ by: 'local' })
+    nodesSubscribeHandler({ by: 'import' })
+    edgesSubscribeHandler({ by: 'import' })
 
     expect(setNodesSpy).toHaveBeenCalled()
     expect(setEdgesSpy).toHaveBeenCalled()
-    expect(importedGraph).not.toBeNull()
-    expect(importedGraph?.nodes[0]?.data).toMatchObject({
+    expect(importedGraphs.length).toBeGreaterThan(0)
+    const importedGraph = importedGraphs.at(-1)
+    if (!importedGraph)
+      throw new Error('imported graph should exist')
+    expect(importedGraph.nodes[0]?.data).toMatchObject({
       title: 'RemoteTitle',
       selected: true,
       _localMeta: 'keep-me',
@@ -501,7 +514,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(internals.pendingGraphImportEmit).toBe(true)
 
     internals.reactFlowStore = null
-    nodesSubscribeHandler?.({ by: 'import' })
+    nodesSubscribeHandler({ by: 'import' })
 
     rafSpy.mockRestore()
   })
@@ -944,8 +957,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
     }
     internals.reactFlowStore = reactFlowStore
 
-    let nodesHandler: ((event: LoroSubscribeEvent) => void) | null = null
-    let edgesHandler: ((event: LoroSubscribeEvent) => void) | null = null
+    let nodesHandler: (event: LoroSubscribeEvent) => void = () => {}
+    let edgesHandler: (event: LoroSubscribeEvent) => void = () => {}
     vi.spyOn(internals.nodesMap as object as { subscribe: (handler: (event: LoroSubscribeEvent) => void) => void }, 'subscribe')
       .mockImplementation((handler: (event: LoroSubscribeEvent) => void) => {
         nodesHandler = handler
@@ -957,13 +970,13 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     internals.setupSubscriptions()
     internals.isUndoRedoInProgress = true
-    nodesHandler?.({ by: 'import' })
-    edgesHandler?.({ by: 'import' })
+    nodesHandler({ by: 'import' })
+    edgesHandler({ by: 'import' })
 
     internals.isUndoRedoInProgress = false
-    edgesHandler?.({ by: 'local' })
+    edgesHandler({ by: 'local' })
     internals.reactFlowStore = null
-    edgesHandler?.({ by: 'import' })
+    edgesHandler({ by: 'import' })
   })
 
   it('covers missing-doc guards and unauthorized rejoin early returns', () => {

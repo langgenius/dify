@@ -1,6 +1,8 @@
 import type { RestoreIntentData, RestoreRequestData } from '../../collaboration/types/collaboration'
 import type { SyncDraftCallback } from '../../hooks-store/store'
+import type { Edge, Node } from '../../types'
 import { act, renderHook } from '@testing-library/react'
+import { ChatVarType } from '../../panel/chat-variable-panel/type'
 import { useLeaderRestore, useLeaderRestoreListener } from '../use-leader-restore'
 
 const mockSetViewport = vi.hoisted(() => vi.fn())
@@ -19,8 +21,8 @@ const mockGetIsLeader = vi.hoisted(() => vi.fn())
 const mockSetNodes = vi.hoisted(() => vi.fn())
 const mockSetEdges = vi.hoisted(() => vi.fn())
 const mockRefreshGraphSynchronously = vi.hoisted(() => vi.fn())
-const mockGetNodes = vi.hoisted(() => vi.fn(() => [{ id: 'old-node' }]))
-const mockGetEdges = vi.hoisted(() => vi.fn(() => [{ id: 'old-edge' }]))
+const mockGetNodes = vi.hoisted(() => vi.fn(() => [{ id: 'old-node' } as unknown as Node]))
+const mockGetEdges = vi.hoisted(() => vi.fn(() => [{ id: 'old-edge' } as unknown as Edge]))
 
 let restoreCompleteCallback: ((data: { versionId: string, success: boolean }) => void) | null = null
 let restoreRequestCallback: ((data: RestoreRequestData) => void) | null = null
@@ -101,8 +103,8 @@ vi.mock('../../collaboration/core/collaboration-manager', () => ({
     setNodes: (...args: unknown[]) => mockSetNodes(...args),
     setEdges: (...args: unknown[]) => mockSetEdges(...args),
     refreshGraphSynchronously: (...args: unknown[]) => mockRefreshGraphSynchronously(...args),
-    getNodes: (...args: unknown[]) => mockGetNodes(...args),
-    getEdges: (...args: unknown[]) => mockGetEdges(...args),
+    getNodes: () => mockGetNodes(),
+    getEdges: () => mockGetEdges(),
     onRestoreComplete: (callback: (data: { versionId: string, success: boolean }) => void) => {
       restoreCompleteCallback = callback
       return unsubscribeRestoreComplete
@@ -124,12 +126,12 @@ describe('useLeaderRestore', () => {
     versionName: 'Version One',
     initiatorUserId: 'u-1',
     initiatorName: 'Alice',
-    features: { a: true },
-    environmentVariables: [{ id: 'env-1', name: 'A', value: '1', value_type: 'string', description: '' }],
-    conversationVariables: [{ id: 'conv-1', name: 'B', value: '2', value_type: 'string', description: '' }],
+    features: { moreLikeThis: { enabled: true } },
+    environmentVariables: [{ id: 'env-1', name: 'A', value: '1', value_type: ChatVarType.String, description: '' }],
+    conversationVariables: [{ id: 'conv-1', name: 'B', value: '2', value_type: ChatVarType.String, description: '' }],
     graphData: {
-      nodes: [{ id: 'new-node' }],
-      edges: [{ id: 'new-edge' }],
+      nodes: [{ id: 'new-node' } as unknown as Node],
+      edges: [{ id: 'new-edge' } as unknown as Edge],
       viewport: { x: 1, y: 2, zoom: 0.5 },
     },
   }
@@ -163,7 +165,7 @@ describe('useLeaderRestore', () => {
       versionId: 'v-1',
       initiatorName: 'Alice',
     }))
-    expect(mockSetFeatures).toHaveBeenCalledWith({ a: true })
+    expect(mockSetFeatures).toHaveBeenCalledWith({ moreLikeThis: { enabled: true } })
     expect(mockSetEnvironmentVariables).toHaveBeenCalled()
     expect(mockSetConversationVariables).toHaveBeenCalled()
     expect(mockSetNodes).toHaveBeenCalledWith([{ id: 'old-node' }], [{ id: 'new-node' }], 'leader-restore:apply-graph')
@@ -244,6 +246,7 @@ describe('useLeaderRestoreListener', () => {
       restoreIntentCallback?.({
         versionId: 'v-3',
         versionName: 'Version Three',
+        initiatorUserId: 'u-3',
         initiatorName: 'Carol',
       })
     })

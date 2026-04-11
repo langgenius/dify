@@ -116,17 +116,20 @@ describe('CollaborationManager logs and event helpers', () => {
       }),
     }
 
-    let payload: { nodes: Node[], edges: Edge[] } | null = null
+    const graphPayloads: Array<{ nodes: Node[], edges: Edge[] }> = []
     manager.onGraphImport((graph) => {
-      payload = graph
+      graphPayloads.push(graph)
     })
 
     manager.refreshGraphSynchronously()
 
-    expect(payload).not.toBeNull()
-    expect(payload?.nodes).toHaveLength(1)
-    expect(payload?.edges).toHaveLength(1)
-    expect(payload?.nodes[0]?.data.selected).toBe(true)
+    expect(graphPayloads).toHaveLength(1)
+    const payload = graphPayloads[0]
+    if (!payload)
+      throw new Error('graph import payload should exist')
+    expect(payload.nodes).toHaveLength(1)
+    expect(payload.edges).toHaveLength(1)
+    expect(payload.nodes[0]?.data.selected).toBe(true)
   })
 
   it('clearGraphImportLog clears logs and pending import snapshot', () => {
