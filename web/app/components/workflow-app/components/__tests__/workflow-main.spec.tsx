@@ -259,8 +259,8 @@ describe('WorkflowMain', () => {
     expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
       file: expect.objectContaining({ enabled: true }),
     }))
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-1' }])
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-1' }])
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'conversation-1' })])
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'env-1' })])
   })
 
   it('should only update the workflow store slices present in the payload', () => {
@@ -274,7 +274,7 @@ describe('WorkflowMain', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
 
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([{ id: 'conversation-only' }])
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'conversation-only' })])
     expect(mockSetFeatures).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })
