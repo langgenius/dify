@@ -678,11 +678,14 @@ class TestWorkflowPauseIntegration:
         assert len(pruned_ids) == 3
 
         # Verify only 3 were deleted
-        remaining_count = self.session.scalar(
-            select(func.count(WorkflowPauseModel.id)).where(
-                WorkflowPauseModel.id.in_([pe.id for pe in pause_entities])
+        remaining_count = (
+            self.session.scalar(
+                select(func.count(WorkflowPauseModel.id)).where(
+                    WorkflowPauseModel.id.in_([pe.id for pe in pause_entities])
+                )
             )
-        ) or 0
+            or 0
+        )
         assert remaining_count == 2
 
     # ==================== Multi-tenant Isolation Tests ====================

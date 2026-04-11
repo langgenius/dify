@@ -558,9 +558,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
 
         pause_states = self.session.scalars(
-            select(WorkflowPauseModel).where(
-                WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id
-            )
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
         ).all()
         assert len(pause_states) == 0
 
