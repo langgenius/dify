@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from graphon.runtime import VariablePool
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 from yarl import URL
 

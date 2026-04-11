@@ -4912,7 +4912,7 @@ class TestInternalHooksCoverage:
         mock_factory.begin.return_value = begin_cm
 
         sessionmaker_ctx = MagicMock()
-        sessionmaker_ctx.begin.return_value = session_ctx
+        sessionmaker_ctx.begin.return_value = begin_cm
 
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),

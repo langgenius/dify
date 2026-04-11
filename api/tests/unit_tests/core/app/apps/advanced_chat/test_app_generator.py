@@ -865,6 +865,12 @@ class TestAdvancedChatAppGeneratorInternals:
                 def __exit__(self, exc_type, exc, tb):
                     return False
 
+            def _sessionmaker_factory(*args, **kwargs):
+                factory = MagicMock()
+                factory.begin.return_value.__enter__ = MagicMock(return_value=_Session())
+                factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                return factory
+
             monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
             monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.sessionmaker", _sessionmaker_factory)
             monkeypatch.setattr(
