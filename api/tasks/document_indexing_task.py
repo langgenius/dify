@@ -5,7 +5,6 @@ from typing import Any, Protocol
 
 import click
 from celery import current_app, shared_task
-
 from sqlalchemy import select
 
 from configs import dify_config
