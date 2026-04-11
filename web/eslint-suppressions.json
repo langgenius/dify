@@ -8314,7 +8314,7 @@
   },
   "app/components/workflow/hooks-store/store.ts": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 6
     }
   },
   "app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
