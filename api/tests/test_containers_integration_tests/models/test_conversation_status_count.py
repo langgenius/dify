@@ -12,7 +12,7 @@ import pytest
 from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, Message, Site
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
@@ -54,7 +54,7 @@ class TestConversationStatusCount:
             system_instruction="",
             system_instruction_tokens=0,
             status="normal",
-            invoke_from="web_app",
+            invoke_from=InvokeFrom.WEB_APP,
             from_source=ConversationFromSource.API,
             dialogue_count=0,
             is_deleted=False,
@@ -103,16 +103,18 @@ class TestConversationStatusCount:
             app_id=app.id,
             conversation_id=conversation.id,
             query="Test query",
-            message=[],
+            message={"role": "user", "content": "Test query"},
             answer="Test answer",
             model_provider="openai",
             model_id="gpt-4",
             message_tokens=10,
+            message_unit_price=0,
             answer_tokens=10,
+            answer_unit_price=0,
             total_price=0,
             currency="USD",
-            from_source="api",
-            invoke_from="web_app",
+            from_source=ConversationFromSource.API,
+            invoke_from=InvokeFrom.WEB_APP,
             workflow_run_id=workflow_run_id,
         )
         db_session.add(message)
@@ -308,3 +310,4 @@ class TestSiteGenerateCode:
 
         assert isinstance(code, str)
         assert len(code) == 8
+        assert code != site.code
