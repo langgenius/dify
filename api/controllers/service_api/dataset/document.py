@@ -527,7 +527,7 @@ class DocumentListApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+        query = select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == tenant_id)
 
         if query_params.status:
             query = DocumentService.apply_display_status_filter(query, query_params.status)

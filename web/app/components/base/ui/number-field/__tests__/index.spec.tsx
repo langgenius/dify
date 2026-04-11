@@ -172,13 +172,13 @@ describe('NumberField wrapper', () => {
 
   // Increment and decrement buttons should preserve accessible naming, icon fallbacks, and spacing variants.
   describe('Control buttons', () => {
-    it('should provide localized aria labels and default icons when labels are not provided', () => {
+    it('should provide english fallback aria labels and default icons when labels are not provided', () => {
       renderNumberField({
         controlsProps: {},
       })
 
-      const increment = screen.getByRole('button', { name: 'common.operation.increment' })
-      const decrement = screen.getByRole('button', { name: 'common.operation.decrement' })
+      const increment = screen.getByRole('button', { name: 'Increment value' })
+      const decrement = screen.getByRole('button', { name: 'Decrement value' })
 
       expect(increment.querySelector('.i-ri-arrow-up-s-line')).toBeInTheDocument()
       expect(decrement.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
@@ -217,11 +217,11 @@ describe('NumberField wrapper', () => {
         },
       })
 
-      expect(screen.getByRole('button', { name: 'common.operation.increment' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.decrement' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Increment value' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Decrement value' })).toBeInTheDocument()
     })
 
-    it('should rely on aria-labelledby when provided instead of injecting a translated aria-label', () => {
+    it('should rely on aria-labelledby when provided instead of injecting a fallback aria-label', () => {
       render(
         <>
           <span id="increment-label">Increment from label</span>
