@@ -525,9 +525,16 @@ def register_client(
     else:
         registration_url = urljoin(server_url, "/register")
 
+    # Per RFC 7591 §2, optional client metadata fields that are not provided
+    # should be omitted from the registration request rather than sent as
+    # explicit JSON `null`. `OAuthClientMetadata` has several optional fields
+    # (`scope`, `client_uri`, `grant_types`, etc.) that default to `None`;
+    # without `exclude_none=True`, Pydantic serializes them as `null` and
+    # registration servers that strictly validate field types (e.g. GitLab
+    # MCP) respond with HTTP 400 `invalid_client_metadata`. See #34857.
     response = ssrf_proxy.post(
         registration_url,
-        json=client_metadata.model_dump(),
+        json=client_metadata.model_dump(exclude_none=True),
         headers={"Content-Type": "application/json"},
     )
     if not response.is_success:

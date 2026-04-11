@@ -496,9 +496,44 @@ class TestAuthorizationFlow:
         # Verify request
         mock_post.assert_called_once_with(
             "https://auth.example.com/register",
-            json=client_metadata.model_dump(),
+            json=client_metadata.model_dump(exclude_none=True),
             headers={"Content-Type": "application/json"},
         )
+
+    @patch("core.helper.ssrf_proxy.post")
+    def test_register_client_omits_none_fields(self, mock_post):
+        """Unset optional metadata fields must not be sent as JSON null.
+
+        Regression test for #34857: registration servers that strictly
+        validate the request body (e.g. GitLab MCP) reject `null` values
+        where a string is expected. Per RFC 7591 §2, optional fields that
+        are not provided should be absent from the request body.
+        """
+        mock_response = Mock()
+        mock_response.is_success = True
+        mock_response.json.return_value = {
+            "client_id": "new-client-id",
+            "client_name": "Dify",
+            "redirect_uris": ["https://redirect.example.com"],
+        }
+        mock_post.return_value = mock_response
+
+        # Only populate the two required fields; everything else defaults to None.
+        client_metadata = OAuthClientMetadata(
+            client_name="Dify",
+            redirect_uris=["https://redirect.example.com"],
+        )
+
+        register_client("https://api.example.com", None, client_metadata)
+
+        sent_json = mock_post.call_args.kwargs["json"]
+        assert sent_json == {
+            "client_name": "Dify",
+            "redirect_uris": ["https://redirect.example.com"],
+        }
+        # Explicitly guard against null leakage in any optional field.
+        for key in ("scope", "client_uri", "grant_types", "response_types", "token_endpoint_auth_method"):
+            assert key not in sent_json
 
     def test_register_client_no_endpoint(self):
         """Test client registration when no endpoint available."""
