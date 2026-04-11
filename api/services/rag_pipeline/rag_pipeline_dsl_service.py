@@ -314,6 +314,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -450,6 +451,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:

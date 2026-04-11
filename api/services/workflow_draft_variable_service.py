@@ -253,7 +253,7 @@ class WorkflowDraftVariableService:
         # Alternatively, a `SELECT` statement could be constructed for each selector and
         # combined using `UNION` to fetch all rows.
         # Benchmarking indicates that both approaches yield comparable performance.
-        return self._session.scalars(
+        return list(self._session.scalars(
             select(WorkflowDraftVariable)
             .options(
                 orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
@@ -265,7 +265,7 @@ class WorkflowDraftVariableService:
                 WorkflowDraftVariable.user_id == user_id,
                 or_(*ors),
             )
-        ).all()
+        ))
 
     def list_variables_without_values(
         self, app_id: str, page: int, limit: int, user_id: str
@@ -280,7 +280,7 @@ class WorkflowDraftVariableService:
             from sqlalchemy import func as sa_func
 
             total = self._session.scalar(select(sa_func.count()).select_from(base_stmt.subquery()))
-        variables = self._session.scalars(
+        variables = list(self._session.scalars(
             # Do not load the `value` field
             base_stmt.options(
                 orm.defer(WorkflowDraftVariable.value, raiseload=True),
@@ -288,7 +288,7 @@ class WorkflowDraftVariableService:
             .order_by(WorkflowDraftVariable.created_at.desc())
             .limit(limit)
             .offset((page - 1) * limit)
-        ).all()
+        ))
 
         return WorkflowDraftVariableList(variables=variables, total=total)
 
@@ -298,12 +298,12 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.node_id == node_id,
             WorkflowDraftVariable.user_id == user_id,
         ]
-        variables = self._session.scalars(
+        variables = list(self._session.scalars(
             select(WorkflowDraftVariable)
             .options(orm.selectinload(WorkflowDraftVariable.variable_file))
             .where(*criteria)
             .order_by(WorkflowDraftVariable.created_at.desc())
-        ).all()
+        ))
         return WorkflowDraftVariableList(variables=variables)
 
     def list_node_variables(self, app_id: str, node_id: str, user_id: str) -> WorkflowDraftVariableList:
