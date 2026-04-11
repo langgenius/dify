@@ -39,6 +39,63 @@ class TestWorkflowCommentService:
         with pytest.raises(ValueError):
             WorkflowCommentService._validate_content("a" * 1001)
 
+    def test_filter_valid_mentioned_user_ids_deduplicates_and_preserves_order(self) -> None:
+        result = WorkflowCommentService._filter_valid_mentioned_user_ids(
+            [
+                "123e4567-e89b-12d3-a456-426614174000",
+                "",
+                123,  # type: ignore[list-item]
+                "123e4567-e89b-12d3-a456-426614174000",
+                "123e4567-e89b-12d3-a456-426614174001",
+            ]
+        )
+
+        assert result == [
+            "123e4567-e89b-12d3-a456-426614174000",
+            "123e4567-e89b-12d3-a456-426614174001",
+        ]
+
+    def test_format_comment_excerpt_handles_short_and_long_limits(self) -> None:
+        assert WorkflowCommentService._format_comment_excerpt("  hello  ", max_length=10) == "hello"
+        assert WorkflowCommentService._format_comment_excerpt("abcdefghijk", max_length=3) == "abc"
+        assert WorkflowCommentService._format_comment_excerpt("  abcdefghijk  ", max_length=8) == "abcde..."
+
+    def test_build_mention_email_payloads_returns_empty_for_no_candidates(self, mock_session: Mock) -> None:
+        assert (
+            WorkflowCommentService._build_mention_email_payloads(
+                session=mock_session,
+                tenant_id="tenant-1",
+                app_id="app-1",
+                mentioner_id="user-1",
+                mentioned_user_ids=[],
+                content="hello",
+            )
+            == []
+        )
+        assert (
+            WorkflowCommentService._build_mention_email_payloads(
+                session=mock_session,
+                tenant_id="tenant-1",
+                app_id="app-1",
+                mentioner_id="user-1",
+                mentioned_user_ids=["user-1"],
+                content="hello",
+            )
+            == []
+        )
+
+    def test_dispatch_mention_emails_enqueues_each_payload(self) -> None:
+        delay_mock = Mock()
+        with patch.object(service_module.send_workflow_comment_mention_email_task, "delay", delay_mock):
+            WorkflowCommentService._dispatch_mention_emails(
+                [
+                    {"to": "a@example.com"},
+                    {"to": "b@example.com"},
+                ]
+            )
+
+        assert delay_mock.call_count == 2
+
     def test_build_mention_email_payloads_skips_accounts_without_email(self, mock_session: Mock) -> None:
         account_without_email = Mock()
         account_without_email.email = None
@@ -181,6 +238,72 @@ class TestWorkflowCommentService:
         assert build_payloads_mock.call_args.kwargs["mentioned_user_ids"] == ["user-3"]
         dispatch_mock.assert_called_once_with([])
 
+    def test_get_comments_preloads_related_accounts(self, mock_session: Mock) -> None:
+        comment = Mock()
+        comment.created_by = "user-1"
+        comment.resolved_by = "user-2"
+        reply = Mock()
+        reply.created_by = "user-3"
+        mention = Mock()
+        mention.mentioned_user_id = "user-4"
+        comment.replies = [reply]
+        comment.mentions = [mention]
+        comment.cache_created_by_account = Mock()
+        comment.cache_resolved_by_account = Mock()
+        reply.cache_created_by_account = Mock()
+        mention.cache_mentioned_user_account = Mock()
+
+        account_1 = Mock()
+        account_1.id = "user-1"
+        account_2 = Mock()
+        account_2.id = "user-2"
+        account_3 = Mock()
+        account_3.id = "user-3"
+        account_4 = Mock()
+        account_4.id = "user-4"
+
+        mock_session.scalars.side_effect = [
+            _mock_scalars([comment]),
+            _mock_scalars([account_1, account_2, account_3, account_4]),
+        ]
+
+        result = WorkflowCommentService.get_comments("tenant-1", "app-1")
+
+        assert result == [comment]
+        comment.cache_created_by_account.assert_called_once_with(account_1)
+        comment.cache_resolved_by_account.assert_called_once_with(account_2)
+        reply.cache_created_by_account.assert_called_once_with(account_3)
+        mention.cache_mentioned_user_account.assert_called_once_with(account_4)
+
+    def test_preload_accounts_returns_early_for_empty_comments(self, mock_session: Mock) -> None:
+        WorkflowCommentService._preload_accounts(mock_session, [])
+
+        mock_session.scalars.assert_not_called()
+
+    def test_get_comment_raises_not_found_with_provided_session(self) -> None:
+        session = Mock()
+        session.scalar.return_value = None
+
+        with pytest.raises(NotFound):
+            WorkflowCommentService.get_comment("tenant-1", "app-1", "comment-1", session=session)
+
+    def test_get_comment_uses_context_manager_when_session_not_provided(self, mock_session: Mock) -> None:
+        comment = Mock()
+        comment.created_by = "user-1"
+        comment.resolved_by = None
+        comment.replies = []
+        comment.mentions = []
+        comment.cache_created_by_account = Mock()
+        comment.cache_resolved_by_account = Mock()
+        mock_session.scalar.return_value = comment
+        mock_session.scalars.return_value = _mock_scalars([])
+
+        result = WorkflowCommentService.get_comment("tenant-1", "app-1", "comment-1")
+
+        assert result is comment
+        comment.cache_created_by_account.assert_called_once()
+        comment.cache_resolved_by_account.assert_called_once_with(None)
+
     def test_delete_comment_raises_forbidden(self, mock_session: Mock) -> None:
         comment = Mock()
         comment.created_by = "owner"
@@ -296,6 +419,29 @@ class TestWorkflowCommentService:
         mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once_with(reply)
 
+    def test_update_comment_updates_position_coordinates_when_provided(self, mock_session: Mock) -> None:
+        comment = Mock()
+        comment.id = "comment-1"
+        comment.created_by = "owner"
+        comment.position_x = 1.0
+        comment.position_y = 2.0
+        mock_session.scalar.return_value = comment
+        mock_session.scalars.return_value = _mock_scalars([])
+
+        WorkflowCommentService.update_comment(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            comment_id="comment-1",
+            user_id="owner",
+            content="updated",
+            position_x=10.5,
+            position_y=20.5,
+            mentioned_user_ids=[],
+        )
+
+        assert comment.position_x == 10.5
+        assert comment.position_y == 20.5
+
     def test_delete_reply_raises_forbidden(self, mock_session: Mock) -> None:
         reply = Mock()
         reply.created_by = "owner"
@@ -303,6 +449,12 @@ class TestWorkflowCommentService:
 
         with pytest.raises(Forbidden):
             WorkflowCommentService.delete_reply("reply-1", "intruder")
+
+    def test_delete_reply_raises_not_found(self, mock_session: Mock) -> None:
+        mock_session.get.return_value = None
+
+        with pytest.raises(NotFound):
+            WorkflowCommentService.delete_reply("reply-1", "owner")
 
     def test_delete_reply_removes_mentions(self, mock_session: Mock) -> None:
         reply = Mock()
@@ -314,3 +466,11 @@ class TestWorkflowCommentService:
 
         assert mock_session.delete.call_count == 3
         mock_session.commit.assert_called_once()
+
+    def test_validate_comment_access_delegates_to_get_comment(self) -> None:
+        comment = Mock()
+        with patch.object(WorkflowCommentService, "get_comment", return_value=comment) as get_comment_mock:
+            result = WorkflowCommentService.validate_comment_access("comment-1", "tenant-1", "app-1")
+
+        assert result is comment
+        get_comment_mock.assert_called_once_with("tenant-1", "app-1", "comment-1")
