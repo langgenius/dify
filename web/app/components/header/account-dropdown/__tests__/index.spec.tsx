@@ -85,10 +85,6 @@ vi.mock('@/config', () => ({
   get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
   get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
   get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
-  API_PREFIX: 'http://localhost:5001/console/api',
-  APP_VERSION: '1.0.0',
-  IS_MARKETPLACE: false,
-  MARKETPLACE_API_PREFIX: 'http://localhost:5001/marketplace/api',
   IS_DEV: false,
   IS_CE_EDITION: false,
 }))
