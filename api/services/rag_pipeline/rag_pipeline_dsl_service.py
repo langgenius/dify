@@ -594,7 +594,8 @@ class RagPipelineDslService:
                 CheckDependenciesPendingData(pipeline_id=pipeline.id, dependencies=dependencies).model_dump_json(),
             )
         workflow = self._session.scalar(
-            select(Workflow).where(
+            select(Workflow)
+            .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
