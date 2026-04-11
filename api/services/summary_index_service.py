@@ -1305,13 +1305,15 @@ class SummaryIndexService:
         """
         # Get all segments for this document (excluding qa_model and re_segment)
         with session_factory.create_session() as session:
-            segment_ids = list(session.scalars(
-                select(DocumentSegment.id).where(
-                    DocumentSegment.document_id == document_id,
-                    DocumentSegment.status != "re_segment",
-                    DocumentSegment.tenant_id == tenant_id,
-                )
-            ).all())
+            segment_ids = list(
+                session.scalars(
+                    select(DocumentSegment.id).where(
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.status != "re_segment",
+                        DocumentSegment.tenant_id == tenant_id,
+                    )
+                ).all()
+            )
 
         if not segment_ids:
             return None
