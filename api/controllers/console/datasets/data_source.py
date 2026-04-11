@@ -228,7 +228,7 @@ class DataSourceNotionListApi(Resource):
                         Document.dataset_id == query.dataset_id,
                         Document.tenant_id == current_tenant_id,
                         Document.data_source_type == "notion_import",
-                        Document.enabled == True,
+                        Document.enabled.is_(True),
                     )
                 ).all()
                 if documents:
