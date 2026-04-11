@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
@@ -47,11 +46,13 @@ from models.model import AppMode
 
 def _make_sessionmaker_mock(session_obj):
     """Create a sessionmaker mock that returns session_obj from begin() context."""
+
     def _sessionmaker(*args, **kwargs):
         factory = MagicMock()
         factory.begin.return_value.__enter__ = MagicMock(return_value=session_obj)
         factory.begin.return_value.__exit__ = MagicMock(return_value=False)
         return factory
+
     return _sessionmaker
 
 
