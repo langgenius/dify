@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from typing import TYPE_CHECKING, cast
 
@@ -44,7 +43,5 @@ if __name__ == "__main__":
     from gevent import pywsgi
     from geventwebsocket.handler import WebSocketHandler  # type: ignore[reportMissingTypeStubs]
 
-    host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", 5001))
-    server = pywsgi.WSGIServer((host, port), socketio_app, handler_class=WebSocketHandler)
+    server = pywsgi.WSGIServer(("0.0.0.0", 5001), socketio_app, handler_class=WebSocketHandler)
     server.serve_forever()
