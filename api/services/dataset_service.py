@@ -1464,7 +1464,7 @@ class DocumentService:
                 .values(need_summary=need_summary)
                 .execution_options(synchronize_session=False)
             )
-            updated_count = result.rowcount
+            updated_count = result.rowcount  # type: ignore[union-attr]
             session.commit()
             logger.info(
                 "Updated need_summary to %s for %d documents in dataset %s",
