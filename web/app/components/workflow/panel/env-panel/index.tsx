@@ -35,23 +35,21 @@ const removeSecretFromMap = (secretMap: Record<string, string>, envId: string) =
   return nextSecretMap
 }
 
-const EnvPanel = () => {
-  const { t } = useTranslation()
-  const collaborativeWorkflow = useCollaborativeWorkflow()
-  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
-  const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
-  const envSecrets = useStore(s => s.envSecrets)
-  const updateEnvList = useStore(s => s.setEnvironmentVariables)
-  const setEnvSecrets = useStore(s => s.setEnvSecrets)
-  const appId = useStore(s => s.appId) as string
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
-  const [showVariableModal, setShowVariableModal] = useState(false)
-  const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
-
-  const [showRemoveVarConfirm, setShowRemoveVarConfirm] = useState(false)
-  const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
-
+const useEnvPanelActions = ({
+  collaborativeWorkflow,
+  appId,
+  envSecrets,
+  updateEnvList,
+  setEnvSecrets,
+  doSyncWorkflowDraft,
+}: {
+  collaborativeWorkflow: ReturnType<typeof useCollaborativeWorkflow>
+  appId: string
+  envSecrets: Record<string, string>
+  updateEnvList: (envList: EnvironmentVariable[]) => void
+  setEnvSecrets: (envSecrets: Record<string, string>) => void
+  doSyncWorkflowDraft: () => Promise<void>
+}) => {
   const emitVarsAndFeaturesUpdate = useCallback(async () => {
     try {
       const { webSocketClient } = await import('@/app/components/workflow/collaboration/core/websocket-manager')
@@ -66,38 +64,6 @@ const EnvPanel = () => {
       console.error('Failed to emit vars_and_features_update event:', error)
     }
   }, [appId])
-
-  const getAffectedNodes = useCallback((env: EnvironmentVariable) => {
-    const { nodes: allNodes } = collaborativeWorkflow.getState()
-    return findUsedVarNodes(
-      ['env', env.name],
-      allNodes,
-    )
-  }, [collaborativeWorkflow])
-
-  const removeUsedVarInNodes = useCallback((env: EnvironmentVariable) => {
-    const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const affectedNodes = getAffectedNodes(env)
-    const newNodes = nodes.map((node) => {
-      if (affectedNodes.find(n => n.id === node.id))
-        return updateNodeVars(node, ['env', env.name], [])
-
-      return node
-    })
-    setNodes(newNodes)
-  }, [collaborativeWorkflow, getAffectedNodes])
-
-  const renameUsedVarInNodes = useCallback((currentEnv: EnvironmentVariable, nextEnvName: string) => {
-    const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const affectedNodes = getAffectedNodes(currentEnv)
-    const newNodes = nodes.map((node) => {
-      if (affectedNodes.find(n => n.id === node.id))
-        return updateNodeVars(node, ['env', currentEnv.name], ['env', nextEnvName])
-
-      return node
-    })
-    setNodes(newNodes)
-  }, [collaborativeWorkflow, getAffectedNodes])
 
   const persistEnvironmentVariables = useCallback(async (nextEnvList: EnvironmentVariable[]) => {
     try {
@@ -115,6 +81,100 @@ const EnvPanel = () => {
     }
   }, [appId, emitVarsAndFeaturesUpdate])
 
+  const getAffectedNodes = useCallback((env: EnvironmentVariable) => {
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
+    return findUsedVarNodes(
+      ['env', env.name],
+      allNodes,
+    )
+  }, [collaborativeWorkflow])
+
+  const updateAffectedNodes = useCallback((currentEnv: EnvironmentVariable, nextSelector: string[]) => {
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+    const affectedNodes = getAffectedNodes(currentEnv)
+    const nextNodes = nodes.map((node) => {
+      if (affectedNodes.find(affectedNode => affectedNode.id === node.id))
+        return updateNodeVars(node, ['env', currentEnv.name], nextSelector)
+
+      return node
+    })
+    setNodes(nextNodes)
+  }, [collaborativeWorkflow, getAffectedNodes])
+
+  const syncEnvList = useCallback(async (
+    nextEnvList: EnvironmentVariable[],
+    options?: {
+      syncDraft?: boolean
+    },
+  ) => {
+    updateEnvList(nextEnvList)
+    const shouldSyncDraft = options?.syncDraft ?? true
+
+    let persisted = false
+    if (shouldSyncDraft) {
+      const syncDraftPromise = doSyncWorkflowDraft()
+      persisted = await persistEnvironmentVariables(nextEnvList)
+      await syncDraftPromise
+    }
+    else {
+      persisted = await persistEnvironmentVariables(nextEnvList)
+    }
+
+    updateEnvList(nextEnvList.map(sanitizeSecretValue))
+    return persisted
+  }, [doSyncWorkflowDraft, persistEnvironmentVariables, updateEnvList])
+
+  const saveSecretValue = useCallback((env: EnvironmentVariable) => {
+    setEnvSecrets({
+      ...envSecrets,
+      [env.id]: formatSecret(String(env.value)),
+    })
+  }, [envSecrets, setEnvSecrets])
+
+  const removeEnvSecret = useCallback((envId: string) => {
+    setEnvSecrets(removeSecretFromMap(envSecrets, envId))
+  }, [envSecrets, setEnvSecrets])
+
+  return {
+    getAffectedNodes,
+    updateAffectedNodes,
+    syncEnvList,
+    saveSecretValue,
+    removeEnvSecret,
+  }
+}
+
+const EnvPanel = () => {
+  const { t } = useTranslation()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
+  const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
+  const envSecrets = useStore(s => s.envSecrets)
+  const updateEnvList = useStore(s => s.setEnvironmentVariables)
+  const setEnvSecrets = useStore(s => s.setEnvSecrets)
+  const appId = useStore(s => s.appId) as string
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const {
+    getAffectedNodes,
+    updateAffectedNodes,
+    syncEnvList,
+    saveSecretValue,
+    removeEnvSecret,
+  } = useEnvPanelActions({
+    collaborativeWorkflow,
+    appId,
+    envSecrets,
+    updateEnvList,
+    setEnvSecrets,
+    doSyncWorkflowDraft,
+  })
+
+  const [showVariableModal, setShowVariableModal] = useState(false)
+  const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
+
+  const [showRemoveVarConfirm, setShowRemoveVarConfirm] = useState(false)
+  const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
+
   const handleEdit = (env: EnvironmentVariable) => {
     setCurrentVar(env)
     setShowVariableModal(true)
@@ -122,21 +182,13 @@ const EnvPanel = () => {
 
   const handleDelete = useCallback(async (env: EnvironmentVariable) => {
     const nextEnvList = envList.filter(e => e.id !== env.id)
-    const nextEnvSecrets = env.value_type === 'secret'
-      ? removeSecretFromMap(envSecrets, env.id)
-      : envSecrets
-
-    updateEnvList(nextEnvList)
-    setEnvSecrets(nextEnvSecrets)
     setCacheForDelete(undefined)
     setShowRemoveVarConfirm(false)
-    removeUsedVarInNodes(env)
-    const syncDraftPromise = doSyncWorkflowDraft()
-    await persistEnvironmentVariables(nextEnvList)
-    await syncDraftPromise
-
-    updateEnvList(nextEnvList.map(sanitizeSecretValue))
-  }, [doSyncWorkflowDraft, envList, envSecrets, persistEnvironmentVariables, removeUsedVarInNodes, setEnvSecrets, updateEnvList])
+    updateAffectedNodes(env, [])
+    if (env.value_type === 'secret')
+      removeEnvSecret(env.id)
+    await syncEnvList(nextEnvList)
+  }, [envList, removeEnvSecret, syncEnvList, updateAffectedNodes])
 
   const deleteCheck = useCallback((env: EnvironmentVariable) => {
     const affectedNodes = getAffectedNodes(env)
@@ -151,20 +203,10 @@ const EnvPanel = () => {
 
   const handleSave = useCallback(async (env: EnvironmentVariable) => {
     let newEnv = env
-    let nextEnvSecrets = { ...envSecrets }
-
     if (!currentVar) {
       if (env.value_type === 'secret')
-        nextEnvSecrets[env.id] = formatSecret(String(env.value))
-
-      const nextEnvList = [env, ...envList]
-      updateEnvList(nextEnvList)
-      setEnvSecrets(nextEnvSecrets)
-      const syncDraftPromise = doSyncWorkflowDraft()
-      await persistEnvironmentVariables(nextEnvList)
-      await syncDraftPromise
-
-      updateEnvList(nextEnvList.map(sanitizeSecretValue))
+        saveSecretValue(env)
+      await syncEnvList([env, ...envList])
       return
     }
 
@@ -172,34 +214,29 @@ const EnvPanel = () => {
       if (env.value_type === 'secret') {
         if (envSecrets[currentVar.id] !== env.value) {
           newEnv = env
-          nextEnvSecrets[env.id] = formatSecret(String(env.value))
+          saveSecretValue(env)
         }
         else {
           newEnv = sanitizeSecretValue(env)
         }
       }
       else {
-        nextEnvSecrets = removeSecretFromMap(nextEnvSecrets, currentVar.id)
+        removeEnvSecret(currentVar.id)
       }
     }
     else if (env.value_type === 'secret') {
-      nextEnvSecrets[env.id] = formatSecret(String(env.value))
+      saveSecretValue(env)
     }
 
     const nextEnvList = envList.map(e => e.id === currentVar.id ? newEnv : e)
-    updateEnvList(nextEnvList)
-    setEnvSecrets(nextEnvSecrets)
-
     const hasEnvNameChanged = currentVar.name !== env.name
     if (hasEnvNameChanged)
-      renameUsedVarInNodes(currentVar, env.name)
+      updateAffectedNodes(currentVar, ['env', env.name])
 
-    const persisted = await persistEnvironmentVariables(nextEnvList)
-    if (!persisted || hasEnvNameChanged)
+    const persisted = await syncEnvList(nextEnvList, { syncDraft: hasEnvNameChanged })
+    if (!persisted && !hasEnvNameChanged)
       await doSyncWorkflowDraft()
-
-    updateEnvList(nextEnvList.map(sanitizeSecretValue))
-  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, persistEnvironmentVariables, renameUsedVarInNodes, setEnvSecrets, updateEnvList])
+  }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, removeEnvSecret, saveSecretValue, syncEnvList, updateAffectedNodes])
 
   const handleVariableModalClose = () => {
     setCurrentVar(undefined)
