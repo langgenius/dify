@@ -26,28 +26,23 @@ logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class WorkflowCommentCreatePayload(BaseModel):
+class WorkflowCommentContentPayload(BaseModel):
+    content: str = Field(..., description="Comment content")
+    mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
+
+
+class WorkflowCommentCreatePayload(WorkflowCommentContentPayload):
     position_x: float = Field(..., description="Comment X position")
     position_y: float = Field(..., description="Comment Y position")
-    content: str = Field(..., description="Comment content")
-    mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
 
 
-class WorkflowCommentUpdatePayload(BaseModel):
-    content: str = Field(..., description="Comment content")
+class WorkflowCommentUpdatePayload(WorkflowCommentContentPayload):
     position_x: float | None = Field(default=None, description="Comment X position")
     position_y: float | None = Field(default=None, description="Comment Y position")
-    mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
 
 
-class WorkflowCommentReplyCreatePayload(BaseModel):
+class WorkflowCommentReplyPayload(WorkflowCommentContentPayload):
     content: str = Field(..., description="Reply content")
-    mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
-
-
-class WorkflowCommentReplyUpdatePayload(BaseModel):
-    content: str = Field(..., description="Reply content")
-    mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
 
 
 class WorkflowCommentMentionUsersPayload(BaseModel):
@@ -57,8 +52,7 @@ class WorkflowCommentMentionUsersPayload(BaseModel):
 for model in (
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
-    WorkflowCommentReplyCreatePayload,
-    WorkflowCommentReplyUpdatePayload,
+    WorkflowCommentReplyPayload,
 ):
     console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 register_schema_models(console_ns, AccountWithRole, WorkflowCommentMentionUsersPayload)
@@ -222,7 +216,7 @@ class WorkflowCommentReplyApi(Resource):
     @console_ns.doc("create_workflow_comment_reply")
     @console_ns.doc(description="Add a reply to a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentReplyCreatePayload.__name__])
+    @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
     @console_ns.response(201, "Reply created successfully", workflow_comment_reply_create_model)
     @login_required
     @setup_required
@@ -236,7 +230,7 @@ class WorkflowCommentReplyApi(Resource):
             comment_id=comment_id, tenant_id=current_user.current_tenant_id, app_id=app_model.id
         )
 
-        payload = WorkflowCommentReplyCreatePayload.model_validate(console_ns.payload or {})
+        payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
 
         result = WorkflowCommentService.create_reply(
             comment_id=comment_id,
@@ -255,7 +249,7 @@ class WorkflowCommentReplyDetailApi(Resource):
     @console_ns.doc("update_workflow_comment_reply")
     @console_ns.doc(description="Update a comment reply")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
-    @console_ns.expect(console_ns.models[WorkflowCommentReplyUpdatePayload.__name__])
+    @console_ns.expect(console_ns.models[WorkflowCommentReplyPayload.__name__])
     @console_ns.response(200, "Reply updated successfully", workflow_comment_reply_update_model)
     @login_required
     @setup_required
@@ -269,7 +263,7 @@ class WorkflowCommentReplyDetailApi(Resource):
             comment_id=comment_id, tenant_id=current_user.current_tenant_id, app_id=app_model.id
         )
 
-        payload = WorkflowCommentReplyUpdatePayload.model_validate(console_ns.payload or {})
+        payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
 
         reply = WorkflowCommentService.update_reply(
             reply_id=reply_id,
