@@ -63,10 +63,9 @@ const AddBlock = ({
     } = store.getState()
     const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
-    const nodeMetaData = nodesMetaDataMap?.[type]
-    if (!nodeMetaData)
-      return
-    const { defaultValue } = nodeMetaData
+    const {
+      defaultValue,
+    } = nodesMetaDataMap![type]
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {
