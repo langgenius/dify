@@ -48,11 +48,13 @@ class BuiltinToolManageService:
         tool_provider = ToolProviderID(provider)
         with sessionmaker(bind=db.engine).begin() as session:
             session.execute(
-                delete(ToolOAuthTenantClient).where(
+                delete(ToolOAuthTenantClient)
+                .where(
                     ToolOAuthTenantClient.tenant_id == tenant_id,
                     ToolOAuthTenantClient.provider == tool_provider.provider_name,
                     ToolOAuthTenantClient.plugin_id == tool_provider.plugin_id,
-                ).execution_options(synchronize_session=False)
+                )
+                .execution_options(synchronize_session=False)
             )
         return {"result": "success"}
 
@@ -229,12 +231,15 @@ class BuiltinToolManageService:
                     if not provider_controller.need_credentials:
                         raise ValueError(f"provider {provider} does not need credentials")
 
-                    provider_count = session.scalar(
-                        select(func.count(BuiltinToolProvider.id)).where(
-                            BuiltinToolProvider.tenant_id == tenant_id,
-                            BuiltinToolProvider.provider == provider,
+                    provider_count = (
+                        session.scalar(
+                            select(func.count(BuiltinToolProvider.id)).where(
+                                BuiltinToolProvider.tenant_id == tenant_id,
+                                BuiltinToolProvider.provider == provider,
+                            )
                         )
-                    ) or 0
+                        or 0
+                    )
 
                     # check if the provider count is reached the limit
                     if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
