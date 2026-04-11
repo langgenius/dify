@@ -54,7 +54,6 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     Usage: _document_indexing(dataset_id, document_ids)
     """
-    documents = []
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
