@@ -137,9 +137,11 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     session.expire_all()
                     # Check each document's indexing status and trigger summary generation if completed
 
-                    documents = session.scalars(
-                        select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                    ).all()
+                    documents = list(
+                        session.scalars(
+                            select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        ).all()
+                    )
 
                     for document in documents:
                         if document:
