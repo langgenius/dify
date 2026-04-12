@@ -338,8 +338,117 @@ describe('evaluation store', () => {
       },
     }
 
-    expect(buildEvaluationConfigPayload(resource)).toEqual(expectedPayload)
-    expect(buildEvaluationRunRequest(resource, 'file-1')).toEqual({
+    expect(buildEvaluationConfigPayload(resource, resourceType)).toEqual(expectedPayload)
+    expect(buildEvaluationRunRequest(resource, 'file-1', resourceType)).toEqual({
+      ...expectedPayload,
+      file_id: 'file-1',
+    })
+  })
+
+  it('should hydrate pipeline metrics from fixed knowledge-index conditions', () => {
+    const resourceType = 'datasets'
+    const resourceId = 'dataset-hydrate'
+    const store = useEvaluationStore.getState()
+    const config: EvaluationConfig = {
+      evaluation_model: 'gpt-4o-mini',
+      evaluation_model_provider: 'openai',
+      default_metrics: [{
+        metric: 'context-precision',
+        node_info_list: [
+          { node_id: 'knowledge-node', title: 'Knowledge Base', type: 'knowledge-index' },
+        ],
+      }],
+      customized_metrics: {
+        evaluation_workflow_id: 'should-be-ignored',
+        input_fields: {
+          query: 'answer',
+        },
+        output_fields: [{
+          variable: 'score',
+          value_type: 'number',
+        }],
+      },
+      judgment_config: {
+        logical_operator: 'or',
+        conditions: [{
+          variable_selector: ['knowledge-node', 'context-precision'],
+          comparison_operator: '≥',
+          value: '0.92',
+        }],
+      },
+    }
+
+    store.hydrateResource(resourceType, resourceId, config)
+
+    const hydratedState = useEvaluationStore.getState().resources['datasets:dataset-hydrate']
+
+    expect(hydratedState.judgeModelId).toBe('openai::gpt-4o-mini')
+    expect(hydratedState.metrics).toHaveLength(1)
+    expect(hydratedState.metrics[0]).toMatchObject({
+      optionId: 'context-precision',
+      kind: 'builtin',
+      valueType: 'number',
+      threshold: 0.92,
+      nodeInfoList: [
+        { node_id: 'knowledge-node', title: 'Knowledge Base', type: 'knowledge-index' },
+      ],
+    })
+  })
+
+  it('should build pipeline judgment payload from metric thresholds', () => {
+    const resourceType = 'datasets'
+    const resourceId = 'dataset-save-config'
+    const store = useEvaluationStore.getState()
+    const knowledgeNodeInfo = [{ node_id: 'knowledge-node', title: 'Knowledge Base', type: 'knowledge-index' }]
+
+    store.ensureResource(resourceType, resourceId)
+    store.setJudgeModel(resourceType, resourceId, 'openai::gpt-4o-mini')
+    store.addBuiltinMetric(resourceType, resourceId, 'context-precision', knowledgeNodeInfo)
+    store.addBuiltinMetric(resourceType, resourceId, 'context-recall', knowledgeNodeInfo)
+
+    const resourceWithMetrics = useEvaluationStore.getState().resources['datasets:dataset-save-config']
+    const contextPrecisionMetric = resourceWithMetrics.metrics.find(metric => metric.optionId === 'context-precision')!
+    const contextRecallMetric = resourceWithMetrics.metrics.find(metric => metric.optionId === 'context-recall')!
+
+    store.updateMetricThreshold(resourceType, resourceId, contextPrecisionMetric.id, 0.91)
+    store.updateMetricThreshold(resourceType, resourceId, contextRecallMetric.id, 0.88)
+
+    const resource = useEvaluationStore.getState().resources['datasets:dataset-save-config']
+    const expectedPayload = {
+      evaluation_model: 'gpt-4o-mini',
+      evaluation_model_provider: 'openai',
+      default_metrics: [
+        {
+          metric: 'context-precision',
+          value_type: 'number',
+          node_info_list: knowledgeNodeInfo,
+        },
+        {
+          metric: 'context-recall',
+          value_type: 'number',
+          node_info_list: knowledgeNodeInfo,
+        },
+      ],
+      customized_metrics: null,
+      judgment_config: {
+        logical_operator: 'and',
+        conditions: [
+          {
+            variable_selector: ['knowledge-node', 'context-precision'],
+            comparison_operator: '≥',
+            value: '0.91',
+          },
+          {
+            variable_selector: ['knowledge-node', 'context-recall'],
+            comparison_operator: '≥',
+            value: '0.88',
+          },
+        ],
+      },
+    }
+
+    expect(buildEvaluationConfigPayload(resource, resourceType)).toEqual(expectedPayload)
+    expect(buildEvaluationRunRequest(resource, 'file-1', resourceType)).toEqual({
       ...expectedPayload,
       file_id: 'file-1',
     })

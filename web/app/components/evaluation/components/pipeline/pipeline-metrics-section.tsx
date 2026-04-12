@@ -1,25 +1,62 @@
 'use client'
 
 import type { EvaluationResourceProps } from '../../types'
-import { useMemo } from 'react'
+import type { Node } from '@/app/components/workflow/types'
+import type { NodeInfo } from '@/types/evaluation'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useAvailableEvaluationMetrics } from '@/service/use-evaluation'
+import { usePublishedPipelineInfo } from '@/service/use-pipeline'
 import { getEvaluationMockConfig } from '../../mock'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 import { InlineSectionHeader } from '../section-header'
 import PipelineMetricItem from './pipeline-metric-item'
+
+const getKnowledgeIndexNodeInfo = (nodes: Node[] | undefined): NodeInfo[] => {
+  const knowledgeIndexNode = nodes?.find(node => node.data.type === BlockEnum.KnowledgeBase)
+  if (!knowledgeIndexNode?.id)
+    return []
+
+  return [{
+    node_id: knowledgeIndexNode.id,
+    title: typeof knowledgeIndexNode.data?.title === 'string' && knowledgeIndexNode.data.title
+      ? knowledgeIndexNode.data.title
+      : knowledgeIndexNode.id,
+    type: 'knowledge-index',
+  }]
+}
+
+const isSameNodeInfoList = (left: NodeInfo[] | undefined, right: NodeInfo[]) => {
+  if ((left?.length ?? 0) !== right.length)
+    return false
+
+  return (left ?? []).every((nodeInfo, index) => {
+    const target = right[index]
+    return nodeInfo.node_id === target?.node_id
+      && nodeInfo.title === target?.title
+      && nodeInfo.type === target?.type
+  })
+}
 
 const PipelineMetricsSection = ({
   resourceType,
   resourceId,
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
+  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
   const addBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore(state => state.removeMetric)
   const updateMetricThreshold = useEvaluationStore(state => state.updateMetricThreshold)
   const { data: availableMetricsData } = useAvailableEvaluationMetrics()
+  const { data: publishedPipeline } = usePublishedPipelineInfo(pipelineId || '')
   const resource = useEvaluationResource(resourceType, resourceId)
   const config = getEvaluationMockConfig(resourceType)
+  const knowledgeIndexNodeInfoList = useMemo(
+    () => getKnowledgeIndexNodeInfo(publishedPipeline?.graph.nodes),
+    [publishedPipeline?.graph.nodes],
+  )
   const builtinMetricMap = useMemo(() => new Map(
     resource.metrics
       .filter(metric => metric.kind === 'builtin')
@@ -32,6 +69,18 @@ const PipelineMetricsSection = ({
     )
   }, [availableMetricIds, builtinMetricMap, config.builtinMetrics])
 
+  useEffect(() => {
+    if (!knowledgeIndexNodeInfoList.length)
+      return
+
+    resource.metrics.forEach((metric) => {
+      if (metric.kind !== 'builtin' || isSameNodeInfoList(metric.nodeInfoList, knowledgeIndexNodeInfoList))
+        return
+
+      addBuiltinMetric(resourceType, resourceId, metric.optionId, knowledgeIndexNodeInfoList)
+    })
+  }, [addBuiltinMetric, knowledgeIndexNodeInfoList, resource.metrics, resourceId, resourceType])
+
   const handleToggleMetric = (metricId: string) => {
     const selectedMetric = builtinMetricMap.get(metricId)
     if (selectedMetric) {
@@ -39,7 +88,7 @@ const PipelineMetricsSection = ({
       return
     }
 
-    addBuiltinMetric(resourceType, resourceId, metricId)
+    addBuiltinMetric(resourceType, resourceId, metricId, knowledgeIndexNodeInfoList)
   }
 
   return (

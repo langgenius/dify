@@ -36,7 +36,7 @@ const BatchTestPanel = ({
       return
     }
 
-    const body = buildEvaluationConfigPayload(resource)
+    const body = buildEvaluationConfigPayload(resource, resourceType)
 
     if (!body) {
       toast.warning(t('batch.validation'))

@@ -11,6 +11,7 @@ const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
 const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
 const mockUseSaveEvaluationConfigMutation = vi.hoisted(() => vi.fn())
 const mockUseStartEvaluationRunMutation = vi.hoisted(() => vi.fn())
+const mockUsePublishedPipelineInfo = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: () => ({
@@ -53,6 +54,15 @@ vi.mock('@/service/use-evaluation', () => ({
   useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
   useSaveEvaluationConfigMutation: (...args: unknown[]) => mockUseSaveEvaluationConfigMutation(...args),
   useStartEvaluationRunMutation: (...args: unknown[]) => mockUseStartEvaluationRunMutation(...args),
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  usePublishedPipelineInfo: (...args: unknown[]) => mockUsePublishedPipelineInfo(...args),
+}))
+
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string } }) => unknown) =>
+    selector({ dataset: { pipeline_id: 'pipeline-1' } }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -151,6 +161,20 @@ describe('Evaluation', () => {
     mockUseStartEvaluationRunMutation.mockReturnValue({
       isPending: false,
       mutate: vi.fn(),
+    })
+    mockUsePublishedPipelineInfo.mockReturnValue({
+      data: {
+        graph: {
+          nodes: [{
+            id: 'knowledge-node',
+            data: {
+              type: 'knowledge-index',
+              title: 'Knowledge Base',
+            },
+          }],
+          edges: [],
+        },
+      },
     })
     mockUpload.mockResolvedValue({
       id: 'uploaded-file-id',
@@ -471,10 +495,19 @@ describe('Evaluation', () => {
           default_metrics: [{
             metric: 'context-precision',
             value_type: 'number',
-            node_info_list: [],
+            node_info_list: [
+              { node_id: 'knowledge-node', title: 'Knowledge Base', type: 'knowledge-index' },
+            ],
           }],
           customized_metrics: null,
-          judgment_config: null,
+          judgment_config: {
+            logical_operator: 'and',
+            conditions: [{
+              variable_selector: ['knowledge-node', 'context-precision'],
+              comparison_operator: '≥',
+              value: '0.85',
+            }],
+          },
           file_id: 'file-1',
         },
       }, {

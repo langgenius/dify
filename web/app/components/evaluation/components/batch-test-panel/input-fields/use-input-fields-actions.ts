@@ -102,7 +102,7 @@ export const useInputFieldsActions = ({
       return
     }
 
-    const body = buildEvaluationRunRequest(resource, uploadedFileId)
+    const body = buildEvaluationRunRequest(resource, uploadedFileId, resourceType)
 
     if (!body) {
       toast.warning(t('batch.validation'))
