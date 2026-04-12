@@ -1119,9 +1119,7 @@ class TestConversationServiceExport:
         conversation_id = conversation.id
 
         # Act — force an error during the delete to exercise the rollback path
-        with patch(
-            "services.conversation_service.db.session.delete", side_effect=Exception("DB error")
-        ):
+        with patch("services.conversation_service.db.session.delete", side_effect=Exception("DB error")):
             with pytest.raises(Exception, match="DB error"):
                 ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
 
@@ -1129,7 +1127,5 @@ class TestConversationServiceExport:
         mock_delete_task.delay.assert_not_called()
 
         # Conversation is still present because the deletion was never committed
-        still_there = db_session_with_containers.scalar(
-            select(Conversation).where(Conversation.id == conversation_id)
-        )
+        still_there = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
         assert still_there is not None
