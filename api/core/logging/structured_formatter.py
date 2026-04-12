@@ -16,6 +16,22 @@ class IdentityDict(TypedDict, total=False):
     user_type: str
 
 
+class _LogDictRequired(TypedDict):
+    ts: str
+    severity: str
+    service: str
+    caller: str
+    message: str
+
+
+class LogDict(_LogDictRequired, total=False):
+    trace_id: str
+    span_id: str
+    identity: IdentityDict
+    attributes: Any
+    stack_trace: str
+
+
 class StructuredJSONFormatter(logging.Formatter):
     """
     JSON log formatter following the specified schema:
@@ -55,9 +71,9 @@ class StructuredJSONFormatter(logging.Formatter):
 
             return json.dumps(log_dict, default=str, ensure_ascii=False)
 
-    def _build_log_dict(self, record: logging.LogRecord) -> dict[str, Any]:
+    def _build_log_dict(self, record: logging.LogRecord) -> LogDict:
         # Core fields
-        log_dict: dict[str, Any] = {
+        log_dict: LogDict = {
             "ts": datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "severity": self.SEVERITY_MAP.get(record.levelno, "INFO"),
             "service": self._service_name,
