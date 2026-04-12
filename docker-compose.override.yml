@@ -1,0 +1,33 @@
+version: '3.8'
+
+# 本地开发配置 - 自动挂载源代码
+# 这样修改代码后立即生效（热重载）
+
+services:
+  # 后端 API
+  api-0:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    volumes:
+      - ./api:/app
+      - /app/.venv  # 不挂载虚拟环境
+    environment:
+      - DEBUG=true
+      - RELOAD=true  # 自动重启
+    command: >
+      sh -c "pip install -e . &&
+             python -m uvicorn dify.main:app --reload --host 0.0.0.0 --port 5001"
+
+  # 前端 Web
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    volumes:
+      - ./web:/app
+      - /app/node_modules  # 不挂载 node_modules
+      - /app/.next  # 不挂载 .next 缓存
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
