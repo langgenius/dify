@@ -1,0 +1,111 @@
+# Dify 本地开发 .gitignore 补充规则
+# 添加到项目根目录的 .gitignore 中
+
+# 本地环境变量（不要提交）
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.staging.local
+.env.production.local
+
+# 本地 Docker Compose 覆盖配置
+docker-compose.override.yml
+docker-compose.dev.yml
+docker-compose.local.yml
+
+# IDE 本地设置
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/*
+!.idea/runConfigurations
+!.idea/inspectionProfiles
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 本地特定的配置
+local.conf
+local.config
+*.local.conf
+
+# 构建和缓存
+dist/
+build/
+__pycache__/
+*.pyc
+node_modules/
+.next/
+.nuxt/
+.cache/
+.vuepress/dist/
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.vscode-test
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# 系统文件
+thumbs.db
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# 日志
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+lerna-debug.log*
+.pnpm-debug.log*
+
+# 数据库快照
+*.db
+*.sqlite
+.postgres_data/
+.mysql_data/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 敏感信息
+secrets/
+credentials/
+private_keys/
+*.pem
+*.key
+*.p8
+*.p12
+*.p7b
+*.pfx
+
+# 测试覆盖
+.nyc_output/
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+
+# 开发工具生成的文件
+.vercel/
+.netlify/
+.turbo/
+
+# 操作系统
+*.exe
+*.dll
+*.so
+*.dylib
