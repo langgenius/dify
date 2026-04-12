@@ -1538,10 +1538,13 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         this.isLeader = data.isLeader
 
-        if (this.isLeader)
+        if (this.isLeader) {
+          this.seedCrdtGraphFromReactFlowIfNeeded()
           this.pendingInitialSync = false
-        else
+        }
+        else {
           this.requestInitialSyncIfNeeded()
+        }
 
         if (wasLeader !== this.isLeader)
           this.eventEmitter.emit('leaderChange', this.isLeader)
@@ -1603,6 +1606,30 @@ export class CollaborationManager {
     })
   }
 
+  private seedCrdtGraphFromReactFlowIfNeeded(): void {
+    if (!this.doc)
+      return
+    if (!this.reactFlowStore)
+      return
+
+    // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
+    // before collaboration finished connecting, and no local mutation has been written yet.
+    // Seed once from the current ReactFlow graph so leader resync can broadcast a full snapshot.
+    if (this.getNodes().length > 0 || this.getEdges().length > 0)
+      return
+
+    const state = this.reactFlowStore.getState()
+    const nodes = state.getNodes()
+    const edges = state.getEdges()
+
+    if (!nodes.length && !edges.length)
+      return
+
+    this.syncNodes([], nodes)
+    this.syncEdges([], edges)
+    this.doc.commit()
+  }
+
   private broadcastCurrentGraph(): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
       return
@@ -1614,6 +1641,8 @@ export class CollaborationManager {
       return
 
     try {
+      this.seedCrdtGraphFromReactFlowIfNeeded()
+
       if (this.getNodes().length === 0 && this.getEdges().length === 0)
         return
 
