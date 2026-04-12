@@ -1594,7 +1594,7 @@ class TestDatasetApiKeyApi:
         mock_token = MagicMock()
         mock_token.id = "new-key-id"
         mock_token.last_used_at = None
-        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
 
         mock_api_token_cls = MagicMock()
         mock_api_token_cls.return_value = mock_token
