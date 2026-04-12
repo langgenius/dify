@@ -235,7 +235,6 @@ tools = ["cloudscraper~=1.2.71", "nltk~=3.9.1"]
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*
 # Each declares its own third-party deps and registers dify.vector_backends entry points.
 # Use: uv sync --group vdb-all | uv sync --group vdb-qdrant
-# Regenerate packages: python scripts/generate_vdb_workspace_packages.py
 ############################################################
 vdb-all = [
     "dify-vdb-alibabacloud-mysql",

@@ -1837,7 +1837,7 @@ vdb-xinference = [{ name = "xinference-client", specifier = "~=2.4.0" }]
 
 [[package]]
 name = "dify-vdb-alibabacloud-mysql"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/alibabacloud-mysql" }
 dependencies = [
     { name = "mysql-connector-python" },
@@ -1848,7 +1848,7 @@ requires-dist = [{ name = "mysql-connector-python", specifier = ">=9.3.0" }]
 
 [[package]]
 name = "dify-vdb-analyticdb"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/analyticdb" }
 dependencies = [
     { name = "alibabacloud-gpdb20160503" },
@@ -1865,7 +1865,7 @@ requires-dist = [
 
 [[package]]
 name = "dify-vdb-baidu"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/baidu" }
 dependencies = [
     { name = "pymochow" },
@@ -1876,7 +1876,7 @@ requires-dist = [{ name = "pymochow", specifier = "==2.4.0" }]
 
 [[package]]
 name = "dify-vdb-chroma"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/chroma" }
 dependencies = [
     { name = "chromadb" },
@@ -1887,7 +1887,7 @@ requires-dist = [{ name = "chromadb", specifier = "==0.5.20" }]
 
 [[package]]
 name = "dify-vdb-clickzetta"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/clickzetta" }
 dependencies = [
     { name = "clickzetta-connector-python" },
@@ -1898,7 +1898,7 @@ requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102"
 
 [[package]]
 name = "dify-vdb-couchbase"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/couchbase" }
 dependencies = [
     { name = "couchbase" },
@@ -1909,7 +1909,7 @@ requires-dist = [{ name = "couchbase", specifier = "~=4.6.0" }]
 
 [[package]]
 name = "dify-vdb-elasticsearch"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/elasticsearch" }
 dependencies = [
     { name = "elasticsearch" },
@@ -1920,7 +1920,7 @@ requires-dist = [{ name = "elasticsearch", specifier = "==8.14.0" }]
 
 [[package]]
 name = "dify-vdb-hologres"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/hologres" }
 dependencies = [
     { name = "holo-search-sdk" },
@@ -1931,7 +1931,7 @@ requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.1" }]
 
 [[package]]
 name = "dify-vdb-huawei-cloud"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/huawei-cloud" }
 dependencies = [
     { name = "elasticsearch" },
@@ -1942,7 +1942,7 @@ requires-dist = [{ name = "elasticsearch", specifier = "==8.14.0" }]
 
 [[package]]
 name = "dify-vdb-iris"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/iris" }
 dependencies = [
     { name = "intersystems-irispython" },
@@ -1953,7 +1953,7 @@ requires-dist = [{ name = "intersystems-irispython", specifier = ">=5.1.0" }]
 
 [[package]]
 name = "dify-vdb-lindorm"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/lindorm" }
 dependencies = [
     { name = "opensearch-py" },
@@ -1968,7 +1968,7 @@ requires-dist = [
 
 [[package]]
 name = "dify-vdb-matrixone"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/matrixone" }
 dependencies = [
     { name = "mo-vector" },
@@ -1979,7 +1979,7 @@ requires-dist = [{ name = "mo-vector", specifier = "~=0.1.13" }]
 
 [[package]]
 name = "dify-vdb-milvus"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/milvus" }
 dependencies = [
     { name = "pymilvus" },
@@ -1990,7 +1990,7 @@ requires-dist = [{ name = "pymilvus", specifier = "~=2.6.10" }]
 
 [[package]]
 name = "dify-vdb-myscale"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/myscale" }
 dependencies = [
     { name = "clickhouse-connect" },
@@ -2001,7 +2001,7 @@ requires-dist = [{ name = "clickhouse-connect", specifier = "~=0.15.0" }]
 
 [[package]]
 name = "dify-vdb-oceanbase"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/oceanbase" }
 dependencies = [
     { name = "mysql-connector-python" },
@@ -2016,12 +2016,12 @@ requires-dist = [
 
 [[package]]
 name = "dify-vdb-opengauss"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/opengauss" }
 
 [[package]]
 name = "dify-vdb-opensearch"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/opensearch" }
 dependencies = [
     { name = "opensearch-py" },
@@ -2032,7 +2032,7 @@ requires-dist = [{ name = "opensearch-py", specifier = "==3.1.0" }]
 
 [[package]]
 name = "dify-vdb-oracle"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/oracle" }
 dependencies = [
     { name = "oracledb" },
@@ -2043,7 +2043,7 @@ requires-dist = [{ name = "oracledb", specifier = "==3.4.2" }]
 
 [[package]]
 name = "dify-vdb-pgvecto-rs"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/pgvecto-rs" }
 dependencies = [
     { name = "pgvecto-rs", extra = ["sqlalchemy"] },
@@ -2054,7 +2054,7 @@ requires-dist = [{ name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=
 
 [[package]]
 name = "dify-vdb-pgvector"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/pgvector" }
 dependencies = [
     { name = "pgvector" },
@@ -2065,7 +2065,7 @@ requires-dist = [{ name = "pgvector", specifier = "==0.4.2" }]
 
 [[package]]
 name = "dify-vdb-qdrant"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/qdrant" }
 dependencies = [
     { name = "qdrant-client" },
@@ -2076,12 +2076,12 @@ requires-dist = [{ name = "qdrant-client", specifier = "==1.9.0" }]
 
 [[package]]
 name = "dify-vdb-relyt"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/relyt" }
 
 [[package]]
 name = "dify-vdb-tablestore"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/tablestore" }
 dependencies = [
     { name = "tablestore" },
@@ -2092,7 +2092,7 @@ requires-dist = [{ name = "tablestore", specifier = "==6.4.3" }]
 
 [[package]]
 name = "dify-vdb-tencent"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/tencent" }
 dependencies = [
     { name = "tcvectordb" },
@@ -2103,7 +2103,7 @@ requires-dist = [{ name = "tcvectordb", specifier = "~=2.1.0" }]
 
 [[package]]
 name = "dify-vdb-tidb-on-qdrant"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/tidb-on-qdrant" }
 dependencies = [
     { name = "qdrant-client" },
@@ -2114,7 +2114,7 @@ requires-dist = [{ name = "qdrant-client", specifier = "==1.9.0" }]
 
 [[package]]
 name = "dify-vdb-tidb-vector"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/tidb-vector" }
 dependencies = [
     { name = "tidb-vector" },
@@ -2125,7 +2125,7 @@ requires-dist = [{ name = "tidb-vector", specifier = "==0.0.15" }]
 
 [[package]]
 name = "dify-vdb-upstash"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/upstash" }
 dependencies = [
     { name = "upstash-vector" },
@@ -2136,7 +2136,7 @@ requires-dist = [{ name = "upstash-vector", specifier = "==0.8.0" }]
 
 [[package]]
 name = "dify-vdb-vastbase"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/vastbase" }
 dependencies = [
     { name = "pyobvector" },
@@ -2147,7 +2147,7 @@ requires-dist = [{ name = "pyobvector", specifier = "~=0.2.17" }]
 
 [[package]]
 name = "dify-vdb-vikingdb"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/vikingdb" }
 dependencies = [
     { name = "volcengine-compat" },
@@ -2158,7 +2158,7 @@ requires-dist = [{ name = "volcengine-compat", specifier = "~=1.0.0" }]
 
 [[package]]
 name = "dify-vdb-weaviate"
-version = "1.13.3"
+version = "0.0.1"
 source = { editable = "providers/vdb/weaviate" }
 dependencies = [
     { name = "weaviate-client" },

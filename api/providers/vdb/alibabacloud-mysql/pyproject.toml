@@ -4,8 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dify-vdb-alibabacloud-mysql"
-version = "1.13.3"
-requires-python = "~=3.12.0"
+version = "0.0.1"
 dependencies = [
     "mysql-connector-python>=9.3.0",
 ]

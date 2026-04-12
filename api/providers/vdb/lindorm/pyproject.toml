@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dify-vdb-lindorm"
-version = "1.13.3"
-requires-python = "~=3.12.0"
+version = "0.0.1"
+
 dependencies = [
     "opensearch-py==3.1.0",
     "tenacity>=8.0.0",
