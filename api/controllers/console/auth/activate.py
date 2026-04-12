@@ -47,9 +47,7 @@ class ActivationResponse(BaseModel):
     result: str = Field(description="Operation result")
 
 
-register_schema_models(
-    console_ns, ActivateCheckQuery, ActivatePayload, ActivationCheckResponse, ActivationResponse
-)
+register_schema_models(console_ns, ActivateCheckQuery, ActivatePayload, ActivationCheckResponse, ActivationResponse)
 
 
 @console_ns.route("/activate/check")
