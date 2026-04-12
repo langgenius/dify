@@ -75,7 +75,7 @@ const CommentsPanel = () => {
               'group flex h-6 w-6 items-center justify-center rounded-md hover:bg-state-accent-active',
               hasActiveFilter && 'bg-state-accent-active',
             )}
-            aria-label="Filter comments"
+            aria-label={t('comments.aria.filterComments', { ns: 'workflow' })}
             onClick={() => setShowFilter(v => !v)}
           >
             <RiFilter3Line className={cn(
@@ -93,7 +93,7 @@ const CommentsPanel = () => {
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">All</span>
+                <span className="text-text-secondary">{t('comments.filter.all', { ns: 'workflow' })}</span>
                 {!showOnlyMine && <RiCheckLine className="text-primary-600 h-4 w-4" />}
               </button>
               <button
@@ -103,7 +103,7 @@ const CommentsPanel = () => {
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">Only your threads</span>
+                <span className="text-text-secondary">{t('comments.filter.onlyYourThreads', { ns: 'workflow' })}</span>
                 {showOnlyMine && <RiCheckLine className="text-primary-600 h-4 w-4" />}
               </button>
               <Divider type="horizontal" className="my-1" />
@@ -113,7 +113,7 @@ const CommentsPanel = () => {
                   e.stopPropagation()
                 }}
               >
-                <span className="text-sm text-text-secondary">Show resolved</span>
+                <span className="text-sm text-text-secondary">{t('comments.filter.showResolved', { ns: 'workflow' })}</span>
                 <Switch
                   size="md"
                   value={showResolvedComments}
