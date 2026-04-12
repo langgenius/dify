@@ -26,7 +26,7 @@ from datetime import timedelta
 import pytest
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
@@ -679,9 +679,12 @@ class TestWorkflowPauseIntegration:
 
         # Verify only 3 were deleted
         remaining_count = (
-            self.session.query(WorkflowPauseModel)
-            .filter(WorkflowPauseModel.id.in_([pe.id for pe in pause_entities]))
-            .count()
+            self.session.scalar(
+                select(func.count(WorkflowPauseModel.id)).where(
+                    WorkflowPauseModel.id.in_([pe.id for pe in pause_entities])
+                )
+            )
+            or 0
         )
         assert remaining_count == 2
 

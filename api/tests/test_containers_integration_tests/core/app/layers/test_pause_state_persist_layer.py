@@ -557,11 +557,9 @@ class TestPauseStatePersistenceLayerTestContainers:
         self.session.refresh(self.test_workflow_run)
         assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
 
-        pause_states = (
-            self.session.query(WorkflowPauseModel)
-            .filter(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
-            .all()
-        )
+        pause_states = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run_id)
+        ).all()
         assert len(pause_states) == 0
 
     def test_layer_requires_initialization(self, db_session_with_containers):
