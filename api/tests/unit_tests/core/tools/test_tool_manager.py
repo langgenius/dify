@@ -637,7 +637,7 @@ def test_list_default_builtin_providers_for_postgres_and_mysql():
     for scheme in ("postgresql", "mysql"):
         session = Mock()
         session.execute.return_value.all.return_value = [SimpleNamespace(id="id-1"), SimpleNamespace(id="id-2")]
-        session.query.return_value.where.return_value.all.return_value = provider_records
+        session.scalars.return_value = iter(provider_records)
 
         with patch("core.tools.tool_manager.dify_config", SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME=scheme)):
             with patch("core.tools.tool_manager.db") as mock_db:

@@ -809,11 +809,11 @@ class AccountService:
         rest of the system gradually normalizes new inputs.
         """
         with session_factory.create_session() as session:
-            account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
             if account or email == email.lower():
                 return account
 
-            return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
+            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
