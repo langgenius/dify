@@ -101,23 +101,31 @@ class WorkflowComment(Base):
     @property
     def participants(self):
         """Get all participants (creator + repliers + mentioned users)."""
-        participant_ids = set()
+        participant_ids: set[str] = set()
+        participants: list[Account] = []
 
-        # Add comment creator
-        participant_ids.add(self.created_by)
+        # Use account properties to reuse preloaded caches and avoid hidden N+1.
+        if self.created_by not in participant_ids:
+            participant_ids.add(self.created_by)
+            created_by_account = self.created_by_account
+            if created_by_account:
+                participants.append(created_by_account)
 
-        # Add reply creators
-        participant_ids.update(reply.created_by for reply in self.replies)
+        for reply in self.replies:
+            if reply.created_by in participant_ids:
+                continue
+            participant_ids.add(reply.created_by)
+            reply_account = reply.created_by_account
+            if reply_account:
+                participants.append(reply_account)
 
-        # Add mentioned users
-        participant_ids.update(mention.mentioned_user_id for mention in self.mentions)
-
-        # Get account objects
-        participants = []
-        for user_id in participant_ids:
-            account = db.session.get(Account, user_id)
-            if account:
-                participants.append(account)
+        for mention in self.mentions:
+            if mention.mentioned_user_id in participant_ids:
+                continue
+            participant_ids.add(mention.mentioned_user_id)
+            mentioned_account = mention.mentioned_user_account
+            if mentioned_account:
+                participants.append(mentioned_account)
 
         return participants
 

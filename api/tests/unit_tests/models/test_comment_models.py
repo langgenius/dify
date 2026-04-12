@@ -60,6 +60,27 @@ def test_workflow_comment_counts_and_participants() -> None:
     assert get_mock.call_count == 4
 
 
+def test_workflow_comment_participants_use_cached_accounts() -> None:
+    reply = WorkflowCommentReply(comment_id="comment-1", content="reply-1", created_by="user-2")
+    mention = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-3")
+    comment = WorkflowComment(created_by="user-1", resolved_by=None, content="hello", position_x=1, position_y=2)
+    comment.replies = [reply]
+    comment.mentions = [mention]
+
+    account_1 = Mock(id="user-1")
+    account_2 = Mock(id="user-2")
+    account_3 = Mock(id="user-3")
+    comment.cache_created_by_account(account_1)
+    reply.cache_created_by_account(account_2)
+    mention.cache_mentioned_user_account(account_3)
+
+    with patch("models.comment.db.session.get") as get_mock:
+        participants = comment.participants
+
+    assert set(participants) == {account_1, account_2, account_3}
+    get_mock.assert_not_called()
+
+
 def test_reply_and_mention_account_properties_and_cache() -> None:
     reply = WorkflowCommentReply(comment_id="comment-1", content="reply", created_by="user-1")
     mention = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-2")
