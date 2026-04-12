@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from graphon.variables.segments import StringSegment
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
@@ -108,8 +108,12 @@ class TestDeleteDraftVariablesIntegration:
         app2_id = data["app2"].id
 
         with session_factory.create_session() as session:
-            app1_vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app1_id).count()
-            app2_vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app2_id).count()
+            app1_vars_before = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app1_id)
+            )
+            app2_vars_before = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app2_id)
+            )
         assert app1_vars_before == 5
         assert app2_vars_before == 5
 
@@ -117,8 +121,12 @@ class TestDeleteDraftVariablesIntegration:
         assert deleted_count == 5
 
         with session_factory.create_session() as session:
-            app1_vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app1_id).count()
-            app2_vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app2_id).count()
+            app1_vars_after = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app1_id)
+            )
+            app2_vars_after = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app2_id)
+            )
         assert app1_vars_after == 0
         assert app2_vars_after == 5
 
@@ -130,7 +138,9 @@ class TestDeleteDraftVariablesIntegration:
         assert deleted_count == 5
 
         with session_factory.create_session() as session:
-            remaining_vars = session.query(WorkflowDraftVariable).filter_by(app_id=app1_id).count()
+            remaining_vars = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app1_id)
+            )
         assert remaining_vars == 0
 
     def test_delete_draft_variables_batch_nonexistent_app(self, setup_test_data):
@@ -143,14 +153,18 @@ class TestDeleteDraftVariablesIntegration:
         app1_id = data["app1"].id
 
         with session_factory.create_session() as session:
-            vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app1_id).count()
+            vars_before = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app1_id)
+            )
         assert vars_before == 5
 
         deleted_count = _delete_draft_variables(app1_id)
         assert deleted_count == 5
 
         with session_factory.create_session() as session:
-            vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app1_id).count()
+            vars_after = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app1_id)
+            )
         assert vars_after == 0
 
     def test_batch_deletion_handles_large_dataset(self, app_and_tenant):
@@ -175,7 +189,9 @@ class TestDeleteDraftVariablesIntegration:
             deleted_count = delete_draft_variables_batch(app.id, batch_size=8)
             assert deleted_count == 25
             with session_factory.create_session() as session:
-                remaining = session.query(WorkflowDraftVariable).filter_by(app_id=app.id).count()
+                remaining = session.scalar(
+                    select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app.id)
+                )
             assert remaining == 0
         finally:
             with session_factory.create_session() as session:
@@ -307,13 +323,17 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
         mock_storage.delete.return_value = None
 
         with session_factory.create_session() as session:
-            draft_vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
-            var_files_before = (
-                session.query(WorkflowDraftVariableFile)
-                .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
-                .count()
+            draft_vars_before = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
             )
-            upload_files_before = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
+            var_files_before = session.scalar(
+                select(func.count())
+                .select_from(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
+            )
+            upload_files_before = session.scalar(
+                select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+            )
         assert draft_vars_before == 3
         assert var_files_before == 2
         assert upload_files_before == 2
@@ -322,16 +342,20 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
         assert deleted_count == 3
 
         with session_factory.create_session() as session:
-            draft_vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            draft_vars_after = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
         assert draft_vars_after == 0
 
         with session_factory.create_session() as session:
-            var_files_after = (
-                session.query(WorkflowDraftVariableFile)
+            var_files_after = session.scalar(
+                select(func.count())
+                .select_from(WorkflowDraftVariableFile)
                 .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
-                .count()
             )
-            upload_files_after = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
+            upload_files_after = session.scalar(
+                select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+            )
         assert var_files_after == 0
         assert upload_files_after == 0
 
@@ -352,16 +376,20 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
         assert deleted_count == 3
 
         with session_factory.create_session() as session:
-            draft_vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            draft_vars_after = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
         assert draft_vars_after == 0
 
         with session_factory.create_session() as session:
-            var_files_after = (
-                session.query(WorkflowDraftVariableFile)
+            var_files_after = session.scalar(
+                select(func.count())
+                .select_from(WorkflowDraftVariableFile)
                 .where(WorkflowDraftVariableFile.id.in_(variable_file_ids))
-                .count()
             )
-            upload_files_after = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
+            upload_files_after = session.scalar(
+                select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+            )
         assert var_files_after == 0
         assert upload_files_after == 0
 
@@ -579,7 +607,9 @@ class TestDeleteDraftVariablesSessionCommit:
 
         # Verify all data was deleted (proves transaction was committed)
         with session_factory.create_session() as session:
-            remaining_count = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            remaining_count = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
 
         assert deleted_count == 10
         assert remaining_count == 0
@@ -592,7 +622,9 @@ class TestDeleteDraftVariablesSessionCommit:
 
         # Verify initial state
         with session_factory.create_session() as session:
-            initial_count = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            initial_count = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
         assert initial_count == 10
 
         # Perform deletion with small batch size to force multiple commits
@@ -602,13 +634,17 @@ class TestDeleteDraftVariablesSessionCommit:
 
         # Verify all data is deleted in a new session (proves commits worked)
         with session_factory.create_session() as session:
-            final_count = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            final_count = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
         assert final_count == 0
 
         # Verify specific IDs are deleted
         with session_factory.create_session() as session:
-            remaining_vars = (
-                session.query(WorkflowDraftVariable).where(WorkflowDraftVariable.id.in_(variable_ids)).count()
+            remaining_vars = session.scalar(
+                select(func.count())
+                .select_from(WorkflowDraftVariable)
+                .where(WorkflowDraftVariable.id.in_(variable_ids))
             )
         assert remaining_vars == 0
 
@@ -626,7 +662,9 @@ class TestDeleteDraftVariablesSessionCommit:
         app_id = data["app"].id
 
         with session_factory.create_session() as session:
-            initial_count = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            initial_count = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
         assert initial_count == 10
 
         # Delete all in a single batch
@@ -635,7 +673,9 @@ class TestDeleteDraftVariablesSessionCommit:
 
         # Verify data is persisted
         with session_factory.create_session() as session:
-            final_count = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
+            final_count = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
+            )
         assert final_count == 0
 
     def test_invalid_batch_size_raises_error(self, setup_commit_test_data):
@@ -659,13 +699,17 @@ class TestDeleteDraftVariablesSessionCommit:
 
         # Verify initial state
         with session_factory.create_session() as session:
-            draft_vars_before = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
-            var_files_before = (
-                session.query(WorkflowDraftVariableFile)
-                .where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
-                .count()
+            draft_vars_before = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
             )
-            upload_files_before = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
+            var_files_before = session.scalar(
+                select(func.count())
+                .select_from(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
+            )
+            upload_files_before = session.scalar(
+                select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+            )
         assert draft_vars_before == 3
         assert var_files_before == 2
         assert upload_files_before == 2
@@ -676,13 +720,17 @@ class TestDeleteDraftVariablesSessionCommit:
 
         # Verify all data is persisted (deleted) in new session
         with session_factory.create_session() as session:
-            draft_vars_after = session.query(WorkflowDraftVariable).filter_by(app_id=app_id).count()
-            var_files_after = (
-                session.query(WorkflowDraftVariableFile)
-                .where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
-                .count()
+            draft_vars_after = session.scalar(
+                select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
             )
-            upload_files_after = session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).count()
+            var_files_after = session.scalar(
+                select(func.count())
+                .select_from(WorkflowDraftVariableFile)
+                .where(WorkflowDraftVariableFile.id.in_([vf.id for vf in data["variable_files"]]))
+            )
+            upload_files_after = session.scalar(
+                select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+            )
         assert draft_vars_after == 0
         assert var_files_after == 0
         assert upload_files_after == 0
