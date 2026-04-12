@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.member_fields import AccountWithRole
 from fields.workflow_comment_fields import (
     workflow_comment_basic_fields,
@@ -99,6 +99,7 @@ class WorkflowCommentListApi(Resource):
     @account_initialization_required
     @get_app_model()
     @marshal_with(workflow_comment_create_model)
+    @edit_permission_required
     def post(self, app_model: App):
         """Create a new workflow comment."""
         payload = WorkflowCommentCreatePayload.model_validate(console_ns.payload or {})
@@ -147,6 +148,7 @@ class WorkflowCommentDetailApi(Resource):
     @account_initialization_required
     @get_app_model()
     @marshal_with(workflow_comment_update_model)
+    @edit_permission_required
     def put(self, app_model: App, comment_id: str):
         """Update a workflow comment."""
         payload = WorkflowCommentUpdatePayload.model_validate(console_ns.payload or {})
@@ -172,6 +174,7 @@ class WorkflowCommentDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @get_app_model()
+    @edit_permission_required
     def delete(self, app_model: App, comment_id: str):
         """Delete a workflow comment."""
         WorkflowCommentService.delete_comment(
@@ -197,6 +200,7 @@ class WorkflowCommentResolveApi(Resource):
     @account_initialization_required
     @get_app_model()
     @marshal_with(workflow_comment_resolve_model)
+    @edit_permission_required
     def post(self, app_model: App, comment_id: str):
         """Resolve a workflow comment."""
         comment = WorkflowCommentService.resolve_comment(
@@ -223,6 +227,7 @@ class WorkflowCommentReplyApi(Resource):
     @account_initialization_required
     @get_app_model()
     @marshal_with(workflow_comment_reply_create_model)
+    @edit_permission_required
     def post(self, app_model: App, comment_id: str):
         """Add a reply to a workflow comment."""
         # Validate comment access first
@@ -256,6 +261,7 @@ class WorkflowCommentReplyDetailApi(Resource):
     @account_initialization_required
     @get_app_model()
     @marshal_with(workflow_comment_reply_update_model)
+    @edit_permission_required
     def put(self, app_model: App, comment_id: str, reply_id: str):
         """Update a comment reply."""
         # Validate comment access first
@@ -285,6 +291,7 @@ class WorkflowCommentReplyDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @get_app_model()
+    @edit_permission_required
     def delete(self, app_model: App, comment_id: str, reply_id: str):
         """Delete a comment reply."""
         # Validate comment access first
