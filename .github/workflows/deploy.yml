@@ -108,34 +108,140 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
     if: success()
+    
+    environment:
+      name: staging
+      url: https://staging.dify.example.com
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy notification
+      - name: Deploy via SSH
+        if: ${{ secrets.DEPLOY_HOST != '' }}
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          BACKEND_IMAGE: ${{ needs.build-backend.outputs.image }}
+          FRONTEND_IMAGE: ${{ needs.build-frontend.outputs.image }}
         run: |
-          echo "🚀 Deployment to staging triggered"
-          echo "Backend image: ${{ needs.build-backend.outputs.image }}"
-          echo "Frontend image: ${{ needs.build-frontend.outputs.image }}"
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
           
-          # TODO: Add your actual deployment commands here
-          # Example: kubectl apply -f k8s/staging/
-          # Example: docker stack deploy -c docker-compose.yml dify-staging
+          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'DEPLOY_SCRIPT'
+          set -e
+          echo "🚀 Starting deployment to staging..."
+          
+          cd /opt/dify || exit 1
+          
+          # Pull latest code
+          git fetch origin develop
+          git checkout develop
+          
+          # Update docker-compose.yml with new image tags
+          sed -i "s|ghcr.io/lczc1988/dify-api:.*|$BACKEND_IMAGE|g" docker-compose.yml
+          sed -i "s|ghcr.io/lczc1988/dify-web:.*|$FRONTEND_IMAGE|g" docker-compose.yml
+          
+          # Pull images
+          docker-compose pull
+          
+          # Stop old containers
+          docker-compose down
+          
+          # Start new containers
+          docker-compose up -d
+          
+          # Wait for services
+          echo "⏳ Waiting for services to be ready..."
+          sleep 15
+          
+          # Health check
+          for i in {1..30}; do
+            if curl -f http://localhost:5001/api/health > /dev/null 2>&1; then
+              echo "✅ Backend is healthy"
+              break
+            fi
+            echo "⏳ Waiting... ($i/30)"
+            sleep 10
+          done
+          
+          echo "✅ Deployment completed"
+          DEPLOY_SCRIPT
 
-      - name: Slack notification (optional)
+      - name: Deploy to Kubernetes
+        if: ${{ secrets.KUBE_CONFIG != '' }}
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          BACKEND_IMAGE: ${{ needs.build-backend.outputs.image }}
+          FRONTEND_IMAGE: ${{ needs.build-frontend.outputs.image }}
+        run: |
+          # Setup kubectl
+          mkdir -p $HOME/.kube
+          echo "$KUBE_CONFIG" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          
+          # Update images
+          kubectl set image deployment/dify-api \
+            api=$BACKEND_IMAGE \
+            -n dify
+          
+          kubectl set image deployment/dify-web \
+            web=$FRONTEND_IMAGE \
+            -n dify
+          
+          # Wait for rollout
+          kubectl rollout status deployment/dify-api -n dify
+          kubectl rollout status deployment/dify-web -n dify
+
+      - name: Run smoke tests
+        if: ${{ secrets.DEPLOY_HOST != '' }}
+        continue-on-error: true
+        run: |
+          echo "🧪 Running smoke tests..."
+          
+          # Test API health
+          curl -f http://${{ secrets.DEPLOY_HOST }}:5001/api/health || exit 1
+          
+          # Test Web health  
+          curl -f http://${{ secrets.DEPLOY_HOST }}:3000 || exit 1
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Slack notification - Success
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "✅ Staging deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ Staging deployment completed\nRepo: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}"
+                  }
+                }
+              ]
+            }
+
+      - name: Slack notification - Failure
         if: failure()
         uses: slackapi/slack-github-action@v1
         with:
           webhook-url: ${{ secrets.SLACK_WEBHOOK }}
           payload: |
             {
-              "text": "❌ Staging deployment failed for ${{ github.ref }}",
+              "text": "❌ Staging deployment failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "❌ Deployment failed\nRepo: ${{ github.repository }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}"
+                    "text": "❌ Staging deployment failed\nRepo: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}"
                   }
                 }
               ]

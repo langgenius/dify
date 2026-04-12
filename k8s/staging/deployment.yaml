@@ -1,0 +1,360 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dify
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dify-config
+  namespace: dify
+data:
+  LOG_LEVEL: "INFO"
+  DEBUG: "false"
+  DATABASE_HOST: "postgres"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "dify"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  API_HOST: "0.0.0.0"
+  API_PORT: "5001"
+  NEXT_PUBLIC_API_URL: "http://api.dify.example.com"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dify-secret
+  namespace: dify
+type: Opaque
+stringData:
+  DATABASE_PASSWORD: "your-db-password"
+  REDIS_PASSWORD: "your-redis-password"
+  JWT_SECRET: "your-jwt-secret-key"
+  OPENAI_API_KEY: "your-openai-key"
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dify-storage
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /data/dify
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dify-storage-claim
+  namespace: dify
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dify-api
+  namespace: dify
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dify-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: dify-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5001"
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: api
+        image: ghcr.io/lczc1988/dify-api:develop
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 5001
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: dify-config
+        env:
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dify-secret
+              key: DATABASE_PASSWORD
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dify-secret
+              key: REDIS_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: dify-secret
+              key: JWT_SECRET
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: storage
+          mountPath: /app/storage
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: dify-storage-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-api
+  namespace: dify
+  labels:
+    app: dify-api
+spec:
+  type: ClusterIP
+  selector:
+    app: dify-api
+  ports:
+  - name: http
+    port: 5001
+    targetPort: http
+    protocol: TCP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dify-api-hpa
+  namespace: dify
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dify-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dify-web
+  namespace: dify
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dify-web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: dify-web
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: web
+        image: ghcr.io/lczc1988/dify-web:develop
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: dify-config
+              key: NEXT_PUBLIC_API_URL
+        - name: API_URL
+          value: "http://dify-api:5001"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-web
+  namespace: dify
+  labels:
+    app: dify-web
+spec:
+  type: LoadBalancer
+  selector:
+    app: dify-web
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dify-web-hpa
+  namespace: dify
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dify-web
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dify-api-pdb
+  namespace: dify
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: dify-api
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dify-web-pdb
+  namespace: dify
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: dify-web
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: dify
+data:
+  nginx.conf: |
+    upstream api {
+      server dify-api:5001;
+    }
+    
+    upstream web {
+      server dify-web:3000;
+    }
+    
+    server {
+      listen 80;
+      server_name _;
+      
+      # API routes
+      location /api/ {
+        proxy_pass http://api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+      }
+      
+      # Web routes
+      location / {
+        proxy_pass http://web;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+    }
