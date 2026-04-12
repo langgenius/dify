@@ -1,7 +1,6 @@
 import type { SyncDraftCallback } from '../hooks-store'
 import { useCallback } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useStore } from '../store'
 import { useNodesReadOnly } from './use-workflow'
 
@@ -20,12 +19,6 @@ export const useNodesSyncDraft = () => {
   ) => {
     if (getNodesReadOnly())
       return
-
-    if (collaborationManager.isConnected() && !collaborationManager.getIsLeader()) {
-      if (sync)
-        collaborationManager.emitSyncRequest()
-      return
-    }
 
     if (sync)
       doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
