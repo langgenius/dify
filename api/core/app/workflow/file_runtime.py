@@ -7,7 +7,7 @@ import os
 import time
 import urllib.parse
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 from graphon.file import FileTransferMethod
 from graphon.file.protocols import HttpResponseProtocol, WorkflowFileRuntimeProtocol
@@ -23,6 +23,12 @@ from extensions.ext_storage import storage
 
 if TYPE_CHECKING:
     from graphon.file import File
+
+
+class SignedQueryDict(TypedDict):
+    timestamp: str
+    nonce: str
+    sign: str
 
 
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
@@ -130,7 +136,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def _secret_key() -> bytes:
         return dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
 
-    def _sign_query(self, *, payload: str) -> dict[str, str]:
+    def _sign_query(self, *, payload: str) -> SignedQueryDict:
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
         sign = hmac.new(self._secret_key(), f"{payload}|{timestamp}|{nonce}".encode(), hashlib.sha256).digest()
