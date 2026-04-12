@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from sqlalchemy import inspect as sa_inspect
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source
@@ -216,9 +215,7 @@ class TestDataSourceApi:
 
             # Check that tenant_id appears in the WHERE predicates
             where_str = str(where_clause.compile(compile_kwargs={"literal_binds": True}))
-            assert "tenant_id" in where_str, (
-                "The patch query must filter by tenant_id to prevent IDOR vulnerabilities"
-            )
+            assert "tenant_id" in where_str, "The patch query must filter by tenant_id to prevent IDOR vulnerabilities"
 
 
 class TestDataSourceNotionListApi:
