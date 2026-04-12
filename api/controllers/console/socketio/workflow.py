@@ -51,7 +51,7 @@ def socket_connect(sid, environ, auth):
                 logging.warning("Socket connect rejected: no edit permission (user_id=%s, sid=%s)", user_id, sid)
                 return False
 
-            collaboration_service.save_session(sid, user)
+            collaboration_service.save_socket_identity(sid, user)
             return True
 
     except Exception:
@@ -68,7 +68,7 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    result = collaboration_service.register_session(workflow_id, sid)
+    result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid)
     if not result:
         return {"msg": "unauthorized"}, 401
 

@@ -13,19 +13,25 @@ class TestWorkflowCollaborationService:
         socketio = Mock()
         return WorkflowCollaborationService(repository, socketio), repository, socketio
 
-    def test_register_session_returns_leader_status(
+    def test_authorize_and_join_workflow_room_returns_leader_status(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
     ) -> None:
         # Arrange
         collaboration_service, repository, socketio = service
-        socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
+        socketio.get_session.return_value = {
+            "user_id": "u-1",
+            "username": "Jane",
+            "avatar": None,
+            "tenant_id": "t-1",
+        }
 
         with (
+            patch.object(collaboration_service, "_can_access_workflow", return_value=True),
             patch.object(collaboration_service, "get_or_set_leader", return_value="sid-1"),
             patch.object(collaboration_service, "broadcast_online_users"),
         ):
             # Act
-            result = collaboration_service.register_session("wf-1", "sid-1")
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         # Assert
         assert result == ("u-1", True)
@@ -33,7 +39,7 @@ class TestWorkflowCollaborationService:
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
-    def test_register_session_returns_none_when_missing_user(
+    def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
     ) -> None:
         # Arrange
@@ -41,25 +47,58 @@ class TestWorkflowCollaborationService:
         socketio.get_session.return_value = {}
 
         # Act
-        result = collaboration_service.register_session("wf-1", "sid-1")
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         # Assert
         assert result is None
 
-    def test_repr_and_save_session(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
+    def test_authorize_and_join_workflow_room_returns_none_when_missing_tenant(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, socketio = service
+        socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
+
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
+
+        assert result is None
+        repository.set_session_info.assert_not_called()
+        socketio.enter_room.assert_not_called()
+        socketio.emit.assert_not_called()
+
+    def test_authorize_and_join_workflow_room_returns_none_when_workflow_is_not_accessible(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, socketio = service
+        socketio.get_session.return_value = {
+            "user_id": "u-1",
+            "username": "Jane",
+            "avatar": None,
+            "tenant_id": "t-1",
+        }
+
+        with patch.object(collaboration_service, "_can_access_workflow", return_value=False):
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
+
+        assert result is None
+        repository.set_session_info.assert_not_called()
+        socketio.enter_room.assert_not_called()
+        socketio.emit.assert_not_called()
+
+    def test_repr_and_save_socket_identity(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         collaboration_service, _repository, socketio = service
         user = Mock()
         user.id = "u-1"
         user.name = "Jane"
         user.avatar = "avatar.png"
+        user.current_tenant_id = "t-1"
 
         assert "WorkflowCollaborationService" in repr(collaboration_service)
 
-        collaboration_service.save_session("sid-1", user)
+        collaboration_service.save_socket_identity("sid-1", user)
 
         socketio.save_session.assert_called_once_with(
             "sid-1",
-            {"user_id": "u-1", "username": "Jane", "avatar": "avatar.png"},
+            {"user_id": "u-1", "username": "Jane", "avatar": "avatar.png", "tenant_id": "t-1"},
         )
 
     def test_relay_collaboration_event_unauthorized(

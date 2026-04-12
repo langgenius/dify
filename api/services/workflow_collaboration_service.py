@@ -4,8 +4,14 @@ import logging
 import time
 from collections.abc import Mapping
 
+from sqlalchemy import select
+
+from extensions.ext_database import db
 from models.account import Account
+from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowCollaborationService:
@@ -16,20 +22,39 @@ class WorkflowCollaborationService:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(repository={self._repository})"
 
-    def save_session(self, sid: str, user: Account) -> None:
+    def save_socket_identity(self, sid: str, user: Account) -> None:
+        """Persist the authenticated console user on the raw socket session."""
         self._socketio.save_session(
             sid,
             {
                 "user_id": user.id,
                 "username": user.name,
                 "avatar": user.avatar,
+                "tenant_id": user.current_tenant_id,
             },
         )
 
-    def register_session(self, workflow_id: str, sid: str) -> tuple[str, bool] | None:
+    def authorize_and_join_workflow_room(self, workflow_id: str, sid: str) -> tuple[str, bool] | None:
+        """
+        Join a collaboration room only after validating the socket session and tenant-scoped app access.
+
+        The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
+        `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
+        """
         session = self._socketio.get_session(sid)
         user_id = session.get("user_id")
-        if not user_id:
+        tenant_id = session.get("tenant_id")
+        if not user_id or not tenant_id:
+            return None
+
+        if not self._can_access_workflow(workflow_id, str(tenant_id)):
+            logger.warning(
+                "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
+                workflow_id,
+                tenant_id,
+                user_id,
+                sid,
+            )
             return None
 
         session_info: WorkflowSessionInfo = {
@@ -51,6 +76,13 @@ class WorkflowCollaborationService:
         self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
 
         return str(user_id), is_leader
+
+    def _can_access_workflow(self, workflow_id: str, tenant_id: str) -> bool:
+        """Check that the collaboration room belongs to an active app in the caller's current tenant."""
+        app_id = db.session.scalar(
+            select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1)
+        )
+        return app_id is not None
 
     def disconnect_session(self, sid: str) -> None:
         mapping = self._repository.get_sid_mapping(sid)
