@@ -389,7 +389,11 @@ def _delete_app_messages(tenant_id: str, app_id: str):
             .where(SavedMessage.message_id == message_id)
             .execution_options(synchronize_session=False)
         )
-        session.execute(delete(Message).where(Message.id == message_id))
+        session.execute(
+            delete(Message)
+            .where(Message.id == message_id)
+            .execution_options(synchronize_session=False)
+        )
 
     _delete_records(
         """select id from messages where app_id=:app_id limit 1000""",
