@@ -185,7 +185,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const { data: appChatListData, isLoading: appChatListDataLoading, error: appChatListError } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
@@ -195,6 +195,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     refetchOnReconnect: false,
   })
   const invalidateShareConversations = useInvalidateShareConversations()
+  // Clear stale conversation_id from localStorage when the conversation
+  // no longer exists (404), preventing an infinite retry loop (#34731).
+  useEffect(() => {
+    if (appChatListError && (appChatListError as Response)?.status === 404)
+      handleConversationIdInfoChange('')
+  }, [appChatListError, handleConversationIdInfoChange])
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   const appPrevChatTree = useMemo(() => (currentConversationId && appChatListData?.data.length)

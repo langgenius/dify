@@ -131,6 +131,13 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     // back to a conversation. This fixes issue where recent messages don't appear
     // until switching away and back again (GitHub issue #30378).
     staleTime: 0,
+    // Don't retry on 404 — the conversation no longer exists and retrying
+    // would cause an infinite error loop (GitHub issue #34731).
+    retry: (_failureCount, error) => {
+      if ((error as Response)?.status === 404)
+        return false
+      return _failureCount < 3
+    },
   })
 }
 

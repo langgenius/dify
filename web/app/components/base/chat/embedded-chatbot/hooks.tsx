@@ -146,12 +146,18 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     pinned: false,
     limit: 100,
   })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const { data: appChatListData, isLoading: appChatListDataLoading, error: appChatListError } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
   })
   const invalidateShareConversations = useInvalidateShareConversations()
+  // Clear stale conversation_id from localStorage when the conversation
+  // no longer exists (404), preventing an infinite retry loop (#34731).
+  useEffect(() => {
+    if (appChatListError && (appChatListError as Response)?.status === 404)
+      handleConversationIdInfoChange('')
+  }, [appChatListError, handleConversationIdInfoChange])
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   const appPrevChatList = useMemo(() => (currentConversationId && appChatListData?.data.length)
