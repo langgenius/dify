@@ -3,8 +3,8 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from enum import StrEnum
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, ClassVar, NotRequired, TypedDict
 
 from graphon.enums import NodeType
