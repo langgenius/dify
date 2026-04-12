@@ -406,33 +406,33 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
               <div>·</div>
               <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
             </div>
-            {onlinePresenceUsers.length > 0 && (
-              <div className="mt-1">
-                <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={4} />
-              </div>
-            )}
           </div>
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {app.access_mode === AccessMode.PUBLIC && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
-                <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
+          <div className="flex h-full shrink-0 flex-col items-end justify-between py-px">
+            {onlinePresenceUsers.length > 0 && (
+              <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
             )}
-            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
-                <RiLockLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
-            )}
-            {app.access_mode === AccessMode.ORGANIZATION && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
-                <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
-            )}
-            {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
-                <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
-            )}
+            <div className="flex h-5 w-5 items-center justify-center">
+              {app.access_mode === AccessMode.PUBLIC && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
+                  <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
+                  <RiLockLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.ORGANIZATION && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
+                  <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
+                  <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
         <div className="title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
