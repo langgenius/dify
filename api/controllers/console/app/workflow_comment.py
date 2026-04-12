@@ -266,6 +266,9 @@ class WorkflowCommentReplyDetailApi(Resource):
         payload = WorkflowCommentReplyPayload.model_validate(console_ns.payload or {})
 
         reply = WorkflowCommentService.update_reply(
+            tenant_id=current_user.current_tenant_id,
+            app_id=app_model.id,
+            comment_id=comment_id,
             reply_id=reply_id,
             user_id=current_user.id,
             content=payload.content,
@@ -289,7 +292,13 @@ class WorkflowCommentReplyDetailApi(Resource):
             comment_id=comment_id, tenant_id=current_user.current_tenant_id, app_id=app_model.id
         )
 
-        WorkflowCommentService.delete_reply(reply_id=reply_id, user_id=current_user.id)
+        WorkflowCommentService.delete_reply(
+            tenant_id=current_user.current_tenant_id,
+            app_id=app_model.id,
+            comment_id=comment_id,
+            reply_id=reply_id,
+            user_id=current_user.id,
+        )
 
         return {"result": "success"}, 204
 

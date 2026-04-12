@@ -428,14 +428,52 @@ class WorkflowCommentService:
             return {"id": reply.id, "created_at": reply.created_at}
 
     @staticmethod
-    def update_reply(reply_id: str, user_id: str, content: str, mentioned_user_ids: list[str] | None = None) -> dict:
+    def _get_reply_in_comment_scope(
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        comment_id: str,
+        reply_id: str,
+    ) -> WorkflowCommentReply:
+        """Get a reply scoped to tenant/app/comment to prevent cross-thread mutations."""
+        stmt = (
+            select(WorkflowCommentReply)
+            .join(WorkflowComment, WorkflowComment.id == WorkflowCommentReply.comment_id)
+            .where(
+                WorkflowCommentReply.id == reply_id,
+                WorkflowCommentReply.comment_id == comment_id,
+                WorkflowComment.tenant_id == tenant_id,
+                WorkflowComment.app_id == app_id,
+            )
+            .limit(1)
+        )
+        reply = session.scalar(stmt)
+        if not reply:
+            raise NotFound("Reply not found")
+        return reply
+
+    @staticmethod
+    def update_reply(
+        tenant_id: str,
+        app_id: str,
+        comment_id: str,
+        reply_id: str,
+        user_id: str,
+        content: str,
+        mentioned_user_ids: list[str] | None = None,
+    ) -> dict:
         """Update a comment reply and notify newly mentioned users."""
         WorkflowCommentService._validate_content(content)
 
         with Session(db.engine, expire_on_commit=False) as session:
-            reply = session.get(WorkflowCommentReply, reply_id)
-            if not reply:
-                raise NotFound("Reply not found")
+            reply = WorkflowCommentService._get_reply_in_comment_scope(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                comment_id=comment_id,
+                reply_id=reply_id,
+            )
 
             # Only the creator can update the reply
             if reply.created_by != user_id:
@@ -488,12 +526,16 @@ class WorkflowCommentService:
             return {"id": reply.id, "updated_at": reply.updated_at}
 
     @staticmethod
-    def delete_reply(reply_id: str, user_id: str) -> None:
+    def delete_reply(tenant_id: str, app_id: str, comment_id: str, reply_id: str, user_id: str) -> None:
         """Delete a comment reply."""
         with Session(db.engine, expire_on_commit=False) as session:
-            reply = session.get(WorkflowCommentReply, reply_id)
-            if not reply:
-                raise NotFound("Reply not found")
+            reply = WorkflowCommentService._get_reply_in_comment_scope(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                comment_id=comment_id,
+                reply_id=reply_id,
+            )
 
             # Only the creator can delete the reply
             if reply.created_by != user_id:

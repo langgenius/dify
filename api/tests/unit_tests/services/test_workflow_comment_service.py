@@ -395,18 +395,32 @@ class TestWorkflowCommentService:
         mock_session.commit.assert_called_once()
 
     def test_update_reply_raises_not_found(self, mock_session: Mock) -> None:
-        mock_session.get.return_value = None
+        mock_session.scalar.return_value = None
 
         with pytest.raises(NotFound):
-            WorkflowCommentService.update_reply("reply-1", "user-1", "hello")
+            WorkflowCommentService.update_reply(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                reply_id="reply-1",
+                user_id="user-1",
+                content="hello",
+            )
 
     def test_update_reply_raises_forbidden(self, mock_session: Mock) -> None:
         reply = Mock()
         reply.created_by = "owner"
-        mock_session.get.return_value = reply
+        mock_session.scalar.return_value = reply
 
         with pytest.raises(Forbidden):
-            WorkflowCommentService.update_reply("reply-1", "intruder", "hello")
+            WorkflowCommentService.update_reply(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                reply_id="reply-1",
+                user_id="intruder",
+                content="hello",
+            )
 
     def test_update_reply_replaces_mentions(self, mock_session: Mock) -> None:
         reply = Mock()
@@ -414,11 +428,18 @@ class TestWorkflowCommentService:
         reply.comment_id = "comment-1"
         reply.created_by = "owner"
         reply.updated_at = "updated"
-        mock_session.get.return_value = reply
+        mock_session.scalar.return_value = reply
         mock_session.scalars.return_value = _mock_scalars([Mock()])
+        comment = Mock()
+        comment.tenant_id = "tenant-1"
+        comment.app_id = "app-1"
+        mock_session.get.return_value = comment
 
         with patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids", return_value=["user-2"]):
             result = WorkflowCommentService.update_reply(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
                 reply_id="reply-1",
                 user_id="owner",
                 content="new",
@@ -457,24 +478,42 @@ class TestWorkflowCommentService:
     def test_delete_reply_raises_forbidden(self, mock_session: Mock) -> None:
         reply = Mock()
         reply.created_by = "owner"
-        mock_session.get.return_value = reply
+        mock_session.scalar.return_value = reply
 
         with pytest.raises(Forbidden):
-            WorkflowCommentService.delete_reply("reply-1", "intruder")
+            WorkflowCommentService.delete_reply(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                reply_id="reply-1",
+                user_id="intruder",
+            )
 
     def test_delete_reply_raises_not_found(self, mock_session: Mock) -> None:
-        mock_session.get.return_value = None
+        mock_session.scalar.return_value = None
 
         with pytest.raises(NotFound):
-            WorkflowCommentService.delete_reply("reply-1", "owner")
+            WorkflowCommentService.delete_reply(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                reply_id="reply-1",
+                user_id="owner",
+            )
 
     def test_delete_reply_removes_mentions(self, mock_session: Mock) -> None:
         reply = Mock()
         reply.created_by = "owner"
-        mock_session.get.return_value = reply
+        mock_session.scalar.return_value = reply
         mock_session.scalars.return_value = _mock_scalars([Mock(), Mock()])
 
-        WorkflowCommentService.delete_reply("reply-1", "owner")
+        WorkflowCommentService.delete_reply(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            comment_id="comment-1",
+            reply_id="reply-1",
+            user_id="owner",
+        )
 
         assert mock_session.delete.call_count == 3
         mock_session.commit.assert_called_once()
