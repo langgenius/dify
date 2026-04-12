@@ -7,7 +7,8 @@ import type {
   WorkflowCommentDetail as ContractWorkflowCommentDetail,
   WorkflowCommentDetailReply as ContractWorkflowCommentDetailReply,
   WorkflowCommentList as ContractWorkflowCommentList,
-  WorkflowCommentReply as ContractWorkflowCommentReply,
+  WorkflowCommentReplyCreateRes as ContractWorkflowCommentReplyCreateRes,
+  WorkflowCommentReplyUpdateRes as ContractWorkflowCommentReplyUpdateRes,
   WorkflowCommentResolveRes as ContractWorkflowCommentResolveRes,
   WorkflowCommentUpdateRes as ContractWorkflowCommentUpdateRes,
 } from '@/contract/console/workflow-comment'
@@ -22,7 +23,8 @@ type WorkflowCommentCreateRes = ContractWorkflowCommentCreateRes
 export type WorkflowCommentDetail = ContractWorkflowCommentDetail
 export type WorkflowCommentDetailReply = ContractWorkflowCommentDetailReply
 export type WorkflowCommentList = ContractWorkflowCommentList
-type WorkflowCommentReply = ContractWorkflowCommentReply
+type WorkflowCommentReplyCreateRes = ContractWorkflowCommentReplyCreateRes
+type WorkflowCommentReplyUpdateRes = ContractWorkflowCommentReplyUpdateRes
 type WorkflowCommentResolveRes = ContractWorkflowCommentResolveRes
 type WorkflowCommentUpdateRes = ContractWorkflowCommentUpdateRes
 
@@ -65,14 +67,14 @@ export const resolveWorkflowComment = async (appId: string, commentId: string): 
   })
 }
 
-export const createWorkflowCommentReply = async (appId: string, commentId: string, params: CreateReplyParams): Promise<WorkflowCommentReply> => {
+export const createWorkflowCommentReply = async (appId: string, commentId: string, params: CreateReplyParams): Promise<WorkflowCommentReplyCreateRes> => {
   return consoleClient.workflowComments.replies.create({
     params: { appId, commentId },
     body: params,
   })
 }
 
-export const updateWorkflowCommentReply = async (appId: string, commentId: string, replyId: string, params: CreateReplyParams): Promise<WorkflowCommentReply> => {
+export const updateWorkflowCommentReply = async (appId: string, commentId: string, replyId: string, params: CreateReplyParams): Promise<WorkflowCommentReplyUpdateRes> => {
   return consoleClient.workflowComments.replies.update({
     params: {
       appId,

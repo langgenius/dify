@@ -75,20 +75,14 @@ export type WorkflowCommentResolveRes = {
   resolved_at: number
 }
 
-export type WorkflowCommentReply = {
+export type WorkflowCommentReplyCreateRes = {
   id: string
-  comment_id: string
-  content: string
-  created_by: string
   created_at: string
+}
+
+export type WorkflowCommentReplyUpdateRes = {
+  id: string
   updated_at: string
-  mentioned_user_ids: string[]
-  author: {
-    id: string
-    name: string
-    email: string
-    avatar?: string
-  }
 }
 
 export type CreateCommentParams = {
@@ -200,7 +194,7 @@ const workflowCommentReplyCreateContract = base
     }
     body: CreateReplyParams
   }>())
-  .output(type<WorkflowCommentReply>())
+  .output(type<WorkflowCommentReplyCreateRes>())
 
 const workflowCommentReplyUpdateContract = base
   .route({
@@ -215,7 +209,7 @@ const workflowCommentReplyUpdateContract = base
     }
     body: CreateReplyParams
   }>())
-  .output(type<WorkflowCommentReply>())
+  .output(type<WorkflowCommentReplyUpdateRes>())
 
 const workflowCommentReplyDeleteContract = base
   .route({
