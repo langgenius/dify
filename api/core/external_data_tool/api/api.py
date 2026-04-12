@@ -11,7 +11,11 @@ from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 
 class ApiToolConfig(TypedDict, total=False):
-    """Config shape for ApiExternalDataTool, passed via validate_config and stored in self.config."""
+    """Expected config shape for ApiExternalDataTool.
+
+    Not used directly in method signatures (base class accepts dict[str, Any]);
+    kept here to document the keys this tool reads from config.
+    """
 
     api_based_extension_id: str
 
@@ -25,7 +29,7 @@ class ApiExternalDataTool(ExternalDataTool):
     """the unique name of external data tool"""
 
     @classmethod
-    def validate_config(cls, tenant_id: str, config: ApiToolConfig):
+    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
         """
         Validate the incoming form config data.
 
