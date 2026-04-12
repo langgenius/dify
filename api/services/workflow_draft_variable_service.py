@@ -4,7 +4,8 @@ import logging
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
-from typing import Any, ClassVar, TypedDict
+from datetime import datetime
+from typing import Any, ClassVar, NotRequired, TypedDict
 
 from graphon.enums import NodeType
 from graphon.file import File
@@ -725,23 +726,23 @@ def _batch_upsert_draft_variable(
     session.execute(stmt)
 
 
-class _InsertionDict(TypedDict, total=False):
+class _InsertionDict(TypedDict):
     id: str
     app_id: str
     user_id: str | None
-    last_edited_at: None
+    last_edited_at: datetime | None
     node_id: str
     name: str
-    selector: Any
-    value_type: str
-    value: Any
+    selector: str
+    value_type: SegmentType
+    value: str
     node_execution_id: str | None
     file_id: str | None
-    visible: bool
-    editable: bool
-    created_at: Any
-    updated_at: Any
-    description: str
+    visible: NotRequired[bool]
+    editable: NotRequired[bool]
+    created_at: NotRequired[datetime]
+    updated_at: NotRequired[datetime]
+    description: NotRequired[str]
 
 
 def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
