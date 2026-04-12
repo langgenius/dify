@@ -2,6 +2,7 @@
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { Avatar } from '@/app/components/base/ui/avatar'
 import {
@@ -50,6 +51,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
+  const { t } = useTranslation()
   const appId = useStore(s => s.appId)
   const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string)
   const { userProfile } = useAppContext()
@@ -58,13 +60,15 @@ const OnlineUsers = () => {
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
   const currentUserId = userProfile?.id
+  const fallbackUsername = t('comments.fallback.user', { ns: 'workflow' })
+  const currentUserSuffix = t('members.you', { ns: 'common' })
 
   const renderDisplayName = (
     user: OnlineUser,
     baseClassName: string,
     suffixClassName: string,
   ) => {
-    const baseName = user.username || 'User'
+    const baseName = user.username || fallbackUsername
     const isCurrentUser = user.user_id === currentUserId
 
     return (
@@ -72,7 +76,7 @@ const OnlineUsers = () => {
         <span>{baseName}</span>
         {isCurrentUser && (
           <span className={suffixClassName}>
-            (You)
+            {currentUserSuffix}
           </span>
         )}
       </span>
@@ -132,7 +136,7 @@ const OnlineUsers = () => {
                     onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                   >
                     <Avatar
-                      name={user.username || 'User'}
+                      name={user.username || fallbackUsername}
                       avatar={getAvatarUrl(user)}
                       size="sm"
                       className="ring-1 ring-components-panel-bg"
@@ -202,7 +206,7 @@ const OnlineUsers = () => {
                     >
                       <div className="relative">
                         <Avatar
-                          name={user.username || 'User'}
+                          name={user.username || fallbackUsername}
                           avatar={getAvatarUrl(user)}
                           size="sm"
                           backgroundColor={userColor}
