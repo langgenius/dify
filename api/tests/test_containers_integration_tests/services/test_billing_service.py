@@ -382,9 +382,7 @@ class TestBillingServiceIsTenantOwnerOrAdmin:
         yield
         db_session_with_containers.rollback()
 
-    def _create_account_with_tenant_role(
-        self, db_session: Session, role: TenantAccountRole
-    ) -> tuple[Account, Tenant]:
+    def _create_account_with_tenant_role(self, db_session: Session, role: TenantAccountRole) -> tuple[Account, Tenant]:
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session.add(tenant)
         db_session.flush()
@@ -413,20 +411,14 @@ class TestBillingServiceIsTenantOwnerOrAdmin:
         account._current_tenant = tenant
         return account, tenant
 
-    def test_is_tenant_owner_or_admin_editor_role_raises_error(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_is_tenant_owner_or_admin_editor_role_raises_error(self, db_session_with_containers: Session) -> None:
         """is_tenant_owner_or_admin raises ValueError for EDITOR role."""
-        account, _ = self._create_account_with_tenant_role(
-            db_session_with_containers, TenantAccountRole.EDITOR
-        )
+        account, _ = self._create_account_with_tenant_role(db_session_with_containers, TenantAccountRole.EDITOR)
 
         with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
             BillingService.is_tenant_owner_or_admin(account)
 
-    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self, db_session_with_containers: Session) -> None:
         """is_tenant_owner_or_admin raises ValueError for DATASET_OPERATOR role."""
         account, _ = self._create_account_with_tenant_role(
             db_session_with_containers, TenantAccountRole.DATASET_OPERATOR
