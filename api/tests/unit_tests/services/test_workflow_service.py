@@ -969,8 +969,7 @@ class TestWorkflowService:
         # 1. Workflow exists
         # 2. No app is currently using it
         # 3. Not published as a tool
-        mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
-        mock_session.query.return_value.where.return_value.first.return_value = None  # no tool provider
+        mock_session.scalar.side_effect = [mock_workflow, None, None]  # workflow, no app using it, no tool provider
 
         with patch("services.workflow_service.select") as mock_select:
             mock_stmt = MagicMock()
@@ -1045,8 +1044,7 @@ class TestWorkflowService:
         mock_tool_provider = MagicMock()
 
         mock_session = MagicMock()
-        mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
-        mock_session.query.return_value.where.return_value.first.return_value = mock_tool_provider
+        mock_session.scalar.side_effect = [mock_workflow, None, mock_tool_provider]  # workflow, no app, tool provider
 
         with patch("services.workflow_service.select") as mock_select:
             mock_stmt = MagicMock()
