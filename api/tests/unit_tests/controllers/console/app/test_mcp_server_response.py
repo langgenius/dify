@@ -1,7 +1,5 @@
 import datetime
 
-import pytest
-
 from controllers.console.app.mcp_server import AppMCPServerResponse
 
 
@@ -43,7 +41,7 @@ class TestAppMCPServerResponse:
         assert resp.parameters == {"already": "parsed"}
 
     def test_timestamps_normalized(self):
-        dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+        dt = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
         data = {
             "id": "s1",
             "name": "test",
