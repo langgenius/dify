@@ -1,3 +1,5 @@
+from typing import cast
+
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
 from extensions.ext_code_based_extension import code_based_extension
@@ -21,8 +23,7 @@ class ModerationFactory:
         :return:
         """
         extension_class = code_based_extension.extension_class(ExtensionModule.MODERATION, name)
-        # FIXME: mypy error, try to fix it instead of using type: ignore
-        extension_class.validate_config(tenant_id, config)  # type: ignore
+        cast(type[Moderation], extension_class).validate_config(tenant_id, config)
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         """
