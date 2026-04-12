@@ -13,9 +13,9 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
-from services.app_dsl_service import AppDslService
+from services.app_dsl_service import AppDslService, Import
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.feature_service import FeatureService
 
 from .. import console_ns
@@ -33,12 +33,15 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
-register_schema_models(console_ns, AppImportPayload)
+register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
 
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
     @console_ns.expect(console_ns.models[AppImportPayload.__name__])
+    @console_ns.response(200, "Import completed", console_ns.models[Import.__name__])
+    @console_ns.response(202, "Import pending confirmation", console_ns.models[Import.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -82,6 +85,8 @@ class AppImportApi(Resource):
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")
 class AppImportConfirmApi(Resource):
+    @console_ns.response(200, "Import confirmed", console_ns.models[Import.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[Import.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -105,6 +110,7 @@ class AppImportConfirmApi(Resource):
 
 @console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
 class AppImportCheckDependenciesApi(Resource):
+    @console_ns.response(200, "Dependencies checked", console_ns.models[CheckDependenciesResult.__name__])
     @setup_required
     @login_required
     @get_app_model
