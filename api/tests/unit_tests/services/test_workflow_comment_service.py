@@ -39,20 +39,28 @@ class TestWorkflowCommentService:
         with pytest.raises(ValueError):
             WorkflowCommentService._validate_content("a" * 1001)
 
-    def test_filter_valid_mentioned_user_ids_deduplicates_and_preserves_order(self) -> None:
+    def test_filter_valid_mentioned_user_ids_filters_by_tenant_and_preserves_order(self, mock_session: Mock) -> None:
+        tenant_member_1 = "123e4567-e89b-12d3-a456-426614174000"
+        tenant_member_2 = "123e4567-e89b-12d3-a456-426614174002"
+        non_tenant_member = "123e4567-e89b-12d3-a456-426614174001"
+        mock_session.scalars.return_value = _mock_scalars([tenant_member_1, tenant_member_2])
+
         result = WorkflowCommentService._filter_valid_mentioned_user_ids(
             [
-                "123e4567-e89b-12d3-a456-426614174000",
+                tenant_member_1,
                 "",
                 123,  # type: ignore[list-item]
-                "123e4567-e89b-12d3-a456-426614174000",
-                "123e4567-e89b-12d3-a456-426614174001",
-            ]
+                tenant_member_1,
+                non_tenant_member,
+                tenant_member_2,
+            ],
+            session=mock_session,
+            tenant_id="tenant-1",
         )
 
         assert result == [
-            "123e4567-e89b-12d3-a456-426614174000",
-            "123e4567-e89b-12d3-a456-426614174001",
+            tenant_member_1,
+            tenant_member_2,
         ]
 
     def test_format_comment_excerpt_handles_short_and_long_limits(self) -> None:
@@ -140,7 +148,7 @@ class TestWorkflowCommentService:
         with (
             patch.object(service_module, "WorkflowComment", return_value=comment),
             patch.object(service_module, "WorkflowCommentMention", return_value=Mock()),
-            patch.object(service_module, "uuid_value", side_effect=[True, False]),
+            patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids", return_value=["user-2"]),
         ):
             result = WorkflowCommentService.create_comment(
                 tenant_id="tenant-1",
@@ -192,7 +200,7 @@ class TestWorkflowCommentService:
         existing_mentions = [Mock(), Mock()]
         mock_session.scalars.return_value = _mock_scalars(existing_mentions)
 
-        with patch.object(service_module, "uuid_value", side_effect=[True, False]):
+        with patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids", return_value=["user-2"]):
             result = WorkflowCommentService.update_comment(
                 tenant_id="tenant-1",
                 app_id="app-1",
@@ -218,7 +226,11 @@ class TestWorkflowCommentService:
         mock_session.scalars.return_value = _mock_scalars([existing_mention])
 
         with (
-            patch.object(service_module, "uuid_value", side_effect=[True, True]),
+            patch.object(
+                WorkflowCommentService,
+                "_filter_valid_mentioned_user_ids",
+                return_value=["user-2", "user-3"],
+            ),
             patch.object(
                 WorkflowCommentService,
                 "_build_mention_email_payloads",
@@ -369,7 +381,7 @@ class TestWorkflowCommentService:
         with (
             patch.object(service_module, "WorkflowCommentReply", return_value=reply),
             patch.object(service_module, "WorkflowCommentMention", return_value=Mock()),
-            patch.object(service_module, "uuid_value", side_effect=[True, False]),
+            patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids", return_value=["user-2"]),
         ):
             result = WorkflowCommentService.create_reply(
                 comment_id="comment-1",
@@ -405,7 +417,7 @@ class TestWorkflowCommentService:
         mock_session.get.return_value = reply
         mock_session.scalars.return_value = _mock_scalars([Mock()])
 
-        with patch.object(service_module, "uuid_value", side_effect=[True, False]):
+        with patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids", return_value=["user-2"]):
             result = WorkflowCommentService.update_reply(
                 reply_id="reply-1",
                 user_id="owner",
