@@ -352,7 +352,7 @@ class TestSiteEndpoints:
 
         site = MagicMock()
         site.app_id = "app-1"
-        site.code = "new-code"
+        site.code = "old-code"
         site.title = "My Site"
         site.icon = None
         site.icon_background = None
@@ -383,7 +383,7 @@ class TestSiteEndpoints:
             result = method(app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
-        assert result["access_token"] == "new-code"
+        assert result["access_token"] == "code"
 
 
 class TestWorkflowEndpoints:

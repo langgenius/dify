@@ -50,8 +50,8 @@ class AppSiteUpdatePayload(BaseModel):
 
 class AppSiteResponse(ResponseModel):
     app_id: str
-    access_token: str = Field(validation_alias="code")
-    code: str
+    access_token: str | None = Field(default=None, validation_alias="code")
+    code: str | None = None
     title: str
     icon: str | None = None
     icon_background: str | None = None
@@ -67,7 +67,7 @@ class AppSiteResponse(ResponseModel):
     use_icon_as_answer_icon: bool
 
 
-register_schema_models(console_ns, AppSiteUpdatePayload)
+register_schema_models(console_ns, AppSiteUpdatePayload, AppSiteResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site")
@@ -76,6 +76,7 @@ class AppSite(Resource):
     @console_ns.doc(description="Update application site configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppSiteUpdatePayload.__name__])
+    @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")
     @setup_required
@@ -124,6 +125,7 @@ class AppSiteAccessTokenReset(Resource):
     @console_ns.doc("reset_app_site_access_token")
     @console_ns.doc(description="Reset access token for application site")
     @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Access token reset successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions (admin/owner required)")
     @console_ns.response(404, "App or site not found")
     @setup_required
