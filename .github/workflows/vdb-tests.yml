@@ -86,7 +86,7 @@ jobs:
       - name: Test Vector Stores
         run: |
           uv run --project api pytest --timeout "${PYTEST_TIMEOUT:-180}" \
-            api/providers/vdb/chroma/tests/integration_tests \
-            api/providers/vdb/pgvector/tests/integration_tests \
-            api/providers/vdb/qdrant/tests/integration_tests \
-            api/providers/vdb/weaviate/tests/integration_tests
+            api/providers/vdb/vdb-chroma/tests/integration_tests \
+            api/providers/vdb/vdb-pgvector/tests/integration_tests \
+            api/providers/vdb/vdb-qdrant/tests/integration_tests \
+            api/providers/vdb/vdb-weaviate/tests/integration_tests
