@@ -577,7 +577,7 @@ class TestDatasetServiceCreationAndUpdate:
     def test_update_external_knowledge_binding_updates_changed_binding_values(self):
         binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
         session = MagicMock()
-        session.query.return_value.filter_by.return_value.first.return_value = binding
+        session.scalar.return_value = binding
         session.add = MagicMock()
         session_context = _make_session_context(session)
 
@@ -596,7 +596,7 @@ class TestDatasetServiceCreationAndUpdate:
 
     def test_update_external_knowledge_binding_raises_for_missing_binding(self):
         session = MagicMock()
-        session.query.return_value.filter_by.return_value.first.return_value = None
+        session.scalar.return_value = None
         session_context = _make_session_context(session)
 
         mock_sessionmaker = MagicMock()
