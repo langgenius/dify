@@ -54,6 +54,7 @@ type MCPModalFormState = {
   isDynamicRegistration: boolean
   clientID: string
   credentials: string
+  scope: string
 }
 type MCPModalFormActions = {
   setUrl: (url: string) => void
@@ -68,6 +69,7 @@ type MCPModalFormActions = {
   setIsDynamicRegistration: (value: boolean) => void
   setClientID: (id: string) => void
   setCredentials: (credentials: string) => void
+  setScope: (scope: string) => void
   handleUrlBlur: (url: string) => Promise<void>
   resetIcon: () => void
 }
@@ -100,6 +102,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() => isCreate ? true : (data?.is_dynamic_registration ?? true))
   const [clientID, setClientID] = useState(() => data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(() => data?.authentication?.client_secret || '')
+  const [scope, setScope] = useState(() => data?.authentication?.scope || '')
   const handleUrlBlur = useCallback(async (urlValue: string) => {
     if (data)
       return
@@ -163,6 +166,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       isDynamicRegistration,
       clientID,
       credentials,
+      scope,
     } satisfies MCPModalFormState,
     // Actions
     actions: {
@@ -178,6 +182,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setIsDynamicRegistration,
       setClientID,
       setCredentials,
+      setScope,
       handleUrlBlur,
       resetIcon,
     } satisfies MCPModalFormActions,

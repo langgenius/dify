@@ -40,6 +40,7 @@ class MCPSupportGrantType(StrEnum):
 class MCPAuthentication(BaseModel):
     client_id: str
     client_secret: str | None = None
+    scope: str | None = None
 
 
 class MCPConfiguration(BaseModel):
@@ -276,6 +277,10 @@ class MCPProviderEntity(BaseModel):
             )
         if client_info.get("client_secret"):
             masked["client_secret"] = self._mask_value(client_info["client_secret"])
+
+        # Scope is not secret, return as-is for the edit form
+        if credentials.get("scope"):
+            masked["scope"] = credentials["scope"]
         return masked
 
     def decrypt_server_url(self) -> str:

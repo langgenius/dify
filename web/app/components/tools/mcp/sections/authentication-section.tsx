@@ -14,6 +14,8 @@ type AuthenticationSectionProps = {
   onClientIDChange: (value: string) => void
   credentials: string
   onCredentialsChange: (value: string) => void
+  scope: string
+  onScopeChange: (value: string) => void
 }
 
 const AuthenticationSection: FC<AuthenticationSectionProps> = ({
@@ -23,6 +25,8 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
   onClientIDChange,
   credentials,
   onCredentialsChange,
+  scope,
+  onScopeChange,
 }) => {
   const { t } = useTranslation()
 
@@ -71,6 +75,18 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
           disabled={isDynamicRegistration}
         />
       </div>
+      {!isDynamicRegistration && (
+        <div>
+          <div className="mb-1 flex h-6 items-center">
+            <span className="system-sm-medium text-text-secondary">{t('mcp.modal.scope', { ns: 'tools' })}</span>
+          </div>
+          <Input
+            value={scope}
+            onChange={e => onScopeChange(e.target.value)}
+            placeholder={t('mcp.modal.scopePlaceholder', { ns: 'tools' })}
+          />
+        </div>
+      )}
     </>
   )
 }

@@ -32,10 +32,11 @@ type MCPModalConfirmPayload = {
   server_identifier: string
   headers?: Record<string, string>
   is_dynamic_registration?: boolean
-  authentication?: {
+  authentication: {
     client_id?: string
     client_secret?: string
     grant_type?: string
+    scope?: string
   }
   configuration: {
     timeout: number
@@ -107,6 +108,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
       authentication: {
         client_id: state.clientID,
         client_secret: state.credentials,
+        scope: state.scope || undefined,
       },
       configuration: {
         timeout: state.timeout || 30,
@@ -228,6 +230,8 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
             onClientIDChange={actions.setClientID}
             credentials={state.credentials}
             onCredentialsChange={actions.setCredentials}
+            scope={state.scope}
+            onScopeChange={actions.setScope}
           />
         )}
         {state.authMethod === MCPAuthMethod.headers && (

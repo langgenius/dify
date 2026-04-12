@@ -134,6 +134,8 @@
   "mcp.modal.noHeaders": "No custom headers configured",
   "mcp.modal.redirectUrlWarning": "Please configure your OAuth redirect URL to:",
   "mcp.modal.save": "Save",
+  "mcp.modal.scope": "Scope",
+  "mcp.modal.scopePlaceholder": "e.g., gateway:invoke openid",
   "mcp.modal.serverIdentifier": "Server Identifier",
   "mcp.modal.serverIdentifierPlaceholder": "Unique identifier, e.g., my-mcp-server",
   "mcp.modal.serverIdentifierTip": "Unique identifier for the MCP server within the workspace. Lowercase letters, numbers, underscores, and hyphens only. Up to 24 characters.",
