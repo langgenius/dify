@@ -38,21 +38,25 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
 
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
+        self._test_user_id = str(uuid.uuid4())
         self._session: Session = db.session()
         sys_var = WorkflowDraftVariable.new_sys_variable(
             app_id=self._test_app_id,
+            user_id=self._test_user_id,
             name="sys_var",
             value=build_segment("sys_value"),
             node_execution_id=self._node_exec_id,
         )
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=self._test_app_id,
+            user_id=self._test_user_id,
             name="conv_var",
             value=build_segment("conv_value"),
         )
         node2_vars = [
             WorkflowDraftVariable.new_node_variable(
                 app_id=self._test_app_id,
+                user_id=self._test_user_id,
                 node_id=self._node2_id,
                 name="int_var",
                 value=build_segment(1),
@@ -61,6 +65,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
             ),
             WorkflowDraftVariable.new_node_variable(
                 app_id=self._test_app_id,
+                user_id=self._test_user_id,
                 node_id=self._node2_id,
                 name="str_var",
                 value=build_segment("str_value"),
@@ -70,6 +75,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         ]
         node1_var = WorkflowDraftVariable.new_node_variable(
             app_id=self._test_app_id,
+            user_id=self._test_user_id,
             node_id=self._node1_id,
             name="str_var",
             value=build_segment("str_value"),
@@ -147,6 +153,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
             .where(
                 WorkflowDraftVariable.app_id == self._test_app_id,
                 WorkflowDraftVariable.node_id == self._node2_id,
+                WorkflowDraftVariable.user_id == self._test_user_id,
             )
         )
         assert node2_var_count == 0
