@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
@@ -41,6 +42,9 @@ class ApiKeyItem(ResponseModel):
 
 class ApiKeyList(ResponseModel):
     data: list[ApiKeyItem]
+
+
+register_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
@@ -155,6 +159,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_app_api_keys")
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for an app"""
         return super().get(resource_id)
@@ -162,7 +167,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("create_app_api_key")
     @console_ns.doc(description="Create a new API key for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(201, "API key created successfully")
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
@@ -194,6 +199,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for a dataset"""
         return super().get(resource_id)
@@ -201,7 +207,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("create_dataset_api_key")
     @console_ns.doc(description="Create a new API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(201, "API key created successfully")
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""

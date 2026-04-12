@@ -782,6 +782,7 @@ class DatasetApiKeyApi(Resource):
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -792,6 +793,8 @@ class DatasetApiKeyApi(Resource):
         ).all()
         return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
+    @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
     @login_required
     @is_admin_or_owner_required
