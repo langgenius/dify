@@ -80,7 +80,7 @@ class WorkflowCollaborationService:
     def _can_access_workflow(self, workflow_id: str, tenant_id: str) -> bool:
         """Check that the collaboration room belongs to an active app in the caller's current tenant."""
         app_id = db.session.scalar(
-            select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+            select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1)
         )
         return app_id is not None
 
