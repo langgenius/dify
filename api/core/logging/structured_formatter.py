@@ -3,7 +3,7 @@
 import logging
 import traceback
 from datetime import UTC, datetime
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 import orjson
 
@@ -16,20 +16,17 @@ class IdentityDict(TypedDict, total=False):
     user_type: str
 
 
-class _LogDictRequired(TypedDict):
+class LogDict(TypedDict):
     ts: str
     severity: str
     service: str
     caller: str
     message: str
-
-
-class LogDict(_LogDictRequired, total=False):
-    trace_id: str
-    span_id: str
-    identity: IdentityDict
-    attributes: dict[str, Any]
-    stack_trace: str
+    trace_id: NotRequired[str]
+    span_id: NotRequired[str]
+    identity: NotRequired[IdentityDict]
+    attributes: NotRequired[dict[str, Any]]
+    stack_trace: NotRequired[str]
 
 
 class StructuredJSONFormatter(logging.Formatter):
