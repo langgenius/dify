@@ -38,7 +38,18 @@ class ActivatePayload(BaseModel):
         return timezone(value)
 
 
-register_schema_models(console_ns, ActivateCheckQuery, ActivatePayload)
+class ActivationCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether token is valid")
+    data: dict | None = Field(default=None, description="Activation data if valid")
+
+
+class ActivationResponse(BaseModel):
+    result: str = Field(description="Operation result")
+
+
+register_schema_models(
+    console_ns, ActivateCheckQuery, ActivatePayload, ActivationCheckResponse, ActivationResponse
+)
 
 
 @console_ns.route("/activate/check")
@@ -46,6 +57,11 @@ class ActivateCheckApi(Resource):
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
     @console_ns.expect(console_ns.models[ActivateCheckQuery.__name__])
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[ActivationCheckResponse.__name__],
+    )
     def get(self):
         args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
@@ -79,6 +95,11 @@ class ActivateApi(Resource):
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
     @console_ns.expect(console_ns.models[ActivatePayload.__name__])
+    @console_ns.response(
+        200,
+        "Account activated successfully",
+        console_ns.models[ActivationResponse.__name__],
+    )
     @console_ns.response(400, "Already activated or invalid token")
     def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
