@@ -28,7 +28,7 @@ class LogDict(_LogDictRequired, total=False):
     trace_id: str
     span_id: str
     identity: IdentityDict
-    attributes: Any
+    attributes: dict[str, Any]
     stack_trace: str
 
 
