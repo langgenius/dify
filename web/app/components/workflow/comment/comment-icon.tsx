@@ -222,6 +222,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
                   users={participants}
                   maxVisible={3}
                   size="sm"
+                  className="-translate-y-[1.5px]"
                 />
               </div>
             </div>
