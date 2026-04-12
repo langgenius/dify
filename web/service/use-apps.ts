@@ -30,6 +30,7 @@ type AppListParams = {
   name?: string
   mode?: AppModeEnum | 'all'
   tag_ids?: string[]
+  creator_id?: string
   is_created_by_me?: boolean
 }
 
@@ -55,6 +56,7 @@ const normalizeAppListParams = (params: AppListParams) => {
     name = '',
     mode,
     tag_ids,
+    creator_id,
     is_created_by_me,
   } = params
 
@@ -66,6 +68,7 @@ const normalizeAppListParams = (params: AppListParams) => {
     name,
     ...(safeMode && safeMode !== 'all' ? { mode: safeMode } : {}),
     ...(tag_ids?.length ? { tag_ids } : {}),
+    ...(creator_id ? { creator_id } : {}),
     ...(is_created_by_me ? { is_created_by_me } : {}),
   }
 }

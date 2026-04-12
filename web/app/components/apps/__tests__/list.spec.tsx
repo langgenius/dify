@@ -44,6 +44,7 @@ vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
 const mockSetQuery = vi.fn()
 const mockQueryState = {
   tagIDs: [] as string[],
+  creatorIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
 }
@@ -68,6 +69,8 @@ vi.mock('../hooks/use-dsl-drag-drop', () => ({
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
 const mockFetchSnippetNextPage = vi.fn()
+const mockUseInfiniteAppList = vi.fn()
+const mockUseInfiniteSnippetList = vi.fn()
 
 const mockServiceState = {
   error: null as Error | null,
@@ -112,16 +115,19 @@ const defaultAppData = {
 }
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: defaultAppData,
-    isLoading: mockServiceState.isLoading,
-    isFetching: mockServiceState.isFetching,
-    isFetchingNextPage: mockServiceState.isFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockServiceState.hasNextPage,
-    error: mockServiceState.error,
-    refetch: mockRefetch,
-  }),
+  useInfiniteAppList: (params: unknown, options: unknown) => {
+    mockUseInfiniteAppList(params, options)
+    return {
+      data: defaultAppData,
+      isLoading: mockServiceState.isLoading,
+      isFetching: mockServiceState.isFetching,
+      isFetchingNextPage: mockServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockServiceState.hasNextPage,
+      error: mockServiceState.error,
+      refetch: mockRefetch,
+    }
+  },
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -162,15 +168,18 @@ const defaultSnippetData = {
 }
 
 vi.mock('@/service/use-snippets', () => ({
-  useInfiniteSnippetList: () => ({
-    data: defaultSnippetData,
-    isLoading: mockSnippetServiceState.isLoading,
-    isFetching: mockSnippetServiceState.isFetching,
-    isFetchingNextPage: mockSnippetServiceState.isFetchingNextPage,
-    fetchNextPage: mockFetchSnippetNextPage,
-    hasNextPage: mockSnippetServiceState.hasNextPage,
-    error: mockSnippetServiceState.error,
-  }),
+  useInfiniteSnippetList: (params: unknown, options: unknown) => {
+    mockUseInfiniteSnippetList(params, options)
+    return {
+      data: defaultSnippetData,
+      isLoading: mockSnippetServiceState.isLoading,
+      isFetching: mockSnippetServiceState.isFetching,
+      isFetchingNextPage: mockSnippetServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchSnippetNextPage,
+      hasNextPage: mockSnippetServiceState.hasNextPage,
+      error: mockSnippetServiceState.error,
+    }
+  },
   useCreateSnippetMutation: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -191,6 +200,17 @@ vi.mock('@/service/tag', () => ({
 
 vi.mock('@/config', () => ({
   NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' },
+        { id: 'user-2', name: 'Alice', email: 'alice@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' },
+      ],
+    },
+  }),
 }))
 
 vi.mock('@/hooks/use-pay', () => ({
@@ -292,6 +312,7 @@ describe('List', () => {
     mockServiceState.isFetching = false
     mockServiceState.isFetchingNextPage = false
     mockQueryState.tagIDs = []
+    mockQueryState.creatorIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
     mockSnippetServiceState.error = null
@@ -299,6 +320,8 @@ describe('List', () => {
     mockSnippetServiceState.isLoading = false
     mockSnippetServiceState.isFetching = false
     mockSnippetServiceState.isFetchingNextPage = false
+    mockUseInfiniteAppList.mockClear()
+    mockUseInfiniteSnippetList.mockClear()
     intersectionCallback = null
     localStorage.clear()
   })
@@ -310,7 +333,7 @@ describe('List', () => {
       expect(screen.getByRole('link', { name: 'app.studio.apps' })).toHaveAttribute('href', '/apps')
       expect(screen.getByRole('link', { name: 'workflow.tabs.snippets' })).toHaveAttribute('href', '/snippets')
       expect(screen.getByText('app.studio.filters.types')).toBeInTheDocument()
-      expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.allCreators')).toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
@@ -328,14 +351,23 @@ describe('List', () => {
       expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
     })
 
-    it('should keep the creators dropdown visual-only and not update app query state', async () => {
+    it('should update creatorIDs when selecting a creator from the dropdown', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.studio.filters.creators'))
-      fireEvent.click(await screen.findByText('Evan'))
+      fireEvent.click(screen.getByText('app.studio.filters.allCreators'))
+      fireEvent.click(await screen.findByText('Current User'))
 
-      expect(mockSetQuery).not.toHaveBeenCalled()
-      expect(screen.getByText('app.studio.filters.creators +1')).toBeInTheDocument()
+      expect(mockSetQuery).toHaveBeenCalledTimes(1)
+    })
+
+    it('should pass creator_id to the app list query when creatorIDs are selected', () => {
+      mockQueryState.creatorIDs = ['user-1', 'user-2']
+
+      renderList()
+
+      expect(mockUseInfiniteAppList).toHaveBeenCalledWith(expect.objectContaining({
+        creator_id: 'user-1,user-2',
+      }), expect.any(Object))
     })
 
     it('should render and close the DSL import modal when a file is dropped', () => {
@@ -391,6 +423,16 @@ describe('List', () => {
       expect(screen.queryByText('app.studio.filters.types')).not.toBeInTheDocument()
       expect(screen.queryByText('common.tag.placeholder')).not.toBeInTheDocument()
       expect(screen.queryByText('app.newApp.dropDSLToCreateApp')).not.toBeInTheDocument()
+    })
+
+    it('should pass creator_id to the snippet list query when creatorIDs are selected', () => {
+      mockQueryState.creatorIDs = ['user-1', 'user-2']
+
+      renderList({ pageType: 'snippets' })
+
+      expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.objectContaining({
+        creator_id: 'user-1,user-2',
+      }), expect.any(Object))
     })
 
     it('should not fetch the next snippet page when no more data is available', () => {

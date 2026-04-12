@@ -60,7 +60,7 @@ const List: FC<Props> = ({
     parseAsAppListCategory,
   )
 
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
+  const { query: { tagIDs = [], creatorIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [appKeywords, setAppKeywords] = useState(keywords)
   const [snippetKeywordsInput, setSnippetKeywordsInput] = useState('')
@@ -77,6 +77,10 @@ const List: FC<Props> = ({
 
   const setTagIDs = useCallback((nextTagIDs: string[]) => {
     setQuery(prev => ({ ...prev, tagIDs: nextTagIDs }))
+  }, [setQuery])
+
+  const setCreatorIDs = useCallback((nextCreatorIDs: string[]) => {
+    setQuery(prev => ({ ...prev, creatorIDs: nextCreatorIDs }))
   }, [setQuery])
 
   const handleDSLFileDropped = useCallback((file: File) => {
@@ -96,6 +100,7 @@ const List: FC<Props> = ({
     name: appKeywords,
     tag_ids: tagIDs,
     is_created_by_me: queryIsCreatedByMe,
+    ...(creatorIDs.length > 0 ? { creator_id: creatorIDs.join(',') } : {}),
     ...(activeTab !== 'all' ? { mode: activeTab } : {}),
   }
 
@@ -124,6 +129,7 @@ const List: FC<Props> = ({
     page: 1,
     limit: 30,
     keyword: snippetKeywords || undefined,
+    creator_id: creatorIDs.length > 0 ? creatorIDs.join(',') : undefined,
   }, {
     enabled: !isAppsPage,
   })
@@ -227,10 +233,10 @@ const List: FC<Props> = ({
     <>
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2" />
+          <div className="inset-0 absolute z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2" />
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <div className="flex flex-wrap items-center gap-2">
             <StudioRouteSwitch
               pageType={pageType}
@@ -246,7 +252,7 @@ const List: FC<Props> = ({
                 }}
               />
             )}
-            <CreatorsFilter />
+            <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
             {isAppsPage && (
               <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
             )}
@@ -266,7 +272,7 @@ const List: FC<Props> = ({
         </div>
 
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
           isAppsPage && !hasAnyApp && 'overflow-hidden',
         )}
         >
