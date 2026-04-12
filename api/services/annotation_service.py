@@ -4,7 +4,7 @@ import uuid
 import pandas as pd
 
 logger = logging.getLogger(__name__)
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from sqlalchemy import delete, or_, select, update
 from werkzeug.datastructures import FileStorage
@@ -47,12 +47,16 @@ class AnnotationSettingDisabledDict(TypedDict):
 
 
 class EnableAnnotationArgs(TypedDict):
+    """Expected shape of the args dict passed to enable_app_annotation."""
+
     score_threshold: float
     embedding_provider_name: str
     embedding_model_name: str
 
 
 class UpsertAnnotationArgs(TypedDict, total=False):
+    """Expected shape of the args dict passed to up_insert_app_annotation_from_message."""
+
     answer: str
     content: str
     message_id: str
@@ -60,22 +64,28 @@ class UpsertAnnotationArgs(TypedDict, total=False):
 
 
 class InsertAnnotationArgs(TypedDict):
+    """Expected shape of the args dict passed to insert_app_annotation_directly."""
+
     question: str
     answer: str
 
 
 class UpdateAnnotationArgs(TypedDict):
+    """Expected shape of the args dict passed to update_app_annotation_directly."""
+
     answer: str
     question: NotRequired[str]
 
 
 class UpdateAnnotationSettingArgs(TypedDict):
+    """Expected shape of the args dict passed to update_app_annotation_setting."""
+
     score_threshold: float
 
 
 class AppAnnotationService:
     @classmethod
-    def up_insert_app_annotation_from_message(cls, args: UpsertAnnotationArgs, app_id: str) -> MessageAnnotation:
+    def up_insert_app_annotation_from_message(cls, args: dict[str, Any], app_id: str) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
@@ -137,7 +147,7 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
+    def enable_app_annotation(cls, args: dict[str, Any], app_id: str) -> AnnotationJobStatusDict:
         enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
@@ -244,7 +254,7 @@ class AppAnnotationService:
         return annotations
 
     @classmethod
-    def insert_app_annotation_directly(cls, args: InsertAnnotationArgs, app_id: str) -> MessageAnnotation:
+    def insert_app_annotation_directly(cls, args: dict[str, Any], app_id: str) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
@@ -278,7 +288,7 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def update_app_annotation_directly(cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str):
+    def update_app_annotation_directly(cls, args: dict[str, Any], app_id: str, annotation_id: str):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = db.session.scalar(
@@ -640,7 +650,7 @@ class AppAnnotationService:
 
     @classmethod
     def update_app_annotation_setting(
-        cls, app_id: str, annotation_setting_id: str, args: UpdateAnnotationSettingArgs
+        cls, app_id: str, annotation_setting_id: str, args: dict[str, Any]
     ) -> AnnotationSettingDict:
         current_user, current_tenant_id = current_account_with_tenant()
         # get app info
