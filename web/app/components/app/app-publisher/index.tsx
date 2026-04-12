@@ -24,6 +24,7 @@ import {
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -133,15 +134,22 @@ const AppPublisher = ({
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const { mutateAsync: convertWorkflowType, isPending: isConvertingWorkflowType } = useConvertWorkflowTypeMutation()
 
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
-  const workflowTypeSwitchConfig = isWorkflowTypeConversionTarget(appDetail?.type)
-    ? WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
-    : undefined
+  const workflowTypeSwitchConfig = useMemo(() => {
+    if (!isWorkflowTypeConversionTarget(appDetail?.type))
+      return undefined
+
+    if (appDetail.type !== AppTypeEnum.EVALUATION && !canAccessSnippetsAndEvaluation)
+      return undefined
+
+    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.type]
+  }, [appDetail?.type, canAccessSnippetsAndEvaluation])
   const isEvaluationWorkflowType = appDetail?.type === AppTypeEnum.EVALUATION
   const {
     refetch: refetchEvaluationWorkflowAssociatedTargets,

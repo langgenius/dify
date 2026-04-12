@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { BLOCKS } from './constants'
 import {
   TabsEnum,
@@ -42,6 +43,7 @@ export const useTabs = ({
   forceEnableStartTab?: boolean
 }) => {
   const { t } = useTranslation()
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
   const shouldShowStartTab = !noStart
   const shouldDisableStartTab = disableStartTab || (!forceEnableStartTab && hasUserInputNode)
   const startDisabledTip = disableStartTab
@@ -69,11 +71,11 @@ export const useTabs = ({
     }, {
       key: TabsEnum.Snippets,
       name: t('tabs.snippets', { ns: 'workflow' }),
-      show: true,
+      show: canAccessSnippetsAndEvaluation,
     }]
 
     return tabConfigs.filter(tab => tab.show)
-  }, [t, noBlocks, noSources, noTools, shouldShowStartTab, shouldDisableStartTab, startDisabledTip])
+  }, [canAccessSnippetsAndEvaluation, t, noBlocks, noSources, noTools, shouldShowStartTab, shouldDisableStartTab, startDisabledTip])
 
   const getValidTabKey = useCallback((targetKey?: TabsEnum) => {
     if (!targetKey)

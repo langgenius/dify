@@ -1,3 +1,4 @@
+import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
 import Evaluation from '@/app/components/evaluation'
 
 const Page = async (props: {
@@ -5,7 +6,11 @@ const Page = async (props: {
 }) => {
   const { datasetId } = await props.params
 
-  return <Evaluation resourceType="datasets" resourceId={datasetId} />
+  return (
+    <SnippetAndEvaluationPlanGuard fallbackHref={`/datasets/${datasetId}/documents`}>
+      <Evaluation resourceType="datasets" resourceId={datasetId} />
+    </SnippetAndEvaluationPlanGuard>
+  )
 }
 
 export default Page

@@ -16,6 +16,7 @@ vi.mock('@/next/navigation', () => ({
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockIsLoadingCurrentWorkspace = vi.fn(() => false)
+const mockCanAccessSnippetsAndEvaluation = vi.fn(() => true)
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -30,6 +31,13 @@ vi.mock('@/context/global-public-context', () => ({
     systemFeatures: {
       branding: { enabled: false },
     },
+  }),
+}))
+
+vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
+  useSnippetAndEvaluationPlanAccess: () => ({
+    canAccess: mockCanAccessSnippetsAndEvaluation(),
+    isReady: true,
   }),
 }))
 
@@ -135,12 +143,18 @@ const defaultSnippetData = {
         id: 'snippet-1',
         name: 'Tone Rewriter',
         description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
+        type: 'node',
+        is_published: false,
+        use_count: 19,
+        icon_info: {
+          icon_type: 'emoji',
+          icon: '🪄',
+          icon_background: '#E0EAFF',
+          icon_url: '',
+        },
+        created_at: 1704067200,
+        updated_at: '2024-01-02 10:00',
         author: '',
-        updatedAt: '2024-01-02 10:00',
-        usage: '19',
-        icon: '🪄',
-        iconBackground: '#E0EAFF',
-        status: undefined,
       },
     ],
     total: 1,
@@ -269,6 +283,7 @@ describe('List', () => {
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockIsLoadingCurrentWorkspace.mockReturnValue(false)
+    mockCanAccessSnippetsAndEvaluation.mockReturnValue(true)
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
@@ -335,6 +350,15 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+    })
+
+    it('should hide the snippets route switch when snippet access is unavailable', () => {
+      mockCanAccessSnippetsAndEvaluation.mockReturnValue(false)
+
+      renderList()
+
+      expect(screen.getByRole('link', { name: 'app.studio.apps' })).toHaveAttribute('href', '/apps')
+      expect(screen.queryByRole('link', { name: 'workflow.tabs.snippets' })).not.toBeInTheDocument()
     })
   })
 

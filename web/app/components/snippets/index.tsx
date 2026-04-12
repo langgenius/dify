@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Loading from '@/app/components/base/loading'
+import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import {
@@ -68,9 +69,11 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
 
 const SnippetPageWrapper = ({ snippetId }: SnippetPageProps) => {
   return (
-    <WorkflowContextProvider>
-      <SnippetPage snippetId={snippetId} />
-    </WorkflowContextProvider>
+    <SnippetAndEvaluationPlanGuard fallbackHref="/apps">
+      <WorkflowContextProvider>
+        <SnippetPage snippetId={snippetId} />
+      </WorkflowContextProvider>
+    </SnippetAndEvaluationPlanGuard>
   )
 }
 

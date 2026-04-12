@@ -24,6 +24,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
@@ -51,6 +52,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setHideHeader(v.payload)
   })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -104,7 +106,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           selectedIcon: PipelineFill as RemixiconComponentType,
           disabled: false,
         },
-        ...(isRagPipelineDataset
+        ...(isRagPipelineDataset && canAccessSnippetsAndEvaluation
           ? [{
               name: t('datasetMenus.evaluation', { ns: 'common' }),
               href: `/datasets/${datasetId}/evaluation`,
@@ -118,7 +120,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, isRagPipelineDataset, datasetRes?.provider])
+  }, [canAccessSnippetsAndEvaluation, t, datasetId, isButtonDisabledWithPipeline, isRagPipelineDataset, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 

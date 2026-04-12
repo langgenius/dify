@@ -26,6 +26,7 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import dynamic from '@/next/dynamic'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -52,6 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -78,12 +80,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiTerminalWindowLine,
         selectedIcon: RiTerminalWindowFill,
       })
-      navConfig.push({
-        name: t('appMenus.evaluation', { ns: 'common' }),
-        href: `/app/${appId}/evaluation`,
-        icon: RiFlaskLine,
-        selectedIcon: RiFlaskFill,
-      })
+      if (canAccessSnippetsAndEvaluation) {
+        navConfig.push({
+          name: t('appMenus.evaluation', { ns: 'common' }),
+          href: `/app/${appId}/evaluation`,
+          icon: RiFlaskLine,
+          selectedIcon: RiFlaskFill,
+        })
+      }
     }
 
     navConfig.push({
@@ -111,7 +115,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       selectedIcon: RiDashboard2Fill,
     })
     return navConfig
-  }, [t])
+  }, [canAccessSnippetsAndEvaluation, t])
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 

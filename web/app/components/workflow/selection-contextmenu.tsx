@@ -18,6 +18,7 @@ import {
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
 import { toast } from '@/app/components/base/ui/toast'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -296,6 +297,7 @@ const getSelectedSnippetGraph = (
 const SelectionContextmenu = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
   const createSnippetMutation = useCreateSnippetMutation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
@@ -342,7 +344,7 @@ const SelectionContextmenu = () => {
   }, [selectedNodes])
 
   const handleOpenCreateSnippetDialog = useCallback(() => {
-    if (isAddToSnippetDisabled)
+    if (!canAccessSnippetsAndEvaluation || isAddToSnippetDisabled)
       return
 
     const nodes = store.getState().getNodes()
@@ -351,7 +353,7 @@ const SelectionContextmenu = () => {
     setSelectedGraphSnapshot(getSelectedSnippetGraph(nodes, edges, selectedNodes))
     setIsCreateSnippetDialogOpen(true)
     handleSelectionContextmenuCancel()
-  }, [handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store])
+  }, [canAccessSnippetsAndEvaluation, handleSelectionContextmenuCancel, isAddToSnippetDisabled, selectedNodes, store])
 
   const handleCloseCreateSnippetDialog = useCallback(() => {
     setIsCreateSnippetDialogOpen(false)
@@ -397,28 +399,37 @@ const SelectionContextmenu = () => {
     }
   }, [createSnippetMutation, handleCloseCreateSnippetDialog, push, t])
 
-  const menuActions = useMemo<ActionMenuItem[]>(() => [
-    {
-      action: 'createSnippet',
-      disabled: isAddToSnippetDisabled,
-      translationKey: 'snippet.addToSnippet',
-    },
-    {
-      action: 'copy',
-      shortcutKeys: ['ctrl', 'c'],
-      translationKey: 'common.copy',
-    },
-    {
-      action: 'duplicate',
-      shortcutKeys: ['ctrl', 'd'],
-      translationKey: 'common.duplicate',
-    },
-    {
-      action: 'delete',
-      shortcutKeys: ['del'],
-      translationKey: 'operation.delete',
-    },
-  ], [isAddToSnippetDisabled])
+  const menuActions = useMemo<ActionMenuItem[]>(() => {
+    const nextActions: ActionMenuItem[] = []
+
+    if (canAccessSnippetsAndEvaluation) {
+      nextActions.push({
+        action: 'createSnippet',
+        disabled: isAddToSnippetDisabled,
+        translationKey: 'snippet.addToSnippet',
+      })
+    }
+
+    nextActions.push(
+      {
+        action: 'copy',
+        shortcutKeys: ['ctrl', 'c'],
+        translationKey: 'common.copy',
+      },
+      {
+        action: 'duplicate',
+        shortcutKeys: ['ctrl', 'd'],
+        translationKey: 'common.duplicate',
+      },
+      {
+        action: 'delete',
+        shortcutKeys: ['del'],
+        translationKey: 'operation.delete',
+      },
+    )
+
+    return nextActions
+  }, [canAccessSnippetsAndEvaluation, isAddToSnippetDisabled])
 
   const getActionLabel = useCallback((translationKey: string) => {
     if (translationKey === 'operation.delete')
@@ -532,7 +543,7 @@ const SelectionContextmenu = () => {
                 data-testid={`selection-contextmenu-item-${item.action}`}
                 disabled={item.disabled}
                 className={cn(
-                  'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] font-normal leading-5 text-text-secondary',
+                  'mx-0 h-8 justify-between gap-3 rounded-lg px-2 text-[14px] leading-5 font-normal text-text-secondary',
                   item.action === 'delete' && 'data-[highlighted]:bg-state-destructive-hover data-[highlighted]:text-text-destructive',
                 )}
                 onClick={() => handleMenuAction(item.action)}

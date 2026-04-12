@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
 import Evaluation from '@/app/components/evaluation'
 import { getSnippetDetailMock } from '@/service/use-snippets.mock'
 import SnippetLayout from './components/snippet-layout'
@@ -17,13 +18,15 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
     return null
 
   return (
-    <SnippetLayout
-      snippetId={snippetId}
-      snippet={snippet}
-      section="evaluation"
-    >
-      <Evaluation resourceType="snippets" resourceId={snippetId} />
-    </SnippetLayout>
+    <SnippetAndEvaluationPlanGuard fallbackHref="/apps">
+      <SnippetLayout
+        snippetId={snippetId}
+        snippet={snippet}
+        section="evaluation"
+      >
+        <Evaluation resourceType="snippets" resourceId={snippetId} />
+      </SnippetLayout>
+    </SnippetAndEvaluationPlanGuard>
   )
 }
 

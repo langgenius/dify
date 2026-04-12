@@ -14,6 +14,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
+import { useSnippetAndEvaluationPlanAccess } from '@/hooks/use-snippet-and-evaluation-plan-access'
 import dynamic from '@/next/dynamic'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
@@ -50,6 +51,7 @@ const List: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isAppsPage = pageType === 'apps'
+  const { canAccess: canAccessSnippetsAndEvaluation } = useSnippetAndEvaluationPlanAccess()
   const { systemFeatures } = useGlobalPublicStore()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
@@ -234,6 +236,7 @@ const List: FC<Props> = ({
               pageType={pageType}
               appsLabel={t('studio.apps', { ns: 'app' })}
               snippetsLabel={t('tabs.snippets', { ns: 'workflow' })}
+              showSnippets={canAccessSnippetsAndEvaluation}
             />
             {isAppsPage && (
               <AppTypeFilter
@@ -278,7 +281,7 @@ const List: FC<Props> = ({
                     className={cn(!hasAnyApp && 'z-10')}
                   />
                 )
-              : <SnippetCreateCard />
+              : canAccessSnippetsAndEvaluation && <SnippetCreateCard />
           )}
 
           {showSkeleton && <AppCardSkeleton count={6} />}

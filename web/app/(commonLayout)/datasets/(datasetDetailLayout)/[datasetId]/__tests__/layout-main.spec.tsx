@@ -8,6 +8,7 @@ import DatasetDetailLayout from '../layout-main'
 
 let mockPathname = '/datasets/test-dataset-id/documents'
 let mockDataset: DataSet | undefined
+let mockCanAccessSnippetsAndEvaluation = true
 
 const mockSetAppSidebarExpand = vi.fn()
 const mockMutateDatasetRes = vi.fn()
@@ -41,6 +42,13 @@ vi.mock('@/context/event-emitter', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceDatasetOperator: false,
+  }),
+}))
+
+vi.mock('@/hooks/use-snippet-and-evaluation-plan-access', () => ({
+  useSnippetAndEvaluationPlanAccess: () => ({
+    canAccess: mockCanAccessSnippetsAndEvaluation,
+    isReady: true,
   }),
 }))
 
@@ -164,6 +172,7 @@ describe('DatasetDetailLayout', () => {
     vi.clearAllMocks()
     mockPathname = '/datasets/test-dataset-id/documents'
     mockDataset = createDataset()
+    mockCanAccessSnippetsAndEvaluation = true
   })
 
   describe('Evaluation navigation', () => {
@@ -204,6 +213,18 @@ describe('DatasetDetailLayout', () => {
       )
 
       expect(screen.getByRole('button', { name: 'common.datasetMenus.evaluation' })).toBeEnabled()
+    })
+
+    it('should hide the evaluation menu when snippet and evaluation access is unavailable', () => {
+      mockCanAccessSnippetsAndEvaluation = false
+
+      render(
+        <DatasetDetailLayout datasetId="test-dataset-id">
+          <div data-testid="dataset-detail-content">content</div>
+        </DatasetDetailLayout>,
+      )
+
+      expect(screen.queryByRole('button', { name: 'common.datasetMenus.evaluation' })).not.toBeInTheDocument()
     })
   })
 })
