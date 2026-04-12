@@ -298,12 +298,15 @@ def test_workflow_online_users_filters_inaccessible_workflow(
 ) -> None:
     app_id_1 = "11111111-1111-1111-1111-111111111111"
     app_id_2 = "22222222-2222-2222-2222-222222222222"
+    signed_avatar_url = "https://files.example.com/signed/avatar-1"
+    sign_avatar = Mock(return_value=signed_avatar_url)
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
         lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: {app_id_1}),
     )
+    monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
 
     workflow_module.redis_client.hgetall.side_effect = lambda key: (
         {
@@ -311,7 +314,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
                 {
                     "user_id": "u-1",
                     "username": "Alice",
-                    "avatar": "avatar-url",
+                    "avatar": "avatar-file-id",
                     "sid": "sid-1",
                 }
             )
@@ -337,7 +340,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
                     {
                         "user_id": "u-1",
                         "username": "Alice",
-                        "avatar": "avatar-url",
+                        "avatar": signed_avatar_url,
                         "sid": "sid-1",
                     }
                 ],
@@ -347,6 +350,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
     workflow_module.redis_client.hgetall.assert_called_once_with(
         f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"
     )
+    sign_avatar.assert_called_once_with("avatar-file-id")
 
 
 def test_workflow_online_users_rejects_excessive_workflow_ids(

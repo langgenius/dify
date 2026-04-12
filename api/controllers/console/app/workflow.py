@@ -6,7 +6,7 @@ from typing import Any
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from graphon.enums import NodeType
-from graphon.file import File
+from graphon.file import File, helpers as file_helpers
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -1414,9 +1414,22 @@ class WorkflowOnlineUsersApi(Resource):
             users = []
             for _, user_info_json in users_json.items():
                 try:
-                    users.append(json.loads(user_info_json))
+                    user_info = json.loads(user_info_json)
                 except Exception:
                     continue
+
+                if not isinstance(user_info, dict):
+                    continue
+
+                avatar = user_info.get("avatar")
+                if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
+                    try:
+                        user_info["avatar"] = file_helpers.get_signed_file_url(avatar)
+                    except Exception:
+                        # keep original avatar value when signing fails
+                        pass
+
+                users.append(user_info)
             results.append({"app_id": app_id, "users": users})
 
         return {"data": results}
