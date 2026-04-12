@@ -59,6 +59,7 @@ _file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
+MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS = 50
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -1391,10 +1392,24 @@ class WorkflowOnlineUsersApi(Resource):
     def get(self):
         args = WorkflowOnlineUsersQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        workflow_ids = [workflow_id.strip() for workflow_id in args.workflow_ids.split(",") if workflow_id.strip()]
+        workflow_ids = list(
+            dict.fromkeys(workflow_id.strip() for workflow_id in args.workflow_ids.split(",") if workflow_id.strip())
+        )
+        if len(workflow_ids) > MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS:
+            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS} workflow_ids are allowed per request.")
+
+        if not workflow_ids:
+            return {"data": []}
+
+        _, current_tenant_id = current_account_with_tenant()
+        workflow_service = WorkflowService()
+        accessible_workflow_ids = workflow_service.get_accessible_workflow_ids(workflow_ids, current_tenant_id)
 
         results = []
         for workflow_id in workflow_ids:
+            if workflow_id not in accessible_workflow_ids:
+                continue
+
             users_json = redis_client.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{workflow_id}")
 
             users = []

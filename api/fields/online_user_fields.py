@@ -4,7 +4,6 @@ online_user_partial_fields = {
     "user_id": fields.String,
     "username": fields.String,
     "avatar": fields.String,
-    "sid": fields.String,
 }
 
 workflow_online_users_fields = {
