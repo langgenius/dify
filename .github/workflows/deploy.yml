@@ -1,0 +1,142 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+    paths:
+      - 'api/**'
+      - 'web/**'
+      - 'docker/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-backend:
+    name: Build Backend Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:buildcache,mode=max
+
+  build-frontend:
+    name: Build Frontend Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:buildcache,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy notification
+        run: |
+          echo "🚀 Deployment to staging triggered"
+          echo "Backend image: ${{ needs.build-backend.outputs.image }}"
+          echo "Frontend image: ${{ needs.build-frontend.outputs.image }}"
+          
+          # TODO: Add your actual deployment commands here
+          # Example: kubectl apply -f k8s/staging/
+          # Example: docker stack deploy -c docker-compose.yml dify-staging
+
+      - name: Slack notification (optional)
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "❌ Staging deployment failed for ${{ github.ref }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ Deployment failed\nRepo: ${{ github.repository }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}"
+                  }
+                }
+              ]
+            }

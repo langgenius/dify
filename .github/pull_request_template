@@ -1,0 +1,33 @@
+## 描述 / Description
+
+<!-- 简要描述你的改动 / Brief description of your changes -->
+
+## 类型 / Type
+
+- [ ] 🐛 Bug fix（错误修复）
+- [ ] ✨ New feature（新功能）
+- [ ] 📚 Documentation（文档）
+- [ ] ♻️ Refactor（重构）
+- [ ] 🎨 Style（样式）
+- [ ] ⚡ Performance（性能）
+
+## 相关 Issue / Related Issue
+
+Closes #<!-- issue number -->
+
+## 变更清单 / Checklist
+
+- [ ] 代码遵循项目风格指南 / Code follows style guidelines
+- [ ] 已进行自测试 / Self-tested locally
+- [ ] 添加/更新了相关文档 / Added/updated relevant docs
+- [ ] 无新的警告/错误 / No new warnings/errors
+- [ ] 前端测试通过 / Frontend tests pass
+- [ ] 后端测试通过 / Backend tests pass
+
+## 测试 / Testing
+
+<!-- 描述测试方式 / Describe how to test these changes -->
+
+## 截图/视频（如适用）/ Screenshot/Video (if applicable)
+
+<!-- 添加截图或视频 / Add screenshots or videos -->
