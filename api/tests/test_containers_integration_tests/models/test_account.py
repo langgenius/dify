@@ -47,9 +47,7 @@ class TestAccountCurrentTenantSetter:
         db_session.flush()
         return account
 
-    def test_current_tenant_property_returns_cached_tenant(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_current_tenant_property_returns_cached_tenant(self, db_session_with_containers: Session) -> None:
         """current_tenant getter returns the in-memory _current_tenant without DB access."""
         account = self._create_account(db_session_with_containers)
         tenant = self._create_tenant(db_session_with_containers)
@@ -79,9 +77,7 @@ class TestAccountCurrentTenantSetter:
         assert account._current_tenant.id == tenant.id
         assert account.role == TenantAccountRole.OWNER
 
-    def test_current_tenant_setter_sets_none_when_no_join_exists(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_current_tenant_setter_sets_none_when_no_join_exists(self, db_session_with_containers: Session) -> None:
         """Setting current_tenant results in _current_tenant=None when no join row exists."""
         tenant = self._create_tenant(db_session_with_containers)
         account = self._create_account(db_session_with_containers)
@@ -175,9 +171,7 @@ class TestAccountGetByOpenId:
         db_session.flush()
         return account
 
-    def test_get_by_openid_returns_account_when_integrate_exists(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_get_by_openid_returns_account_when_integrate_exists(self, db_session_with_containers: Session) -> None:
         """get_by_openid returns the Account when a matching AccountIntegrate row exists."""
         account = self._create_account(db_session_with_containers)
         provider = "google"
@@ -198,9 +192,7 @@ class TestAccountGetByOpenId:
         assert result is not None
         assert result.id == account.id
 
-    def test_get_by_openid_returns_none_when_no_integrate_exists(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_get_by_openid_returns_none_when_no_integrate_exists(self, db_session_with_containers: Session) -> None:
         """get_by_openid returns None when no AccountIntegrate row matches."""
         result = Account.get_by_openid("github", f"github_{uuid4()}")
 
@@ -238,14 +230,10 @@ class TestTenantGetAccounts:
         account2 = self._create_account(db_session_with_containers)
 
         db_session_with_containers.add(
-            TenantAccountJoin(
-                tenant_id=tenant.id, account_id=account1.id, role=TenantAccountRole.OWNER
-            )
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account1.id, role=TenantAccountRole.OWNER)
         )
         db_session_with_containers.add(
-            TenantAccountJoin(
-                tenant_id=tenant.id, account_id=account2.id, role=TenantAccountRole.NORMAL
-            )
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account2.id, role=TenantAccountRole.NORMAL)
         )
         db_session_with_containers.flush()
 
