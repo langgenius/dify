@@ -158,7 +158,7 @@ class WorkflowFeaturesPayload(BaseModel):
 
 
 class WorkflowOnlineUsersQuery(BaseModel):
-    workflow_ids: str = Field(..., description="Comma-separated workflow IDs")
+    app_ids: str = Field(..., description="Comma-separated app IDs")
 
 
 class DraftWorkflowTriggerRunPayload(BaseModel):
@@ -1392,25 +1392,23 @@ class WorkflowOnlineUsersApi(Resource):
     def get(self):
         args = WorkflowOnlineUsersQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        workflow_ids = list(
-            dict.fromkeys(workflow_id.strip() for workflow_id in args.workflow_ids.split(",") if workflow_id.strip())
-        )
-        if len(workflow_ids) > MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS:
-            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS} workflow_ids are allowed per request.")
+        app_ids = list(dict.fromkeys(app_id.strip() for app_id in args.app_ids.split(",") if app_id.strip()))
+        if len(app_ids) > MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS:
+            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS} app_ids are allowed per request.")
 
-        if not workflow_ids:
+        if not app_ids:
             return {"data": []}
 
         _, current_tenant_id = current_account_with_tenant()
         workflow_service = WorkflowService()
-        accessible_workflow_ids = workflow_service.get_accessible_workflow_ids(workflow_ids, current_tenant_id)
+        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
 
         results = []
-        for workflow_id in workflow_ids:
-            if workflow_id not in accessible_workflow_ids:
+        for app_id in app_ids:
+            if app_id not in accessible_app_ids:
                 continue
 
-            users_json = redis_client.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{workflow_id}")
+            users_json = redis_client.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
 
             users = []
             for _, user_info_json in users_json.items():
@@ -1418,6 +1416,6 @@ class WorkflowOnlineUsersApi(Resource):
                     users.append(json.loads(user_info_json))
                 except Exception:
                     continue
-            results.append({"workflow_id": workflow_id, "users": users})
+            results.append({"app_id": app_id, "users": users})
 
         return {"data": results}

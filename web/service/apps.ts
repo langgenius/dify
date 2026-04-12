@@ -9,12 +9,12 @@ export const fetchAppList = ({ url, params }: { url: string, params?: Record<str
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchWorkflowOnlineUsers = async ({ workflowIds }: { workflowIds: string[] }): Promise<Record<string, WorkflowOnlineUser[]>> => {
-  if (!workflowIds.length)
+export const fetchWorkflowOnlineUsers = async ({ appIds }: { appIds: string[] }): Promise<Record<string, WorkflowOnlineUser[]>> => {
+  if (!appIds.length)
     return {}
 
   const response = await consoleClient.apps.workflowOnlineUsers({
-    query: { workflow_ids: workflowIds.join(',') },
+    query: { app_ids: appIds.join(',') },
   })
 
   if (!response?.data)
@@ -22,15 +22,15 @@ export const fetchWorkflowOnlineUsers = async ({ workflowIds }: { workflowIds: s
 
   if (Array.isArray(response.data)) {
     return response.data.reduce<Record<string, WorkflowOnlineUser[]>>((acc, item) => {
-      if (item?.workflow_id)
-        acc[item.workflow_id] = item.users || []
+      if (item?.app_id)
+        acc[item.app_id] = item.users || []
       return acc
     }, {})
   }
 
-  return Object.entries(response.data).reduce<Record<string, WorkflowOnlineUser[]>>((acc, [workflowId, users]) => {
-    if (workflowId)
-      acc[workflowId] = users || []
+  return Object.entries(response.data).reduce<Record<string, WorkflowOnlineUser[]>>((acc, [appId, users]) => {
+    if (appId)
+      acc[appId] = users || []
     return acc
   }, {})
 }

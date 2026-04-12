@@ -199,15 +199,15 @@ class WorkflowService:
 
         return workflow
 
-    def get_accessible_workflow_ids(self, workflow_ids: Sequence[str], tenant_id: str) -> set[str]:
+    def get_accessible_app_ids(self, app_ids: Sequence[str], tenant_id: str) -> set[str]:
         """
-        Return workflow IDs that belong to the given tenant.
+        Return app IDs that belong to the given tenant.
         """
-        if not workflow_ids:
+        if not app_ids:
             return set()
 
-        stmt = select(Workflow.id).where(Workflow.id.in_(workflow_ids), Workflow.tenant_id == tenant_id)
-        return {str(workflow_id) for workflow_id in db.session.scalars(stmt).all()}
+        stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
+        return {str(app_id) for app_id in db.session.scalars(stmt).all()}
 
     def get_all_published_workflow(
         self,

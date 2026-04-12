@@ -296,13 +296,13 @@ def test_advanced_chat_run_conversation_not_exists(app, monkeypatch: pytest.Monk
 def test_workflow_online_users_filters_inaccessible_workflow(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    workflow_id_1 = "11111111-1111-1111-1111-111111111111"
-    workflow_id_2 = "22222222-2222-2222-2222-222222222222"
+    app_id_1 = "11111111-1111-1111-1111-111111111111"
+    app_id_2 = "22222222-2222-2222-2222-222222222222"
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_workflow_ids=lambda workflow_ids, tenant_id: {workflow_id_1}),
+        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: {app_id_1}),
     )
 
     workflow_module.redis_client.hgetall.side_effect = lambda key: (
@@ -316,7 +316,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
                 }
             )
         }
-        if key == f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{workflow_id_1}"
+        if key == f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"
         else {}
     )
 
@@ -324,7 +324,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
     handler = _unwrap(api.get)
 
     with app.test_request_context(
-        f"/apps/workflows/online-users?workflow_ids={workflow_id_1},{workflow_id_2}",
+        f"/apps/workflows/online-users?app_ids={app_id_1},{app_id_2}",
         method="GET",
     ):
         response = handler(api)
@@ -332,7 +332,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
     assert response == {
         "data": [
             {
-                "workflow_id": workflow_id_1,
+                "app_id": app_id_1,
                 "users": [
                     {
                         "user_id": "u-1",
@@ -345,7 +345,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
         ]
     }
     workflow_module.redis_client.hgetall.assert_called_once_with(
-        f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{workflow_id_1}"
+        f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"
     )
 
 
@@ -353,11 +353,11 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
-    accessible_workflow_ids = Mock(return_value=set())
+    accessible_app_ids = Mock(return_value=set())
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_workflow_ids=accessible_workflow_ids),
+        lambda: SimpleNamespace(get_accessible_app_ids=accessible_app_ids),
     )
 
     excessive_ids = ",".join(
@@ -368,7 +368,7 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(
     handler = _unwrap(api.get)
 
     with app.test_request_context(
-        f"/apps/workflows/online-users?workflow_ids={excessive_ids}",
+        f"/apps/workflows/online-users?app_ids={excessive_ids}",
         method="GET",
     ):
         with pytest.raises(HTTPException) as exc:
@@ -376,4 +376,4 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(
 
     assert exc.value.code == 400
     assert "Maximum" in exc.value.description
-    accessible_workflow_ids.assert_not_called()
+    accessible_app_ids.assert_not_called()

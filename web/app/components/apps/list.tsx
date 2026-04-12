@@ -186,30 +186,29 @@ const List: FC<Props> = ({
   }, [isCreatedByMe, setQuery])
 
   const pages = data?.pages ?? []
-  const workflowIds = useMemo(() => {
+  const appIds = useMemo(() => {
     const ids = new Set<string>()
     pages.forEach((page) => {
       page.data?.forEach((app) => {
-        const workflowId = app.workflow?.id
-        if (workflowId)
-          ids.add(workflowId)
+        if (app.id)
+          ids.add(app.id)
       })
     })
     return Array.from(ids)
   }, [pages])
 
   const refreshWorkflowOnlineUsers = useCallback(async () => {
-    if (!workflowIds.length)
+    if (!appIds.length)
       return
 
     try {
-      const onlineUsersMap = await fetchWorkflowOnlineUsers({ workflowIds })
+      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds })
       setWorkflowOnlineUsersMap(onlineUsersMap)
     }
     catch {
       setWorkflowOnlineUsersMap({})
     }
-  }, [workflowIds])
+  }, [appIds])
 
   useEffect(() => {
     void refreshWorkflowOnlineUsers()
@@ -286,7 +285,7 @@ const List: FC<Props> = ({
                 <AppCard
                   key={app.id}
                   app={app}
-                  onlineUsers={app.workflow?.id ? (workflowOnlineUsersMap[app.workflow.id] ?? []) : []}
+                  onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
                   onRefresh={refetch}
                 />
               ))

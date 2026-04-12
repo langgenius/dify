@@ -21,7 +21,7 @@ export const workflowOnlineUsersContract = base
   })
   .input(type<{
     query: {
-      workflow_ids: string
+      app_ids: string
     }
   }>())
   .output(type<WorkflowOnlineUsersResponse>())

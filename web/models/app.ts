@@ -113,7 +113,7 @@ export type WorkflowOnlineUser = {
 
 export type WorkflowOnlineUsersResponse = {
   data: Record<string, WorkflowOnlineUser[]> | Array<{
-    workflow_id: string
+    app_id: string
     users: WorkflowOnlineUser[]
   }>
 }
