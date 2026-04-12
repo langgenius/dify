@@ -957,6 +957,7 @@ class WorkflowFeaturesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App):
         current_user, _ = current_account_with_tenant()
 
