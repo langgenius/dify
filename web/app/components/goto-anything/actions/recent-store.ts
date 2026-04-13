@@ -1,25 +1,25 @@
 const RECENT_ITEMS_KEY = 'goto-anything:recent'
 const MAX_RECENT_ITEMS = 8
 
-type RecentItem = {
-  id: string
-  title: string
-  description?: string
-  path: string
-  originalType: 'app' | 'knowledge'
-}
-
-export const getRecentItems = (): RecentItem[] => {
+export function getRecentItems() {
   try {
     const stored = localStorage.getItem(RECENT_ITEMS_KEY)
-    return stored ? (JSON.parse(stored) as RecentItem[]) : []
+    if (!stored)
+      return []
+    return JSON.parse(stored) as Array<{
+      id: string
+      title: string
+      description?: string
+      path: string
+      originalType: 'app' | 'knowledge'
+    }>
   }
   catch {
     return []
   }
 }
 
-export const addRecentItem = (item: RecentItem): void => {
+export function addRecentItem(item: ReturnType<typeof getRecentItems>[number]): void {
   try {
     const recent = getRecentItems()
     const filtered = recent.filter(r => r.id !== item.id)
