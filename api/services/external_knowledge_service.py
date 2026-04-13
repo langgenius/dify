@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -229,9 +229,7 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(
-        authorization: Authorization, headers: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def assembling_headers(authorization: Authorization, headers: dict[str, Any] | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
