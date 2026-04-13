@@ -6,7 +6,7 @@ from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
-from graphon.model_runtime.entities.rerank_entities import RerankResult
+from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -17,6 +17,7 @@ from graphon.model_runtime.model_providers.__base.text_embedding_model import Te
 from graphon.model_runtime.model_providers.__base.tts_model import TTSModel
 
 from configs import dify_config
+from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
@@ -25,7 +26,6 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
-from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -172,10 +172,10 @@ class ModelInstance:
                 function=self.model_type_instance.invoke,
                 model=self.model_name,
                 credentials=self.credentials,
-                prompt_messages=prompt_messages,
+                prompt_messages=list(prompt_messages),
                 model_parameters=model_parameters,
-                tools=tools,
-                stop=stop,
+                tools=list(tools) if tools else None,
+                stop=list(stop) if stop else None,
                 stream=stream,
                 callbacks=callbacks,
             ),
@@ -193,15 +193,12 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
-        return cast(
-            int,
-            self._round_robin_invoke(
-                function=self.model_type_instance.get_num_tokens,
-                model=self.model_name,
-                credentials=self.credentials,
-                prompt_messages=prompt_messages,
-                tools=tools,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.get_num_tokens,
+            model=self.model_name,
+            credentials=self.credentials,
+            prompt_messages=list(prompt_messages),
+            tools=list(tools) if tools else None,
         )
 
     def invoke_text_embedding(
@@ -216,15 +213,12 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-        return cast(
-            EmbeddingResult,
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                texts=texts,
-                input_type=input_type,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            texts=texts,
+            input_type=input_type,
         )
 
     def invoke_multimodal_embedding(
@@ -241,15 +235,12 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-        return cast(
-            EmbeddingResult,
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                multimodel_documents=multimodel_documents,
-                input_type=input_type,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            multimodel_documents=multimodel_documents,
+            input_type=input_type,
         )
 
     def get_text_embedding_num_tokens(self, texts: list[str]) -> list[int]:
@@ -261,14 +252,11 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
-        return cast(
-            list[int],
-            self._round_robin_invoke(
-                function=self.model_type_instance.get_num_tokens,
-                model=self.model_name,
-                credentials=self.credentials,
-                texts=texts,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.get_num_tokens,
+            model=self.model_name,
+            credentials=self.credentials,
+            texts=texts,
         )
 
     def invoke_rerank(
@@ -289,23 +277,20 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, RerankModel):
             raise Exception("Model type instance is not RerankModel")
-        return cast(
-            RerankResult,
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                query=query,
-                docs=docs,
-                score_threshold=score_threshold,
-                top_n=top_n,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            query=query,
+            docs=docs,
+            score_threshold=score_threshold,
+            top_n=top_n,
         )
 
     def invoke_multimodal_rerank(
         self,
-        query: dict,
-        docs: list[dict],
+        query: MultimodalRerankInput,
+        docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
         top_n: int | None = None,
     ) -> RerankResult:
@@ -320,17 +305,14 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, RerankModel):
             raise Exception("Model type instance is not RerankModel")
-        return cast(
-            RerankResult,
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke_multimodal_rerank,
-                model=self.model_name,
-                credentials=self.credentials,
-                query=query,
-                docs=docs,
-                score_threshold=score_threshold,
-                top_n=top_n,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke_multimodal_rerank,
+            model=self.model_name,
+            credentials=self.credentials,
+            query=query,
+            docs=docs,
+            score_threshold=score_threshold,
+            top_n=top_n,
         )
 
     def invoke_moderation(self, text: str) -> bool:
@@ -342,14 +324,11 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, ModerationModel):
             raise Exception("Model type instance is not ModerationModel")
-        return cast(
-            bool,
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                text=text,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            text=text,
         )
 
     def invoke_speech2text(self, file: IO[bytes]) -> str:
@@ -361,14 +340,11 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, Speech2TextModel):
             raise Exception("Model type instance is not Speech2TextModel")
-        return cast(
-            str,
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                file=file,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            file=file,
         )
 
     def invoke_tts(self, content_text: str, voice: str = "") -> Iterable[bytes]:
@@ -381,18 +357,15 @@ class ModelInstance:
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-        return cast(
-            Iterable[bytes],
-            self._round_robin_invoke(
-                function=self.model_type_instance.invoke,
-                model=self.model_name,
-                credentials=self.credentials,
-                content_text=content_text,
-                voice=voice,
-            ),
+        return self._round_robin_invoke(
+            function=self.model_type_instance.invoke,
+            model=self.model_name,
+            credentials=self.credentials,
+            content_text=content_text,
+            voice=voice,
         )
 
-    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
+    def _round_robin_invoke[**P, R](self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
         Round-robin invoke
         :param function: function to invoke
@@ -430,9 +403,8 @@ class ModelInstance:
                 continue
 
             try:
-                if "credentials" in kwargs:
-                    del kwargs["credentials"]
-                return function(*args, **kwargs, credentials=lb_config.credentials)
+                kwargs["credentials"] = lb_config.credentials
+                return function(*args, **kwargs)
             except InvokeRateLimitError as e:
                 # expire in 60 seconds
                 self.load_balancing_manager.cooldown(lb_config, expire=60)

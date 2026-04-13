@@ -6,9 +6,20 @@ from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     MCPServerParameterType,
     PluginParameter,
@@ -18,9 +29,17 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+
+
+class EmojiIconDict(TypedDict):
+    background: str
+    content: str
+
+
+emoji_icon_adapter: TypeAdapter[EmojiIconDict] = TypeAdapter(EmojiIconDict)
 
 
 class ToolLabelEnum(StrEnum):
@@ -410,15 +429,6 @@ class ToolEntity(BaseModel):
         return value or {}
 
 
-class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
-    )
-    credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
-    )
-
-
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: str | None = None
@@ -438,6 +448,12 @@ class WorkflowToolParameterConfiguration(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     description: str = Field(..., description="The description of the parameter")
     form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
+
+
+class ToolInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
 
 
 class ToolInvokeMeta(BaseModel):
@@ -463,12 +479,13 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> ToolInvokeMetaDict:
+        result: ToolInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class ToolLabel(BaseModel):

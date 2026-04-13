@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow_run import workflow_run_node_execution_model
@@ -142,27 +143,11 @@ class PublishWorkflowPayload(BaseModel):
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
-class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
-
-
 class ConvertToWorkflowPayload(BaseModel):
     name: str | None = None
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
-
-
-class WorkflowListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
-    named_only: bool = False
-
-
-class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=20)
-    marked_comment: str | None = Field(default=None, max_length=100)
 
 
 class DraftWorkflowTriggerRunPayload(BaseModel):

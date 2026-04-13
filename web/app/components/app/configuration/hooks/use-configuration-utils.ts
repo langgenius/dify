@@ -359,7 +359,7 @@ export const loadConfigurationState = async ({
     },
     visionConfig: backendModelConfig.file_upload?.image,
     citationConfig: backendModelConfig.retriever_resource || { enabled: false },
-    chatPromptConfig: backendModelConfig.chat_prompt_config && backendModelConfig.chat_prompt_config.prompt.length > 0
+    chatPromptConfig: backendModelConfig.chat_prompt_config && backendModelConfig.chat_prompt_config.prompt?.length > 0
       ? backendModelConfig.chat_prompt_config
       : clone(DEFAULT_CHAT_PROMPT_CONFIG),
     introduction: backendModelConfig.opening_statement,

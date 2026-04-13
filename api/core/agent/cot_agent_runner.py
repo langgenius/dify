@@ -2,7 +2,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -27,6 +27,13 @@ from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
 logger = logging.getLogger(__name__)
+
+
+class ActionDict(TypedDict):
+    """Shape produced by AgentScratchpadUnit.Action.to_dict()."""
+
+    action: str
+    action_input: dict[str, Any] | str
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -331,7 +338,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return tool_invoke_response, tool_invoke_meta
 
-    def _convert_dict_to_action(self, action: dict) -> AgentScratchpadUnit.Action:
+    def _convert_dict_to_action(self, action: ActionDict) -> AgentScratchpadUnit.Action:
         """
         convert dict to action
         """
