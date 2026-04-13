@@ -84,6 +84,7 @@ class WorkflowToolManageService:
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
+            logger.warning(e, exc_info=True)
             raise ValueError(str(e))
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
