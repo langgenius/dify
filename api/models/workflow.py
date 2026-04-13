@@ -50,7 +50,7 @@ from libs.uuid_utils import uuidv7
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from .model import AppMode
+    from .model import AppMode, UploadFile
 
 from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 
