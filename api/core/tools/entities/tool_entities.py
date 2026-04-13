@@ -450,6 +450,12 @@ class WorkflowToolParameterConfiguration(BaseModel):
     form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
 
 
+class ToolInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class ToolInvokeMeta(BaseModel):
     """
     Tool invoke meta
@@ -473,12 +479,13 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> ToolInvokeMetaDict:
+        result: ToolInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class ToolLabel(BaseModel):

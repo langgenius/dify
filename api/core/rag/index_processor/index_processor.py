@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import current_app
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -63,11 +63,11 @@ class IndexProcessor:
         summary_index_setting: SummaryIndexSettingDict | None = None,
     ) -> IndexingResultDict:
         with session_factory.create_session() as session:
-            document = session.query(Document).filter_by(id=document_id).first()
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not document:
                 raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
 
-            dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
@@ -104,12 +104,12 @@ class IndexProcessor:
             document.indexing_status = "completed"
             document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             document.word_count = (
-                session.query(func.sum(DocumentSegment.word_count))
-                .where(
-                    DocumentSegment.document_id == document_id,
-                    DocumentSegment.dataset_id == dataset_id,
+                session.scalar(
+                    select(func.sum(DocumentSegment.word_count)).where(
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.dataset_id == dataset_id,
+                    )
                 )
-                .scalar()
             ) or 0
             # Update need_summary based on dataset's summary_index_setting
             if summary_index_setting and summary_index_setting.get("enable") is True:
@@ -118,15 +118,17 @@ class IndexProcessor:
                 document.need_summary = False
             session.add(document)
             # update document segment status
-            session.query(DocumentSegment).where(
-                DocumentSegment.document_id == document_id,
-                DocumentSegment.dataset_id == dataset_id,
-            ).update(
-                {
-                    DocumentSegment.status: "completed",
-                    DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
+                .values(
+                    status="completed",
+                    enabled=True,
+                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                )
             )
 
         result: IndexingResultDict = {
@@ -151,11 +153,11 @@ class IndexProcessor:
         doc_language = None
         with session_factory.create_session() as session:
             if document_id:
-                document = session.query(Document).filter_by(id=document_id).first()
+                document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             else:
                 document = None
 
-            dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
