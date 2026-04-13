@@ -192,7 +192,9 @@ class TestDeleteDraftVariableOffloadData:
         mock_storage.delete.assert_has_calls(expected_storage_calls, any_order=True)
 
         remaining_var_files_count = db_session_with_containers.scalar(
-            select(func.count()).select_from(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(file_ids))
+            select(func.count())
+            .select_from(WorkflowDraftVariableFile)
+            .where(WorkflowDraftVariableFile.id.in_(file_ids))
         )
         remaining_upload_files_count = db_session_with_containers.scalar(
             select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
@@ -221,7 +223,9 @@ class TestDeleteDraftVariableOffloadData:
         mock_logging.exception.assert_called_once_with("Failed to delete storage object %s", storage_keys[0])
 
         remaining_var_files_count = db_session_with_containers.scalar(
-            select(func.count()).select_from(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(file_ids))
+            select(func.count())
+            .select_from(WorkflowDraftVariableFile)
+            .where(WorkflowDraftVariableFile.id.in_(file_ids))
         )
         remaining_upload_files_count = db_session_with_containers.scalar(
             select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
