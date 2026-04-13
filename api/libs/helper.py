@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class _TokenData(TypedDict, total=False):
+class TokenData(TypedDict, total=False):
     account_id: str | None
     email: str
     token_type: str
@@ -41,7 +41,7 @@ class _TokenData(TypedDict, total=False):
     old_email: str
 
 
-_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
+_token_data_adapter: TypeAdapter[TokenData] = TypeAdapter(TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -452,14 +452,13 @@ class TokenManager:
         redis_client.delete(token_key)
 
     @classmethod
-    def get_token_data(cls, token: str, token_type: str) -> dict[str, Any] | None:
+    def get_token_data(cls, token: str, token_type: str) -> TokenData | None:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data = dict(_token_data_adapter.validate_json(token_data_json))
-        return token_data
+        return _token_data_adapter.validate_json(token_data_json)
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> str | None:

@@ -221,7 +221,7 @@ class EmailCodeLoginApi(Resource):
         if normalized_token_email != user_email:
             raise InvalidEmailError()
 
-        if token_data["code"] != payload.code:
+        if token_data.get("code") != payload.code:
             raise EmailCodeError()
 
         WebAppAuthService.revoke_email_code_login_token(payload.token)
