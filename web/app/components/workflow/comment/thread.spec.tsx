@@ -82,7 +82,16 @@ vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
 
 vi.mock('@/app/components/base/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({
+    children,
+    render,
+    ...props
+  }: React.ComponentProps<'button'> & { children?: React.ReactNode, render?: React.ReactNode }) => {
+    if (render)
+      return <>{render}</>
+
+    return <button type="button" {...props}>{children}</button>
+  },
   TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
@@ -186,6 +195,23 @@ describe('CommentThread', () => {
     expect(onPrev).toHaveBeenCalledTimes(1)
     expect(onNext).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not nest header action buttons inside tooltip trigger buttons', () => {
+    const { container } = render(
+      <CommentThread
+        comment={createComment()}
+        onClose={vi.fn()}
+        onDelete={vi.fn()}
+        onResolve={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        canGoPrev
+        canGoNext
+      />,
+    )
+
+    expect(container.querySelector('button button')).toBeNull()
   })
 
   it('submits reply and updates preview hovering state on mouse enter/leave', async () => {
