@@ -8,10 +8,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import Confirm from '@/app/components/base/ui/confirm-dialog'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import {

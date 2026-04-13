@@ -16,8 +16,8 @@ type AlertDialogContentProps = {
   children: React.ReactNode
   className?: string
   overlayClassName?: string
-  popupProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Popup>, 'children' | 'className'>
-  backdropProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Backdrop>, 'className'>
+  popupProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Popup>, 'children' | 'className'> & React.ComponentPropsWithoutRef<'div'>
+  backdropProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Backdrop>, 'className'> & React.ComponentPropsWithoutRef<'div'>
 }
 
 export function AlertDialogContent({

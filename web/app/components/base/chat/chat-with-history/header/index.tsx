@@ -10,8 +10,8 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
+import Confirm from '@/app/components/base/ui/confirm-dialog'
 import { cn } from '@/utils/classnames'
 import {
   useChatWithHistoryContext,

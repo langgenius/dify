@@ -1,7 +1,7 @@
 import type { DataSet } from '@/models/datasets'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import Confirm from '@/app/components/base/ui/confirm-dialog'
 import RenameDatasetModal from '../../../rename-modal'
 
 type ModalState = {

@@ -105,7 +105,7 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const dialog = screen.getByTestId('confirm-overlay')
+      const dialog = screen.getByRole('alertdialog')
       const confirmButton = within(dialog).getByText('common.operation.delete')
       fireEvent.click(confirmButton)
 
@@ -123,7 +123,7 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const dialog = screen.getByTestId('confirm-overlay')
+      const dialog = screen.getByRole('alertdialog')
       const confirmButton = within(dialog).getByText('common.operation.delete')
       fireEvent.click(confirmButton)
 

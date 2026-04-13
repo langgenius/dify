@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MCPDetailContent from '../content'
@@ -79,20 +79,6 @@ vi.mock('../../modal', () => ({
         <button data-testid="modal-close-btn" onClick={onHide}>
           Close
         </button>
-      </div>
-    )
-  },
-}))
-
-// Mock Confirm dialog
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: { isShow: boolean, onConfirm: () => void, onCancel: () => void, title: string }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog" data-title={title}>
-        <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
-        <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
       </div>
     )
   },
@@ -494,7 +480,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
     })
 
@@ -514,11 +500,11 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
       // Confirm the update
-      const confirmBtn = screen.getByTestId('confirm-btn')
+      const confirmBtn = within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!
       fireEvent.click(confirmBtn)
 
       await waitFor(() => {
@@ -636,7 +622,7 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
     })
 
@@ -648,15 +634,15 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
       // Cancel
-      const cancelBtn = screen.getByTestId('cancel-btn')
+      const cancelBtn = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'common.operation.cancel' })
       fireEvent.click(cancelBtn)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
 
@@ -669,11 +655,11 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
       // Confirm delete
-      const confirmBtn = screen.getByTestId('confirm-btn')
+      const confirmBtn = within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!
       fireEvent.click(confirmBtn)
 
       await waitFor(() => {
@@ -692,11 +678,11 @@ describe('MCPDetailContent', () => {
       fireEvent.click(removeBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
       // Confirm delete
-      const confirmBtn = screen.getByTestId('confirm-btn')
+      const confirmBtn = within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!
       fireEvent.click(confirmBtn)
 
       await waitFor(() => {
@@ -840,15 +826,15 @@ describe('MCPDetailContent', () => {
       fireEvent.click(updateBtn)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
 
       // Cancel the update
-      const cancelBtn = screen.getByTestId('cancel-btn')
+      const cancelBtn = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'common.operation.cancel' })
       fireEvent.click(cancelBtn)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
   })

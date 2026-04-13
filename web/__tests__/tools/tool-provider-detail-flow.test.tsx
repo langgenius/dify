@@ -7,7 +7,7 @@ import type { Collection } from '@/app/components/tools/types'
  * Verifies that different provider types render correctly and
  * handle auth/edit/delete flows.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
@@ -131,36 +131,6 @@ vi.mock('@/app/components/base/drawer', () => ({
         )
       : null
   ),
-}))
-
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ title, isShow, onConfirm, onCancel }: {
-    title: string
-    content: string
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-  }) => (
-    isShow
-      ? (
-          <div data-testid="confirm-dialog">
-            <span>{title}</span>
-            <button data-testid="confirm-ok" onClick={onConfirm}>Confirm</button>
-            <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  default: { notify: vi.fn() },
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/general', () => ({
@@ -464,12 +434,10 @@ describe('Tool Provider Detail Flow Integration', () => {
       })
 
       fireEvent.click(screen.getByTestId('custom-modal-remove'))
-      await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-        expect(screen.getByText('Delete Tool')).toBeInTheDocument()
-      })
+      const dialog = await screen.findByRole('alertdialog')
+      expect(within(dialog).getByText('Delete Tool')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(within(dialog).getAllByRole('button').at(-1)!)
       await waitFor(() => {
         expect(mockRemoveCustomCollection).toHaveBeenCalledWith('test_collection')
         expect(mockOnRefreshData).toHaveBeenCalled()
@@ -526,11 +494,9 @@ describe('Tool Provider Detail Flow Integration', () => {
       })
 
       fireEvent.click(screen.getByTestId('wf-modal-remove'))
-      await waitFor(() => {
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      })
+      const dialog = await screen.findByRole('alertdialog')
 
-      fireEvent.click(screen.getByTestId('confirm-ok'))
+      fireEvent.click(within(dialog).getAllByRole('button').at(-1)!)
       await waitFor(() => {
         expect(mockDeleteWorkflowTool).toHaveBeenCalledWith('test-collection')
         expect(mockOnRefreshData).toHaveBeenCalled()

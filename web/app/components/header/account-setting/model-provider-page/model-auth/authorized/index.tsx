@@ -20,12 +20,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import Confirm from '@/app/components/base/ui/confirm-dialog'
 import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'

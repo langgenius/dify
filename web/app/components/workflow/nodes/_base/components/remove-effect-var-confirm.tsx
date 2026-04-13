@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import Confirm from '@/app/components/base/ui/confirm-dialog'
 
 type Props = {
   isShow: boolean
