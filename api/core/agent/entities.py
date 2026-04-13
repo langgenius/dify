@@ -108,7 +108,6 @@ class ExecutionContext(BaseModel):
     conversation_id: str | None = None
     message_id: str | None = None
     tenant_id: str | None = None
-    node_id: str | None = None
 
     @classmethod
     def create_minimal(cls, user_id: str | None = None) -> "ExecutionContext":

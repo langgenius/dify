@@ -87,35 +87,27 @@ class AgentV2ToolManager:
         self,
         context: ExecutionContext,
         workflow_call_depth: int = 0,
-        sandbox: Any | None = None,
     ) -> ToolInvokeHook:
-        """Create a ToolInvokeHook for workflow context.
-
-        When sandbox is provided, tools that support sandbox execution will run
-        inside the sandbox environment. Otherwise, falls back to generic_invoke.
-        """
+        """Create a ToolInvokeHook for workflow context."""
 
         def hook(
             tool: Tool,
             tool_args: dict[str, Any],
             tool_name: str,
         ) -> tuple[str, list[str], ToolInvokeMeta]:
-            if sandbox is not None:
-                return AgentV2ToolManager._invoke_tool_in_sandbox(sandbox, tool, tool_args, tool_name, context)
-
-            return AgentV2ToolManager._invoke_tool_directly(tool, tool_args, tool_name, context, workflow_call_depth)
+            return self._invoke_tool_directly(tool, tool_args, tool_name, context, workflow_call_depth)
 
         return hook
 
-    @staticmethod
     def _invoke_tool_directly(
+        self,
         tool: Tool,
         tool_args: dict[str, Any],
         tool_name: str,
         context: ExecutionContext,
         workflow_call_depth: int,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
-        """Invoke tool directly via ToolEngine (no sandbox)."""
+        """Invoke tool directly via ToolEngine."""
         tool_response = ToolEngine.generic_invoke(
             tool=tool,
             tool_parameters=tool_args,
@@ -139,91 +131,3 @@ class AgentV2ToolManager:
                     response_content += f"[Link: {response.message.text}]"
 
         return response_content, [], ToolInvokeMeta.empty()
-
-    @staticmethod
-    def _invoke_tool_in_sandbox(
-        sandbox: Any,
-        tool: Tool,
-        tool_args: dict[str, Any],
-        tool_name: str,
-        context: ExecutionContext,
-    ) -> tuple[str, list[str], ToolInvokeMeta]:
-        """Invoke tool inside a sandbox environment.
-
-        Uses SandboxBashSession to run a `dify invoke-tool` command inside
-        the sandbox VM, which calls back to Dify's CLI API for actual execution.
-        Falls back to direct invocation on any failure.
-        """
-        try:
-            from core.sandbox.bash.dify_cli import DifyCliLocator
-            from core.sandbox.bash.session import SandboxBashSession
-            from core.skill.entities.skill_metadata import ToolReference
-            from core.skill.entities.tool_dependencies import ToolDependencies
-            from core.tools.entities.tool_entities import ToolProviderType
-
-            logger.info("[SANDBOX_TOOL] Entering sandbox tool path for %s, ready=%s", tool_name, sandbox._ready_event.is_set())
-            if not sandbox._ready_event.is_set():
-                logger.info("[SANDBOX_TOOL] Not ready, falling back to direct execution")
-                return AgentV2ToolManager._invoke_tool_directly(tool, tool_args, tool_name, context, 0)
-
-            cli_locator = DifyCliLocator()
-            logger.info("[SANDBOX_TOOL] Resolving CLI binary...")
-            cli_locator.resolve(sandbox.vm.metadata.os, sandbox.vm.metadata.arch)
-            logger.info("[SANDBOX_TOOL] CLI binary found, creating bash session...")
-
-            provider_type = tool.tool_provider_type() if hasattr(tool, 'tool_provider_type') else ToolProviderType.BUILT_IN
-            tool_identity = getattr(tool, 'identity', None)
-            provider_name = tool_identity.provider if tool_identity else tool_name
-
-            tool_ref = ToolReference(
-                type=provider_type,
-                provider=provider_name,
-                tool_name=tool_name,
-            )
-            tool_deps = ToolDependencies(references=[tool_ref])
-
-            try:
-                import gevent
-                from gevent import Timeout as GTimeout
-                timeout_ctx = GTimeout(15)
-            except ImportError:
-                from contextlib import nullcontext
-                timeout_ctx = nullcontext()
-
-            try:
-                timeout_ctx.start() if hasattr(timeout_ctx, 'start') else None
-                with SandboxBashSession(
-                    sandbox=sandbox,
-                    node_id=context.node_id or "agent",
-                    tools=tool_deps,
-                ) as session:
-                    flag_args = " ".join(f"--{k} {json.dumps(v)}" for k, v in tool_args.items())
-                    cmd = f"dify execute {tool_name} {flag_args}"
-                    logger.info("[SANDBOX_TOOL] Executing: %s", cmd)
-                    result = list(session.bash_tool.invoke(
-                        user_id=context.user_id or "",
-                        tool_parameters={"bash": cmd},
-                    ))
-                    response_text = ""
-                    for msg in result:
-                        if msg.type == ToolInvokeMessage.MessageType.TEXT:
-                            assert isinstance(msg.message, ToolInvokeMessage.TextMessage)
-                            response_text += msg.message.text
-                    logger.info("[SANDBOX_TOOL] Success: %s", response_text[:80])
-                    return response_text, [], ToolInvokeMeta.empty()
-            except Exception as te:
-                logger.warning("[SANDBOX_TOOL] Sandbox bash session failed/timed out for %s: %s, falling back", tool_name, te)
-                return AgentV2ToolManager._invoke_tool_directly(tool, tool_args, tool_name, context, 0)
-            finally:
-                if hasattr(timeout_ctx, 'cancel'):
-                    timeout_ctx.cancel()
-        except FileNotFoundError:
-            logger.info("DifyCli binary not found, falling back to direct tool invocation for %s", tool_name)
-            return AgentV2ToolManager._invoke_tool_directly(
-                tool, tool_args, tool_name, context, 0
-            )
-        except Exception as e:
-            logger.warning("Sandbox tool invocation failed for %s, falling back to direct: %s", tool_name, e)
-            return AgentV2ToolManager._invoke_tool_directly(
-                tool, tool_args, tool_name, context, 0
-            )

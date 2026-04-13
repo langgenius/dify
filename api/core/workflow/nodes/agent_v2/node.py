@@ -72,7 +72,6 @@ class AgentV2Node(Node[AgentV2NodeData]):
         *,
         tool_manager: AgentV2ToolManager,
         event_adapter: AgentV2EventAdapter,
-        sandbox: Any | None = None,
         memory: Any | None = None,
     ) -> None:
         super().__init__(
@@ -83,7 +82,6 @@ class AgentV2Node(Node[AgentV2NodeData]):
         )
         self._tool_manager = tool_manager
         self._event_adapter = event_adapter
-        self._sandbox = sandbox
         self._memory = memory
 
     @classmethod
@@ -231,7 +229,6 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 user_id=dify_ctx.user_id,
                 app_id=dify_ctx.app_id,
                 tenant_id=dify_ctx.tenant_id,
-                node_id=self.id,
                 conversation_id=get_system_text(
                     self.graph_runtime_state.variable_pool,
                     SystemVariableKey.CONVERSATION_ID,
@@ -248,9 +245,7 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 max_iterations=self.node_data.max_iterations,
                 context=context,
                 agent_strategy=agent_strategy_enum,
-                tool_invoke_hook=self._tool_manager.create_workflow_tool_invoke_hook(
-                    context, sandbox=self._sandbox
-                ),
+                tool_invoke_hook=self._tool_manager.create_workflow_tool_invoke_hook(context),
             )
 
             outputs_gen = strategy.run(

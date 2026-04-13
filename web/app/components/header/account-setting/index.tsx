@@ -21,7 +21,6 @@ import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
-import SandboxProviderPage from './sandbox-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 
 const iconClassName = `
@@ -94,12 +93,6 @@ export default function AccountSetting({
         name: t('settings.apiBasedExtension', { ns: 'common' }),
         icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
         activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.SANDBOX_PROVIDER,
-        name: 'Sandbox Providers',
-        icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
       },
     )
 
@@ -240,7 +233,6 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.SANDBOX_PROVIDER && <SandboxProviderPage />}
             </div>
           </ScrollArea>
         </div>

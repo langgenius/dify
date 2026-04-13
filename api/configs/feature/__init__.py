@@ -271,27 +271,6 @@ class PluginConfig(BaseSettings):
     )
 
 
-class CliApiConfig(BaseSettings):
-    """
-    Configuration for CLI API (for dify-cli to call back from external sandbox environments)
-    """
-
-    CLI_API_URL: str = Field(
-        description="CLI API URL for external sandbox (e.g., e2b) to call back.",
-        default="http://localhost:5001",
-    )
-
-    SANDBOX_DIFY_CLI_ROOT: str = Field(
-        description="Root directory containing dify-cli binaries (dify-cli-{os}-{arch}).",
-        default="",
-    )
-
-    DIFY_PORT: int = Field(
-        description="Dify API port, used by Docker sandbox for socat forwarding.",
-        default=5001,
-    )
-
-
 class MarketplaceConfig(BaseSettings):
     """
     Configuration for marketplace
@@ -1417,29 +1396,6 @@ class TenantIsolatedTaskQueueConfig(BaseSettings):
     )
 
 
-class SandboxExpiredRecordsCleanConfig(BaseSettings):
-    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
-        description="Graceful period in days for sandbox records clean after subscription expiration",
-        default=21,
-    )
-    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
-        description="Maximum number of records to process in each batch",
-        default=1000,
-    )
-    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
-        description="Maximum interval in milliseconds between batches",
-        default=200,
-    )
-    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
-        description="Retention days for sandbox expired workflow_run records and message records",
-        default=30,
-    )
-    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
-        description="Lock TTL for sandbox expired records clean task in seconds",
-        default=90000,
-    )
-
-
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1449,7 +1405,6 @@ class FeatureConfig(
     TriggerConfig,
     AsyncWorkflowConfig,
     PluginConfig,
-    CliApiConfig,
     MarketplaceConfig,
     CreatorsPlatformConfig,
     DataSetConfig,
@@ -1467,7 +1422,6 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
-    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,

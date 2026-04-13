@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DIFY_SANDBOX_CONTEXT_KEY, DifyRunContext
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
@@ -416,8 +416,8 @@ class DifyNodeFactory(NodeFactory):
     def _build_agent_v2_kwargs(self, node_data: BaseNodeData) -> dict[str, object]:
         """Build initialization kwargs for Agent V2 node.
 
-        Injects memory (same mechanism as LLM Node) plus tool_manager,
-        event_adapter, and sandbox.
+        Injects memory (same mechanism as LLM Node) plus tool_manager
+        and event_adapter.
         """
         from core.workflow.nodes.agent_v2.entities import AgentV2NodeData
 
@@ -458,13 +458,8 @@ class DifyNodeFactory(NodeFactory):
                 app_id=self._dify_context.app_id,
             ),
             "event_adapter": AgentV2EventAdapter(),
-            "sandbox": self._resolve_sandbox(),
             "memory": memory,
         }
-
-    def _resolve_sandbox(self) -> Any:
-        """Resolve sandbox from run_context, if available."""
-        return self.graph_init_params.run_context.get(DIFY_SANDBOX_CONTEXT_KEY)
 
     @staticmethod
     def _remap_llm_to_agent_v2(node_data: BaseNodeData) -> BaseNodeData:

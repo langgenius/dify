@@ -246,10 +246,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
-        if hasattr(self, '_sandbox') and self._sandbox is not None:
-            from core.app.layers.sandbox_layer import SandboxLayer
-            workflow_entry.graph_engine.layer(SandboxLayer(self._sandbox))
-
         generator = workflow_entry.run()
 
         for event in generator:
