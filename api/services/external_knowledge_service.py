@@ -61,9 +61,7 @@ class ExternalDatasetService:
             raise ValueError("api_key is required")
 
     @staticmethod
-    def create_external_knowledge_api(
-        tenant_id: str, user_id: str, args: dict[str, Any]
-    ) -> ExternalKnowledgeApis:
+    def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict[str, Any]) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
             raise ValueError("settings is required")
@@ -315,7 +313,7 @@ class ExternalDatasetService:
         tenant_id: str,
         dataset_id: str,
         query: str,
-        external_retrieval_parameters: ExternalRetrievalParameters,
+        external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalar(
