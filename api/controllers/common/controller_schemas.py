@@ -23,9 +23,9 @@ class ConversationRenamePayload(BaseModel):
 
 
 class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty
-    first_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100)
+    conversation_id: UUIDStrOrEmpty = Field(description="Conversation UUID")
+    first_id: UUIDStrOrEmpty | None = Field(default=None, description="First message ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return (1-100)")
 
 
 class MessageFeedbackPayload(BaseModel):
@@ -73,7 +73,7 @@ class WorkflowUpdatePayload(BaseModel):
 
 
 class TextToAudioPayload(BaseModel):
-    message_id: str | None = None
-    voice: str | None = None
-    text: str | None = None
-    streaming: bool | None = None
+    message_id: str | None = Field(default=None, description="Message ID")
+    voice: str | None = Field(default=None, description="Voice to use for TTS")
+    text: str | None = Field(default=None, description="Text to convert to audio")
+    streaming: bool | None = Field(default=None, description="Enable streaming response")
