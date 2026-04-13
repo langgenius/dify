@@ -7,8 +7,7 @@ from unittest.mock import MagicMock, patch
 from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import MessageTraceInfo, WorkflowTraceInfo
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
-from dify_graph.enums import NodeType
-
+from dify_graph.enums import BuiltinNodeTypes
 
 def _create_trace_instance() -> LangFuseDataTrace:
     with patch("core.ops.langfuse_trace.langfuse_trace.Langfuse", autospec=True):
@@ -70,7 +69,7 @@ class TestLangFuseDataTraceCompletionStartTime:
         node_execution = SimpleNamespace(
             id="node-exec-1",
             title="Chat LLM",
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             status="succeeded",
             process_data={
                 "model_mode": "chat",
