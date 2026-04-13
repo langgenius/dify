@@ -7,6 +7,11 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
+class RerankingModel(BaseModel):
+    reranking_provider_name: str | None = None
+    reranking_model_name: str | None = None
+
+
 class NotionIcon(BaseModel):
     type: str
     url: str | None = None
@@ -51,11 +56,6 @@ class DataSource(BaseModel):
 class ProcessRule(BaseModel):
     mode: Literal["automatic", "custom", "hierarchical"]
     rules: Rule | None = None
-
-
-class RerankingModel(BaseModel):
-    reranking_provider_name: str | None = None
-    reranking_model_name: str | None = None
 
 
 class WeightVectorSetting(BaseModel):
