@@ -14,5 +14,5 @@ class AppModelConfigService:
                 return AgentChatAppConfigManager.config_validate(tenant_id, config)
             case AppMode.COMPLETION:
                 return CompletionAppConfigManager.config_validate(tenant_id, config)
-            case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
+            case AppMode.WORKFLOW | AppMode.ADVANCED_CHAT | AppMode.AGENT | AppMode.CHANNEL | AppMode.RAG_PIPELINE:
                 raise ValueError(f"Invalid app mode: {app_mode}")

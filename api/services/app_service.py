@@ -173,7 +173,8 @@ class AppService:
         db.session.commit()
 
         if app_mode == AppMode.AGENT:
-            self._init_agent_workflow(app, account, default_model_dict if default_model_config else None)
+            model_dict = default_model_config.get("model") if default_model_config else None
+            self._init_agent_workflow(app, account, model_dict)
 
         app_was_created.send(app, account=account)
 
