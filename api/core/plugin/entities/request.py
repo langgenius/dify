@@ -49,7 +49,7 @@ class RequestInvokeTool(BaseModel):
     tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
-    tool_parameters: dict
+    tool_parameters: dict[str, Any]
     credential_id: str | None = None
 
 
@@ -209,7 +209,7 @@ class RequestInvokeEncrypt(BaseModel):
     opt: Literal["encrypt", "decrypt", "clear"]
     namespace: Literal["endpoint"]
     identity: str
-    data: dict = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
     config: list[BasicProviderConfig] = Field(default_factory=list)
 
 

@@ -80,7 +80,7 @@ class PluginModelClient(BasePluginClient):
         return None
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict
+        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict[str, Any]
     ) -> bool:
         """
         validate the credentials of the provider
