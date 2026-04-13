@@ -1196,6 +1196,18 @@ class WorkflowAppLogCreatedFrom(StrEnum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
+class WorkflowAppLogDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    workflow_run_id: str
+    created_from: WorkflowAppLogCreatedFrom
+    created_by_role: CreatorUserRole
+    created_by: str
+    created_at: datetime
+
+
 class WorkflowAppLog(TypeBase):
     """
     Workflow App execution log, excluding workflow debugging records.
@@ -1273,8 +1285,8 @@ class WorkflowAppLog(TypeBase):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> WorkflowAppLogDict:
+        result: WorkflowAppLogDict = {
             "id": self.id,
             "tenant_id": self.tenant_id,
             "app_id": self.app_id,
@@ -1285,6 +1297,7 @@ class WorkflowAppLog(TypeBase):
             "created_by": self.created_by,
             "created_at": self.created_at,
         }
+        return result
 
 
 class WorkflowArchiveLog(TypeBase):
