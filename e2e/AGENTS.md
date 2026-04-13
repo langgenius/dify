@@ -222,13 +222,13 @@ Rules:
 
 Follow the Playwright recommended locator strategy, in order of preference:
 
-| Priority | Locator | Example | When to use |
-|---|---|---|---|
-| 1 | `getByRole` | `getByRole('button', { name: 'Create' })` | Default choice — accessible and resilient |
-| 2 | `getByLabel` | `getByLabel('App name')` | Form inputs with visible labels |
-| 3 | `getByPlaceholder` | `getByPlaceholder('Enter name')` | Inputs without visible labels |
-| 4 | `getByText` | `getByText('Welcome')` | Static text content |
-| 5 | `getByTestId` | `getByTestId('workflow-canvas')` | Only when no semantic locator works |
+| Priority | Locator            | Example                                   | When to use                               |
+| -------- | ------------------ | ----------------------------------------- | ----------------------------------------- |
+| 1        | `getByRole`        | `getByRole('button', { name: 'Create' })` | Default choice — accessible and resilient |
+| 2        | `getByLabel`       | `getByLabel('App name')`                  | Form inputs with visible labels           |
+| 3        | `getByPlaceholder` | `getByPlaceholder('Enter name')`          | Inputs without visible labels             |
+| 4        | `getByText`        | `getByText('Welcome')`                    | Static text content                       |
+| 5        | `getByTestId`      | `getByTestId('workflow-canvas')`          | Only when no semantic locator works       |
 
 Avoid raw CSS/XPath selectors. They break when the DOM structure changes.
 
@@ -256,12 +256,12 @@ Do not use manual `waitForTimeout` or polling loops. If you need a longer wait f
 
 Use Cucumber expression parameter types to extract values from Gherkin steps:
 
-| Type | Pattern | Example step |
-|---|---|---|
+| Type       | Pattern       | Example step                       |
+| ---------- | ------------- | ---------------------------------- |
 | `{string}` | Quoted string | `I select the "Workflow" app type` |
-| `{int}` | Integer | `I should see {int} items` |
-| `{float}` | Decimal | `the progress is {float} percent` |
-| `{word}` | Single word | `I click the {word} tab` |
+| `{int}`    | Integer       | `I should see {int} items`         |
+| `{float}`  | Decimal       | `the progress is {float} percent`  |
+| `{word}`   | Single word   | `I click the {word} tab`           |
 
 Prefer `{string}` for UI labels, names, and text content — it maps naturally to Gherkin's quoted values.
 
