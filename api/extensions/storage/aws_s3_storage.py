@@ -32,7 +32,16 @@ class AwsS3Storage(BaseStorage):
                 aws_access_key_id=dify_config.S3_ACCESS_KEY,
                 endpoint_url=dify_config.S3_ENDPOINT,
                 region_name=dify_config.S3_REGION,
-                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
+                config=Config(
+                    s3={"addressing_style": dify_config.S3_ADDRESS_STYLE},
+                    # boto3 >=1.36.1 enables checksum calculation by default, which
+                    # sends AWS-proprietary checksum headers (x-amz-checksum-*)
+                    # that S3-compatible services like MinIO don't support and
+                    # reject outright. Disable automatic checksums so uploads work
+                    # on any S3-compatible backend. See #34384.
+                    request_checksum_calculation="when_required",
+                    response_checksum_validation="when_required",
+                ),
             )
         # create bucket
         try:
