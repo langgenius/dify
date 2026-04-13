@@ -181,7 +181,7 @@ const EmailSenderModal = ({
       <Modal
         isShow={isShow}
         onClose={noop}
-        className="relative !max-w-[480px] !p-0"
+        className="relative max-w-[480px]! p-0!"
       >
         <div className="space-y-2 p-6 pb-3">
           <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.done`, { ns: 'workflow' })}</div>
@@ -249,7 +249,7 @@ const EmailSenderModal = ({
     <Modal
       isShow={isShow}
       onClose={noop}
-      className="relative !max-w-[480px] !p-0"
+      className="relative max-w-[480px]! p-0!"
     >
       <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
@@ -321,7 +321,7 @@ const EmailSenderModal = ({
       {generatedInputs.length > 0 && (
         <>
           <div className="px-6">
-            <Divider className="!mb-2 !mt-4 !h-px !w-12 bg-divider-regular" />
+            <Divider className="mb-2! mt-4! h-px! w-12! bg-divider-regular" />
           </div>
           <div className="px-6 py-2">
             <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>

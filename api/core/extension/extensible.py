@@ -32,9 +32,9 @@ class Extensible:
 
     name: str
     tenant_id: str
-    config: dict | None = None
+    config: dict[str, Any] | None = None
 
-    def __init__(self, tenant_id: str, config: dict | None = None):
+    def __init__(self, tenant_id: str, config: dict[str, Any] | None = None):
         self.tenant_id = tenant_id
         self.config = config
 

@@ -457,7 +457,7 @@ const JSONEditorDemo = () => {
     <div style={{ width: '600px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">JSON Editor</h3>
-        <span className={`rounded px-2 py-1 text-xs ${isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        <span className={`rounded-sm px-2 py-1 text-xs ${isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {isValid ? '✓ Valid' : '✗ Invalid'}
         </span>
       </div>

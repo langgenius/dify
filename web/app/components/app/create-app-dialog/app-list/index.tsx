@@ -137,10 +137,7 @@ const Apps = ({
       })
 
       setIsShowCreateModal(false)
-      toast.add({
-        type: 'success',
-        title: t('newApp.appCreated', { ns: 'app' }),
-      })
+      toast.success(t('newApp.appCreated', { ns: 'app' }))
       if (onSuccess)
         onSuccess()
       if (app.app_id)
@@ -149,7 +146,7 @@ const Apps = ({
       getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
     }
     catch {
-      toast.add({ type: 'error', title: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 

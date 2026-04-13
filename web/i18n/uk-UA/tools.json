@@ -126,6 +126,8 @@
   "mcp.modal.headerValuePlaceholder": "наприклад, токен носія 123",
   "mcp.modal.headers": "Заголовки",
   "mcp.modal.headersTip": "Додаткові HTTP заголовки для відправлення з запитами до сервера MCP",
+  "mcp.modal.invalidServerIdentifier": "Будь ласка, введіть дійсний ідентифікатор сервера",
+  "mcp.modal.invalidServerUrl": "Будь ласка, введіть дійсну URL-адресу сервера",
   "mcp.modal.maskedHeadersTip": "Значення заголовків маскуються для безпеки. Зміни оновлять фактичні значення.",
   "mcp.modal.name": "Назва та значок",
   "mcp.modal.namePlaceholder": "Назвіть ваш сервер MCP",

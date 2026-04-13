@@ -41,7 +41,7 @@ const InstallFromMarketplace = ({
 
   return (
     <div className="mb-2">
-      <Divider className="!mt-4 h-px" />
+      <Divider className="mt-4! h-px" />
       <div className="flex items-center justify-between">
         <button
           type="button"

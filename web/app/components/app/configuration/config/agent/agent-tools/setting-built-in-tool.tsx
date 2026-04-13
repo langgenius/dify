@@ -171,7 +171,7 @@ const SettingBuiltInTool: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <>
         {isLoading && <Loading type="app" />}
@@ -246,8 +246,8 @@ const SettingBuiltInTool: FC<Props> = ({
                   {isInfoActive ? infoUI : settingUI}
                   {!readonly && !isInfoActive && (
                     <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium " onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
+                      <Button className="flex h-8 items-center px-3! text-[13px]! font-medium " onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
                     </div>
                   )}
                 </div>

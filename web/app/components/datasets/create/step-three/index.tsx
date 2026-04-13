@@ -81,7 +81,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
       {!isMobile && (
         <div className="shrink-0 pr-8 pt-[88px] text-xs">
           <div className="flex w-[328px] flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
-            <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
+            <div className="flex size-10 items-center justify-center radius-lg bg-components-card-bg shadow-lg">
               <RiBookOpenLine className="size-5 text-text-accent" />
             </div>
             <div className="text-base font-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>

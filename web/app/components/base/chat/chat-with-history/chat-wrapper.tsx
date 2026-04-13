@@ -11,6 +11,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
@@ -23,7 +24,6 @@ import { submitHumanInputForm as submitHumanInputFormService } from '@/service/w
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { formatBooleanInputs } from '@/utils/model-config'
-import { Avatar } from '../../avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
@@ -284,7 +284,7 @@ const ChatWrapper = () => {
           imageUrl={appData?.site.icon_url}
         />
         <div className="max-w-[768px] px-4">
-          <Markdown className="!body-2xl-regular !text-text-tertiary" content={welcomeMessage.content} />
+          <Markdown className="body-2xl-regular! text-text-tertiary!" content={welcomeMessage.content} />
         </div>
       </div>
     )

@@ -4,6 +4,7 @@ import pytest
 from faker import Faker
 
 from core.indexing_runner import DocumentIsPausedError
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
@@ -109,7 +110,7 @@ class TestDuplicateDocumentIndexingTasks:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -130,7 +131,7 @@ class TestDuplicateDocumentIndexingTasks:
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
             db_session_with_containers.add(document)
             documents.append(document)
@@ -244,7 +245,7 @@ class TestDuplicateDocumentIndexingTasks:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -265,7 +266,7 @@ class TestDuplicateDocumentIndexingTasks:
                 created_by=account.id,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
             db_session_with_containers.add(document)
             documents.append(document)
@@ -524,7 +525,7 @@ class TestDuplicateDocumentIndexingTasks:
                 created_by=dataset.created_by,
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
-                doc_form="text_model",
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
             db_session_with_containers.add(document)
             extra_documents.append(document)

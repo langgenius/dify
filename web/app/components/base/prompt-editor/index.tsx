@@ -22,11 +22,6 @@ import type {
 } from './types'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { ContentEditable } from '@lexical/react/LexicalContentEditable'
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import {
   $getRoot,
   TextNode,
@@ -39,63 +34,37 @@ import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
-import ComponentPickerBlock from './plugins/component-picker-block'
 import {
-  ContextBlock,
   ContextBlockNode,
-  ContextBlockReplacementBlock,
 } from './plugins/context-block'
 import {
-  CurrentBlock,
   CurrentBlockNode,
-  CurrentBlockReplacementBlock,
 } from './plugins/current-block'
 import { CustomTextNode } from './plugins/custom-text/node'
-import DraggableBlockPlugin from './plugins/draggable-plugin'
 import {
-  ErrorMessageBlock,
   ErrorMessageBlockNode,
-  ErrorMessageBlockReplacementBlock,
 } from './plugins/error-message-block'
 import {
-  HistoryBlock,
   HistoryBlockNode,
-  HistoryBlockReplacementBlock,
 } from './plugins/history-block'
 
 import {
-  HITLInputBlock,
-  HITLInputBlockReplacementBlock,
   HITLInputNode,
 } from './plugins/hitl-input-block'
 import {
-  LastRunBlock,
   LastRunBlockNode,
-  LastRunReplacementBlock,
 } from './plugins/last-run-block'
-import OnBlurBlock from './plugins/on-blur-or-focus-block'
-// import TreeView from './plugins/tree-view'
-import Placeholder from './plugins/placeholder'
 import {
-  QueryBlock,
   QueryBlockNode,
-  QueryBlockReplacementBlock,
 } from './plugins/query-block'
 import {
-  RequestURLBlock,
   RequestURLBlockNode,
-  RequestURLBlockReplacementBlock,
 } from './plugins/request-url-block'
-import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
-import UpdateBlock from './plugins/update-block'
-import VariableBlock from './plugins/variable-block'
-import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import {
-  WorkflowVariableBlock,
   WorkflowVariableBlockNode,
-  WorkflowVariableBlockReplacementBlock,
 } from './plugins/workflow-variable-block'
+import PromptEditorContent from './prompt-editor-content'
 import { textToEditorState } from './utils'
 
 export type PromptEditorProps = {
@@ -156,7 +125,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig: InitialConfigType = {
     theme: {
-      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:!line-clamp-none',
+      paragraph: 'group-[.clamp]:line-clamp-5 group-focus/editable:line-clamp-none!',
     },
     namespace: 'prompt-editor',
     nodes: [
@@ -214,152 +183,31 @@ const PromptEditor: FC<PromptEditorProps> = ({
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className={cn('relative', wrapperClassName)} ref={onRef}>
-        <RichTextPlugin
-          contentEditable={(
-            <ContentEditable
-              className={cn(
-                'group/editable text-text-secondary outline-none group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
-                compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
-                className,
-              )}
-              style={style || {}}
-            />
-          )}
-          placeholder={(
-            <Placeholder
-              value={placeholder}
-              className={cn('truncate', placeholderClassName)}
-              compact={compact}
-            />
-          )}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        {shortcutPopups?.map(({ hotkey, Popup }, idx) => (
-          <ShortcutsPopupPlugin key={idx} hotkey={hotkey}>
-            {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
-          </ShortcutsPopupPlugin>
-        ))}
-        <ComponentPickerBlock
-          triggerString="/"
+        <PromptEditorContent
+          compact={compact}
+          className={className}
+          placeholder={placeholder}
+          placeholderClassName={placeholderClassName}
+          style={style}
+          shortcutPopups={shortcutPopups}
           contextBlock={contextBlock}
-          historyBlock={historyBlock}
           queryBlock={queryBlock}
           requestURLBlock={requestURLBlock}
+          historyBlock={historyBlock}
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          hitlInputBlock={hitlInputBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          instanceId={instanceId}
+          floatingAnchorElem={floatingAnchorElem}
+          onEditorChange={handleEditorChange}
         />
-        <ComponentPickerBlock
-          triggerString="{"
-          contextBlock={contextBlock}
-          historyBlock={historyBlock}
-          queryBlock={queryBlock}
-          requestURLBlock={requestURLBlock}
-          variableBlock={variableBlock}
-          externalToolBlock={externalToolBlock}
-          workflowVariableBlock={workflowVariableBlock}
-          currentBlock={currentBlock}
-          errorMessageBlock={errorMessageBlock}
-          lastRunBlock={lastRunBlock}
-          isSupportFileVar={isSupportFileVar}
-        />
-        {
-          contextBlock?.show && (
-            <>
-              <ContextBlock {...contextBlock} />
-              <ContextBlockReplacementBlock {...contextBlock} />
-            </>
-          )
-        }
-        {
-          queryBlock?.show && (
-            <>
-              <QueryBlock {...queryBlock} />
-              <QueryBlockReplacementBlock />
-            </>
-          )
-        }
-        {
-          historyBlock?.show && (
-            <>
-              <HistoryBlock {...historyBlock} />
-              <HistoryBlockReplacementBlock {...historyBlock} />
-            </>
-          )
-        }
-        {
-          (variableBlock?.show || externalToolBlock?.show) && (
-            <>
-              <VariableBlock />
-              <VariableValueBlock />
-            </>
-          )
-        }
-        {
-          workflowVariableBlock?.show && (
-            <>
-              <WorkflowVariableBlock {...workflowVariableBlock} />
-              <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
-            </>
-          )
-        }
-        {
-          hitlInputBlock?.show && (
-            <>
-              <HITLInputBlock {...hitlInputBlock} />
-              <HITLInputBlockReplacementBlock {...hitlInputBlock} />
-            </>
-          )
-        }
-        {
-          currentBlock?.show && (
-            <>
-              <CurrentBlock {...currentBlock} />
-              <CurrentBlockReplacementBlock {...currentBlock} />
-            </>
-          )
-        }
-        {
-          requestURLBlock?.show && (
-            <>
-              <RequestURLBlock {...requestURLBlock} />
-              <RequestURLBlockReplacementBlock {...requestURLBlock} />
-            </>
-          )
-        }
-        {
-          errorMessageBlock?.show && (
-            <>
-              <ErrorMessageBlock {...errorMessageBlock} />
-              <ErrorMessageBlockReplacementBlock {...errorMessageBlock} />
-            </>
-          )
-        }
-        {
-          lastRunBlock?.show && (
-            <>
-              <LastRunBlock {...lastRunBlock} />
-              <LastRunReplacementBlock {...lastRunBlock} />
-            </>
-          )
-        }
-        {
-          isSupportFileVar && (
-            <VariableValueBlock />
-          )
-        }
-        <OnChangePlugin onChange={handleEditorChange} />
-        <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
-        <UpdateBlock instanceId={instanceId} />
-        <HistoryPlugin />
-        {floatingAnchorElem && (
-          <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
-        )}
-        {/* <TreeView /> */}
       </div>
     </LexicalComposer>
   )

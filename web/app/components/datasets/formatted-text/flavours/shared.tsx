@@ -3,7 +3,7 @@ import { cn } from '@/utils/classnames'
 
 const baseStyle = 'py-[3px]'
 
-export type SliceContainerProps = ComponentProps<'span'>
+type SliceContainerProps = ComponentProps<'span'>
 
 export const SliceContainer: FC<SliceContainerProps> = (
   {
@@ -22,7 +22,7 @@ export const SliceContainer: FC<SliceContainerProps> = (
 }
 SliceContainer.displayName = 'SliceContainer'
 
-export type SliceLabelProps = ComponentProps<'span'> & { labelInnerClassName?: string }
+type SliceLabelProps = ComponentProps<'span'> & { labelInnerClassName?: string }
 
 export const SliceLabel: FC<SliceLabelProps> = (
   {
@@ -45,7 +45,7 @@ export const SliceLabel: FC<SliceLabelProps> = (
 }
 SliceLabel.displayName = 'SliceLabel'
 
-export type SliceContentProps = ComponentProps<'span'>
+type SliceContentProps = ComponentProps<'span'>
 
 export const SliceContent: FC<SliceContentProps> = (
   {
@@ -66,7 +66,7 @@ export const SliceContent: FC<SliceContentProps> = (
 }
 SliceContent.displayName = 'SliceContent'
 
-export type SliceDividerProps = ComponentProps<'span'>
+type SliceDividerProps = ComponentProps<'span'>
 
 export const SliceDivider: FC<SliceDividerProps> = (
   {
@@ -79,7 +79,7 @@ export const SliceDivider: FC<SliceDividerProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn(baseStyle, 'bg-state-base-active px-[1px] text-sm group-hover:bg-state-accent-solid', className)}
+      className={cn(baseStyle, 'bg-state-base-active px-px text-sm group-hover:bg-state-accent-solid', className)}
     >
       {/* use a zero-width space to make the hover area bigger */}
       &#8203;

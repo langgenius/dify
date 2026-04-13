@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
-import Slider from '@/app/components/base/slider'
+import { Slider } from '@/app/components/base/ui/slider'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
@@ -50,7 +50,7 @@ const AgentSetting: FC<Props> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex justify-end overflow-hidden p-2"
+      className="fixed inset-0 z-100 flex justify-end overflow-hidden p-2"
       style={{
         backgroundColor: 'rgba(16, 24, 40, 0.20)',
       }}
@@ -105,12 +105,13 @@ const AgentSetting: FC<Props> = ({
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
                 value={tempPayload.max_iteration}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   setTempPayload({
                     ...tempPayload,
                     max_iteration: value,
                   })
                 }}
+                aria-label={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
               />
 
               <input
@@ -150,7 +151,7 @@ const AgentSetting: FC<Props> = ({
 
         </div>
         <div
-          className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
+          className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
         >
           <Button
             onClick={onCancel}

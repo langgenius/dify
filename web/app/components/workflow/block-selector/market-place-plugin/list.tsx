@@ -89,7 +89,7 @@ const List = ({
     )
   }
 
-  const maxWidthClassName = toolContentClassName || 'max-w-[100%]'
+  const maxWidthClassName = toolContentClassName || 'max-w-full'
 
   return (
     <>
@@ -120,7 +120,7 @@ const List = ({
         ))}
         {hasRes && (
           <div className="mb-3 mt-2 flex items-center justify-center space-x-2">
-            <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
+            <div className="h-[2px] w-[90px] bg-linear-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
             <Link
               href={urlWithSearchText}
               target="_blank"
@@ -129,7 +129,7 @@ const List = ({
               <RiSearchLine className="mr-0.5 h-3 w-3" />
               <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
             </Link>
-            <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
+            <div className="h-[2px] w-[90px] bg-linear-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
           </div>
         )}
       </div>

@@ -30,7 +30,7 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({
             data.plugin_id,
             data.provider_name,
           ].filter(Boolean) as string[]}
-          className="!font-medium !text-text-accent"
+          className="font-medium! text-text-accent!"
           uniqueIdentifier={uniqueIdentifier!}
           onSuccess={onInstallSuccess}
         />

@@ -43,24 +43,15 @@ export default function CheckCode() {
     try {
       const appCode = getAppCodeFromRedirectUrl()
       if (!code.trim()) {
-        toast.add({
-          type: 'error',
-          title: t('checkCode.emptyCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        toast.add({
-          type: 'error',
-          title: t('checkCode.invalidCode', { ns: 'login' }),
-        })
+        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
         return
       }
       if (!redirectUrl || !appCode) {
-        toast.add({
-          type: 'error',
-          title: t('error.redirectUrlMissing', { ns: 'login' }),
-        })
+        toast.error(t('error.redirectUrlMissing', { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -136,7 +127,7 @@ export default function CheckCode() {
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
-        <div className="h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+        <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
       <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
         <div className="bg-background-default-dimm inline-block rounded-full p-1">

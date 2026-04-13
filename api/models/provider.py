@@ -6,6 +6,7 @@ from functools import cached_property
 from uuid import uuid4
 
 import sqlalchemy as sa
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,7 +14,7 @@ from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .enums import CredentialSourceType, PaymentStatus
+from .enums import CredentialSourceType, PaymentStatus, ProviderQuotaType
 from .types import EnumText, LongText, StringUUID
 
 
@@ -24,24 +25,6 @@ class ProviderType(StrEnum):
     @staticmethod
     def value_of(value: str) -> ProviderType:
         for member in ProviderType:
-            if member.value == value:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
-
-
-class ProviderQuotaType(StrEnum):
-    PAID = auto()
-    """hosted paid quota"""
-
-    FREE = auto()
-    """third-party free quota"""
-
-    TRIAL = auto()
-    """hosted trial quota"""
-
-    @staticmethod
-    def value_of(value: str) -> ProviderQuotaType:
-        for member in ProviderQuotaType:
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
@@ -77,7 +60,9 @@ class Provider(TypeBase):
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
-    quota_type: Mapped[str | None] = mapped_column(String(40), nullable=True, server_default=text("''"), default="")
+    quota_type: Mapped[ProviderQuotaType | None] = mapped_column(
+        EnumText(ProviderQuotaType, length=40), nullable=True, server_default=text("''"), default=None
+    )
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
     quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=0)
 
@@ -147,7 +132,7 @@ class ProviderModel(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -189,7 +174,7 @@ class TenantDefaultModel(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -269,7 +254,7 @@ class ProviderModelSetting(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"), default=True)
     load_balancing_enabled: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=text("false"), default=False
@@ -299,7 +284,7 @@ class LoadBalancingModelConfig(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
@@ -364,7 +349,7 @@ class ProviderModelCredential(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    model_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(ModelType, length=40), nullable=False)
     credential_name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

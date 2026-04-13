@@ -27,7 +27,7 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
     <Button
       className={cn(
         'rounded-lg border border-transparent p-2',
-        theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
+        theme === 'dark' && showEnvPanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
       )}
       variant="ghost"
       disabled={disabled}

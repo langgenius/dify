@@ -1,32 +1,20 @@
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NotionPage } from '@/models/common'
-import type {
-  ChunkingMode,
-  CrawlOptions,
-  CrawlResultItem,
-  CreateDocumentReq,
-  createDocumentResponse,
-  CustomFile,
-  FullDocumentDetail,
-  ProcessRule,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { ChunkingMode, CrawlOptions, CrawlResultItem, CreateDocumentReq, createDocumentResponse, CustomFile, FullDocumentDetail, ProcessRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { DataSourceProvider } from '@/models/common'
-import {
-  DataSourceType,
-} from '@/models/datasets'
+import { DataSourceType } from '@/models/datasets'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { IndexingType } from './use-indexing-config'
 import { MAXIMUM_CHUNK_TOKEN_LENGTH } from './use-segmentation-state'
 
-export type UseDocumentCreationOptions = {
+type UseDocumentCreationOptions = {
   datasetId?: string
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
@@ -46,8 +34,7 @@ export type UseDocumentCreationOptions = {
   onSave?: () => void
   mutateDatasetRes?: () => void
 }
-
-export type ValidationParams = {
+type ValidationParams = {
   segmentationType: string
   maxChunkLength: number
   limitMaxChunkLength: number
@@ -57,93 +44,42 @@ export type ValidationParams = {
   rerankModelList: Model[]
   retrievalConfig: RetrievalConfig
 }
-
 export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   const { t } = useTranslation()
-  const {
-    datasetId,
-    isSetting,
-    documentDetail,
-    dataSourceType,
-    files,
-    notionPages,
-    notionCredentialId,
-    websitePages,
-    crawlOptions,
-    websiteCrawlProvider = DataSourceProvider.jinaReader,
-    websiteCrawlJobId = '',
-    onStepChange,
-    updateIndexingTypeCache,
-    updateResultCache,
-    updateRetrievalMethodCache,
-    onSave,
-    mutateDatasetRes,
-  } = options
-
+  const { datasetId, isSetting, documentDetail, dataSourceType, files, notionPages, notionCredentialId, websitePages, crawlOptions, websiteCrawlProvider = DataSourceProvider.jinaReader, websiteCrawlJobId = '', onStepChange, updateIndexingTypeCache, updateResultCache, updateRetrievalMethodCache, onSave, mutateDatasetRes } = options
   const createFirstDocumentMutation = useCreateFirstDocument()
   const createDocumentMutation = useCreateDocument(datasetId!)
   const invalidDatasetList = useInvalidDatasetList()
-
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
-
   // Validate creation params
   const validateParams = useCallback((params: ValidationParams): boolean => {
-    const {
-      segmentationType,
-      maxChunkLength,
-      limitMaxChunkLength,
-      overlap,
-      indexType,
-      embeddingModel,
-      rerankModelList,
-      retrievalConfig,
-    } = params
-
+    const { segmentationType, maxChunkLength, limitMaxChunkLength, overlap, indexType, embeddingModel, rerankModelList, retrievalConfig } = params
     if (segmentationType === 'general' && overlap > maxChunkLength) {
-      Toast.notify({ type: 'error', message: t('stepTwo.overlapCheck', { ns: 'datasetCreation' }) })
+      toast.error(t('stepTwo.overlapCheck', { ns: 'datasetCreation' }))
       return false
     }
-
     if (segmentationType === 'general' && maxChunkLength > limitMaxChunkLength) {
-      Toast.notify({
-        type: 'error',
-        message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: limitMaxChunkLength }),
-      })
+      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: limitMaxChunkLength }))
       return false
     }
-
     if (!isSetting) {
       if (indexType === IndexingType.QUALIFIED && (!embeddingModel.model || !embeddingModel.provider)) {
-        Toast.notify({
-          type: 'error',
-          message: t('datasetConfig.embeddingModelRequired', { ns: 'appDebug' }),
-        })
+        toast.error(t('datasetConfig.embeddingModelRequired', { ns: 'appDebug' }))
         return false
       }
-
       if (!isReRankModelSelected({
         rerankModelList,
         retrievalConfig,
         indexMethod: indexType,
       })) {
-        Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
+        toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
         return false
       }
     }
-
     return true
   }, [t, isSetting])
-
   // Build creation params
-  const buildCreationParams = useCallback((
-    currentDocForm: ChunkingMode,
-    docLanguage: string,
-    processRule: ProcessRule,
-    retrievalConfig: RetrievalConfig,
-    embeddingModel: DefaultModel,
-    indexingTechnique: string,
-    summaryIndexSetting?: SummaryIndexSettingType,
-  ): CreateDocumentReq | null => {
+  const buildCreationParams = useCallback((currentDocForm: ChunkingMode, docLanguage: string, processRule: ProcessRule, retrievalConfig: RetrievalConfig, embeddingModel: DefaultModel, indexingTechnique: string, summaryIndexSetting?: SummaryIndexSettingType): CreateDocumentReq | null => {
     if (isSetting) {
       return {
         original_document_id: documentDetail?.id,
@@ -157,7 +93,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         indexing_technique: indexingTechnique,
       } as CreateDocumentReq
     }
-
     const params: CreateDocumentReq = {
       data_source: {
         type: dataSourceType,
@@ -174,7 +109,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
       embedding_model: embeddingModel.model,
       embedding_model_provider: embeddingModel.provider,
     } as CreateDocumentReq
-
     // Add data source specific info
     if (dataSourceType === DataSourceType.FILE) {
       params.data_source!.info_list.file_info_list = {
@@ -183,7 +117,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     }
     if (dataSourceType === DataSourceType.NOTION)
       params.data_source!.info_list.notion_info_list = getNotionInfo(notionPages, notionCredentialId)
-
     if (dataSourceType === DataSourceType.WEB) {
       params.data_source!.info_list.website_info_list = getWebsiteInfo({
         websiteCrawlProvider,
@@ -192,7 +125,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         crawlOptions,
       })
     }
-
     return params
   }, [
     isSetting,
@@ -206,13 +138,8 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     websiteCrawlJobId,
     crawlOptions,
   ])
-
   // Execute creation
-  const executeCreation = useCallback(async (
-    params: CreateDocumentReq,
-    indexType: IndexingType,
-    retrievalConfig: RetrievalConfig,
-  ) => {
+  const executeCreation = useCallback(async (params: CreateDocumentReq, indexType: IndexingType, retrievalConfig: RetrievalConfig) => {
     if (!datasetId) {
       await createFirstDocumentMutation.mutateAsync(params, {
         onSuccess(data) {
@@ -231,17 +158,13 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         },
       })
     }
-
     mutateDatasetRes?.()
     invalidDatasetList()
-
     trackEvent('create_datasets', {
       data_source_type: dataSourceType,
       indexing_technique: indexType,
     })
-
     onStepChange?.(+1)
-
     if (isSetting)
       onSave?.()
   }, [
@@ -258,19 +181,14 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     isSetting,
     onSave,
   ])
-
   // Validate preview params
   const validatePreviewParams = useCallback((maxChunkLength: number): boolean => {
     if (maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      Toast.notify({
-        type: 'error',
-        message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }),
-      })
+      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
       return false
     }
     return true
   }, [t])
-
   return {
     isCreating,
     validateParams,
@@ -279,5 +197,3 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     validatePreviewParams,
   }
 }
-
-export type DocumentCreation = ReturnType<typeof useDocumentCreation>

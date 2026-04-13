@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-import pytz
+import pytz  # type: ignore[import-untyped]
 from croniter import croniter
 
 

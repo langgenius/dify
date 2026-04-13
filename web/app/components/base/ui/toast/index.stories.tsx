@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ReactNode } from 'react'
-import { toast, ToastHost } from '.'
+import { toast } from '.'
 
 const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs transition-colors hover:bg-state-base-hover'
 const cardClassName = 'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
@@ -19,10 +19,10 @@ const ExampleCard = ({
   return (
     <section className={cardClassName}>
       <div className="space-y-2">
-        <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">
+        <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
           {eyebrow}
         </div>
-        <h3 className="text-base font-semibold leading-6 text-text-primary">
+        <h3 className="text-base leading-6 font-semibold text-text-primary">
           {title}
         </h3>
         <p className="text-sm leading-6 text-text-secondary">
@@ -57,9 +57,8 @@ const VariantExamples = () => {
       },
     } as const
 
-    toast.add({
-      type,
-      ...copy[type],
+    toast[type](copy[type].title, {
+      description: copy[type].description,
     })
   }
 
@@ -103,14 +102,16 @@ const StackExamples = () => {
         title: 'Ready to publish',
         description: 'The newest toast stays frontmost while older items tuck behind it.',
       },
-    ].forEach(item => toast.add(item))
+    ].forEach((item) => {
+      toast[item.type](item.title, {
+        description: item.description,
+      })
+    })
   }
 
   const createBurst = () => {
     Array.from({ length: 5 }).forEach((_, index) => {
-      toast.add({
-        type: index % 2 === 0 ? 'info' : 'success',
-        title: `Background task ${index + 1}`,
+      toast[index % 2 === 0 ? 'info' : 'success'](`Background task ${index + 1}`, {
         description: 'Use this to inspect how the stack behaves near the host limit.',
       })
     })
@@ -191,16 +192,12 @@ const PromiseExamples = () => {
 
 const ActionExamples = () => {
   const createActionToast = () => {
-    toast.add({
-      type: 'warning',
-      title: 'Project archived',
+    toast.warning('Project archived', {
       description: 'You can restore it from workspace settings for the next 30 days.',
       actionProps: {
         children: 'Undo',
         onClick: () => {
-          toast.add({
-            type: 'success',
-            title: 'Project restored',
+          toast.success('Project restored', {
             description: 'The workspace is active again.',
           })
         },
@@ -209,17 +206,12 @@ const ActionExamples = () => {
   }
 
   const createLongCopyToast = () => {
-    toast.add({
-      type: 'info',
-      title: 'Knowledge ingestion in progress',
+    toast.info('Knowledge ingestion in progress', {
       description: 'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
       actionProps: {
         children: 'View details',
         onClick: () => {
-          toast.add({
-            type: 'info',
-            title: 'Job details opened',
-          })
+          toast.info('Job details opened')
         },
       },
     })
@@ -243,9 +235,7 @@ const ActionExamples = () => {
 
 const UpdateExamples = () => {
   const createUpdatableToast = () => {
-    const toastId = toast.add({
-      type: 'info',
-      title: 'Import started',
+    const toastId = toast.info('Import started', {
       description: 'Preparing assets and metadata for processing.',
       timeout: 0,
     })
@@ -261,7 +251,7 @@ const UpdateExamples = () => {
   }
 
   const clearAll = () => {
-    toast.close()
+    toast.dismiss()
   }
 
   return (
@@ -282,37 +272,34 @@ const UpdateExamples = () => {
 
 const ToastDocsDemo = () => {
   return (
-    <>
-      <ToastHost timeout={5000} limit={5} />
-      <div className="min-h-screen bg-background-default-subtle px-6 py-12">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-          <div className="space-y-3">
-            <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">
-              Base UI toast docs
-            </div>
-            <h2 className="text-[24px] font-semibold leading-8 text-text-primary">
-              Shared stacked toast examples
-            </h2>
-            <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-              Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
-            </p>
+    <div className="min-h-screen bg-background-default-subtle px-6 py-12">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <div className="space-y-3">
+          <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
+            Base UI toast docs
           </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <VariantExamples />
-            <StackExamples />
-            <PromiseExamples />
-            <ActionExamples />
-            <UpdateExamples />
-          </div>
+          <h2 className="text-[24px] leading-8 font-semibold text-text-primary">
+            Shared stacked toast examples
+          </h2>
+          <p className="max-w-3xl text-sm leading-6 text-text-secondary">
+            Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <VariantExamples />
+          <StackExamples />
+          <PromiseExamples />
+          <ActionExamples />
+          <UpdateExamples />
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
 const meta = {
   title: 'Base/Feedback/UI Toast',
-  component: ToastHost,
+  component: ToastDocsDemo,
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -322,7 +309,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof ToastHost>
+} satisfies Meta<typeof ToastDocsDemo>
 
 export default meta
 type Story = StoryObj<typeof meta>

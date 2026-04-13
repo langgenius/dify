@@ -26,7 +26,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   CUSTOM_NODE,
 } from '@/app/components/workflow/constants'
@@ -57,7 +57,6 @@ export const useChat = (
   stopChat?: (taskId: string) => void,
 ) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
   const workflowStore = useWorkflowStore()
@@ -91,31 +90,54 @@ export const useChat = (
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
   }, [formSettings?.inputs, formSettings?.inputsForm])
 
+  const processedOpeningContent = config?.opening_statement
+    ? getIntroduction(config.opening_statement)
+    : undefined
+  const processedSuggestionsKey = config?.suggested_questions
+    ? JSON.stringify(config.suggested_questions.map((q: string) => getIntroduction(q)))
+    : undefined
+
+  const openingStatementItem = useMemo<ChatItemInTree | null>(() => {
+    if (!processedOpeningContent)
+      return null
+    return {
+      id: 'opening-statement',
+      content: processedOpeningContent,
+      isAnswer: true,
+      isOpeningStatement: true,
+      suggestedQuestions: processedSuggestionsKey
+        ? JSON.parse(processedSuggestionsKey) as string[]
+        : undefined,
+    }
+  }, [processedOpeningContent, processedSuggestionsKey])
+
+  const threadOpener = useMemo(
+    () => threadMessages.find(item => item.isOpeningStatement) ?? null,
+    [threadMessages],
+  )
+
+  const mergedOpeningItem = useMemo<ChatItemInTree | null>(() => {
+    if (!threadOpener || !openingStatementItem)
+      return null
+    return {
+      ...threadOpener,
+      content: openingStatementItem.content,
+      suggestedQuestions: openingStatementItem.suggestedQuestions,
+    }
+  }, [threadOpener, openingStatementItem])
+
   /** Final chat list that will be rendered */
   const chatList = useMemo(() => {
     const ret = [...threadMessages]
-    if (config?.opening_statement) {
+    if (openingStatementItem) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-
-      if (index > -1) {
-        ret[index] = {
-          ...ret[index],
-          content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
-        }
-      }
-      else {
-        ret.unshift({
-          id: `${Date.now()}`,
-          content: getIntroduction(config.opening_statement),
-          isAnswer: true,
-          isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
-        })
-      }
+      if (index > -1 && mergedOpeningItem)
+        ret[index] = mergedOpeningItem
+      else if (index === -1)
+        ret.unshift(openingStatementItem)
     }
     return ret
-  }, [threadMessages, config?.opening_statement, getIntroduction, config?.suggested_questions])
+  }, [threadMessages, openingStatementItem, mergedOpeningItem])
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -236,7 +258,7 @@ export const useChat = (
     }: SendCallback,
   ) => {
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -636,7 +658,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
   const handleSubmitHumanInputForm = async (formToken: string, formData: any) => {
     await submitHumanInputForm(formToken, formData)

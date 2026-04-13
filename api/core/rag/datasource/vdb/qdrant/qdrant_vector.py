@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, cast
 
 import qdrant_client
 from flask import current_app
@@ -22,7 +22,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
@@ -32,12 +32,11 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetCollectionBinding
 
 if TYPE_CHECKING:
-    from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
     from qdrant_client.http import models as rest
 
-    DictFilter = dict[str, Union[str, int, bool, dict, list]]
-    MetadataFilter = Union[DictFilter, common_types.Filter]
+    type DictFilter = dict[str, str | int | bool | dict | list]
+    type MetadataFilter = DictFilter | common_types.Filter
 
 
 class PathQdrantParams(BaseModel):
@@ -94,8 +93,12 @@ class QdrantVector(BaseVector):
     def get_type(self) -> str:
         return VectorType.QDRANT
 
-    def to_index_struct(self):
-        return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
+    def to_index_struct(self) -> VectorIndexStructDict:
+        result: VectorIndexStructDict = {
+            "type": self.get_type(),
+            "vector_store": {"class_prefix": self._collection_name},
+        }
+        return result
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
@@ -176,7 +179,7 @@ class QdrantVector(BaseVector):
         for batch_ids, points in self._generate_rest_batches(
             texts, embeddings, filtered_metadatas, uuids, 64, self._group_id
         ):
-            self._client.upsert(collection_name=self._collection_name, points=points)
+            self._client.upsert(collection_name=self._collection_name, points=cast("common_types.Points", points))
             added_ids.extend(batch_ids)
 
         return added_ids
@@ -468,7 +471,7 @@ class QdrantVector(BaseVector):
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
-            self._client._load()
+            self._client._load()  # pyright: ignore[reportPrivateUsage]
 
     @classmethod
     def _document_from_scored_point(

@@ -392,7 +392,7 @@ describe('Popup', () => {
       expect(screen.queryByTestId('progress-tooltip')).not.toBeInTheDocument()
     })
 
-    it('should pass score rounded to 2 decimal places to ProgressTooltip', async () => {
+    it('should pass score rounded-sm to 2 decimal places to ProgressTooltip', async () => {
       const user = userEvent.setup()
       render(<Popup data={makeData({ sources: [makeSource({ score: 0.856 })] })} showHitInfo={true} />)
 
