@@ -69,7 +69,9 @@ class ToolTransformService:
                 return ""
 
     @staticmethod
-    def repack_provider(tenant_id: str, provider: dict | ToolProviderApiEntity | PluginDatasourceProviderEntity):
+    def repack_provider(
+        tenant_id: str, provider: dict[str, Any] | ToolProviderApiEntity | PluginDatasourceProviderEntity
+    ):
         """
         repack provider
 

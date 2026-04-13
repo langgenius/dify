@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+from typing import Any
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from sqlalchemy import delete, or_, select
@@ -35,7 +36,7 @@ class WorkflowToolManageService:
         workflow_app_id: str,
         name: str,
         label: str,
-        icon: dict,
+        icon: dict[str, Any],
         description: str,
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
@@ -117,7 +118,7 @@ class WorkflowToolManageService:
         workflow_tool_id: str,
         name: str,
         label: str,
-        icon: dict,
+        icon: dict[str, Any],
         description: str,
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
