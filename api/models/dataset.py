@@ -180,13 +180,16 @@ class Dataset(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(LongText, nullable=True)
-    provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
+    provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"), default="vendor")
     permission: Mapped[DatasetPermissionEnum] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
         server_default=sa.text("'only_me'"),
         default=DatasetPermissionEnum.ONLY_ME,
     )
-    data_source_type = mapped_column(EnumText(DataSourceType, length=255))
+    # Nullable until the first document defines the source; see DatasetService.save_document_with_dataset_id
+    data_source_type: Mapped[DataSourceType | None] = mapped_column(
+        EnumText(DataSourceType, length=255), nullable=True, default=None
+    )
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
@@ -197,18 +200,23 @@ class Dataset(Base):
     )
     embedding_model = mapped_column(sa.String(255), nullable=True)
     embedding_model_provider = mapped_column(sa.String(255), nullable=True)
-    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
-    collection_binding_id = mapped_column(StringUUID, nullable=True)
-    retrieval_model = mapped_column(AdjustedJSON, nullable=True)
-    summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
-    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    icon_info = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode = mapped_column(
-        EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'")
+    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=10)
+    collection_binding_id = mapped_column(StringUUID, nullable=True, default=None)
+    retrieval_model = mapped_column(AdjustedJSON, nullable=True, default=None)
+    summary_index_setting = mapped_column(AdjustedJSON, nullable=True, default=None)
+    built_in_field_enabled = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )
-    pipeline_id = mapped_column(StringUUID, nullable=True)
-    chunk_structure = mapped_column(sa.String(255), nullable=True)
-    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    icon_info = mapped_column(AdjustedJSON, nullable=True, default=None)
+    runtime_mode = mapped_column(
+        EnumText(DatasetRuntimeMode, length=255),
+        nullable=True,
+        server_default=sa.text("'general'"),
+        default=DatasetRuntimeMode.GENERAL,
+    )
+    pipeline_id = mapped_column(StringUUID, nullable=True, default=None)
+    chunk_structure = mapped_column(sa.String(255), nullable=True, default=None)
+    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=db.text("false"))
 
     @property
