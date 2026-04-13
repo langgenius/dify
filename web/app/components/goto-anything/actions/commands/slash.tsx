@@ -4,11 +4,13 @@ import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
+import { useRouter } from '@/next/navigation'
 import { accountCommand } from './account'
 import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
+import { goCommand } from './go'
 import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
@@ -48,6 +50,7 @@ const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
+  slashCommandRegistry.register(goCommand, { router: deps.router })
 }
 
 const unregisterSlashCommands = () => {
@@ -59,17 +62,20 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
+  slashCommandRegistry.unregister('go')
 }
 
 export const SlashCommandProvider = () => {
   const theme = useTheme()
+  const router = useRouter()
   useEffect(() => {
     registerSlashCommands({
       setTheme: theme.setTheme,
       setLocale: setLocaleOnClient,
+      router,
     })
     return () => unregisterSlashCommands()
-  }, [theme.setTheme])
+  }, [theme.setTheme, router])
 
   return null
 }

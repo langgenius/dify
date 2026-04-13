@@ -6,6 +6,7 @@ import type { ActionItem, SearchResult } from '../actions/types'
 import { useCallback, useState } from 'react'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useRouter } from '@/next/navigation'
+import { addRecentItem } from '../actions/recent-store'
 import { slashCommandRegistry } from '../actions/commands/registry'
 
 type UseGotoAnythingNavigationReturn = {
@@ -81,7 +82,22 @@ export const useGotoAnythingNavigation = (
           selectWorkflowNode(result.metadata.nodeId, true)
 
         break
+      case 'recent':
+        if (result.path)
+          router.push(result.path)
+
+        break
       default:
+        // Record to recent history for app and knowledge results
+        if ((result.type === 'app' || result.type === 'knowledge') && result.path) {
+          addRecentItem({
+            id: result.id,
+            title: result.title,
+            description: result.description,
+            path: result.path,
+            originalType: result.type,
+          })
+        }
         if (result.path)
           router.push(result.path)
     }
