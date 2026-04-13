@@ -16,7 +16,7 @@ from core.memory.node_token_buffer_memory import NodeTokenBufferMemory
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.prompt.entities.advanced_prompt_entities import MemoryMode
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.entities.tool_entities import (
     ToolIdentity,
     ToolInvokeMessage,
@@ -63,9 +63,12 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
 from graphon.variables.segments import ArrayFileSegment, StringSegment
+from core.app.file_access.controller import DatabaseFileAccessController
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
+
+_file_access_controller = DatabaseFileAccessController()
 from models import ToolFile
 from models.model import Conversation
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -303,6 +306,7 @@ class AgentNode(Node[AgentNodeData]):
                             dify_ctx.tenant_id,
                             dify_ctx.app_id,
                             entity,
+                            dify_ctx.user_id,
                             dify_ctx.invoke_from,
                             runtime_variable_pool,
                         )
@@ -428,7 +432,7 @@ class AgentNode(Node[AgentNodeData]):
             icon = None
         return icon
 
-    def _fetch_memory(self, model_instance: ModelInstance) -> BaseMemory | None:
+    def _fetch_memory(self, model_instance: ModelInstance) -> BaseMemory | TokenBufferMemory | None:
         """
         Fetch memory based on configuration mode.
 
@@ -470,7 +474,9 @@ class AgentNode(Node[AgentNodeData]):
 
     def _fetch_model(self, value: dict[str, Any]) -> tuple[ModelInstance, AIModelEntity | None]:
         dify_ctx = self.require_dify_context()
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(
+            tenant_id=dify_ctx.tenant_id, user_id=dify_ctx.user_id
+        )
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id=dify_ctx.tenant_id, provider=value.get("provider", ""), model_type=ModelType.LLM
         )
@@ -480,7 +486,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         provider_name = provider_model_bundle.configuration.provider.provider
         model_type_instance = provider_model_bundle.model_type_instance
-        model_instance = ModelManager().get_model_instance(
+        model_instance = ModelManager(provider_manager).get_model_instance(
             tenant_id=dify_ctx.tenant_id,
             provider=provider_name,
             model_type=ModelType(value.get("model_type", "")),
@@ -516,7 +522,6 @@ class AgentNode(Node[AgentNodeData]):
         Fetch memory instance for saving node memory.
         This is a simplified version that doesn't require model_instance.
         """
-        from core.model_manager import ModelManager
         from graphon.model_runtime.entities.model_entities import ModelType
 
         node_data = self.node_data
@@ -531,10 +536,9 @@ class AgentNode(Node[AgentNodeData]):
 
         # Return appropriate memory type based on mode
         if node_data.memory.mode == MemoryMode.NODE:
-            # For node memory, we need a model_instance for token counting
-            # Use a simple default model for this purpose
             try:
-                model_instance = ModelManager().get_default_model_instance(
+                provider_manager = create_plugin_provider_manager(tenant_id=self.tenant_id)
+                model_instance = ModelManager(provider_manager).get_default_model_instance(
                     tenant_id=self.tenant_id,
                     model_type=ModelType.LLM,
                 )
@@ -706,6 +710,7 @@ class AgentNode(Node[AgentNodeData]):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=tenant_id,
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
@@ -729,6 +734,7 @@ class AgentNode(Node[AgentNodeData]):
                     file_factory.build_from_mapping(
                         mapping=mapping,
                         tenant_id=tenant_id,
+                        access_controller=_file_access_controller,
                     )
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:

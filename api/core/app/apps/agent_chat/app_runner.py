@@ -189,7 +189,6 @@ class AgentChatAppRunner(AppRunner):
         message_result = db.session.scalar(msg_stmt)
         if message_result is None:
             raise ValueError("Message not found")
-        db.session.close()
 
         runner = AgentAppRunner(
             tenant_id=app_config.tenant_id,
