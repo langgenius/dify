@@ -129,9 +129,7 @@ class WriteCase:
         ),
     ],
 )
-def test_write_endpoints_require_edit_permission(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, case: WriteCase
-) -> None:
+def test_write_endpoints_require_edit_permission(app: Flask, monkeypatch: pytest.MonkeyPatch, case: WriteCase) -> None:
     app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
     account = _make_account(TenantAccountRole.NORMAL)
     app_model = _make_app()

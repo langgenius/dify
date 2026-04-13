@@ -293,9 +293,7 @@ def test_advanced_chat_run_conversation_not_exists(app, monkeypatch: pytest.Monk
             handler(api, app_model=SimpleNamespace(id="app"))
 
 
-def test_workflow_online_users_filters_inaccessible_workflow(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: pytest.MonkeyPatch) -> None:
     app_id_1 = "11111111-1111-1111-1111-111111111111"
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
@@ -353,9 +351,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
     sign_avatar.assert_called_once_with("avatar-file-id")
 
 
-def test_workflow_online_users_rejects_excessive_workflow_ids(
-    app, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_workflow_online_users_rejects_excessive_workflow_ids(app, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     accessible_app_ids = Mock(return_value=set())
     monkeypatch.setattr(
@@ -364,9 +360,7 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(
         lambda: SimpleNamespace(get_accessible_app_ids=accessible_app_ids),
     )
 
-    excessive_ids = ",".join(
-        f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS + 1)
-    )
+    excessive_ids = ",".join(f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS + 1))
 
     api = workflow_module.WorkflowOnlineUsersApi()
     handler = _unwrap(api.get)
