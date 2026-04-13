@@ -68,89 +68,7 @@ jobs:
           " web/i18n-config/languages.ts | sed 's/[[:space:]]*$//')
 
           generate_changes_json() {
-            node <<'NODE'
-            const { execFileSync } = require('node:child_process')
-            const fs = require('node:fs')
-            const path = require('node:path')
-
-            const repoRoot = process.cwd()
-            const baseSha = process.env.BASE_SHA || ''
-            const headSha = process.env.HEAD_SHA || ''
-            const files = (process.env.CHANGED_FILES || '').split(/\s+/).filter(Boolean)
-
-            const englishPath = fileStem => path.join(repoRoot, 'web', 'i18n', 'en-US', `${fileStem}.json`)
-
-            const readCurrentJson = (fileStem) => {
-              const filePath = englishPath(fileStem)
-              if (!fs.existsSync(filePath))
-                return null
-
-              return JSON.parse(fs.readFileSync(filePath, 'utf8'))
-            }
-
-            const readBaseJson = (fileStem) => {
-              if (!baseSha)
-                return null
-
-              try {
-                const relativePath = `web/i18n/en-US/${fileStem}.json`
-                const content = execFileSync('git', ['show', `${baseSha}:${relativePath}`], { encoding: 'utf8' })
-                return JSON.parse(content)
-              }
-              catch (error) {
-                return null
-              }
-            }
-
-            const compareJson = (beforeValue, afterValue) => JSON.stringify(beforeValue) === JSON.stringify(afterValue)
-
-            const changes = {}
-
-            for (const fileStem of files) {
-              const currentJson = readCurrentJson(fileStem)
-              const beforeJson = readBaseJson(fileStem) || {}
-              const afterJson = currentJson || {}
-              const added = {}
-              const updated = {}
-              const deleted = []
-
-              for (const [key, value] of Object.entries(afterJson)) {
-                if (!(key in beforeJson)) {
-                  added[key] = value
-                  continue
-                }
-
-                if (!compareJson(beforeJson[key], value)) {
-                  updated[key] = {
-                    before: beforeJson[key],
-                    after: value,
-                  }
-                }
-              }
-
-              for (const key of Object.keys(beforeJson)) {
-                if (!(key in afterJson))
-                  deleted.push(key)
-              }
-
-              changes[fileStem] = {
-                fileDeleted: currentJson === null,
-                added,
-                updated,
-                deleted,
-              }
-            }
-
-            fs.writeFileSync(
-              '/tmp/i18n-changes.json',
-              JSON.stringify({
-                baseSha,
-                headSha,
-                files,
-                changes,
-              })
-            )
-            NODE
+            node .github/scripts/generate-i18n-changes.mjs
           }
 
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
@@ -240,7 +158,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.context.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@6e2bd52842c65e914eba5c8badd17560bd26b5de # v1.0.89
+        uses: anthropics/claude-code-action@b47fd721da662d48c5680e154ad16a73ed74d2e0 # v1.0.93
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -270,7 +188,7 @@ jobs:
             Tool rules:
             - Use Read for repository files.
             - Use Edit for JSON updates.
-            - Use Bash only for `pnpm`.
+            - Use Bash only for `vp`.
             - Do not use Bash for `git`, `gh`, or branch management.
 
             Required execution plan:
@@ -292,7 +210,7 @@ jobs:
                - Read the current English JSON file for any file that still exists so wording, placeholders, and surrounding terminology stay accurate.
                - If `Structured change set available` is `false`, treat this as a scoped full sync and use the current English files plus scoped checks as the source of truth.
             4. Run a scoped pre-check before editing:
-               - `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
+               - `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - Use this command as the source of truth for missing and extra keys inside the current scope.
             5. Apply translations.
                - For every target language and scoped file:
@@ -300,19 +218,19 @@ jobs:
                  - If the locale file does not exist yet, create it with `Write` and then continue with `Edit` as needed.
                  - ADD missing keys.
                  - UPDATE stale translations when the English value changed.
-                 - DELETE removed keys. Prefer `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }} --auto-remove` for extra keys so deletions stay in scope.
+                 - DELETE removed keys. Prefer `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }} --auto-remove` for extra keys so deletions stay in scope.
                - Preserve placeholders exactly: `{{variable}}`, `${variable}`, HTML tags, component tags, and variable names.
                - Match the existing terminology and register used by each locale.
                - Prefer one Edit per file when stable, but prioritize correctness over batching.
             6. Verify only the edited files.
-               - Run `pnpm --dir ${{ github.workspace }}/web lint:fix --quiet -- <relative edited i18n file paths>`
-               - Run `pnpm --dir ${{ github.workspace }}/web run i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
+               - Run `vp run dify-web#lint:fix --quiet -- <relative edited i18n file paths under web/>`
+               - Run `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - If verification fails, fix the remaining problems before continuing.
             7. Stop after the scoped locale files are updated and verification passes.
                - Do not create branches, commits, or pull requests.
           claude_args: |
             --max-turns 120
-            --allowedTools "Read,Write,Edit,Bash(pnpm *),Bash(pnpm:*),Glob,Grep"
+            --allowedTools "Read,Write,Edit,Bash(vp *),Bash(vp:*),Glob,Grep"
 
       - name: Prepare branch metadata
         id: pr_meta
@@ -354,6 +272,7 @@ jobs:
       - name: Create or update translation PR
         if: steps.pr_meta.outputs.has_changes == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH_NAME: ${{ steps.pr_meta.outputs.branch_name }}
           FILES_IN_SCOPE: ${{ steps.context.outputs.CHANGED_FILES }}
           TARGET_LANGS: ${{ steps.context.outputs.TARGET_LANGS }}
@@ -402,8 +321,8 @@ jobs:
             '',
             '## Verification',
             '',
-            `- \`pnpm --dir web run i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
-            `- \`pnpm --dir web lint:fix --quiet -- <edited i18n files>\``,
+            `- \`vp run dify-web#i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
+            `- \`vp run dify-web#lint:fix --quiet -- <edited i18n files under web/>\``,
             '',
             '## Notes',
             '',

@@ -15,7 +15,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -528,6 +528,8 @@ class DatasetService:
             raise ValueError("External knowledge id is required.")
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
+        # Ensure the referenced external API template exists and belongs to the dataset tenant.
+        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
@@ -551,22 +553,22 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with Session(db.engine) as session:
-            external_knowledge_binding = (
-                session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+        with sessionmaker(db.engine).begin() as session:
+            external_knowledge_binding = session.scalar(
+                select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == dataset_id).limit(1)
             )
 
             if not external_knowledge_binding:
                 raise ValueError("External knowledge binding not found.")
 
-        # Update binding if values have changed
-        if (
-            external_knowledge_binding.external_knowledge_id != external_knowledge_id
-            or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
-        ):
-            external_knowledge_binding.external_knowledge_id = external_knowledge_id
-            external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
-            db.session.add(external_knowledge_binding)
+            # Update binding if values have changed
+            if (
+                external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
+            ):
+                external_knowledge_binding.external_knowledge_id = external_knowledge_id
+                external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
+                session.add(external_knowledge_binding)
 
     @staticmethod
     def _update_internal_dataset(dataset, data, user):
@@ -1454,15 +1456,17 @@ class DocumentService:
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
 
         with session_factory.create_session() as session:
-            updated_count = (
-                session.query(Document)
-                .filter(
+            result = session.execute(
+                update(Document)
+                .where(
                     Document.id.in_(document_id_list),
                     Document.dataset_id == dataset_id,
                     Document.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                 )
-                .update({Document.need_summary: need_summary}, synchronize_session=False)
+                .values(need_summary=need_summary)
+                .execution_options(synchronize_session=False)
             )
+            updated_count = result.rowcount  # type: ignore[union-attr,attr-defined]
             session.commit()
             logger.info(
                 "Updated need_summary to %s for %d documents in dataset %s",
@@ -2821,6 +2825,10 @@ class DocumentService:
                 unique_pre_processing_rule_dicts[pre_processing_rule.id] = pre_processing_rule
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
+
+            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+                if not knowledge_config.process_rule.rules.parent_mode:
+                    knowledge_config.process_rule.rules.parent_mode = "paragraph"
 
             if not knowledge_config.process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")

@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -92,7 +92,7 @@ class AppGenerateService:
     def generate(
         cls,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
@@ -486,11 +486,11 @@ class AppGenerateService:
     def generate_more_like_this(
         cls,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[Mapping, Generator]:
+    ) -> Mapping | Generator:
         """
         Generate more like this
         :param app_model: app model

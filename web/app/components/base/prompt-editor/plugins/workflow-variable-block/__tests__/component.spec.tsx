@@ -1,4 +1,5 @@
 import type { LexicalEditor } from 'lexical'
+import type { UpdateWorkflowNodesMapPayload } from '../index'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -216,7 +217,7 @@ describe('WorkflowVariableBlockComponent', () => {
     })
   })
 
-  it('should mark env variable invalid when not found in environmentVariables', () => {
+  it('should treat env variable as valid regardless of environmentVariables contents', () => {
     const environmentVariables: Var[] = [{ variable: 'env.valid_key', type: VarType.string }]
 
     render(
@@ -229,7 +230,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
 
     expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
-      errorMsg: expect.any(String),
+      errorMsg: undefined,
     }))
   })
 
@@ -281,7 +282,7 @@ describe('WorkflowVariableBlockComponent', () => {
     }))
   })
 
-  it('should evaluate env fallback selector tokens when classifier is forced', () => {
+  it('should mark forced env branch invalid when selector prefix is missing', () => {
     mockForcedVariableKind.value = 'env'
     const environmentVariables: Var[] = [{ variable: '.', type: VarType.string }]
 
@@ -295,7 +296,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
 
     expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
-      errorMsg: undefined,
+      errorMsg: expect.any(String),
     }))
   })
 
@@ -330,7 +331,7 @@ describe('WorkflowVariableBlockComponent', () => {
     }))
   })
 
-  it('should mark conversation variable invalid when not found in conversationVariables', () => {
+  it('should treat conversation variable as valid regardless of conversationVariables contents', () => {
     const conversationVariables: Var[] = [{ variable: 'conversation.other', type: VarType.string }]
 
     render(
@@ -343,7 +344,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
 
     expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
-      errorMsg: expect.any(String),
+      errorMsg: undefined,
     }))
   })
 
@@ -364,7 +365,7 @@ describe('WorkflowVariableBlockComponent', () => {
     }))
   })
 
-  it('should evaluate conversation fallback selector tokens when classifier is forced', () => {
+  it('should mark forced conversation branch invalid when selector prefix is missing', () => {
     mockForcedVariableKind.value = 'conversation'
     const conversationVariables: Var[] = [{ variable: '.', type: VarType.string }]
 
@@ -378,7 +379,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
 
     expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
-      errorMsg: undefined,
+      errorMsg: expect.any(String),
     }))
   })
 
@@ -427,7 +428,7 @@ describe('WorkflowVariableBlockComponent', () => {
     }))
   })
 
-  it('should mark rag variable invalid when not found in ragVariables', () => {
+  it('should treat rag variable as valid regardless of ragVariables contents', () => {
     const ragVariables: Var[] = [{ variable: 'rag.shared.other', type: VarType.string }]
 
     render(
@@ -440,7 +441,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
 
     expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
-      errorMsg: expect.any(String),
+      errorMsg: undefined,
     }))
   })
 
@@ -461,7 +462,7 @@ describe('WorkflowVariableBlockComponent', () => {
     }))
   })
 
-  it('should evaluate rag fallback selector tokens when classifier is forced', () => {
+  it('should mark forced rag branch invalid when selector prefix is missing', () => {
     mockForcedVariableKind.value = 'rag'
     const ragVariables: Var[] = [{ variable: '..', type: VarType.string }]
 
@@ -475,7 +476,7 @@ describe('WorkflowVariableBlockComponent', () => {
     )
 
     expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
-      errorMsg: undefined,
+      errorMsg: expect.any(String),
     }))
   })
 
@@ -488,20 +489,81 @@ describe('WorkflowVariableBlockComponent', () => {
       />,
     )
 
-    const updateHandler = mockRegisterCommand.mock.calls[0][1] as (map: Record<string, unknown>) => boolean
+    const updateHandler = mockRegisterCommand.mock.calls[0][1] as (payload: UpdateWorkflowNodesMapPayload) => boolean
     let result = false
     act(() => {
       result = updateHandler({
-        'node-1': {
-          title: 'Updated',
-          type: BlockEnum.LLM,
-          width: 100,
-          height: 50,
-          position: { x: 0, y: 0 },
+        workflowNodesMap: {
+          'node-1': {
+            title: 'Updated',
+            type: BlockEnum.LLM,
+            width: 100,
+            height: 50,
+            position: { x: 0, y: 0 },
+          },
         },
+        availableVariables: [],
       })
     })
 
     expect(result).toBe(true)
+  })
+
+  it('should mark non-special variable invalid when source key is missing in availableVariables', () => {
+    render(
+      <WorkflowVariableBlockComponent
+        nodeKey="k"
+        variables={['node-1', 'missing_key']}
+        workflowNodesMap={{
+          'node-1': {
+            title: 'Node A',
+            type: BlockEnum.LLM,
+            width: 200,
+            height: 100,
+            position: { x: 0, y: 0 },
+          },
+        }}
+        availableVariables={[
+          {
+            nodeId: 'node-1',
+            title: 'Node A',
+            vars: [{ variable: 'existing_key', type: VarType.string }],
+          },
+        ]}
+      />,
+    )
+
+    expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
+      errorMsg: expect.any(String),
+    }))
+  })
+
+  it('should keep non-special variable valid when source key exists in availableVariables', () => {
+    render(
+      <WorkflowVariableBlockComponent
+        nodeKey="k"
+        variables={['node-1', 'existing_key']}
+        workflowNodesMap={{
+          'node-1': {
+            title: 'Node A',
+            type: BlockEnum.LLM,
+            width: 200,
+            height: 100,
+            position: { x: 0, y: 0 },
+          },
+        }}
+        availableVariables={[
+          {
+            nodeId: 'node-1',
+            title: 'Node A',
+            vars: [{ variable: 'existing_key', type: VarType.string }],
+          },
+        ]}
+      />,
+    )
+
+    expect(mockVarLabel).toHaveBeenCalledWith(expect.objectContaining({
+      errorMsg: undefined,
+    }))
   })
 })

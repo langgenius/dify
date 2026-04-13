@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Union, cast
+from typing import Any, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -38,11 +38,7 @@ from core.datasource.online_document.online_document_plugin import OnlineDocumen
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.helper import marketplace
-from core.rag.entities.event import (
-    DatasourceCompletedEvent,
-    DatasourceErrorEvent,
-    DatasourceProcessingEvent,
-)
+from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
 from core.repositories.factory import DifyCoreRepositoryFactory, OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
@@ -559,7 +555,7 @@ class RagPipelineService:
             workflow_node_execution.id
         )
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
@@ -573,7 +569,6 @@ class RagPipelineService:
                 process_data=workflow_node_execution.process_data,
                 outputs=workflow_node_execution.outputs,
             )
-            session.commit()
         if isinstance(workflow_node_execution_db_model, WorkflowNodeExecutionModel):
             enqueue_draft_node_execution_trace(
                 execution=workflow_node_execution_db_model,
@@ -1186,7 +1181,7 @@ class RagPipelineService:
         workflow = db.session.get(Workflow, pipeline.workflow_id)
         if not workflow:
             raise ValueError("Workflow not found")
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             dataset = pipeline.retrieve_dataset(session=session)
             if not dataset:
                 raise ValueError("Dataset not found")
@@ -1213,7 +1208,7 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         if args.get("icon_info") is None:
@@ -1329,7 +1324,7 @@ class RagPipelineService:
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
@@ -1343,7 +1338,6 @@ class RagPipelineService:
                 process_data=workflow_node_execution.process_data,
                 outputs=workflow_node_execution.outputs,
             )
-            session.commit()
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution_db_model,
             outputs=workflow_node_execution.outputs,
@@ -1393,7 +1387,7 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(self, dataset: Dataset, document: Document, user: Union[Account, EndUser]):
+    def retry_error_document(self, dataset: Dataset, document: Document, user: Account | EndUser):
         """
         Retry error document
         """

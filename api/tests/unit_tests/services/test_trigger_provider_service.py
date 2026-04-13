@@ -63,6 +63,12 @@ def mock_session(mocker: MockerFixture) -> MagicMock:
     mock_session_cm.__enter__.return_value = mock_session_instance
     mock_session_cm.__exit__.return_value = False
     mocker.patch("services.trigger.trigger_provider_service.Session", return_value=mock_session_cm)
+    mock_begin_cm = MagicMock()
+    mock_begin_cm.__enter__.return_value = mock_session_instance
+    mock_begin_cm.__exit__.return_value = False
+    mock_sessionmaker_instance = MagicMock()
+    mock_sessionmaker_instance.begin.return_value = mock_begin_cm
+    mocker.patch("services.trigger.trigger_provider_service.sessionmaker", return_value=mock_sessionmaker_instance)
     return mock_session_instance
 
 
@@ -118,9 +124,7 @@ def test_list_trigger_provider_subscriptions_should_return_empty_list_when_no_su
     provider_id: TriggerProviderID,
 ) -> None:
     # Arrange
-    query = MagicMock()
-    query.filter_by.return_value.order_by.return_value.all.return_value = []
-    mock_session.query.return_value = query
+    mock_session.scalars.return_value.all.return_value = []
 
     # Act
     result = TriggerProviderService.list_trigger_provider_subscriptions("tenant-1", provider_id)
@@ -146,11 +150,8 @@ def test_list_trigger_provider_subscriptions_should_mask_fields_and_attach_workf
     db_sub = SimpleNamespace(to_api_entity=lambda: api_sub)
     usage_row = SimpleNamespace(subscription_id="sub-1", app_count=2)
 
-    query_subs = MagicMock()
-    query_subs.filter_by.return_value.order_by.return_value.all.return_value = [db_sub]
-    query_usage = MagicMock()
-    query_usage.filter.return_value.group_by.return_value.all.return_value = [usage_row]
-    mock_session.query.side_effect = [query_subs, query_usage]
+    mock_session.scalars.return_value.all.return_value = [db_sub]
+    mock_session.execute.return_value.all.return_value = [usage_row]
 
     _mock_get_trigger_provider(mocker, provider_controller)
     cred_enc = _encrypter_mock(decrypted={"token": "plain"}, masked={"token": "****"})
@@ -182,11 +183,7 @@ def test_add_trigger_subscription_should_create_subscription_successfully_for_ap
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
-    query_count = MagicMock()
-    query_count.filter_by.return_value.count.return_value = 0
-    query_existing = MagicMock()
-    query_existing.filter_by.return_value.first.return_value = None
-    mock_session.query.side_effect = [query_count, query_existing]
+    mock_session.scalar.side_effect = [0, None]  # count=0, no existing name
 
     _mock_get_trigger_provider(mocker, provider_controller)
     cred_enc = _encrypter_mock(encrypted={"api_key": "enc"})
@@ -212,7 +209,6 @@ def test_add_trigger_subscription_should_create_subscription_successfully_for_ap
     # Assert
     assert result["result"] == "success"
     mock_session.add.assert_called_once()
-    mock_session.commit.assert_called_once()
 
 
 def test_add_trigger_subscription_should_store_empty_credentials_for_unauthorized_type(
@@ -223,11 +219,7 @@ def test_add_trigger_subscription_should_store_empty_credentials_for_unauthorize
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
-    query_count = MagicMock()
-    query_count.filter_by.return_value.count.return_value = 0
-    query_existing = MagicMock()
-    query_existing.filter_by.return_value.first.return_value = None
-    mock_session.query.side_effect = [query_count, query_existing]
+    mock_session.scalar.side_effect = [0, None]  # count=0, no existing name
 
     _mock_get_trigger_provider(mocker, provider_controller)
     prop_enc = _encrypter_mock(encrypted={"p": "enc"})
@@ -262,9 +254,7 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
-    query_count = MagicMock()
-    query_count.filter_by.return_value.count.return_value = TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
-    mock_session.query.return_value = query_count
+    mock_session.scalar.return_value = TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
     _mock_get_trigger_provider(mocker, provider_controller)
     mock_logger = mocker.patch("services.trigger.trigger_provider_service.logger")
 
@@ -292,11 +282,7 @@ def test_add_trigger_subscription_should_raise_error_when_name_exists(
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
-    query_count = MagicMock()
-    query_count.filter_by.return_value.count.return_value = 0
-    query_existing = MagicMock()
-    query_existing.filter_by.return_value.first.return_value = object()
-    mock_session.query.side_effect = [query_count, query_existing]
+    mock_session.scalar.side_effect = [0, object()]  # count=0, existing name conflict
     _mock_get_trigger_provider(mocker, provider_controller)
 
     # Act + Assert
@@ -320,9 +306,7 @@ def test_update_trigger_subscription_should_raise_error_when_subscription_not_fo
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
-    query_sub = MagicMock()
-    query_sub.filter_by.return_value.first.return_value = None
-    mock_session.query.return_value = query_sub
+    mock_session.scalar.return_value = None
 
     # Act + Assert
     with pytest.raises(ValueError, match="not found"):
@@ -342,11 +326,7 @@ def test_update_trigger_subscription_should_raise_error_when_name_conflicts(
         provider_id="langgenius/github/github",
         credential_type=CredentialType.API_KEY.value,
     )
-    query_sub = MagicMock()
-    query_sub.filter_by.return_value.first.return_value = subscription
-    query_existing = MagicMock()
-    query_existing.filter_by.return_value.first.return_value = object()
-    mock_session.query.side_effect = [query_sub, query_existing]
+    mock_session.scalar.side_effect = [subscription, object()]  # found sub, name conflict
     _mock_get_trigger_provider(mocker, provider_controller)
 
     # Act + Assert
@@ -373,11 +353,7 @@ def test_update_trigger_subscription_should_update_fields_and_clear_cache(
         credential_expires_at=0,
         expires_at=0,
     )
-    query_sub = MagicMock()
-    query_sub.filter_by.return_value.first.return_value = subscription
-    query_existing = MagicMock()
-    query_existing.filter_by.return_value.first.return_value = None
-    mock_session.query.side_effect = [query_sub, query_existing]
+    mock_session.scalar.side_effect = [subscription, None]  # found sub, no name conflict
 
     _mock_get_trigger_provider(mocker, provider_controller)
     prop_enc = _encrypter_mock(decrypted={"project": "old-value"}, encrypted={"project": "new-value"})
@@ -406,13 +382,13 @@ def test_update_trigger_subscription_should_update_fields_and_clear_cache(
     assert subscription.credentials == {"api_key": "new-key"}
     assert subscription.credential_expires_at == 100
     assert subscription.expires_at == 200
-    mock_session.commit.assert_called_once()
+
     mock_delete_cache.assert_called_once()
 
 
 def test_get_subscription_by_id_should_return_none_when_missing(mocker: MockerFixture, mock_session: MagicMock) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.scalar.return_value = None
 
     # Act
     result = TriggerProviderService.get_subscription_by_id("tenant-1", "sub-1")
@@ -434,7 +410,7 @@ def test_get_subscription_by_id_should_decrypt_credentials_and_properties(
         credentials={"token": "enc"},
         properties={"project": "enc"},
     )
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
     cred_enc = _encrypter_mock(decrypted={"token": "plain"})
     prop_enc = _encrypter_mock(decrypted={"project": "plain"})
@@ -461,7 +437,7 @@ def test_delete_trigger_provider_should_raise_error_when_subscription_missing(
     mock_session: MagicMock,
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.scalar.return_value = None
 
     # Act + Assert
     with pytest.raises(ValueError, match="not found"):
@@ -483,7 +459,7 @@ def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscri
         credentials={"token": "enc"},
         to_entity=lambda: SimpleNamespace(id="sub-1"),
     )
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
     cred_enc = _encrypter_mock(decrypted={"token": "plain"})
     mocker.patch(
@@ -519,7 +495,7 @@ def test_delete_trigger_provider_should_skip_unsubscribe_for_unauthorized(
         credentials={},
         to_entity=lambda: SimpleNamespace(id="sub-2"),
     )
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
     mock_unsubscribe = mocker.patch("services.trigger.trigger_provider_service.TriggerManager.unsubscribe_trigger")
     mocker.patch(
@@ -539,7 +515,7 @@ def test_refresh_oauth_token_should_raise_error_when_subscription_missing(
     mocker: MockerFixture, mock_session: MagicMock
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.scalar.return_value = None
 
     # Act + Assert
     with pytest.raises(ValueError, match="not found"):
@@ -551,7 +527,7 @@ def test_refresh_oauth_token_should_raise_error_for_non_oauth_credentials(
 ) -> None:
     # Arrange
     subscription = SimpleNamespace(credential_type=CredentialType.API_KEY.value)
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
 
     # Act + Assert
     with pytest.raises(ValueError, match="Only OAuth credentials can be refreshed"):
@@ -572,7 +548,7 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
         credentials={"access_token": "enc"},
         credential_expires_at=0,
     )
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
     cache = MagicMock()
     cred_enc = _encrypter_mock(decrypted={"access_token": "old"}, encrypted={"access_token": "new"})
@@ -593,7 +569,7 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
     assert result == {"result": "success", "expires_at": 12345}
     assert subscription.credentials == {"access_token": "new"}
     assert subscription.credential_expires_at == 12345
-    mock_session.commit.assert_called_once()
+
     cache.delete.assert_called_once()
 
 
@@ -601,7 +577,7 @@ def test_refresh_subscription_should_raise_error_when_subscription_missing(
     mocker: MockerFixture, mock_session: MagicMock
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.scalar.return_value = None
 
     # Act + Assert
     with pytest.raises(ValueError, match="not found"):
@@ -611,7 +587,7 @@ def test_refresh_subscription_should_raise_error_when_subscription_missing(
 def test_refresh_subscription_should_skip_when_not_due(mocker: MockerFixture, mock_session: MagicMock) -> None:
     # Arrange
     subscription = SimpleNamespace(expires_at=200)
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
 
     # Act
     result = TriggerProviderService.refresh_subscription("tenant-1", "sub-1", now=100)
@@ -638,7 +614,7 @@ def test_refresh_subscription_should_refresh_and_persist_properties(
         credentials={"c": "enc"},
         credential_type=CredentialType.API_KEY.value,
     )
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
     cred_enc = _encrypter_mock(decrypted={"c": "plain"})
     prop_cache = MagicMock()
@@ -664,7 +640,7 @@ def test_refresh_subscription_should_refresh_and_persist_properties(
     assert result == {"result": "success", "expires_at": 999}
     assert subscription.properties == {"p": "new-enc"}
     assert subscription.expires_at == 999
-    mock_session.commit.assert_called_once()
+
     prop_cache.delete.assert_called_once()
 
 
@@ -676,10 +652,7 @@ def test_get_oauth_client_should_return_tenant_client_when_available(
 ) -> None:
     # Arrange
     tenant_client = SimpleNamespace(oauth_params={"client_id": "enc"})
-    system_client = None
-    query_tenant = MagicMock()
-    query_tenant.filter_by.return_value.first.return_value = tenant_client
-    mock_session.query.return_value = query_tenant
+    mock_session.scalar.return_value = tenant_client
     _mock_get_trigger_provider(mocker, provider_controller)
     enc = _encrypter_mock(decrypted={"client_id": "plain"})
     mocker.patch("services.trigger.trigger_provider_service.create_provider_encrypter", return_value=(enc, MagicMock()))
@@ -698,11 +671,7 @@ def test_get_oauth_client_should_return_none_when_plugin_not_verified(
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    query_tenant = MagicMock()
-    query_tenant.filter_by.return_value.first.return_value = None
-    query_system = MagicMock()
-    query_system.filter_by.return_value.first.return_value = None
-    mock_session.query.side_effect = [query_tenant, query_system]
+    mock_session.scalar.return_value = None  # no tenant client; plugin not verified → early return
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=False)
 
@@ -720,11 +689,7 @@ def test_get_oauth_client_should_return_decrypted_system_client_when_verified(
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    query_tenant = MagicMock()
-    query_tenant.filter_by.return_value.first.return_value = None
-    query_system = MagicMock()
-    query_system.filter_by.return_value.first.return_value = SimpleNamespace(encrypted_oauth_params="enc")
-    mock_session.query.side_effect = [query_tenant, query_system]
+    mock_session.scalar.side_effect = [None, SimpleNamespace(encrypted_oauth_params="enc")]
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
     mocker.patch(
@@ -746,11 +711,7 @@ def test_get_oauth_client_should_raise_error_when_system_decryption_fails(
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    query_tenant = MagicMock()
-    query_tenant.filter_by.return_value.first.return_value = None
-    query_system = MagicMock()
-    query_system.filter_by.return_value.first.return_value = SimpleNamespace(encrypted_oauth_params="enc")
-    mock_session.query.side_effect = [query_tenant, query_system]
+    mock_session.scalar.side_effect = [None, SimpleNamespace(encrypted_oauth_params="enc")]
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
     mocker.patch(
@@ -789,7 +750,7 @@ def test_is_oauth_system_client_exists_should_reflect_database_record(
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = object() if has_client else None
+    mock_session.scalar.return_value = object() if has_client else None
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch("services.trigger.trigger_provider_service.PluginService.is_plugin_verified", return_value=True)
 
@@ -818,11 +779,11 @@ def test_save_custom_oauth_client_params_should_create_record_and_clear_params_w
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    query = MagicMock()
-    query.filter_by.return_value.first.return_value = None
-    mock_session.query.return_value = query
+    mock_session.scalar.return_value = None
     _mock_get_trigger_provider(mocker, provider_controller)
     fake_model = SimpleNamespace(encrypted_oauth_params="", enabled=False, oauth_params={})
+    # Also mock select() so SQLAlchemy doesn't validate the patched TriggerOAuthTenantClient.
+    mocker.patch("services.trigger.trigger_provider_service.select", MagicMock(return_value=MagicMock()))
     mocker.patch("services.trigger.trigger_provider_service.TriggerOAuthTenantClient", return_value=fake_model)
 
     # Act
@@ -838,7 +799,6 @@ def test_save_custom_oauth_client_params_should_create_record_and_clear_params_w
     assert fake_model.encrypted_oauth_params == "{}"
     assert fake_model.enabled is True
     mock_session.add.assert_called_once_with(fake_model)
-    mock_session.commit.assert_called_once()
 
 
 def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_cache(
@@ -849,7 +809,7 @@ def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_c
 ) -> None:
     # Arrange
     custom_client = SimpleNamespace(oauth_params={"client_id": "enc-old"}, enabled=False)
-    mock_session.query.return_value.filter_by.return_value.first.return_value = custom_client
+    mock_session.scalar.return_value = custom_client
     _mock_get_trigger_provider(mocker, provider_controller)
     cache = MagicMock()
     enc = _encrypter_mock(decrypted={"client_id": "old-id"}, encrypted={"client_id": "new-id"})
@@ -870,7 +830,6 @@ def test_save_custom_oauth_client_params_should_merge_hidden_values_and_delete_c
     assert result == {"result": "success"}
     assert json.loads(custom_client.encrypted_oauth_params) == {"client_id": "new-id"}
     cache.delete.assert_called_once()
-    mock_session.commit.assert_called_once()
 
 
 def test_get_custom_oauth_client_params_should_return_empty_when_record_missing(
@@ -879,7 +838,7 @@ def test_get_custom_oauth_client_params_should_return_empty_when_record_missing(
     provider_id: TriggerProviderID,
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.scalar.return_value = None
 
     # Act
     result = TriggerProviderService.get_custom_oauth_client_params("tenant-1", provider_id)
@@ -896,7 +855,7 @@ def test_get_custom_oauth_client_params_should_return_masked_decrypted_values(
 ) -> None:
     # Arrange
     custom_client = SimpleNamespace(oauth_params={"client_id": "enc"})
-    mock_session.query.return_value.filter_by.return_value.first.return_value = custom_client
+    mock_session.scalar.return_value = custom_client
     _mock_get_trigger_provider(mocker, provider_controller)
     enc = _encrypter_mock(decrypted={"client_id": "plain"}, masked={"client_id": "pl***id"})
     mocker.patch("services.trigger.trigger_provider_service.create_provider_encrypter", return_value=(enc, MagicMock()))
@@ -913,15 +872,11 @@ def test_delete_custom_oauth_client_params_should_delete_record_and_commit(
     mock_session: MagicMock,
     provider_id: TriggerProviderID,
 ) -> None:
-    # Arrange
-    mock_session.query.return_value.filter_by.return_value.delete.return_value = 1
-
     # Act
     result = TriggerProviderService.delete_custom_oauth_client_params("tenant-1", provider_id)
 
     # Assert
     assert result == {"result": "success"}
-    mock_session.commit.assert_called_once()
 
 
 @pytest.mark.parametrize("exists", [True, False])
@@ -932,7 +887,7 @@ def test_is_oauth_custom_client_enabled_should_return_expected_boolean(
     provider_id: TriggerProviderID,
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = object() if exists else None
+    mock_session.scalar.return_value = object() if exists else None
 
     # Act
     result = TriggerProviderService.is_oauth_custom_client_enabled("tenant-1", provider_id)
@@ -945,7 +900,7 @@ def test_get_subscription_by_endpoint_should_return_none_when_not_found(
     mocker: MockerFixture, mock_session: MagicMock
 ) -> None:
     # Arrange
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.scalar.return_value = None
 
     # Act
     result = TriggerProviderService.get_subscription_by_endpoint("endpoint-1")
@@ -966,7 +921,7 @@ def test_get_subscription_by_endpoint_should_decrypt_credentials_and_properties(
         credentials={"token": "enc"},
         properties={"hook": "enc"},
     )
-    mock_session.query.return_value.filter_by.return_value.first.return_value = subscription
+    mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch(
         "services.trigger.trigger_provider_service.create_trigger_provider_encrypter_for_subscription",
