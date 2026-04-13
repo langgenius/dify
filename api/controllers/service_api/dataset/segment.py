@@ -8,6 +8,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
@@ -69,18 +70,10 @@ class SegmentUpdatePayload(BaseModel):
     segment: SegmentUpdateArgs
 
 
-class ChildChunkCreatePayload(BaseModel):
-    content: str
-
-
 class ChildChunkListQuery(BaseModel):
     limit: int = Field(default=20, ge=1)
     keyword: str | None = None
     page: int = Field(default=1, ge=1)
-
-
-class ChildChunkUpdatePayload(BaseModel):
-    content: str
 
 
 register_schema_models(
