@@ -294,7 +294,7 @@ class TidbOnQdrantVector(BaseVector):
 
         batch_size = 1000
         for i in range(0, len(ids), batch_size):
-            batch = ids[i:i + batch_size]
+            batch = ids[i : i + batch_size]
 
             try:
                 filter = models.Filter(
