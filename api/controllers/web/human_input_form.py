@@ -9,6 +9,7 @@ from datetime import datetime
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel
+from typing import Any, NotRequired, TypedDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -58,10 +59,19 @@ def _to_timestamp(value: datetime) -> int:
     return int(value.timestamp())
 
 
+class FormDefinitionPayload(TypedDict):
+    form_content: Any
+    inputs: Any
+    resolved_default_values: dict[str, str]
+    user_actions: Any
+    expiration_time: int
+    site: NotRequired[dict]
+
+
 def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
     """Return the form payload (optionally with site) as a JSON response."""
     definition_payload = form.get_definition().model_dump()
-    payload = {
+    payload: FormDefinitionPayload = {
         "form_content": definition_payload["rendered_content"],
         "inputs": definition_payload["inputs"],
         "resolved_default_values": _stringify_default_values(definition_payload["default_values"]),
