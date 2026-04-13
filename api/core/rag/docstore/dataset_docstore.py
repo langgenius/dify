@@ -244,7 +244,7 @@ class DatasetDocumentStore:
         return document_segment
 
     def add_multimodel_documents_binding(self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None):
-        if multimodel_documents:
+        if multimodel_documents and self._document_id is not None:
             for multimodel_document in multimodel_documents:
                 binding = SegmentAttachmentBinding(
                     tenant_id=self._dataset.tenant_id,
