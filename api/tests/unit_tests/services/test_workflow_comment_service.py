@@ -215,6 +215,57 @@ class TestWorkflowCommentService:
         assert mock_session.add.call_count == 1
         mock_session.commit.assert_called_once()
 
+    def test_update_comment_preserves_mentions_when_mentioned_user_ids_omitted(self, mock_session: Mock) -> None:
+        comment = Mock()
+        comment.id = "comment-1"
+        comment.created_by = "owner"
+        mock_session.scalar.return_value = comment
+
+        with (
+            patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids") as filter_mentions_mock,
+            patch.object(WorkflowCommentService, "_build_mention_email_payloads") as build_payloads_mock,
+            patch.object(WorkflowCommentService, "_dispatch_mention_emails") as dispatch_mock,
+        ):
+            result = WorkflowCommentService.update_comment(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                user_id="owner",
+                content="updated",
+            )
+
+        assert result == {"id": "comment-1", "updated_at": comment.updated_at}
+        mock_session.delete.assert_not_called()
+        mock_session.add.assert_not_called()
+        filter_mentions_mock.assert_not_called()
+        build_payloads_mock.assert_not_called()
+        dispatch_mock.assert_called_once_with([])
+        mock_session.commit.assert_called_once()
+
+    def test_update_comment_clears_mentions_when_empty_list_provided(self, mock_session: Mock) -> None:
+        comment = Mock()
+        comment.id = "comment-1"
+        comment.created_by = "owner"
+        mock_session.scalar.return_value = comment
+
+        existing_mentions = [Mock(), Mock()]
+        mock_session.scalars.return_value = _mock_scalars(existing_mentions)
+
+        with patch.object(WorkflowCommentService, "_filter_valid_mentioned_user_ids", return_value=[]):
+            result = WorkflowCommentService.update_comment(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                comment_id="comment-1",
+                user_id="owner",
+                content="updated",
+                mentioned_user_ids=[],
+            )
+
+        assert result == {"id": "comment-1", "updated_at": comment.updated_at}
+        assert mock_session.delete.call_count == 2
+        mock_session.add.assert_not_called()
+        mock_session.commit.assert_called_once()
+
     def test_update_comment_notifies_only_new_mentions(self, mock_session: Mock) -> None:
         comment = Mock()
         comment.id = "comment-1"

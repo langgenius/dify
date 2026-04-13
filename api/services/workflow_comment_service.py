@@ -274,7 +274,11 @@ class WorkflowCommentService:
         position_y: float | None = None,
         mentioned_user_ids: list[str] | None = None,
     ) -> dict:
-        """Update a workflow comment and notify newly mentioned users."""
+        """Update a workflow comment and notify newly mentioned users.
+
+        `mentioned_user_ids=None` means "leave mentions unchanged".
+        Passing an explicit list replaces the existing comment mentions, including clearing them with `[]`.
+        """
         WorkflowCommentService._validate_content(content)
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -300,42 +304,45 @@ class WorkflowCommentService:
             if position_y is not None:
                 comment.position_y = position_y
 
-            # Update mentions - first remove existing mentions for this comment only (not replies)
-            existing_mentions = session.scalars(
-                select(WorkflowCommentMention).where(
-                    WorkflowCommentMention.comment_id == comment.id,
-                    WorkflowCommentMention.reply_id.is_(None),  # Only comment mentions, not reply mentions
-                )
-            ).all()
-            existing_mentioned_user_ids = {mention.mentioned_user_id for mention in existing_mentions}
-            for mention in existing_mentions:
-                session.delete(mention)
+            mention_email_payloads: list[dict[str, str]] = []
+            if mentioned_user_ids is not None:
+                # Replace comment mentions only when the client explicitly sends the mention list.
+                existing_mentions = session.scalars(
+                    select(WorkflowCommentMention).where(
+                        WorkflowCommentMention.comment_id == comment.id,
+                        WorkflowCommentMention.reply_id.is_(None),  # Only comment mentions, not reply mentions
+                    )
+                ).all()
+                existing_mentioned_user_ids = {mention.mentioned_user_id for mention in existing_mentions}
+                for mention in existing_mentions:
+                    session.delete(mention)
 
-            # Add new mentions
-            mentioned_user_ids = WorkflowCommentService._filter_valid_mentioned_user_ids(
-                mentioned_user_ids or [],
-                session=session,
-                tenant_id=tenant_id,
-            )
-            new_mentioned_user_ids = [
-                user_id for user_id in mentioned_user_ids if user_id not in existing_mentioned_user_ids
-            ]
-            for user_id_str in mentioned_user_ids:
-                mention = WorkflowCommentMention(
-                    comment_id=comment.id,
-                    reply_id=None,  # This is a comment mention
-                    mentioned_user_id=user_id_str,
+                filtered_mentioned_user_ids = WorkflowCommentService._filter_valid_mentioned_user_ids(
+                    mentioned_user_ids,
+                    session=session,
+                    tenant_id=tenant_id,
                 )
-                session.add(mention)
+                new_mentioned_user_ids = [
+                    mentioned_user_id
+                    for mentioned_user_id in filtered_mentioned_user_ids
+                    if mentioned_user_id not in existing_mentioned_user_ids
+                ]
+                for mentioned_user_id in filtered_mentioned_user_ids:
+                    mention = WorkflowCommentMention(
+                        comment_id=comment.id,
+                        reply_id=None,  # This is a comment mention
+                        mentioned_user_id=mentioned_user_id,
+                    )
+                    session.add(mention)
 
-            mention_email_payloads = WorkflowCommentService._build_mention_email_payloads(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                mentioner_id=user_id,
-                mentioned_user_ids=new_mentioned_user_ids,
-                content=content,
-            )
+                mention_email_payloads = WorkflowCommentService._build_mention_email_payloads(
+                    session=session,
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    mentioner_id=user_id,
+                    mentioned_user_ids=new_mentioned_user_ids,
+                    content=content,
+                )
 
             session.commit()
             WorkflowCommentService._dispatch_mention_emails(mention_email_payloads)

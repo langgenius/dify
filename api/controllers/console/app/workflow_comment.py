@@ -39,6 +39,10 @@ class WorkflowCommentCreatePayload(WorkflowCommentContentPayload):
 class WorkflowCommentUpdatePayload(WorkflowCommentContentPayload):
     position_x: float | None = Field(default=None, description="Comment X position")
     position_y: float | None = Field(default=None, description="Comment Y position")
+    mentioned_user_ids: list[str] | None = Field(
+        default=None,
+        description="Mentioned user IDs. Omit to keep existing mentions.",
+    )
 
 
 class WorkflowCommentReplyPayload(WorkflowCommentContentPayload):

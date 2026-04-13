@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from dataclasses import dataclass
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -171,4 +172,32 @@ def test_create_comment_allows_editor(app: Flask, monkeypatch: pytest.MonkeyPatc
         position_x=1.0,
         position_y=2.0,
         mentioned_user_ids=[],
+    )
+
+
+def test_update_comment_omits_mentions_when_payload_does_not_include_them(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
+    account = _make_account(TenantAccountRole.EDITOR)
+    app_model = _make_app()
+    _patch_console_guards(monkeypatch, account, app_model)
+
+    update_comment_mock = MagicMock(return_value={"id": "comment-1", "updated_at": datetime(2024, 1, 1, 12, 0, 0)})
+    monkeypatch.setattr(workflow_comment_module.WorkflowCommentService, "update_comment", update_comment_mock)
+    payload = {"content": "hello", "position_x": 10.0, "position_y": 20.0}
+
+    with app.test_request_context("/console/api/apps/app-123/workflow/comments/comment-1", method="PUT", json=payload):
+        with _patch_payload(payload):
+            workflow_comment_module.WorkflowCommentDetailApi().put(app_id="app-123", comment_id="comment-1")
+
+    update_comment_mock.assert_called_once_with(
+        tenant_id="tenant-123",
+        app_id="app-123",
+        comment_id="comment-1",
+        user_id="account-123",
+        content="hello",
+        position_x=10.0,
+        position_y=20.0,
+        mentioned_user_ids=None,
     )
