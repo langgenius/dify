@@ -1,7 +1,7 @@
 import logging
 
-from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
@@ -29,14 +29,15 @@ class CreditPoolService:
     @classmethod
     def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> TenantCreditPool | None:
         """get tenant credit pool"""
-        return (
-            db.session.query(TenantCreditPool)
-            .filter_by(
-                tenant_id=tenant_id,
-                pool_type=pool_type,
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            return session.scalar(
+                select(TenantCreditPool)
+                .where(
+                    TenantCreditPool.tenant_id == tenant_id,
+                    TenantCreditPool.pool_type == pool_type,
+                )
+                .limit(1)
             )
-            .first()
-        )
 
     @classmethod
     def check_credits_available(
