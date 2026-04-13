@@ -6,8 +6,8 @@ import type { ActionItem, SearchResult } from '../actions/types'
 import { useCallback, useState } from 'react'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useRouter } from '@/next/navigation'
-import { addRecentItem } from '../actions/recent-store'
 import { slashCommandRegistry } from '../actions/commands/registry'
+import { addRecentItem } from '../actions/recent-store'
 
 type UseGotoAnythingNavigationReturn = {
   handleCommandSelect: (commandKey: string) => void

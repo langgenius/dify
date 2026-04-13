@@ -9,16 +9,6 @@ export type RecentItem = {
   originalType: 'app' | 'knowledge'
 }
 
-export const addRecentItem = (item: RecentItem): void => {
-  try {
-    const recent = getRecentItems()
-    const filtered = recent.filter(r => r.id !== item.id)
-    const updated = [item, ...filtered].slice(0, MAX_RECENT_ITEMS)
-    localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(updated))
-  }
-  catch {}
-}
-
 export const getRecentItems = (): RecentItem[] => {
   try {
     const stored = localStorage.getItem(RECENT_ITEMS_KEY)
@@ -27,4 +17,14 @@ export const getRecentItems = (): RecentItem[] => {
   catch {
     return []
   }
+}
+
+export const addRecentItem = (item: RecentItem): void => {
+  try {
+    const recent = getRecentItems()
+    const filtered = recent.filter(r => r.id !== item.id)
+    const updated = [item, ...filtered].slice(0, MAX_RECENT_ITEMS)
+    localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(updated))
+  }
+  catch {}
 }
