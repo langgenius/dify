@@ -55,8 +55,8 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[s
         if len(list(tool.keys())) != 1:
             continue
 
-        tool_type = list(tool.keys())[0]
-        tool_config = cast(dict[str, Any], list(tool.values())[0])
+        tool_type = next(iter(tool))
+        tool_config = cast(dict[str, Any], next(iter(tool.values())))
         if tool_type == "dataset":
             dataset_id = tool_config.get("id")
             if isinstance(dataset_id, str):
