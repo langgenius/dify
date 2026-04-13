@@ -26,7 +26,7 @@ class TestAppDslService:
             patch("services.app_dsl_service.redis_client") as mock_redis_client,
             patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
             patch("services.app_dsl_service.app_model_config_was_updated") as mock_app_model_config_was_updated,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):

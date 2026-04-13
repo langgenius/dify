@@ -18,6 +18,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -29,7 +31,14 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.enums import CreatorUserRole
+from models.enums import (
+    CreatorUserRole,
+    DatasetMetadataType,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+)
 from models.model import UploadFile
 from tasks.clean_dataset_task import clean_dataset_task
 
@@ -145,7 +154,7 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             name="test_dataset",
             description="Test dataset for cleanup testing",
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
@@ -176,15 +185,15 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch="test_batch",
             name="test_document",
-            created_from="upload_file",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form="paragraph_index",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             word_count=100,
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -219,7 +228,7 @@ class TestCleanDatasetTask:
             word_count=20,
             tokens=30,
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
             created_at=datetime.now(),
@@ -247,7 +256,7 @@ class TestCleanDatasetTask:
 
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -373,7 +382,7 @@ class TestCleanDatasetTask:
             dataset_id=dataset.id,
             tenant_id=tenant.id,
             name="test_metadata",
-            type="string",
+            type=DatasetMetadataType.STRING,
             created_by=account.id,
         )
         metadata.id = str(uuid.uuid4())
@@ -587,7 +596,7 @@ class TestCleanDatasetTask:
             word_count=len(segment_content),
             tokens=50,
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
             created_at=datetime.now(),
@@ -686,7 +695,7 @@ class TestCleanDatasetTask:
                 dataset_id=dataset.id,
                 tenant_id=tenant.id,
                 name=f"test_metadata_{i}",
-                type="string",
+                type=DatasetMetadataType.STRING,
                 created_by=account.id,
             )
             metadata.id = str(uuid.uuid4())
@@ -861,7 +870,7 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             name=long_name,
             description=long_description,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph", "max_length": 10000}',
             collection_binding_id=str(uuid.uuid4()),
             created_by=account.id,
@@ -880,11 +889,11 @@ class TestCleanDatasetTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info="{}",
             batch="test_batch",
             name=f"test_doc_{special_content}",
-            created_from="test",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
@@ -905,7 +914,7 @@ class TestCleanDatasetTask:
             word_count=len(segment_content.split()),
             tokens=len(segment_content) // 4,  # Rough token estimation
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash_" + "x" * 50,  # Long hash within limits
             created_at=datetime.now(),
@@ -918,7 +927,7 @@ class TestCleanDatasetTask:
         special_filename = f"test_file_{special_content}.txt"
         upload_file = UploadFile(
             tenant_id=tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{special_filename}",
             name=special_filename,
             size=1024,
@@ -946,7 +955,7 @@ class TestCleanDatasetTask:
             dataset_id=dataset.id,
             tenant_id=tenant.id,
             name=f"metadata_{special_content}",
-            type="string",
+            type=DatasetMetadataType.STRING,
             created_by=account.id,
         )
         special_metadata.id = str(uuid.uuid4())

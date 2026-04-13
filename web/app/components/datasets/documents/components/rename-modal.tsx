@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { renameDocumentName } from '@/service/datasets'
 
 type Props = {
@@ -41,13 +41,13 @@ const RenameModal: FC<Props> = ({
         documentId,
         name: newName,
       })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       onSaved()
       onClose()
     }
     catch (error) {
       if (error)
-        Toast.notify({ type: 'error', message: error.toString() })
+        toast.error(error.toString())
     }
     finally {
       setSaveLoadingFalse()

@@ -8,6 +8,10 @@
 - In new or modified code, use only overlay primitives from `@/app/components/base/ui/*`.
 - Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them and keep the allowlist shrinking (never expanding).
 
+## Query & Mutation (Mandatory)
+
+- `frontend-query-mutation` is the source of truth for Dify frontend contracts, query and mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
+
 ## Automated Test Generation
 
 - Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.

@@ -1,12 +1,6 @@
-/* eslint-disable next/no-img-element */
-import type { ImgHTMLAttributes } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CheckboxList from '..'
-
-vi.mock('next/image', () => ({
-  default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
-}))
 
 describe('checkbox list component', () => {
   const options = [

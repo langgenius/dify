@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { cn } from '@/utils/classnames'
 import { SegmentedControl } from '../../../../../base/segmented-control'
@@ -196,10 +196,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
     }
     else if (currentTab === SchemaView.VisualEditor) {
       if (advancedEditing || isAddingNewField) {
-        Toast.notify({
-          type: 'warning',
-          message: t('nodes.llm.jsonSchema.warningTips.saveSchema', { ns: 'workflow' }),
-        })
+        toast.warning(t('nodes.llm.jsonSchema.warningTips.saveSchema', { ns: 'workflow' }))
         return
       }
     }

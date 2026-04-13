@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DocumentActionType } from '@/models/datasets'
 import { useDocumentActions } from '../use-document-actions'
 
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
+
 const mockArchive = vi.fn()
 const mockSummary = vi.fn()
 const mockEnable = vi.fn()
@@ -22,9 +27,11 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
 }))
 
-const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: { notify: (...args: unknown[]) => mockToastNotify(...args) },
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
+  },
 }))
 
 const mockDownloadBlob = vi.fn()
@@ -67,9 +74,7 @@ describe('useDocumentActions', () => {
         datasetId: 'ds-1',
         documentIds: ['doc-1', 'doc-2'],
       })
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'success' }),
-      )
+      expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
 
@@ -142,9 +147,7 @@ describe('useDocumentActions', () => {
         await result.current.handleAction(DocumentActionType.archive)()
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
     })
   })
@@ -174,9 +177,7 @@ describe('useDocumentActions', () => {
         await result.current.handleBatchReIndex()
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
   })
 
@@ -210,9 +211,7 @@ describe('useDocumentActions', () => {
         await result.current.handleBatchDownload()
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
 
     it('should show error toast when blob is null', async () => {
@@ -223,9 +222,7 @@ describe('useDocumentActions', () => {
         await result.current.handleBatchDownload()
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
   })
 })

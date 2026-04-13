@@ -1,11 +1,12 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from graphon.enums import BuiltinNodeTypes
+from graphon.nodes.base.entities import OutputVariableEntity
+from graphon.variables.input_entities import VariableEntity
+
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
-from dify_graph.enums import NodeType
-from dify_graph.nodes.base.entities import OutputVariableEntity
-from dify_graph.variables.input_entities import VariableEntity
 
 
 class WorkflowToolConfigurationUtils:
@@ -16,10 +17,8 @@ class WorkflowToolConfigurationUtils:
         """
         nodes = graph.get("nodes", [])
         start_node = next(filter(lambda x: x.get("data", {}).get("type") == "start", nodes), None)
-
         if not start_node:
             return []
-
         return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
 
     @classmethod
@@ -51,7 +50,7 @@ class WorkflowToolConfigurationUtils:
     def ensure_no_human_input_nodes(cls, graph: Mapping[str, Any]) -> None:
         nodes = graph.get("nodes", [])
         for node in nodes:
-            if node.get("data", {}).get("type") == NodeType.HUMAN_INPUT:
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.HUMAN_INPUT:
                 raise WorkflowToolHumanInputNotSupportedError()
 
     @classmethod

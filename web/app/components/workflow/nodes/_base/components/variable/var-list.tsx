@@ -1,17 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { ToastHandle } from '@/app/components/base/toast'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { RiDraggable } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -42,7 +41,6 @@ const VarList: FC<Props> = ({
   isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
-  const [toastHandle, setToastHandle] = useState<ToastHandle>()
 
   const listWithIds = useMemo(() => list.map((item) => {
     const id = uuid4()
@@ -55,20 +53,11 @@ const VarList: FC<Props> = ({
   const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
     const result = checkKeys([newKey], true)
     if (!result.isValid) {
-      setToastHandle(Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
-      }))
+      toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      setToastHandle(Toast.notify({
-        type: 'error',
-        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
-      }))
-    }
-    else {
-      toastHandle?.clear?.()
+      toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }))
     }
   }, { wait: 500 })
 
@@ -78,7 +67,6 @@ const VarList: FC<Props> = ({
 
       const newKey = e.target.value
 
-      toastHandle?.clear?.()
       validateVarInput(list.toSpliced(index, 1), newKey)
 
       onVarNameChange?.(list[index].variable, newKey)

@@ -30,6 +30,8 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from models.enums import DataSourceType, IndexingStatus
 
 
 def unwrap(func):
@@ -62,10 +64,10 @@ def document():
     return MagicMock(
         id="doc-1",
         tenant_id="tenant-1",
-        indexing_status="indexing",
-        data_source_type="upload_file",
+        indexing_status=IndexingStatus.INDEXING,
+        data_source_type=DataSourceType.UPLOAD_FILE,
         data_source_info_dict={"upload_file_id": "file-1"},
-        doc_form="text",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
         archived=False,
         is_paused=False,
         dataset_process_rule=None,
@@ -138,8 +140,8 @@ class TestDatasetDocumentListApi:
                 return_value=pagination,
             ),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(where=lambda *a, **k: MagicMock(count=count_mock)),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=2,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
@@ -407,7 +409,7 @@ class TestDocumentProcessingApi:
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
-        doc = MagicMock(indexing_status="error", is_paused=True)
+        doc = MagicMock(indexing_status=IndexingStatus.ERROR, is_paused=True)
 
         with (
             app.test_request_context("/"),
@@ -425,7 +427,7 @@ class TestDocumentProcessingApi:
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
-        document = MagicMock(indexing_status="paused", is_paused=True)
+        document = MagicMock(indexing_status=IndexingStatus.PAUSED, is_paused=True)
 
         with (
             app.test_request_context("/"),
@@ -461,7 +463,7 @@ class TestDocumentProcessingApi:
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
-        document = MagicMock(indexing_status="completed")
+        document = MagicMock(indexing_status=IndexingStatus.COMPLETED)
 
         with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
             with pytest.raises(InvalidActionError):
@@ -630,7 +632,7 @@ class TestDocumentRetryApi:
 
         payload = {"document_ids": ["doc-1"]}
 
-        document = MagicMock(indexing_status="indexing", archived=False)
+        document = MagicMock(indexing_status=IndexingStatus.INDEXING, archived=False)
 
         with (
             app.test_request_context("/", json=payload),
@@ -659,7 +661,7 @@ class TestDocumentRetryApi:
 
         payload = {"document_ids": ["doc-1"]}
 
-        document = MagicMock(indexing_status="completed", archived=False)
+        document = MagicMock(indexing_status=IndexingStatus.COMPLETED, archived=False)
 
         with (
             app.test_request_context("/", json=payload),
@@ -698,10 +700,8 @@ class TestDocumentPipelineExecutionLogApi:
                 return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(
-                    filter_by=lambda **k: MagicMock(order_by=lambda *a: MagicMock(first=lambda: log))
-                ),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=log,
             ),
         ):
             response, status = method(api, "ds-1", "doc-1")
@@ -764,8 +764,8 @@ class TestDocumentGenerateSummaryApi:
             summary_index_setting={"enable": True},
         )
 
-        doc1 = MagicMock(id="doc-1", doc_form="qa_model")
-        doc2 = MagicMock(id="doc-2", doc_form="text")
+        doc1 = MagicMock(id="doc-1", doc_form=IndexStructureType.QA_INDEX)
+        doc2 = MagicMock(id="doc-2", doc_form=IndexStructureType.PARAGRAPH_INDEX)
 
         payload = {"document_list": ["doc-1", "doc-2"]}
 
@@ -817,23 +817,20 @@ class TestDocumentIndexingEstimateApi:
         method = unwrap(api.get)
 
         document = MagicMock(
-            indexing_status="indexing",
-            data_source_type="upload_file",
+            indexing_status=IndexingStatus.INDEXING,
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             dataset_process_rule=None,
         )
-
-        query_mock = MagicMock()
-        query_mock.where.return_value.first.return_value = None
 
         with (
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=query_mock,
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=None,
             ),
         ):
             with pytest.raises(NotFound):
@@ -844,11 +841,11 @@ class TestDocumentIndexingEstimateApi:
         method = unwrap(api.get)
 
         document = MagicMock(
-            indexing_status="indexing",
-            data_source_type="upload_file",
+            indexing_status=IndexingStatus.INDEXING,
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             dataset_process_rule=None,
         )
 
@@ -861,10 +858,8 @@ class TestDocumentIndexingEstimateApi:
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(
-                    where=MagicMock(return_value=MagicMock(first=MagicMock(return_value=upload_file)))
-                ),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.ExtractSetting",
@@ -882,7 +877,7 @@ class TestDocumentIndexingEstimateApi:
         api = DocumentIndexingEstimateApi()
         method = unwrap(api.get)
 
-        document = MagicMock(indexing_status="completed")
+        document = MagicMock(indexing_status=IndexingStatus.COMPLETED)
 
         with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
             with pytest.raises(DocumentAlreadyFinishedError):
@@ -963,8 +958,8 @@ class TestDocumentBatchIndexingEstimateApi:
         method = unwrap(api.get)
 
         doc = MagicMock(
-            indexing_status="indexing",
-            data_source_type="website_crawl",
+            indexing_status=IndexingStatus.INDEXING,
+            data_source_type=DataSourceType.WEBSITE_CRAWL,
             data_source_info_dict={
                 "provider": "firecrawl",
                 "job_id": "j1",
@@ -972,7 +967,7 @@ class TestDocumentBatchIndexingEstimateApi:
                 "mode": "single",
                 "only_main_content": True,
             },
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         with (
@@ -992,15 +987,15 @@ class TestDocumentBatchIndexingEstimateApi:
         method = unwrap(api.get)
 
         doc = MagicMock(
-            indexing_status="indexing",
-            data_source_type="notion_import",
+            indexing_status=IndexingStatus.INDEXING,
+            data_source_type=DataSourceType.NOTION_IMPORT,
             data_source_info_dict={
                 "credential_id": "c1",
                 "notion_workspace_id": "w1",
                 "notion_page_id": "p1",
                 "type": "page",
             },
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         with (
@@ -1020,10 +1015,10 @@ class TestDocumentBatchIndexingEstimateApi:
         method = unwrap(api.get)
 
         document = MagicMock(
-            indexing_status="indexing",
+            indexing_status=IndexingStatus.INDEXING,
             data_source_type="unknown",
             data_source_info_dict={},
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         with app.test_request_context("/"), patch.object(api, "get_batch_documents", return_value=[document]):
@@ -1130,7 +1125,7 @@ class TestDocumentProcessingApiResume:
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
-        document = MagicMock(indexing_status="completed", is_paused=False)
+        document = MagicMock(indexing_status=IndexingStatus.COMPLETED, is_paused=False)
 
         with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
             with pytest.raises(InvalidActionError):
@@ -1237,12 +1232,8 @@ class TestDocumentPermissionCases:
                 return_value=None,
             ),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(
-                    where=lambda *a: MagicMock(
-                        order_by=lambda *b: MagicMock(limit=lambda n: MagicMock(one_or_none=lambda: process_rule))
-                    )
-                ),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=process_rule,
             ),
         ):
             result = method(api)
@@ -1348,11 +1339,11 @@ class TestDocumentIndexingEdgeCases:
         method = unwrap(api.get)
 
         document = MagicMock(
-            indexing_status="indexing",
-            data_source_type="upload_file",
+            indexing_status=IndexingStatus.INDEXING,
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info_dict={"upload_file_id": "file-1"},
             tenant_id="tenant-1",
-            doc_form="text",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
             dataset_process_rule=None,
         )
 
@@ -1362,8 +1353,8 @@ class TestDocumentIndexingEdgeCases:
             app.test_request_context("/"),
             patch.object(api, "get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_document.db.session.query",
-                return_value=MagicMock(where=lambda *a: MagicMock(first=lambda: upload_file)),
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=upload_file,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.ExtractSetting",

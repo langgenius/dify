@@ -49,7 +49,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
         ? (
             <Tooltip
               popupContent={(
-                <div className="max-w-[300px] break-words">
+                <div className="max-w-[300px] wrap-break-word">
                   <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
                 </div>
               )}
@@ -82,7 +82,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
       {hasSetModel && (
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
-          triggerClassName="!h-6 !rounded-md"
+          triggerClassName="h-6! rounded-md!"
           modelList={textGenerationModelList}
           readonly
         />
@@ -105,7 +105,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
                   <NodeSourceHandle
                     {...props}
                     handleId={topic.id}
-                    handleClassName="!top-1/2 !-translate-y-1/2 !-right-[21px]"
+                    handleClassName="top-1/2! -translate-y-1/2! -right-[21px]!"
                   />
                 </div>
               ))}

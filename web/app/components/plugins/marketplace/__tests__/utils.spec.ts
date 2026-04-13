@@ -234,6 +234,24 @@ describe('getMarketplacePluginsByCollectionId', () => {
     expect(result).toEqual([])
   })
 
+  it('should send an empty body when query is omitted', async () => {
+    mockCollectionPlugins.mockResolvedValueOnce({
+      data: { plugins: [] },
+    })
+
+    const { getMarketplacePluginsByCollectionId } = await import('../utils')
+    await getMarketplacePluginsByCollectionId('test-collection')
+
+    expect(mockCollectionPlugins).toHaveBeenCalledWith({
+      params: {
+        collectionId: 'test-collection',
+      },
+      body: {},
+    }, expect.objectContaining({
+      signal: undefined,
+    }))
+  })
+
   it('should pass abort signal when provided', async () => {
     const mockPlugins = [{ type: 'plugin', org: 'test', name: 'plugin1' }]
     mockCollectionPlugins.mockResolvedValueOnce({

@@ -9,13 +9,13 @@ import json
 import logging
 
 from celery import shared_task
+from graphon.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+)
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from dify_graph.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-)
-from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -103,7 +103,7 @@ def _create_node_execution_from_domain(
     node_execution.index = execution.index
     node_execution.predecessor_node_id = execution.predecessor_node_id
     node_execution.node_id = execution.node_id
-    node_execution.node_type = execution.node_type.value
+    node_execution.node_type = execution.node_type
     node_execution.title = execution.title
     node_execution.node_execution_id = execution.node_execution_id
 
@@ -122,7 +122,7 @@ def _create_node_execution_from_domain(
     else:
         metadata_json = "{}"
 
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.created_by_role = creator_user_role
@@ -155,7 +155,7 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         node_execution.execution_metadata = "{}"
 
     # Update other fields
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.finished_at = execution.finished_at

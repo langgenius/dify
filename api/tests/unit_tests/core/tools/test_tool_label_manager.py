@@ -38,11 +38,9 @@ def test_tool_label_manager_filter_tool_labels():
 def test_tool_label_manager_update_tool_labels_db():
     controller = _api_controller("api-1")
     with patch("core.tools.tool_label_manager.db") as mock_db:
-        delete_query = mock_db.session.query.return_value.where.return_value
-        delete_query.delete.return_value = None
         ToolLabelManager.update_tool_labels(controller, ["search", "search", "invalid"])
 
-        delete_query.delete.assert_called_once()
+        mock_db.session.execute.assert_called_once()
         # only one valid unique label should be inserted.
         assert mock_db.session.add.call_count == 1
         mock_db.session.commit.assert_called_once()

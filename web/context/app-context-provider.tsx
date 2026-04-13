@@ -23,7 +23,7 @@ import {
 } from '@/service/use-common'
 import { useGlobalPublicStore } from './global-public-context'
 
-export type AppContextProviderProps = {
+type AppContextProviderProps = {
   children: ReactNode
 }
 

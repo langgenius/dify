@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
 from core.ops.entities.config_entity import LangSmithConfig
 from core.ops.entities.trace_entity import (
@@ -21,7 +22,6 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from models import EndUser
 
 
@@ -145,7 +145,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_llm = MagicMock()
     node_llm.id = "node-llm"
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = {
         "model_mode": "chat",
@@ -162,7 +162,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_other = MagicMock()
     node_other.id = "node-other"
     node_other.title = "Tool Node"
-    node_other.node_type = NodeType.TOOL
+    node_other.node_type = BuiltinNodeTypes.TOOL
     node_other.status = "succeeded"
     node_other.process_data = None
     node_other.inputs = {"tool_input": "val"}
@@ -174,7 +174,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_retrieval = MagicMock()
     node_retrieval.id = "node-retrieval"
     node_retrieval.title = "Retrieval Node"
-    node_retrieval.node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    node_retrieval.node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
     node_retrieval.status = "succeeded"
     node_retrieval.process_data = None
     node_retrieval.inputs = {"query": "val"}
@@ -184,7 +184,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     node_retrieval.metadata = {}
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = [node_llm, node_other, node_retrieval]
+    repo.get_by_workflow_execution.return_value = [node_llm, node_other, node_retrieval]
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
@@ -255,7 +255,7 @@ def test_workflow_trace_no_start_time(trace_instance, monkeypatch):
     monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.sessionmaker", lambda bind: lambda: mock_session)
     monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.db", MagicMock(engine="engine"))
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = []
+    repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.DifyCoreRepositoryFactory", mock_factory)
@@ -319,9 +319,7 @@ def test_message_trace(trace_instance, monkeypatch):
     # Mock EndUser lookup
     mock_end_user = MagicMock(spec=EndUser)
     mock_end_user.session_id = "session-id-123"
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = mock_end_user
-    monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.db.session.query", lambda model: mock_query)
+    monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.db.session.get", lambda model, pk: mock_end_user)
 
     trace_instance.add_run = MagicMock()
 
@@ -555,7 +553,7 @@ def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch, capl
     node_llm = MagicMock()
     node_llm.id = "node-llm"
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = BadDict({"model_mode": "chat", "model_name": "gpt-4", "usage": True, "prompts": ["p"]})
     node_llm.inputs = {}
@@ -565,7 +563,7 @@ def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch, capl
     node_llm.metadata = {}
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = [node_llm]
+    repo.get_by_workflow_execution.return_value = [node_llm]
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo

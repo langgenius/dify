@@ -126,7 +126,7 @@ describe('DrawerPlus', () => {
       )
       const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
       const outerPanel = innerPanel?.parentElement
-      expect(outerPanel?.className).toContain('!max-w-[640px]')
+      expect(outerPanel?.className).toContain('max-w-[640px]!')
     })
 
     it('should apply custom maxWidthClassName', () => {
@@ -136,13 +136,13 @@ describe('DrawerPlus', () => {
           onHide={() => {}}
           title="Test"
           body={<div>Body</div>}
-          maxWidthClassName="!max-w-[800px]"
+          maxWidthClassName="max-w-[800px]!"
         />,
       )
 
       const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
       const outerPanel = innerPanel?.parentElement
-      expect(outerPanel?.className).toContain('!max-w-[800px]')
+      expect(outerPanel?.className).toContain('max-w-[800px]!')
     })
 
     it('should apply custom panelClassName', () => {
@@ -407,14 +407,14 @@ describe('DrawerPlus', () => {
           onHide={() => {}}
           title="Test"
           body={<div>Body</div>}
-          maxWidthClassName="!max-w-[500px]"
+          maxWidthClassName="max-w-[500px]!"
           panelClassName="custom-style"
         />,
       )
 
       const innerPanel = screen.getByText('Test').closest('.bg-components-panel-bg')
       const outerPanel = innerPanel?.parentElement
-      expect(outerPanel?.className).toContain('!max-w-[500px]')
+      expect(outerPanel?.className).toContain('max-w-[500px]!')
       expect(outerPanel?.className).toContain('custom-style')
     })
   })

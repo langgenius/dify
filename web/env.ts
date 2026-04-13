@@ -20,6 +20,11 @@ const clientSchema = {
    */
   NEXT_PUBLIC_ALLOW_EMBED: coercedBoolean.default(false),
   /**
+   * Allow inline style attributes in Markdown rendering.
+   * Self-hosted opt-in for workflows using styled Jinja2 templates.
+   */
+  NEXT_PUBLIC_ALLOW_INLINE_STYLES: coercedBoolean.default(false),
+  /**
    * Allow rendering unsafe URLs which have "data:" scheme.
    */
   NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: coercedBoolean.default(false),
@@ -66,10 +71,6 @@ const clientSchema = {
   NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: coercedBoolean.default(false),
-  /**
-   * Github Access Token, used for invoking Github API
-   */
-  NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: z.string().optional(),
   /**
    * The maximum number of tokens for segmentation
    */
@@ -157,6 +158,7 @@ export const env = createEnv({
   client: clientSchema,
   experimental__runtimeEnv: {
     NEXT_PUBLIC_ALLOW_EMBED: isServer ? process.env.NEXT_PUBLIC_ALLOW_EMBED : getRuntimeEnvFromBody('allowEmbed'),
+    NEXT_PUBLIC_ALLOW_INLINE_STYLES: isServer ? process.env.NEXT_PUBLIC_ALLOW_INLINE_STYLES : getRuntimeEnvFromBody('allowInlineStyles'),
     NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
     NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
@@ -171,7 +173,6 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
     NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER : getRuntimeEnvFromBody('enableWebsiteJinareader'),
     NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL : getRuntimeEnvFromBody('enableWebsiteWatercrawl'),
-    NEXT_PUBLIC_GITHUB_ACCESS_TOKEN: isServer ? process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN : getRuntimeEnvFromBody('githubAccessToken'),
     NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: isServer ? process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH : getRuntimeEnvFromBody('indexingMaxSegmentationTokensLength'),
     NEXT_PUBLIC_IS_MARKETPLACE: isServer ? process.env.NEXT_PUBLIC_IS_MARKETPLACE : getRuntimeEnvFromBody('isMarketplace'),
     NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: isServer ? process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT : getRuntimeEnvFromBody('loopNodeMaxCount'),

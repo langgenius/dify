@@ -5,20 +5,20 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import Request, Response
+from graphon.entities.graph_config import NodeConfigDict
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginNotFoundError
+from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
-from dify_graph.entities.graph_config import NodeConfigDict
-from dify_graph.enums import NodeType
-from dify_graph.nodes.trigger_plugin.entities import TriggerEventNodeData
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import App
@@ -179,7 +179,7 @@ class TriggerService:
 
         # Walk nodes to find plugin triggers
         nodes_in_graph: list[Mapping[str, Any]] = []
-        for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
+        for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
             # Extract plugin trigger configuration from node
             plugin_id = node_config.get("plugin_id", "")
             provider_id = node_config.get("provider_id", "")
@@ -215,7 +215,7 @@ class TriggerService:
                 not_found_in_cache.append(node_info)
                 continue
 
-        with Session(db.engine) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             try:
                 # lock the concurrent plugin trigger creation
                 redis_client.lock(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
@@ -260,7 +260,6 @@ class TriggerService:
                         cache.model_dump_json(),
                         ex=60 * 60,
                     )
-                session.commit()
 
                 # Update existing records if subscription_id changed
                 for node_info in nodes_in_graph:
@@ -290,14 +289,12 @@ class TriggerService:
                                 cache.model_dump_json(),
                                 ex=60 * 60,
                             )
-                session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-                session.commit()
             except Exception:
                 logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
                 raise

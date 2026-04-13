@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -18,6 +18,15 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+
+class MilvusParamsDict(TypedDict):
+    uri: str
+    token: str | None
+    user: str | None
+    password: str | None
+    db_name: str
+    analyzer_params: str | None
 
 
 class MilvusConfig(BaseModel):
@@ -50,11 +59,11 @@ class MilvusConfig(BaseModel):
                 raise ValueError("config MILVUS_PASSWORD is required")
         return values
 
-    def to_milvus_params(self):
+    def to_milvus_params(self) -> MilvusParamsDict:
         """
         Convert the configuration to a dictionary of Milvus connection parameters.
         """
-        return {
+        result: MilvusParamsDict = {
             "uri": self.uri,
             "token": self.token,
             "user": self.user,
@@ -62,6 +71,7 @@ class MilvusConfig(BaseModel):
             "db_name": self.database,
             "analyzer_params": self.analyzer_params,
         }
+        return result
 
 
 class MilvusVector(BaseVector):
@@ -352,6 +362,7 @@ class MilvusVector(BaseVector):
 
                 # Create Index params for the collection
                 index_params_obj = IndexParams()
+                assert index_params is not None
                 index_params_obj.add_index(field_name=Field.VECTOR, **index_params)
 
                 # Create Sparse Vector Index for the collection

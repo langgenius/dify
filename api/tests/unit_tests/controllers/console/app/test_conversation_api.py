@@ -82,12 +82,8 @@ def test_chat_conversation_list_advanced_chat_calls_paginate(app, monkeypatch: p
 def test_get_conversation_updates_read_at(monkeypatch: pytest.MonkeyPatch) -> None:
     conversation = SimpleNamespace(id="c1", app_id="app-1")
 
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.return_value = conversation
-
     session = MagicMock()
-    session.query.return_value = query
+    session.scalar.return_value = conversation
 
     monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (_make_account(), "t1"))
     monkeypatch.setattr(conversation_module.db, "session", session)
@@ -101,12 +97,8 @@ def test_get_conversation_updates_read_at(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_get_conversation_missing_raises_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    query = MagicMock()
-    query.where.return_value = query
-    query.first.return_value = None
-
     session = MagicMock()
-    session.query.return_value = query
+    session.scalar.return_value = None
 
     monkeypatch.setattr(conversation_module, "current_account_with_tenant", lambda: (_make_account(), "t1"))
     monkeypatch.setattr(conversation_module.db, "session", session)

@@ -1,7 +1,7 @@
-from typing import Any
+from sqlalchemy import select
 
 from core.ops.entities.config_entity import BaseTracingConfig
-from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
+from core.ops.ops_trace_manager import OpsTraceManager, TracingProviderConfigEntry, provider_config_map
 from extensions.ext_database import db
 from models.model import App, TraceAppConfig
 
@@ -15,17 +15,17 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: TraceAppConfig | None = (
-            db.session.query(TraceAppConfig)
+        trace_config_data: TraceAppConfig | None = db.session.scalar(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
+            .limit(1)
         )
 
         if not trace_config_data:
             return None
 
         # decrypt_token and obfuscated_token
-        app = db.session.query(App).where(App.id == app_id).first()
+        app = db.session.get(App, app_id)
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -148,7 +148,7 @@ class OpsService:
         except KeyError:
             return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
-        provider_config: dict[str, Any] = provider_config_map[tracing_provider]
+        provider_config: TracingProviderConfigEntry = provider_config_map[tracing_provider]
         config_class: type[BaseTracingConfig] = provider_config["config_class"]
         other_keys: list[str] = provider_config["other_keys"]
 
@@ -182,17 +182,17 @@ class OpsService:
             project_url = None
 
         # check if trace config already exists
-        trace_config_data: TraceAppConfig | None = (
-            db.session.query(TraceAppConfig)
+        trace_config_data: TraceAppConfig | None = db.session.scalar(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
+            .limit(1)
         )
 
         if trace_config_data:
             return None
 
         # get tenant id
-        app = db.session.query(App).where(App.id == app_id).first()
+        app = db.session.get(App, app_id)
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -224,17 +224,17 @@ class OpsService:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         # check if trace config already exists
-        current_trace_config = (
-            db.session.query(TraceAppConfig)
+        current_trace_config = db.session.scalar(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
+            .limit(1)
         )
 
         if not current_trace_config:
             return None
 
         # get tenant id
-        app = db.session.query(App).where(App.id == app_id).first()
+        app = db.session.get(App, app_id)
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -261,10 +261,10 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config = (
-            db.session.query(TraceAppConfig)
+        trace_config = db.session.scalar(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
+            .limit(1)
         )
 
         if not trace_config:

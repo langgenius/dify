@@ -1,5 +1,3 @@
-/* eslint-disable next/no-img-element */
-import type { ImgHTMLAttributes } from 'react'
 import type { EmbeddedChatbotContextValue } from '../../context'
 import type { AppData } from '@/models/share'
 import type { SystemFeatures } from '@/types/feature'
@@ -20,15 +18,6 @@ vi.mock('@/context/global-public-context', () => ({
 
 vi.mock('@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown', () => ({
   default: () => <div data-testid="view-form-dropdown" />,
-}))
-
-// Mock next/image to render a normal img tag for testing
-vi.mock('next/image', () => ({
-  __esModule: true,
-  default: (props: ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => {
-    const { unoptimized: _, ...rest } = props
-    return <img {...rest} />
-  },
 }))
 
 type GlobalPublicStoreMock = {

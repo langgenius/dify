@@ -1,5 +1,5 @@
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -54,6 +54,21 @@ const createMockCrawlResultItem = (overrides: Partial<CrawlResultItem> = {}): Cr
   source_url: 'https://example.com/page',
   ...overrides,
 })
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  return {
+    promise,
+    resolve,
+    reject,
+  }
+}
 
 // FireCrawl Component Tests
 
@@ -217,7 +232,7 @@ describe('FireCrawl', () => {
       await user.click(runButton)
 
       await waitFor(() => {
-        expect(mockCreateFirecrawlTask).toHaveBeenCalled()
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
     })
 
@@ -241,7 +256,7 @@ describe('FireCrawl', () => {
       await user.click(runButton)
 
       await waitFor(() => {
-        expect(mockCreateFirecrawlTask).toHaveBeenCalled()
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
     })
   })
@@ -277,6 +292,10 @@ describe('FireCrawl', () => {
           }),
         })
       })
+
+      await waitFor(() => {
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
+      })
     })
 
     it('should call onJobIdChange with job_id from API response', async () => {
@@ -300,6 +319,10 @@ describe('FireCrawl', () => {
 
       await waitFor(() => {
         expect(mockOnJobIdChange).toHaveBeenCalledWith('my-job-123')
+      })
+
+      await waitFor(() => {
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
     })
 
@@ -334,11 +357,23 @@ describe('FireCrawl', () => {
           }),
         })
       })
+
+      await waitFor(() => {
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
+      })
     })
 
     it('should show loading state while running', async () => {
       const user = userEvent.setup()
-      mockCreateFirecrawlTask.mockImplementation(() => new Promise(() => {})) // Never resolves
+      const createTaskDeferred = createDeferred<{ job_id: string }>()
+      mockCreateFirecrawlTask.mockImplementation(() => createTaskDeferred.promise)
+      mockCheckFirecrawlTaskStatus.mockResolvedValueOnce({
+        status: 'completed',
+        data: [],
+        total: 0,
+        current: 0,
+        time_consuming: 1,
+      })
 
       render(<FireCrawl {...defaultProps} />)
 
@@ -351,6 +386,14 @@ describe('FireCrawl', () => {
       // Button should show loading state (no longer show "run" text)
       await waitFor(() => {
         expect(runButton).not.toHaveTextContent(/run/i)
+      })
+
+      await act(async () => {
+        createTaskDeferred.resolve({ job_id: 'test-job-id' })
+      })
+
+      await waitFor(() => {
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
     })
   })
@@ -656,7 +699,7 @@ describe('FireCrawl', () => {
 
       await waitFor(() => {
         // Total should be capped to limit (5)
-        expect(mockCheckFirecrawlTaskStatus).toHaveBeenCalled()
+        expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
     })
   })

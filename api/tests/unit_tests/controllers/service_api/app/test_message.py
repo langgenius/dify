@@ -31,6 +31,7 @@ from controllers.service_api.app.message import (
     MessageListQuery,
     MessageSuggestedApi,
 )
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -310,7 +311,7 @@ class TestMessageService:
             app_model=Mock(spec=App),
             message_id=str(uuid.uuid4()),
             user=Mock(spec=EndUser),
-            rating="like",
+            rating=FeedbackRating.LIKE,
             content="Great response!",
         )
 
@@ -326,7 +327,7 @@ class TestMessageService:
                 app_model=Mock(spec=App),
                 message_id="invalid_message_id",
                 user=Mock(spec=EndUser),
-                rating="like",
+                rating=FeedbackRating.LIKE,
                 content=None,
             )
 

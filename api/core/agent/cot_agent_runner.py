@@ -2,10 +2,20 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
+
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
@@ -14,18 +24,16 @@ from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransfo
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from dify_graph.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    PromptMessage,
-    PromptMessageTool,
-    ToolPromptMessage,
-    UserPromptMessage,
-)
-from dify_graph.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
+
+
+class ActionDict(TypedDict):
+    """Shape produced by AgentScratchpadUnit.Action.to_dict()."""
+
+    action: str
+    action_input: dict[str, Any] | str
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -122,7 +130,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 tools=[],
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
-                user=self.user_id,
                 callbacks=[],
             )
 
@@ -331,7 +338,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return tool_invoke_response, tool_invoke_meta
 
-    def _convert_dict_to_action(self, action: dict) -> AgentScratchpadUnit.Action:
+    def _convert_dict_to_action(self, action: ActionDict) -> AgentScratchpadUnit.Action:
         """
         convert dict to action
         """

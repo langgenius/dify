@@ -24,7 +24,7 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged():
         ),
         patch("controllers.console.app.conversation.db.session", autospec=True) as mock_session,
     ):
-        mock_session.query.return_value.where.return_value.first.return_value = conversation
+        mock_session.scalar.return_value = conversation
 
         _get_conversation(app_model, "conversation-id")
 

@@ -1,7 +1,7 @@
 import type { CommonResponse } from '@/models/common'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { DocumentActionType } from '@/models/datasets'
 import {
   useDocumentArchive,
@@ -79,11 +79,11 @@ export const useDocumentActions = ({
       if (!e) {
         if (actionName === DocumentActionType.delete)
           onClearSelection()
-        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
         onUpdate()
       }
       else {
-        Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       }
     }
   }, [actionMutationMap, datasetId, selectedIds, onClearSelection, onUpdate, t])
@@ -94,11 +94,11 @@ export const useDocumentActions = ({
     )
     if (!e) {
       onClearSelection()
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       onUpdate()
     }
     else {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
   }, [retryIndexDocument, datasetId, selectedIds, onClearSelection, onUpdate, t])
 
@@ -110,7 +110,7 @@ export const useDocumentActions = ({
       requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }),
     )
     if (e || !blob) {
-      Toast.notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.downloadUnsuccessfully', { ns: 'common' }))
       return
     }
 

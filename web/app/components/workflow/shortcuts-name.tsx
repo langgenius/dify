@@ -25,7 +25,7 @@ const ShortcutsName = ({
           <div
             key={key}
             className={cn(
-              'system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] px-1 capitalize',
+              'system-kbd flex h-4 min-w-4 items-center justify-center radius-xs px-1 capitalize',
               bgColor === 'gray' && 'bg-components-kbd-bg-gray',
               bgColor === 'white' && 'bg-components-kbd-bg-white text-text-primary-on-surface',
               textColor === 'secondary' && 'text-text-tertiary',

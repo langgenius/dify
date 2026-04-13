@@ -5,11 +5,16 @@ from typing import Any
 
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from graphon.enums import NodeType
+from graphon.file import File
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from pydantic import BaseModel, Field, ValidationError, field_validator
+from sqlalchemy.orm import sessionmaker
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow_run import workflow_run_node_execution_model
@@ -20,18 +25,16 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
+from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.trigger.debug.event_selectors import (
     TriggerDebugEvent,
     TriggerDebugEventPoller,
     create_event_poller,
     select_trigger_debug_events,
 )
-from dify_graph.enums import NodeType
-from dify_graph.file.models import File
-from dify_graph.graph_engine.manager import GraphEngineManager
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
@@ -45,13 +48,15 @@ from models import App
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -138,27 +143,11 @@ class PublishWorkflowPayload(BaseModel):
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
-class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
-
-
 class ConvertToWorkflowPayload(BaseModel):
     name: str | None = None
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
-
-
-class WorkflowListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
-    named_only: bool = False
-
-
-class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=20)
-    marked_comment: str | None = Field(default=None, max_length=100)
 
 
 class DraftWorkflowTriggerRunPayload(BaseModel):
@@ -202,6 +191,7 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
         mappings=files,
         tenant_id=workflow.tenant_id,
         config=file_extra_config,
+        access_controller=_file_access_controller,
     )
     return file_objs
 
@@ -263,27 +253,25 @@ class DraftWorkflowApi(Resource):
 
         content_type = request.headers.get("Content-Type", "")
 
-        payload_data: dict[str, Any] | None = None
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
                 return {"message": "Invalid JSON data"}, 400
+            args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         elif "text/plain" in content_type:
             try:
-                payload_data = json.loads(request.data.decode("utf-8"))
-            except json.JSONDecodeError:
-                return {"message": "Invalid JSON data"}, 400
-            if not isinstance(payload_data, dict):
+                args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
+            except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         args = args_model.model_dump()
         workflow_service = WorkflowService()
 
         try:
-            environment_variables_list = args.get("environment_variables") or []
+            environment_variables_list = Workflow.normalize_environment_variable_mappings(
+                args.get("environment_variables") or [],
+            )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
@@ -833,7 +821,7 @@ class PublishedWorkflowApi(Resource):
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
@@ -850,8 +838,6 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
 
         return {
             "result": "success",
@@ -975,7 +961,7 @@ class PublishedAllWorkflowApi(Resource):
                 raise Forbidden()
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=session,
                 app_model=app_model,
@@ -991,6 +977,43 @@ class PublishedAllWorkflowApi(Resource):
                 "limit": limit,
                 "has_more": has_more,
             }
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
+class DraftWorkflowRestoreApi(Resource):
+    @console_ns.doc("restore_workflow_to_draft")
+    @console_ns.doc(description="Restore a published workflow version into the draft workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
+    @console_ns.response(200, "Workflow restored successfully")
+    @console_ns.response(400, "Source workflow must be published")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App, workflow_id: str):
+        current_user, _ = current_account_with_tenant()
+        workflow_service = WorkflowService()
+
+        try:
+            workflow = workflow_service.restore_published_workflow_to_draft(
+                app_model=app_model,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except IsDraftWorkflowError as exc:
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
@@ -1028,7 +1051,7 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -1039,9 +1062,6 @@ class WorkflowByIdApi(Resource):
 
             if not workflow:
                 raise NotFound("Workflow not found")
-
-            # Commit the transaction in the controller
-            session.commit()
 
         return workflow
 
@@ -1057,13 +1077,11 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
                 )
-                # Commit the transaction in the controller
-                session.commit()
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
             except DraftWorkflowDeletionError as e:
@@ -1209,7 +1227,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
         event: TriggerDebugEvent | None = None
         # for schedule trigger, when run single node, just execute directly
-        if node_type == NodeType.TRIGGER_SCHEDULE:
+        if node_type == TRIGGER_SCHEDULE_NODE_TYPE:
             event = TriggerDebugEvent(
                 workflow_args={},
                 node_id=node_id,

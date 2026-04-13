@@ -1,4 +1,3 @@
-import type { ImgHTMLAttributes } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -9,21 +8,6 @@ const mockUseGetRequirements = vi.fn()
 
 vi.mock('../use-get-requirements', () => ({
   default: (...args: unknown[]) => mockUseGetRequirements(...args),
-}))
-
-vi.mock('next/image', () => ({
-  default: ({
-    src,
-    alt,
-    unoptimized: _unoptimized,
-    ...rest
-  }: {
-    src: string
-    alt: string
-    unoptimized?: boolean
-  } & ImgHTMLAttributes<HTMLImageElement>) => (
-    React.createElement('img', { src, alt, ...rest })
-  ),
 }))
 
 const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo => ({
