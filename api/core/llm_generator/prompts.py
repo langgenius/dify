@@ -110,8 +110,10 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = os.getenv(
     "SUGGESTED_QUESTIONS_PROMPT", _DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT
 )
 
-# Configurable LLM parameters for suggested questions (can be overridden by environment variables)
-SUGGESTED_QUESTIONS_MAX_TOKENS = int(os.getenv("SUGGESTED_QUESTIONS_MAX_TOKENS", "256"))
+# Configurable LLM parameters for suggested questions (can be overridden by environment variables).
+# Default raised from 256 to 512 for reasoning models (DeepSeek-R1, o1, etc.)
+# whose <think> prefix consumes part of the token budget. See #34475.
+SUGGESTED_QUESTIONS_MAX_TOKENS = int(os.getenv("SUGGESTED_QUESTIONS_MAX_TOKENS", "512"))
 SUGGESTED_QUESTIONS_TEMPERATURE = float(os.getenv("SUGGESTED_QUESTIONS_TEMPERATURE", "0"))
 
 GENERATOR_QA_PROMPT = (

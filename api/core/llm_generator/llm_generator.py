@@ -155,6 +155,13 @@ class LLMGenerator:
             )
 
             text_content = response.message.get_text_content()
+            # Reasoning models (DeepSeek-R1, o1, etc.) prepend a
+            # <think>...</think> block to their output. Strip it before
+            # parsing so the output parser sees only the question list.
+            # Without this, the parser fails on the XML prefix and the
+            # function silently returns []. See #34475.
+            if text_content:
+                text_content = re.sub(r"<think>[\s\S]*?</think>\s*", "", text_content)
             questions = output_parser.parse(text_content) if text_content else []
         except InvokeError:
             questions = []
