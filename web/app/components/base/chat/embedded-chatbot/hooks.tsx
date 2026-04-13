@@ -146,27 +146,22 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     pinned: false,
     limit: 100,
   })
-<<<<<<< HEAD
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
-=======
   const {
     data: appChatListData,
     isLoading: appChatListDataLoading,
     error: appChatListError,
   } = useShareChatList({
->>>>>>> 5a5dac45 (fix(webapp): recover from stale conversation ids after 404)
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
+  }, {
+    enabled: !!chatShouldReloadKey,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
-<<<<<<< HEAD
-  const appPrevChatList = useMemo(() => (currentConversationId && appChatListData?.data.length)
-    ? buildChatItemTree(getFormattedChatList(appChatListData.data))
-    : [], [appChatListData, currentConversationId])
-=======
   useEffect(() => {
     const status = (appChatListError as { status?: number } | null)?.status
     if (status === 404 && chatShouldReloadKey) {
@@ -182,8 +177,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       : [],
     [appChatListData, currentConversationId],
   )
-
->>>>>>> 5a5dac45 (fix(webapp): recover from stale conversation ids after 404)
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
