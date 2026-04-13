@@ -145,6 +145,16 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
+    DIFY_DB_USER: str | None = Field(
+        description="Optional per-service database username override. Falls back to DB_USERNAME when unset.",
+        default=None,
+    )
+
+    DIFY_DB_PASS: str | None = Field(
+        description="Optional per-service database password override. Falls back to DB_PASSWORD when unset.",
+        default=None,
+    )
+
     DB_DATABASE: str = Field(
         description="Name of the database to connect to.",
         default="dify",
@@ -167,6 +177,16 @@ class DatabaseConfig(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
+    def SQLALCHEMY_DATABASE_USERNAME(self) -> str:
+        return self.DIFY_DB_USER or self.DB_USERNAME
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SQLALCHEMY_DATABASE_PASSWORD(self) -> str:
+        return self.DIFY_DB_PASS or self.DB_PASSWORD
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
             f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else self.DB_EXTRAS
@@ -174,7 +194,8 @@ class DatabaseConfig(BaseSettings):
         db_extras = f"?{db_extras}" if db_extras else ""
         return (
             f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
-            f"{quote_plus(self.DB_USERNAME)}:{quote_plus(self.DB_PASSWORD)}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
+            f"{quote_plus(self.SQLALCHEMY_DATABASE_USERNAME)}:{quote_plus(self.SQLALCHEMY_DATABASE_PASSWORD)}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
             f"{db_extras}"
         )
 

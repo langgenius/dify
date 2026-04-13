@@ -59,6 +59,8 @@ x-shared-env: &shared-api-worker-env
   DB_TYPE: ${DB_TYPE:-postgresql}
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+  DIFY_DB_USER: ${DIFY_DB_USER:-}
+  DIFY_DB_PASS: ${DIFY_DB_PASS:-}
   DB_HOST: ${DB_HOST:-db_postgres}
   DB_PORT: ${DB_PORT:-5432}
   DB_DATABASE: ${DB_DATABASE:-dify}
