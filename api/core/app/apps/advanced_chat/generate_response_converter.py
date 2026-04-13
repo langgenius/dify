@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -15,11 +15,23 @@ from core.app.entities.task_entities import (
 )
 
 
+class ChatBlockingResponseDict(TypedDict):
+    event: str
+    task_id: str
+    id: str
+    message_id: str
+    conversation_id: str
+    mode: str
+    answer: str
+    metadata: dict[str, Any]
+    created_at: int
+
+
 class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = ChatbotAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> ChatBlockingResponseDict:
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -41,7 +53,7 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> ChatBlockingResponseDict:
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
