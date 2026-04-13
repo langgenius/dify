@@ -47,7 +47,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(
         tool: Tool,
-        tool_parameters: Union[str, dict],
+        tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
         tenant_id: str,
         message: Message,
