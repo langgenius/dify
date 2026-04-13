@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
+import { AppModeEnum } from '@/types/app'
 import {
   buildCreateAppEventPayload,
   extractExternalCreateAppAttribution,
@@ -42,21 +43,58 @@ describe('create-app-tracking', () => {
   })
 
   describe('buildCreateAppEventPayload', () => {
-    it('should build template payloads with template id', () => {
+    it('should build original payloads with normalized app mode and timestamp', () => {
       expect(buildCreateAppEventPayload({
-        source: 'explore_template_preview',
-        templateId: 'template-1',
-      })).toEqual({
-        source: 'explore_template_preview',
-        template_id: 'template-1',
+        appMode: AppModeEnum.ADVANCED_CHAT,
+      }, null, new Date(2026, 3, 13, 14, 5, 9))).toEqual({
+        source: 'original',
+        app_mode: 'chatflow',
+        time: '04-13-14:05:09',
+      })
+    })
+
+    it('should map agent mode into the canonical app mode bucket', () => {
+      expect(buildCreateAppEventPayload({
+        appMode: AppModeEnum.AGENT_CHAT,
+      }, null, new Date(2026, 3, 13, 9, 8, 7))).toEqual({
+        source: 'original',
+        app_mode: 'agent',
+        time: '04-13-09:08:07',
+      })
+    })
+
+    it('should fold legacy non-agent modes into chatflow', () => {
+      expect(buildCreateAppEventPayload({
+        appMode: AppModeEnum.CHAT,
+      }, null, new Date(2026, 3, 13, 8, 0, 1))).toEqual({
+        source: 'original',
+        app_mode: 'chatflow',
+        time: '04-13-08:00:01',
+      })
+
+      expect(buildCreateAppEventPayload({
+        appMode: AppModeEnum.COMPLETION,
+      }, null, new Date(2026, 3, 13, 8, 0, 2))).toEqual({
+        source: 'original',
+        app_mode: 'chatflow',
+        time: '04-13-08:00:02',
+      })
+    })
+
+    it('should map workflow mode into the workflow bucket', () => {
+      expect(buildCreateAppEventPayload({
+        appMode: AppModeEnum.WORKFLOW,
+      }, null, new Date(2026, 3, 13, 7, 6, 5))).toEqual({
+        source: 'original',
+        app_mode: 'workflow',
+        time: '04-13-07:06:05',
       })
     })
 
     it('should prefer external attribution when present', () => {
       expect(buildCreateAppEventPayload(
         {
-          source: 'studio_template_list',
-          templateId: 'template-2',
+          appMode: AppModeEnum.WORKFLOW,
         },
         {
           utmSource: 'linkedin',
@@ -76,7 +114,7 @@ describe('create-app-tracking', () => {
         searchParams: new URLSearchParams('utm_source=newsletter&slug=how-to-build-rag-agent'),
       })
 
-      trackCreateApp({ source: 'studio_blank' })
+      trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
 
       expect(amplitude.trackEvent).toHaveBeenNthCalledWith(1, 'create_app', {
         source: 'external',
@@ -84,10 +122,12 @@ describe('create-app-tracking', () => {
         utm_campaign: 'how-to-build-rag-agent',
       })
 
-      trackCreateApp({ source: 'studio_blank' })
+      trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
 
       expect(amplitude.trackEvent).toHaveBeenNthCalledWith(2, 'create_app', {
-        source: 'studio_blank',
+        source: 'original',
+        app_mode: 'workflow',
+        time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
       })
     })
   })

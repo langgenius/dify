@@ -112,7 +112,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         return
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        trackCreateApp({ source: 'studio_upload' })
+        trackCreateApp({ appMode: app_mode })
 
         if (onSuccess)
           onSuccess()
@@ -174,7 +174,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       const { status, app_id, app_mode } = response
 
       if (status === DSLImportStatus.COMPLETED) {
-        trackCreateApp({ source: 'studio_upload' })
+        trackCreateApp({ appMode: app_mode })
         if (onSuccess)
           onSuccess()
         if (onClose)

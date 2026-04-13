@@ -178,7 +178,7 @@ describe('CreateAppModal', () => {
       mode: AppModeEnum.ADVANCED_CHAT,
     }))
 
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank' })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.ADVANCED_CHAT })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()

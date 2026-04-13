@@ -1,7 +1,7 @@
 'use client'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TryAppSelection } from '@/types/try-app'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
 import AppListContext from '@/context/app-list-context'
@@ -24,6 +24,7 @@ const Apps = () => {
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)
+  const currentCreateAppModeRef = useRef<TryAppSelection['app']['app']['mode'] | null>(null)
   const currApp = currentTryAppParams?.app
   const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const hideTryAppPanel = useCallback(() => {
@@ -42,12 +43,11 @@ const Apps = () => {
     setIsShowCreateModal(true)
   }, [])
   const trackCurrentCreateApp = useCallback(() => {
-    const templateId = currApp?.app.id
-    if (!templateId)
+    if (!currentCreateAppModeRef.current)
       return
 
-    trackCreateApp({ source: 'studio_template_preview', templateId })
-  }, [currApp?.app.id])
+    trackCreateApp({ appMode: currentCreateAppModeRef.current })
+  }, [])
 
   const [controlRefreshList, setControlRefreshList] = useState(0)
   const [controlHideCreateFromTemplatePanel, setControlHideCreateFromTemplatePanel] = useState(0)
@@ -83,9 +83,10 @@ const Apps = () => {
   }) => {
     hideTryAppPanel()
 
-    const { export_data } = await fetchAppDetail(
+    const { export_data, mode } = await fetchAppDetail(
       currApp?.app.id as string,
     )
+    currentCreateAppModeRef.current = mode
     const payload = {
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: export_data,

@@ -5,7 +5,7 @@ import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { AMPLITUDE_API_KEY, isAmplitudeEnabled } from '@/config'
+import { AMPLITUDE_API_KEY } from '@/config'
 
 export type IAmplitudeProps = {
   sessionReplaySampleRate?: number
@@ -54,8 +54,8 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled)
-      return
+    // if (!isAmplitudeEnabled)
+    //   return
 
     // Initialize Amplitude
     amplitude.init(AMPLITUDE_API_KEY, {

@@ -218,7 +218,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
@@ -240,8 +240,7 @@ describe('AppList', () => {
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'explore_template_list',
-          templateId: 'app-basic-id',
+          appMode: AppModeEnum.CHAT,
         })
         expect(onSuccess).toHaveBeenCalledTimes(1)
       })
@@ -315,7 +314,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
 
       renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
@@ -333,7 +332,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
         options.onSuccess?.()
       })
@@ -346,8 +345,7 @@ describe('AppList', () => {
         expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       })
       expect(mockTrackCreateApp).toHaveBeenCalledWith({
-        source: 'explore_template_list',
-        templateId: 'app-basic-id',
+        appMode: AppModeEnum.CHAT,
       })
     })
 
@@ -357,7 +355,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
       })
@@ -403,7 +401,7 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml' })
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
         options.onSuccess?.()
       })
@@ -416,8 +414,7 @@ describe('AppList', () => {
 
       await waitFor(() => {
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'explore_template_preview',
-          templateId: 'app-basic-id',
+          appMode: AppModeEnum.CHAT,
         })
       })
     })

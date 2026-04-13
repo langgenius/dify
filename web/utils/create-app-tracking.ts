@@ -1,5 +1,6 @@
 import Cookies from 'js-cookie'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
 
@@ -16,13 +17,11 @@ type SearchParamReader = {
   get: (name: string) => string | null
 }
 
-type CreateAppSource = 'external' | 'explore_template_list' | 'explore_template_preview' | 'studio_blank' | 'studio_template_list' | 'studio_template_preview' | 'studio_upload'
+type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent'
 
-type TemplateCreateAppSource = Extract<CreateAppSource, 'explore_template_list' | 'explore_template_preview' | 'studio_template_list' | 'studio_template_preview'>
-
-type NonTemplateCreateAppSource = Extract<CreateAppSource, 'studio_blank' | 'studio_upload'>
-
-type TrackCreateAppParams = { source: TemplateCreateAppSource, templateId: string } | { source: NonTemplateCreateAppSource }
+type TrackCreateAppParams = {
+  appMode: AppModeEnum
+}
 
 type ExternalCreateAppAttribution = {
   utmSource: typeof EXTERNAL_UTM_SOURCE_MAP[keyof typeof EXTERNAL_UTM_SOURCE_MAP]
@@ -67,6 +66,22 @@ const mapExternalUtmSource = (value?: string) => {
 
   const normalized = value.toLowerCase()
   return EXTERNAL_UTM_SOURCE_MAP[normalized as keyof typeof EXTERNAL_UTM_SOURCE_MAP]
+}
+
+const padTimeValue = (value: number) => String(value).padStart(2, '0')
+
+const formatCreateAppTime = (date: Date) => {
+  return `${padTimeValue(date.getMonth() + 1)}-${padTimeValue(date.getDate())}-${padTimeValue(date.getHours())}:${padTimeValue(date.getMinutes())}:${padTimeValue(date.getSeconds())}`
+}
+
+const mapOriginalCreateAppMode = (appMode: AppModeEnum): OriginalCreateAppMode => {
+  if (appMode === AppModeEnum.WORKFLOW)
+    return 'workflow'
+
+  if (appMode === AppModeEnum.AGENT_CHAT)
+    return 'agent'
+
+  return 'chatflow'
 }
 
 export const extractExternalCreateAppAttribution = ({
@@ -144,6 +159,7 @@ const resolveCurrentExternalCreateAppAttribution = () => {
 export const buildCreateAppEventPayload = (
   params: TrackCreateAppParams,
   externalAttribution?: ExternalCreateAppAttribution | null,
+  currentTime = new Date(),
 ) => {
   if (externalAttribution) {
     return {
@@ -153,15 +169,10 @@ export const buildCreateAppEventPayload = (
     } satisfies Record<string, string>
   }
 
-  if ('templateId' in params) {
-    return {
-      source: params.source,
-      template_id: params.templateId,
-    } satisfies Record<string, string>
-  }
-
   return {
-    source: params.source,
+    source: 'original',
+    app_mode: mapOriginalCreateAppMode(params.appMode),
+    time: formatCreateAppTime(currentTime),
   } satisfies Record<string, string>
 }
 

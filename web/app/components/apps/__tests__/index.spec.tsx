@@ -238,8 +238,7 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalledWith('template-1')
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          source: 'studio_template_preview',
-          templateId: 'template-1',
+          appMode: AppModeEnum.CHAT,
         })
       })
     })

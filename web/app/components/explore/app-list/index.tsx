@@ -6,7 +6,7 @@ import type { TryAppSelection } from '@/types/try-app'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import Button from '@/app/components/base/button'
@@ -92,7 +92,6 @@ const Apps = ({
 
   const [currApp, setCurrApp] = useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
-  const [createAppSource, setCreateAppSource] = useState<'explore_template_list' | 'explore_template_preview'>('explore_template_list')
 
   const {
     handleImportDSL,
@@ -103,6 +102,7 @@ const Apps = ({
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
   const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
+  const currentCreateAppModeRef = useRef<App['app']['mode'] | null>(null)
   const isShowTryAppPanel = !!currentTryApp
   const hideTryAppPanel = useCallback(() => {
     setCurrentTryApp(undefined)
@@ -112,16 +112,14 @@ const Apps = ({
   }, [])
   const handleShowFromTryApp = useCallback(() => {
     setCurrApp(currentTryApp?.app || null)
-    setCreateAppSource('explore_template_preview')
     setIsShowCreateModal(true)
   }, [currentTryApp?.app])
   const trackCurrentCreateApp = useCallback(() => {
-    const templateId = currApp?.app.id
-    if (!templateId)
+    if (!currentCreateAppModeRef.current)
       return
 
-    trackCreateApp({ source: createAppSource, templateId })
-  }, [createAppSource, currApp?.app.id])
+    trackCreateApp({ appMode: currentCreateAppModeRef.current })
+  }, [])
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -132,9 +130,10 @@ const Apps = ({
   }) => {
     hideTryAppPanel()
 
-    const { export_data } = await fetchAppDetail(
+    const { export_data, mode } = await fetchAppDetail(
       currApp?.app.id as string,
     )
+    currentCreateAppModeRef.current = mode
     const payload = {
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: export_data,
@@ -240,7 +239,6 @@ const Apps = ({
                 canCreate={hasEditPermission}
                 onCreate={() => {
                   setCurrApp(app)
-                  setCreateAppSource('explore_template_list')
                   setIsShowCreateModal(true)
                 }}
                 onTry={handleTryApp}

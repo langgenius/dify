@@ -127,8 +127,7 @@ const Apps = ({
         icon_background,
         description,
       })
-      if (currApp?.app.id)
-        trackCreateApp({ source: 'studio_template_list', templateId: currApp.app.id })
+      trackCreateApp({ appMode: mode })
 
       setIsShowCreateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))
