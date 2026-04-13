@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import click
 from flask import Flask, current_app
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -62,13 +62,11 @@ class ClearFreePlanTenantExpiredLogs:
 
         for model, table_name in related_tables:
             # Query records related to expired messages
-            records = (
-                session.query(model)
-                .where(
+            records = session.scalars(
+                select(model).where(
                     model.message_id.in_(batch_message_ids),  # type: ignore
                 )
-                .all()
-            )
+            ).all()
 
             if len(records) == 0:
                 continue
@@ -103,9 +101,13 @@ class ClearFreePlanTenantExpiredLogs:
             except Exception:
                 logger.exception("Failed to save %s records", table_name)
 
-            session.query(model).where(
-                model.id.in_(record_ids),  # type: ignore
-            ).delete(synchronize_session=False)
+            session.execute(
+                delete(model)
+                .where(
+                    model.id.in_(record_ids),  # type: ignore
+                )
+                .execution_options(synchronize_session=False)
+            )
 
             click.echo(
                 click.style(
@@ -120,16 +122,15 @@ class ClearFreePlanTenantExpiredLogs:
             apps = db.session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             app_ids = [app.id for app in apps]
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    messages = (
-                        session.query(Message)
+                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
+                    messages = session.scalars(
+                        select(Message)
                         .where(
                             Message.app_id.in_(app_ids),
                             Message.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
-                        .all()
-                    )
+                    ).all()
                     if len(messages) == 0:
                         break
 
@@ -147,12 +148,11 @@ class ClearFreePlanTenantExpiredLogs:
                     message_ids = [message.id for message in messages]
 
                     # delete messages
-                    session.query(Message).where(
-                        Message.id.in_(message_ids),
-                    ).delete(synchronize_session=False)
+                    session.execute(
+                        delete(Message).where(Message.id.in_(message_ids)).execution_options(synchronize_session=False)
+                    )
 
                     cls._clear_message_related_tables(session, tenant_id, message_ids)
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -161,16 +161,15 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    conversations = (
-                        session.query(Conversation)
+                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
+                    conversations = session.scalars(
+                        select(Conversation)
                         .where(
                             Conversation.app_id.in_(app_ids),
                             Conversation.updated_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
-                        .all()
-                    )
+                    ).all()
 
                     if len(conversations) == 0:
                         break
@@ -187,10 +186,11 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
                     conversation_ids = [conversation.id for conversation in conversations]
-                    session.query(Conversation).where(
-                        Conversation.id.in_(conversation_ids),
-                    ).delete(synchronize_session=False)
-                    session.commit()
+                    session.execute(
+                        delete(Conversation)
+                        .where(Conversation.id.in_(conversation_ids))
+                        .execution_options(synchronize_session=False)
+                    )
 
                     click.echo(
                         click.style(
@@ -294,16 +294,15 @@ class ClearFreePlanTenantExpiredLogs:
                     break
 
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    workflow_app_logs = (
-                        session.query(WorkflowAppLog)
+                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
+                    workflow_app_logs = session.scalars(
+                        select(WorkflowAppLog)
                         .where(
                             WorkflowAppLog.tenant_id == tenant_id,
                             WorkflowAppLog.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
-                        .all()
-                    )
+                    ).all()
 
                     if len(workflow_app_logs) == 0:
                         break
@@ -323,10 +322,11 @@ class ClearFreePlanTenantExpiredLogs:
                     workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
 
                     # delete workflow app logs
-                    session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(
-                        synchronize_session=False
+                    session.execute(
+                        delete(WorkflowAppLog)
+                        .where(WorkflowAppLog.id.in_(workflow_app_log_ids))
+                        .execution_options(synchronize_session=False)
                     )
-                    session.commit()
 
                     click.echo(
                         click.style(
@@ -346,8 +346,8 @@ class ClearFreePlanTenantExpiredLogs:
         started_at = datetime.datetime(2023, 4, 3, 8, 59, 24)
         current_time = started_at
 
-        with Session(db.engine) as session:
-            total_tenant_count = session.query(Tenant.id).count()
+        with sessionmaker(db.engine).begin() as session:
+            total_tenant_count = session.scalar(select(func.count(Tenant.id))) or 0
 
         click.echo(click.style(f"Total tenant count: {total_tenant_count}", fg="white"))
 
@@ -398,7 +398,7 @@ class ClearFreePlanTenantExpiredLogs:
                 # Initial interval of 1 day, will be dynamically adjusted based on tenant count
                 interval = datetime.timedelta(days=1)
                 # Process tenants in this batch
-                with Session(db.engine) as session:
+                with sessionmaker(db.engine).begin() as session:
                     # Calculate tenant count in next batch with current interval
                     # Try different intervals until we find one with a reasonable tenant count
                     test_intervals = [
@@ -412,9 +412,12 @@ class ClearFreePlanTenantExpiredLogs:
                     tenant_count = 0
                     for test_interval in test_intervals:
                         tenant_count = (
-                            session.query(Tenant.id)
-                            .where(Tenant.created_at.between(current_time, current_time + test_interval))
-                            .count()
+                            session.scalar(
+                                select(func.count(Tenant.id)).where(
+                                    Tenant.created_at.between(current_time, current_time + test_interval)
+                                )
+                            )
+                            or 0
                         )
                         if tenant_count <= 100:
                             interval = test_interval
@@ -436,8 +439,8 @@ class ClearFreePlanTenantExpiredLogs:
 
                     batch_end = min(current_time + interval, ended_at)
 
-                    rs = (
-                        session.query(Tenant.id)
+                    rs = session.execute(
+                        select(Tenant.id)
                         .where(Tenant.created_at.between(current_time, batch_end))
                         .order_by(Tenant.created_at)
                     )

@@ -64,15 +64,15 @@ class WebhookTriggerApi(Resource):
 
         node_id = args.node_id
 
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get webhook trigger for this app and node
-            webhook_trigger = (
-                session.query(WorkflowWebhookTrigger)
+            webhook_trigger = session.scalar(
+                select(WorkflowWebhookTrigger)
                 .where(
                     WorkflowWebhookTrigger.app_id == app_model.id,
                     WorkflowWebhookTrigger.node_id == node_id,
                 )
-                .first()
+                .limit(1)
             )
 
             if not webhook_trigger:
@@ -95,7 +95,7 @@ class AppTriggersApi(Resource):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get all triggers for this app using select API
             triggers = (
                 session.execute(

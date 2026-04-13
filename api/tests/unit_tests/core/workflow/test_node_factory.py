@@ -110,6 +110,34 @@ class TestFetchMemory:
         )
 
 
+class TestDifyGraphInitContext:
+    def test_to_graph_init_params_preserves_explicit_values(self):
+        run_context = {
+            DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                user_id="user-id",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
+            "extra": "value",
+        }
+        graph_config = {"nodes": [], "edges": []}
+        graph_init_context = node_factory.DifyGraphInitContext(
+            workflow_id="workflow-id",
+            graph_config=graph_config,
+            run_context=run_context,
+            call_depth=2,
+        )
+
+        result = graph_init_context.to_graph_init_params()
+
+        assert result.workflow_id == "workflow-id"
+        assert result.graph_config == graph_config
+        assert result.run_context == run_context
+        assert result.call_depth == 2
+
+
 class TestDefaultWorkflowCodeExecutor:
     def test_execute_delegates_to_code_executor(self, monkeypatch):
         executor = node_factory.DefaultWorkflowCodeExecutor()
@@ -172,6 +200,23 @@ class TestCodeExecutorJinja2TemplateRenderer:
 
 
 class TestDifyNodeFactoryInit:
+    def test_from_graph_init_context_translates_before_init(self):
+        graph_init_context = MagicMock()
+        graph_init_context.to_graph_init_params.return_value = sentinel.graph_init_params
+
+        with patch.object(node_factory.DifyNodeFactory, "__init__", return_value=None) as init:
+            factory = node_factory.DifyNodeFactory.from_graph_init_context(
+                graph_init_context=graph_init_context,
+                graph_runtime_state=sentinel.graph_runtime_state,
+            )
+
+        assert isinstance(factory, node_factory.DifyNodeFactory)
+        graph_init_context.to_graph_init_params.assert_called_once_with()
+        init.assert_called_once_with(
+            graph_init_params=sentinel.graph_init_params,
+            graph_runtime_state=sentinel.graph_runtime_state,
+        )
+
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
         graph_runtime_state = sentinel.graph_runtime_state

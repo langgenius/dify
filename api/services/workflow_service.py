@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
-from graphon.entities import GraphInitParams, WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import (
@@ -38,6 +38,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
+from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
@@ -47,7 +48,12 @@ from core.workflow.human_input_compat import (
     normalize_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping, is_start_node_type
+from core.workflow.node_factory import (
+    LATEST_VERSION,
+    DifyGraphInitContext,
+    get_node_type_classes_mapping,
+    is_start_node_type,
+)
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -66,7 +72,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
-from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
@@ -635,7 +640,7 @@ class WorkflowService:
             # If we can't determine the status, assume load balancing is not enabled
             return False
 
-    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict]:
+    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict[str, Any]]:
         """
         Get all load balancing configurations for a model.
 
@@ -659,7 +664,7 @@ class WorkflowService:
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
                 tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
             )
-            all_configs = configs + custom_configs
+            all_configs = cast(list[dict[str, Any]], configs) + cast(list[dict[str, Any]], custom_configs)
 
             return [config for config in all_configs if config.get("credential_id")]
 
@@ -834,10 +839,10 @@ class WorkflowService:
         if workflow_node_execution is None:
             raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
 
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=app_model.id,
@@ -848,7 +853,6 @@ class WorkflowService:
                 user=account,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
-            session.commit()
 
         enqueue_draft_node_execution_trace(
             execution=workflow_node_execution,
@@ -977,7 +981,7 @@ class WorkflowService:
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
         enclosing_node_id = enclosing_node_type_and_id[1] if enclosing_node_type_and_id else None
-        with Session(bind=db.engine) as session, session.begin():
+        with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=app_model.id,
@@ -988,7 +992,6 @@ class WorkflowService:
                 enclosing_node_id=enclosing_node_id,
             )
             draft_var_saver.save(outputs=outputs, process_data={})
-            session.commit()
 
         return outputs
 
@@ -1134,18 +1137,20 @@ class WorkflowService:
         node_config: NodeConfigDict,
         variable_pool: VariablePool,
     ) -> HumanInputNode:
-        graph_init_params = GraphInitParams(
+        run_context = build_dify_run_context(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            user_id=account.id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
             graph_config=workflow.graph_dict,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                user_id=account.id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
+        graph_init_params = graph_init_context.to_graph_init_params()
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,
             start_at=time.perf_counter(),
@@ -1155,7 +1160,7 @@ class WorkflowService:
             config=node_config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
-            runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+            runtime=DifyHumanInputNodeRuntime(run_context),
         )
         return node
 
@@ -1507,14 +1512,12 @@ class WorkflowService:
 
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version
-        tool_provider = (
-            session.query(WorkflowToolProvider)
-            .where(
+        tool_provider = session.scalar(
+            select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == workflow.tenant_id,
                 WorkflowToolProvider.app_id == workflow.app_id,
                 WorkflowToolProvider.version == workflow.version,
             )
-            .first()
         )
 
         if tool_provider:

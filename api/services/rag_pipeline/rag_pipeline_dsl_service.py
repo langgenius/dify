@@ -5,7 +5,6 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -21,7 +20,7 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from packaging import version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +37,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -54,18 +54,6 @@ DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
 
 
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
-
-
 class RagPipelineImportInfo(BaseModel):
     id: str
     status: ImportStatus
@@ -74,10 +62,6 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
-
-
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -299,7 +283,9 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
-                        datasets = self._session.query(Dataset).filter_by(tenant_id=account.current_tenant_id).all()
+                        datasets = self._session.scalars(
+                            select(Dataset).where(Dataset.tenant_id == account.current_tenant_id)
+                        ).all()
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
@@ -319,8 +305,8 @@ class RagPipelineDslService:
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                        dataset_collection_binding = (
-                            self._session.query(DatasetCollectionBinding)
+                        dataset_collection_binding = self._session.scalar(
+                            select(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
@@ -328,7 +314,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
-                            .first()
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -456,8 +442,8 @@ class RagPipelineDslService:
                         dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
                     if knowledge_configuration.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                        dataset_collection_binding = (
-                            self._session.query(DatasetCollectionBinding)
+                        dataset_collection_binding = self._session.scalar(
+                            select(DatasetCollectionBinding)
                             .where(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
@@ -465,7 +451,7 @@ class RagPipelineDslService:
                                 DatasetCollectionBinding.type == CollectionBindingType.DATASET,
                             )
                             .order_by(DatasetCollectionBinding.created_at)
-                            .first()
+                            .limit(1)
                         )
 
                         if not dataset_collection_binding:
@@ -607,14 +593,14 @@ class RagPipelineDslService:
                 IMPORT_INFO_REDIS_EXPIRY,
                 CheckDependenciesPendingData(pipeline_id=pipeline.id, dependencies=dependencies).model_dump_json(),
             )
-        workflow = (
-            self._session.query(Workflow)
+        workflow = self._session.scalar(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
-            .first()
+            .limit(1)
         )
 
         # create draft workflow if not found
@@ -681,14 +667,12 @@ class RagPipelineDslService:
         :param pipeline: Pipeline instance
         """
 
-        workflow = (
-            self._session.query(Workflow)
-            .where(
+        workflow = self._session.scalar(
+            select(Workflow).where(
                 Workflow.tenant_id == pipeline.tenant_id,
                 Workflow.app_id == pipeline.id,
                 Workflow.version == "draft",
             )
-            .first()
         )
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
@@ -920,15 +904,16 @@ class RagPipelineDslService:
     ):
         if rag_pipeline_dataset_create_entity.name:
             # check if dataset name already exists
-            if (
-                self._session.query(Dataset)
-                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-                .first()
+            if self._session.scalar(
+                select(Dataset).where(
+                    Dataset.name == rag_pipeline_dataset_create_entity.name,
+                    Dataset.tenant_id == tenant_id,
+                )
             ):
                 raise ValueError(f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists.")
         else:
             # generate a random name as Untitled 1 2 3 ...
-            datasets = self._session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            datasets = self._session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all()
             names = [dataset.name for dataset in datasets]
             rag_pipeline_dataset_create_entity.name = generate_incremental_name(
                 names,
