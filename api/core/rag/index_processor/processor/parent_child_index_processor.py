@@ -106,7 +106,11 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             split_documents.append(document_node)
                 all_documents.extend(split_documents)
         elif rules.parent_mode == ParentMode.FULL_DOC:
-            page_content = "\n".join([document.page_content for document in documents])
+            # Match paragraph mode: apply the same cleaning to each extracted part before joining.
+            # Otherwise child splitting (e.g. by "\\n#") sees different text than parent split in paragraph mode.
+            cleaned_parts = [CleanProcessor.clean(document.page_content, process_rule) for document in documents]
+            page_content = "\n".join(cleaned_parts)
+            page_content = page_content.replace("\r\n", "\n")
             document = Document(page_content=page_content, metadata=documents[0].metadata)
             multimodel_documents = self._get_content_files(document)
             if multimodel_documents:

@@ -186,6 +186,34 @@ class TestParentChildIndexProcessor:
         assert len(result[0].children or []) == 2
         assert result[0].attachments is not None
 
+    def test_transform_full_doc_applies_clean_before_child_split(self, processor: ParentChildIndexProcessor) -> None:
+        docs = [
+            Document(page_content="a\r\n# x", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"}),
+        ]
+        captured: list[str] = []
+
+        def split_and_capture(document, rules, mode, emb):
+            captured.append(document.page_content)
+            return []
+
+        process_rule = {"mode": "hierarchical", "rules": {"pre_processing_rules": [], "enabled": True}}
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.Rule.model_validate",
+                return_value=self._full_doc_rules(),
+            ),
+            patch.object(processor, "_get_content_files", return_value=[]),
+            patch.object(processor, "_split_child_nodes", side_effect=split_and_capture),
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
+                return_value="hash",
+            ),
+        ):
+            processor.transform(docs, process_rule=process_rule, preview=False)
+
+        assert captured == ["a\n# x"]
+
     def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
         parent_doc = Document(
             page_content="parent",

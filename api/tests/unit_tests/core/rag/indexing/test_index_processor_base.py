@@ -95,7 +95,7 @@ class TestBaseIndexProcessor:
             splitter = processor._get_splitter("hierarchical", 120, 10, "\\n\\n", None)
 
         assert splitter is fixed_splitter
-        assert mock_fixed.call_args.kwargs["fixed_separator"] == "\n\n"
+        assert mock_fixed.call_args.kwargs["fixed_separator"] == "\\n\\n"
         assert mock_fixed.call_args.kwargs["chunk_size"] == 120
 
     def test_get_splitter_automatic_mode_uses_enhance_splitter(self, processor: _ForwardingBaseIndexProcessor) -> None:

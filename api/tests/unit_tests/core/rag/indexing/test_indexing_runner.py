@@ -1193,7 +1193,7 @@ class TestIndexingRunnerSplitter:
             call_kwargs = mock_splitter_class.from_encoder.call_args[1]
             assert call_kwargs["chunk_size"] == 500
             assert call_kwargs["chunk_overlap"] == 50
-            assert call_kwargs["fixed_separator"] == "\n\n"
+            assert call_kwargs["fixed_separator"] == "\\n\\n"
 
     def test_get_splitter_automatic_mode(self, mock_embedding_instance):
         """Test splitter creation with automatic mode."""

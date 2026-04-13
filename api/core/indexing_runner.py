@@ -492,8 +492,7 @@ class IndexingRunner:
             if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
 
-            if separator:
-                separator = separator.replace("\\n", "\n")
+            # Separator decoding is handled in FixedRecursiveCharacterTextSplitter (codecs.decode unicode_escape).
 
             character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=max_tokens,
