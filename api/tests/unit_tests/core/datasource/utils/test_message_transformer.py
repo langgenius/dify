@@ -1,11 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
 
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.datasource.utils.message_transformer import DatasourceFileMessageTransformer
-from dify_graph.file import File
-from dify_graph.file.enums import FileTransferMethod, FileType
 from models.tools import ToolFile
 
 

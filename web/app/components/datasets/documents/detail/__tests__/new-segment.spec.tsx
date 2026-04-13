@@ -1,26 +1,20 @@
-import type * as React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast, ToastHost } from '@/app/components/base/ui/toast'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
 
 import NewSegmentModal from '../new-segment'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     datasetId: 'test-dataset-id',
     documentId: 'test-document-id',
   }),
 }))
 
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
-  return {
-    ...actual,
-    useContext: () => ({ notify: mockNotify }),
-  }
-})
+const toastErrorSpy = vi.spyOn(toast, 'error')
+const toastSuccessSpy = vi.spyOn(toast, 'success')
 
 // Mock dataset detail context
 let mockIndexingTechnique = IndexingType.QUALIFIED
@@ -49,11 +43,6 @@ vi.mock('@/service/knowledge/use-segment', () => ({
   useAddSegment: () => ({
     mutateAsync: mockAddSegment,
   }),
-}))
-
-// Mock app store
-vi.mock('@/app/components/app/store', () => ({
-  useStore: () => ({ appSidebarExpand: 'expand' }),
 }))
 
 vi.mock('../completed/common/action-buttons', () => ({
@@ -139,6 +128,8 @@ vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk
 describe('NewSegmentModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
+    toast.dismiss()
     mockFullScreen = false
     mockIndexingTechnique = IndexingType.QUALIFIED
   })
@@ -258,11 +249,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -272,11 +259,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -287,11 +270,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
+        expect(toastErrorSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -337,11 +316,7 @@ describe('NewSegmentModal', () => {
       fireEvent.click(screen.getByTestId('save-btn'))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
+        expect(toastSuccessSpy).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -430,10 +405,9 @@ describe('NewSegmentModal', () => {
     })
   })
 
-  describe('CustomButton in success notification', () => {
-    it('should call viewNewlyAddedChunk when custom button is clicked', async () => {
+  describe('Action button in success notification', () => {
+    it('should call viewNewlyAddedChunk when the toast action is clicked', async () => {
       const mockViewNewlyAddedChunk = vi.fn()
-      mockNotify.mockImplementation(() => {})
 
       mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
         options.onSuccess()
@@ -442,37 +416,25 @@ describe('NewSegmentModal', () => {
       })
 
       render(
-        <NewSegmentModal
-          {...defaultProps}
-          docForm={ChunkingMode.text}
-          viewNewlyAddedChunk={mockViewNewlyAddedChunk}
-        />,
+        <>
+          <ToastHost timeout={0} />
+          <NewSegmentModal
+            {...defaultProps}
+            docForm={ChunkingMode.text}
+            viewNewlyAddedChunk={mockViewNewlyAddedChunk}
+          />
+        </>,
       )
 
-      // Enter content and save
       fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test content' } })
       fireEvent.click(screen.getByTestId('save-btn'))
 
+      const actionButton = await screen.findByRole('button', { name: 'common.operation.view' })
+      fireEvent.click(actionButton)
+
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-            customComponent: expect.anything(),
-          }),
-        )
+        expect(mockViewNewlyAddedChunk).toHaveBeenCalledTimes(1)
       })
-
-      // Extract customComponent from the notify call args
-      const notifyCallArgs = mockNotify.mock.calls[0][0] as { customComponent?: React.ReactElement }
-      expect(notifyCallArgs.customComponent).toBeDefined()
-      const customComponent = notifyCallArgs.customComponent!
-      const { container: btnContainer } = render(customComponent)
-      const viewButton = btnContainer.querySelector('.system-xs-semibold.text-text-accent') as HTMLElement
-      expect(viewButton).toBeInTheDocument()
-      fireEvent.click(viewButton)
-
-      // Assert that viewNewlyAddedChunk was called via the onClick handler (lines 66-67)
-      expect(mockViewNewlyAddedChunk).toHaveBeenCalled()
     })
   })
 
@@ -599,9 +561,8 @@ describe('NewSegmentModal', () => {
     })
   })
 
-  describe('onSave delayed call', () => {
-    it('should call onSave after timeout in success handler', async () => {
-      vi.useFakeTimers()
+  describe('onSave after success', () => {
+    it('should call onSave immediately after save succeeds', async () => {
       const mockOnSave = vi.fn()
       mockAddSegment.mockImplementation((_params: unknown, options: { onSuccess: () => void, onSettled: () => void }) => {
         options.onSuccess()
@@ -611,15 +572,12 @@ describe('NewSegmentModal', () => {
 
       render(<NewSegmentModal {...defaultProps} onSave={mockOnSave} docForm={ChunkingMode.text} />)
 
-      // Enter content and save
       fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Test content' } })
       fireEvent.click(screen.getByTestId('save-btn'))
 
-      // Fast-forward timer
-      vi.advanceTimersByTime(3000)
-
-      expect(mockOnSave).toHaveBeenCalled()
-      vi.useRealTimers()
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledTimes(1)
+      })
     })
   })
 

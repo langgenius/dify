@@ -3,7 +3,39 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import VoiceSettings from '../voice-settings'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
+  PortalToFollowElem: ({
+    children,
+    placement,
+    offset,
+  }: {
+    children: React.ReactNode
+    placement?: string
+    offset?: { mainAxis?: number }
+  }) => (
+    <div
+      data-testid="voice-settings-portal"
+      data-placement={placement}
+      data-main-axis={offset?.mainAxis}
+    >
+      {children}
+    </div>
+  ),
+  PortalToFollowElemTrigger: ({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+  }) => (
+    <div data-testid="voice-settings-trigger" onClick={onClick}>
+      {children}
+    </div>
+  ),
+  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/test-app-id/configuration',
   useParams: () => ({ appId: 'test-app-id' }),
 }))
@@ -101,5 +133,20 @@ describe('VoiceSettings', () => {
     fireEvent.click(screen.getByRole('button', { name: /voice\.voiceSettings\.close/ }))
 
     expect(onOpen).toHaveBeenCalledWith(false)
+  })
+
+  it('should use top placement and mainAxis 4 when placementLeft is false', () => {
+    renderWithProvider(
+      <VoiceSettings open={false} onOpen={vi.fn()} placementLeft={false}>
+        <button>Settings</button>
+      </VoiceSettings>,
+    )
+
+    const portal = screen.getAllByTestId('voice-settings-portal')
+      .find(item => item.hasAttribute('data-main-axis'))
+
+    expect(portal).toBeDefined()
+    expect(portal).toHaveAttribute('data-placement', 'top')
+    expect(portal).toHaveAttribute('data-main-axis', '4')
   })
 })

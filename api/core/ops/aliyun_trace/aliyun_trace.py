@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Sequence
 
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
 
@@ -57,8 +59,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import WorkflowNodeExecutionTriggeredFrom
 
@@ -296,17 +296,19 @@ class AliyunDataTrace(BaseTraceInstance):
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        return workflow_node_execution_repository.get_by_workflow_run(workflow_run_id=trace_info.workflow_run_id)
+        return workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
+        )
 
     def build_workflow_node_span(
         self, node_execution: WorkflowNodeExecution, trace_info: WorkflowTraceInfo, trace_metadata: TraceMetadata
     ):
         try:
-            if node_execution.node_type == NodeType.LLM:
+            if node_execution.node_type == BuiltinNodeTypes.LLM:
                 node_span = self.build_workflow_llm_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_execution.node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 node_span = self.build_workflow_retrieval_span(trace_info, node_execution, trace_metadata)
-            elif node_execution.node_type == NodeType.TOOL:
+            elif node_execution.node_type == BuiltinNodeTypes.TOOL:
                 node_span = self.build_workflow_tool_span(trace_info, node_execution, trace_metadata)
             else:
                 node_span = self.build_workflow_task_span(trace_info, node_execution, trace_metadata)

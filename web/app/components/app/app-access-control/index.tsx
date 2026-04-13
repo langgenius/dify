@@ -5,12 +5,12 @@ import { Description as DialogDescription, DialogTitle } from '@headlessui/react
 import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/base/ui/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
 import Button from '../../base/button'
-import Toast from '../../base/toast'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
@@ -61,7 +61,7 @@ export default function AccessControl(props: AccessControlProps) {
       submitData.subjects = subjects
     }
     await updateAccessMode(submitData)
-    Toast.notify({ type: 'success', message: t('accessControlDialog.updateSuccess', { ns: 'app' }) })
+    toast.success(t('accessControlDialog.updateSuccess', { ns: 'app' }))
     onConfirm?.()
   }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu])
   return (

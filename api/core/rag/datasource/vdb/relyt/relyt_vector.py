@@ -7,7 +7,7 @@ from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -26,7 +26,7 @@ from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()  # type: Any
+Base: Any = declarative_base()
 
 
 class RelytConfig(BaseModel):
@@ -79,7 +79,7 @@ class RelytVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             index_name = f"{self._collection_name}_embedding_index"
-            with Session(self.client) as session:
+            with sessionmaker(bind=self.client).begin() as session:
                 drop_statement = sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}"; """)
                 session.execute(drop_statement)
                 create_statement = sql_text(f"""
@@ -104,7 +104,6 @@ class RelytVector(BaseVector):
                                 $$);
                     """)
                 session.execute(index_statement)
-                session.commit()
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -154,10 +153,8 @@ class RelytVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self.client) as session:
-            select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'{key}' = '{value}'; """
-            )
-            result = session.execute(select_statement).fetchall()
+            select_statement = sql_text(f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>:key = :value""")
+            result = session.execute(select_statement, {"key": key, "value": value}).fetchall()
         if result:
             return [item[0] for item in result]
         else:
@@ -201,26 +198,24 @@ class RelytVector(BaseVector):
 
     def delete_by_ids(self, ids: list[str]):
         with Session(self.client) as session:
-            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' in ({ids_str}); """
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = ANY(:doc_ids)"""
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"doc_ids": ids}).fetchall()
         if result:
             ids = [item[0] for item in result]
             self.delete_by_uuids(ids)
 
     def delete(self):
-        with Session(self.client) as session:
+        with sessionmaker(bind=self.client).begin() as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}";"""))
-            session.commit()
 
     def text_exists(self, id: str) -> bool:
         with Session(self.client) as session:
             select_statement = sql_text(
-                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = '{id}' limit 1; """
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = :doc_id limit 1"""
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {"doc_id": id}).fetchall()
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

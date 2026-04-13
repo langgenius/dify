@@ -4,15 +4,13 @@ import type { MouseEventHandler } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -22,6 +20,7 @@ import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
+import { useRouter } from '@/next/navigation'
 import {
   importDSL,
   importDSLConfirm,
@@ -48,7 +47,6 @@ export enum CreateFromDSLModalTab {
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
@@ -126,10 +124,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        notify({
+        toast(t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }), {
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
-          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
+          description: status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+            ? t('newApp.appCreateDSLWarning', { ns: 'app' })
+            : undefined,
         })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
@@ -147,12 +146,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
   }
@@ -185,22 +184,19 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        notify({
-          type: 'success',
-          message: t('newApp.appCreated', { ns: 'app' }),
-        })
+        toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
 
@@ -232,7 +228,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         isShow={show}
         onClose={noop}
       >
-        <div className="title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary">
+        <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary title-2xl-semi-bold">
           {t('importFromDSL', { ns: 'app' })}
           <div
             className="flex h-8 w-8 cursor-pointer items-center"
@@ -241,7 +237,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <RiCloseLine className="h-5 w-5 text-text-tertiary" />
           </div>
         </div>
-        <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
+        <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
           {
             tabs.map(tab => (
               <div
@@ -275,7 +271,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className="system-md-semibold mb-1 text-text-secondary">DSL URL</div>
+                <div className="mb-1 text-text-secondary system-md-semibold">DSL URL</div>
                 <Input
                   placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
@@ -309,8 +305,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
+          <div className="text-text-primary title-2xl-semi-bold">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+          <div className="flex grow flex-col text-text-secondary system-md-regular">
             <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
             <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />

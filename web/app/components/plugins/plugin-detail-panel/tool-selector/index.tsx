@@ -7,7 +7,6 @@ import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,6 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { CollectionType } from '@/app/components/tools/types'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import {
   ToolAuthorizationSection,
@@ -188,7 +188,7 @@ const ToolSelector: FC<Props> = ({
         <div className={cn(
           'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
           'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
-          'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-sm',
+          'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-xs',
         )}
         >
           {/* Header */}

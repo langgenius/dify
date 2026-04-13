@@ -1,11 +1,12 @@
 from collections.abc import Callable, Iterable
 from enum import StrEnum
-from typing import Any, NamedTuple, TypeVar
+from typing import Any, NamedTuple
 
 import pytest
 import sqlalchemy as sa
+from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import exc as sa_exc
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.sqltypes import VARCHAR
@@ -58,10 +59,14 @@ class _ColumnTest(_Base):
     long_value: Mapped[_EnumWithLongValue] = mapped_column(EnumText(enum_class=_EnumWithLongValue), nullable=False)
 
 
-_T = TypeVar("_T")
+class _LegacyModelTypeRecord(_Base):
+    __tablename__ = "enum_text_legacy_model_type_test"
+
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    model_type: Mapped[ModelType] = mapped_column(EnumText(enum_class=ModelType), nullable=False)
 
 
-def _first(it: Iterable[_T]) -> _T:
+def _first[T](it: Iterable[T]) -> T:
     ls = list(it)
     if not ls:
         raise ValueError("List is empty")
@@ -132,12 +137,12 @@ class TestEnumText:
             session.commit()
 
         with Session(engine_with_containers) as session:
-            user = session.query(_User).where(_User.id == admin_user_id).first()
+            user = session.scalar(select(_User).where(_User.id == admin_user_id).limit(1))
             assert user.user_type == _UserType.admin
             assert user.user_type_nullable is None
 
         with Session(engine_with_containers) as session:
-            user = session.query(_User).where(_User.id == normal_user_id).first()
+            user = session.scalar(select(_User).where(_User.id == normal_user_id).limit(1))
             assert user.user_type == _UserType.normal
             assert user.user_type_nullable == _UserType.normal
 
@@ -201,6 +206,26 @@ class TestEnumText:
 
         with pytest.raises(ValueError) as exc:
             with Session(engine_with_containers) as session:
-                _user = session.query(_User).where(_User.id == 1).first()
+                _user = session.scalar(select(_User).where(_User.id == 1).limit(1))
 
         assert str(exc.value) == "'invalid' is not a valid _UserType"
+
+    def test_select_legacy_model_type_values(self, engine_with_containers: Engine):
+        insertion_sql = """
+                        INSERT INTO enum_text_legacy_model_type_test (id, model_type) VALUES
+                            (1, 'text-generation'),
+                            (2, 'embeddings'),
+                            (3, 'reranking');
+                        """
+        with Session(engine_with_containers) as session:
+            session.execute(sa.text(insertion_sql))
+            session.commit()
+
+        with Session(engine_with_containers) as session:
+            records = session.scalars(select(_LegacyModelTypeRecord).order_by(_LegacyModelTypeRecord.id)).all()
+
+        assert [record.model_type for record in records] == [
+            ModelType.LLM,
+            ModelType.TEXT_EMBEDDING,
+            ModelType.RERANK,
+        ]

@@ -75,6 +75,7 @@ function InSiteMessageNotification() {
   const fallbackActions: InSiteMessageActionItem[] = [
     {
       type: 'default',
+      action_name: 'dismiss',
       text: t('operation.close', { ns: 'common' }),
       action: 'close',
     },
@@ -96,6 +97,7 @@ function InSiteMessageNotification() {
   return (
     <InSiteMessage
       key={notification.notification_id}
+      notificationId={notification.notification_id}
       title={notification.title}
       subtitle={notification.subtitle}
       headerBgUrl={notification.title_pic_url}

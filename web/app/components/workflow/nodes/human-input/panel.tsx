@@ -16,8 +16,8 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -96,7 +96,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         readonly={readOnly}
       />
       <div className="px-4 py-2">
-        <Divider className="!my-0 !h-px !bg-divider-subtle" />
+        <Divider className="my-0! h-px! bg-divider-subtle!" />
       </div>
       {/* form content */}
       <div
@@ -132,7 +132,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                   className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
                   onClick={() => {
                     copy(inputs.form_content)
-                    Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
                   <RiClipboardLine className="h-4 w-4 text-text-secondary" />
@@ -179,7 +179,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           )}
         </div>
         {!inputs.user_actions.length && (
-          <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
+          <div className="system-xs-regular flex items-center justify-center radius-lg bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">
@@ -196,7 +196,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         )}
       </div>
       <div className="px-4 py-2">
-        <Divider className="!my-0 !h-px !bg-divider-subtle" />
+        <Divider className="my-0! h-px! bg-divider-subtle!" />
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">

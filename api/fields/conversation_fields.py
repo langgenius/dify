@@ -1,23 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, TypeAlias
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from graphon.file import File
+from pydantic import Field, field_validator, model_validator
 
-from dify_graph.file import File
+from fields.base import ResponseModel
 
-JSONValue: TypeAlias = Any
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+type JSONValue = Any
 
 
 class MessageFile(ResponseModel):
@@ -89,7 +80,7 @@ class Feedback(ResponseModel):
     from_account: SimpleAccount | None = None
 
 
-class Annotation(ResponseModel):
+class ConversationAnnotation(ResponseModel):
     id: str
     question: str | None = None
     content: str
@@ -104,7 +95,7 @@ class Annotation(ResponseModel):
         return value
 
 
-class AnnotationHitHistory(ResponseModel):
+class ConversationAnnotationHitHistory(ResponseModel):
     annotation_id: str
     annotation_create_account: SimpleAccount | None = None
     created_at: int | None = None
@@ -160,8 +151,8 @@ class MessageDetail(ResponseModel):
     from_account_id: str | None = None
     feedbacks: list[Feedback]
     workflow_run_id: str | None = None
-    annotation: Annotation | None = None
-    annotation_hit_history: AnnotationHitHistory | None = None
+    annotation: ConversationAnnotation | None = None
+    annotation_hit_history: ConversationAnnotationHitHistory | None = None
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
@@ -232,7 +223,7 @@ class Conversation(ResponseModel):
     read_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
-    annotation: Annotation | None = None
+    annotation: ConversationAnnotation | None = None
     model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
@@ -311,7 +302,9 @@ def to_timestamp(value: datetime | None) -> int | None:
 
 def format_files_contained(value: JSONValue) -> JSONValue:
     if isinstance(value, File):
-        return value.model_dump()
+        # Response payloads must preserve legacy file keys like `related_id`/`url`
+        # while still exposing the new graph-layer `reference` field.
+        return value.to_dict()
     if isinstance(value, dict):
         return {k: format_files_contained(v) for k, v in value.items()}
     if isinstance(value, list):

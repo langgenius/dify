@@ -1,147 +1,158 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
-import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useProviderContext } from '@/context/provider-context'
-import { updateCurrentWorkspace } from '@/service/common'
+import useWebAppBrand from '../hooks/use-web-app-brand'
 import CustomWebAppBrand from '../index'
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: vi.fn(),
-}))
-vi.mock('@/service/common', () => ({
-  updateCurrentWorkspace: vi.fn(),
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
-vi.mock('@/app/components/base/image-uploader/utils', () => ({
-  imageUpload: vi.fn(),
-  getImageUploadErrorMessage: vi.fn(),
+vi.mock('../hooks/use-web-app-brand', () => ({
+  default: vi.fn(),
 }))
 
-const mockNotify = vi.fn()
-const mockUseToastContext = vi.mocked(useToastContext)
-const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
-const mockUseAppContext = vi.mocked(useAppContext)
-const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
-const mockImageUpload = vi.mocked(imageUpload)
-const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
+const mockUseWebAppBrand = vi.mocked(useWebAppBrand)
 
-const defaultPlanUsage = {
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
+const createHookState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> = {}): ReturnType<typeof useWebAppBrand> => ({
+  fileId: '',
+  imgKey: 100,
+  uploadProgress: 0,
+  uploading: false,
+  webappLogo: 'https://example.com/replace.png',
+  webappBrandRemoved: false,
+  uploadDisabled: false,
+  workspaceLogo: 'https://example.com/workspace-logo.png',
+  isSandbox: false,
+  isCurrentWorkspaceManager: true,
+  handleApply: vi.fn(),
+  handleCancel: vi.fn(),
+  handleChange: vi.fn(),
+  handleRestore: vi.fn(),
+  handleSwitch: vi.fn(),
+  ...overrides,
+})
+
+const renderComponent = (overrides: Partial<ReturnType<typeof useWebAppBrand>> = {}) => {
+  const hookState = createHookState(overrides)
+  mockUseWebAppBrand.mockReturnValue(hookState)
+  return {
+    hookState,
+    ...render(<CustomWebAppBrand />),
+  }
 }
-
-const renderComponent = () => render(<CustomWebAppBrand />)
 
 describe('CustomWebAppBrand', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseToastContext.mockReturnValue({ notify: mockNotify } as unknown as ReturnType<typeof useToastContext>)
-    mockUpdateCurrentWorkspace.mockResolvedValue({} as unknown as Awaited<ReturnType<typeof updateCurrentWorkspace>>)
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        custom_config: {
-          replace_webapp_logo: 'https://example.com/replace.png',
-          remove_webapp_brand: false,
-        },
-      },
-      mutateCurrentWorkspace: vi.fn(),
-      isCurrentWorkspaceManager: true,
-    } as unknown as ReturnType<typeof useAppContext>)
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: Plan.professional,
-        usage: defaultPlanUsage,
-        total: defaultPlanUsage,
-        reset: {},
-      },
-      enableBilling: false,
-    } as unknown as ReturnType<typeof useProviderContext>)
-    const systemFeaturesState = {
-      branding: {
-        enabled: true,
-        workspace_logo: 'https://example.com/workspace-logo.png',
-      },
-    }
-    mockUseGlobalPublicStore.mockImplementation(selector => selector ? selector({ systemFeatures: systemFeaturesState, setSystemFeatures: vi.fn() } as unknown as ReturnType<typeof useGlobalPublicStore.getState>) : { systemFeatures: systemFeaturesState })
-    mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
 
-  it('disables upload controls when the user cannot manage the workspace', () => {
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        custom_config: {
-          replace_webapp_logo: '',
-          remove_webapp_brand: false,
-        },
-      },
-      mutateCurrentWorkspace: vi.fn(),
-      isCurrentWorkspaceManager: false,
-    } as unknown as ReturnType<typeof useAppContext>)
+  // Integration coverage for the root component with the hook mocked at the boundary.
+  describe('Rendering', () => {
+    it('should render the upload controls and preview cards with restore action', () => {
+      renderComponent()
 
-    const { container } = renderComponent()
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-    expect(fileInput).toBeDisabled()
-  })
-
-  it('toggles remove brand switch and calls the backend + mutate', async () => {
-    const mutateMock = vi.fn()
-    mockUseAppContext.mockReturnValue({
-      currentWorkspace: {
-        custom_config: {
-          replace_webapp_logo: '',
-          remove_webapp_brand: false,
-        },
-      },
-      mutateCurrentWorkspace: mutateMock,
-      isCurrentWorkspaceManager: true,
-    } as unknown as ReturnType<typeof useAppContext>)
-
-    renderComponent()
-    const switchInput = screen.getByRole('switch')
-    fireEvent.click(switchInput)
-
-    await waitFor(() => expect(mockUpdateCurrentWorkspace).toHaveBeenCalledWith({
-      url: '/workspaces/custom-config',
-      body: { remove_webapp_brand: true },
-    }))
-    await waitFor(() => expect(mutateMock).toHaveBeenCalled())
-  })
-
-  it('shows cancel/apply buttons after successful upload and cancels properly', async () => {
-    mockImageUpload.mockImplementation(({ onProgressCallback, onSuccessCallback }) => {
-      onProgressCallback(50)
-      onSuccessCallback({ id: 'new-logo' })
+      expect(screen.getByText('custom.webapp.removeBrand')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'custom.restore' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'custom.change' })).toBeInTheDocument()
+      expect(screen.getByText('Chatflow App')).toBeInTheDocument()
+      expect(screen.getByText('Workflow App')).toBeInTheDocument()
     })
 
-    const { container } = renderComponent()
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-    const testFile = new File(['content'], 'logo.png', { type: 'image/png' })
-    fireEvent.change(fileInput, { target: { files: [testFile] } })
+    it('should hide the restore action when uploads are disabled or no logo is configured', () => {
+      renderComponent({
+        uploadDisabled: true,
+        webappLogo: '',
+      })
 
-    await waitFor(() => expect(mockImageUpload).toHaveBeenCalled())
-    await waitFor(() => screen.getByRole('button', { name: 'custom.apply' }))
+      expect(screen.queryByRole('button', { name: 'custom.restore' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'custom.upload' })).toBeDisabled()
+    })
 
-    const cancelButton = screen.getByRole('button', { name: 'common.operation.cancel' })
-    fireEvent.click(cancelButton)
+    it('should show the uploading button and failure message when upload state requires it', () => {
+      renderComponent({
+        uploading: true,
+        uploadProgress: -1,
+      })
 
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'custom.apply' })).toBeNull())
+      expect(screen.getByRole('button', { name: 'custom.uploading' })).toBeDisabled()
+      expect(screen.getByText('custom.uploadedFail')).toBeInTheDocument()
+    })
+
+    it('should show apply and cancel actions when a new file is ready', () => {
+      renderComponent({
+        fileId: 'new-logo',
+      })
+
+      expect(screen.getByRole('button', { name: 'custom.apply' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
+    })
+
+    it('should disable the switch when sandbox restrictions are active', () => {
+      renderComponent({
+        isSandbox: true,
+      })
+
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('should default the switch to unchecked when brand removal state is missing', () => {
+      const { container } = renderComponent({
+        webappBrandRemoved: undefined,
+      })
+
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+      expect(container.querySelector('.opacity-30')).not.toBeInTheDocument()
+    })
+
+    it('should dim the upload row when brand removal is enabled', () => {
+      const { container } = renderComponent({
+        webappBrandRemoved: true,
+        uploadDisabled: true,
+      })
+
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+      expect(container.querySelector('.opacity-30')).toBeInTheDocument()
+    })
+  })
+
+  // User interactions delegated to the hook callbacks.
+  describe('Interactions', () => {
+    it('should delegate switch changes to the hook handler', () => {
+      const { hookState } = renderComponent()
+
+      fireEvent.click(screen.getByRole('switch'))
+
+      expect(hookState.handleSwitch).toHaveBeenCalledWith(true)
+    })
+
+    it('should delegate file input changes and reset the native input value on click', () => {
+      const { container, hookState } = renderComponent()
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+      const file = new File(['logo'], 'logo.png', { type: 'image/png' })
+
+      Object.defineProperty(fileInput, 'value', {
+        configurable: true,
+        value: 'stale-selection',
+        writable: true,
+      })
+
+      fireEvent.click(fileInput)
+      fireEvent.change(fileInput, {
+        target: { files: [file] },
+      })
+
+      expect(fileInput.value).toBe('')
+      expect(hookState.handleChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('should delegate restore, cancel, and apply actions to the hook handlers', () => {
+      const { hookState } = renderComponent({
+        fileId: 'new-logo',
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'custom.restore' }))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      fireEvent.click(screen.getByRole('button', { name: 'custom.apply' }))
+
+      expect(hookState.handleRestore).toHaveBeenCalledTimes(1)
+      expect(hookState.handleCancel).toHaveBeenCalledTimes(1)
+      expect(hookState.handleApply).toHaveBeenCalledTimes(1)
+    })
   })
 })

@@ -35,6 +35,7 @@
   "details.structureTooltip": "La struttura a blocchi determina il modo in cui i documenti vengono suddivisi e indicizzati, offrendo le modalità Generale, Padre-Figlio e Domande e risposte, ed è univoca per ogni knowledge base.",
   "documentSettings.title": "Impostazioni documento",
   "editPipelineInfo": "Modificare le informazioni sulla pipeline",
+  "editPipelineInfoNameRequired": "Inserisci un nome per la Knowledge Base.",
   "exportDSL.errorTip": "Impossibile esportare il DSL della pipeline",
   "exportDSL.successTip": "Esporta DSL pipeline con successo",
   "inputField": "Campo di input",

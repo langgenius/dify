@@ -1,3 +1,4 @@
+import type { UpdateWorkflowNodesMapPayload } from '../workflow-variable-block'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -98,9 +99,8 @@ const HITLInputVariableBlockComponent = ({
     return mergeRegister(
       editor.registerCommand(
         UPDATE_WORKFLOW_NODES_MAP,
-        (workflowNodesMap: WorkflowNodesMap) => {
-          setLocalWorkflowNodesMap(workflowNodesMap)
-
+        (payload: UpdateWorkflowNodesMapPayload) => {
+          setLocalWorkflowNodesMap(payload.workflowNodesMap)
           return true
         },
         COMMAND_PRIORITY_EDITOR,

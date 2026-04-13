@@ -58,7 +58,7 @@ class TestApiKeyAuthFactory:
         mock_get_factory.return_value = mock_auth_class
 
         # Act
-        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, {"api_key": "test_key"})
+        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, {"auth_type": "bearer", "config": {"api_key": "test_key"}})
         result = factory.validate_credentials()
 
         # Assert
@@ -75,7 +75,7 @@ class TestApiKeyAuthFactory:
         mock_get_factory.return_value = mock_auth_class
 
         # Act & Assert
-        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, {"api_key": "test_key"})
+        factory = ApiKeyAuthFactory(AuthType.FIRECRAWL, {"auth_type": "bearer", "config": {"api_key": "test_key"}})
         with pytest.raises(Exception) as exc_info:
             factory.validate_credentials()
         assert str(exc_info.value) == "Authentication error"

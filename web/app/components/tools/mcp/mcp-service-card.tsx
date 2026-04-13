@@ -67,8 +67,8 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
         </div>
         {serverPublished && (
           <>
-            <CopyFeedback content={serverURL} className="!size-6" />
-            <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
+            <CopyFeedback content={serverURL} className="size-6!" />
+            <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />
             {isCurrentWorkspaceManager && (
               <Tooltip popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
                 <div
@@ -149,7 +149,7 @@ function getTooltipContent({
 }
 
 // Main component
-export type IAppCardProps = {
+type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   triggerModeDisabled?: boolean
   triggerModeMessage?: ReactNode
@@ -272,7 +272,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 variant="ghost"
                 onClick={openServerModal}
               >
-                <div className="flex items-center justify-center gap-[1px]">
+                <div className="flex items-center justify-center gap-px">
                   <RiEditLine className="h-3.5 w-3.5" />
                   <div className="system-xs-medium px-[3px] text-text-tertiary">
                     {serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
@@ -132,13 +132,9 @@ export const ProviderContextProvider = ({
       if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
         const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
-          Toast.notify({
-            type: 'info',
-            message: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
-            duration: 60000,
-            onClose: () => {
-              localStorage.setItem('anthropic_quota_notice', 'true')
-            },
+          localStorage.setItem('anthropic_quota_notice', 'true')
+          toast.info(t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }), {
+            timeout: 60000,
           })
         }
       }

@@ -1,5 +1,6 @@
 import type { ChangeEvent, FC, FormEvent } from 'react'
 import type { InputValueTypes } from '../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -23,7 +24,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { cn } from '@/utils/classnames'
 
-export type IRunOnceProps = {
+type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, InputValueTypes>
@@ -169,7 +170,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file' && (
                       <FileUploaderInAttachmentWrapper
-                        value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                        value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
+                          ? [inputs[item.key] as FileEntity]
+                          : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                         fileConfig={{
                           ...item.config,
@@ -179,7 +182,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'file-list' && (
                       <FileUploaderInAttachmentWrapper
-                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
                         onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                         fileConfig={{
                           ...item.config,
@@ -194,7 +197,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         value={inputs[item.key] as string}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                         noWrapper
-                        className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+                        className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
                         placeholder={
                           <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }

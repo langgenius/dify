@@ -3,9 +3,10 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
-import dynamic from 'next/dynamic'
 import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), { ssr: false })
@@ -42,6 +43,7 @@ const AppInfoModals = ({
   onConfirmDelete,
 }: AppInfoModalsProps) => {
   const { t } = useTranslation()
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
 
   return (
     <>
@@ -88,8 +90,16 @@ const AppInfoModals = ({
           title={t('deleteAppConfirmTitle', { ns: 'app' })}
           content={t('deleteAppConfirmContent', { ns: 'app' })}
           isShow
+          confirmInputLabel={t('deleteAppConfirmInputLabel', { ns: 'app', appName: appDetail.name })}
+          confirmInputPlaceholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
+          confirmInputValue={confirmDeleteInput}
+          onConfirmInputChange={setConfirmDeleteInput}
+          confirmInputMatchValue={appDetail.name}
           onConfirm={onConfirmDelete}
-          onCancel={closeModal}
+          onCancel={() => {
+            setConfirmDeleteInput('')
+            closeModal()
+          }}
         />
       )}
       {activeModal === 'importDSL' && (

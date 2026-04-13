@@ -113,7 +113,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       isShow
       closable={false}
       wrapperClassName={className}
-      className={cn(s.container, '!h-[462px] !w-[362px] !p-0')}
+      className={cn(s.container, 'h-[462px]! w-[362px]! p-0!')}
     >
       {!DISABLE_UPLOAD_IMAGE_AS_ICON && (
         <div className="w-full p-2 pb-0">

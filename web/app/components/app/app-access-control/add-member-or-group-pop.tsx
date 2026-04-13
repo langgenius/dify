@@ -5,12 +5,12 @@ import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixi
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useSelector } from '@/context/app-context'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { cn } from '@/utils/classnames'
 import useAccessControlStore from '../../../../context/access-control-store'
-import { Avatar } from '../../base/avatar'
 import Button from '../../base/button'
 import Checkbox from '../../base/checkbox'
 import Input from '../../base/input'
@@ -53,7 +53,7 @@ export default function AddMemberOrGroupDialog() {
         </Button>
       </PortalToFollowElemTrigger>
       {open && <FloatingOverlay />}
-      <PortalToFollowElemContent className="z-[100]">
+      <PortalToFollowElemContent className="z-100">
         <div className="relative flex max-h-[400px] w-[400px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
           <div className="sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]">
             <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' }) as string} />

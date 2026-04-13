@@ -6,7 +6,7 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import { RETRIEVE_METHOD } from '@/types/app'
 import Datasets from '../datasets'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 

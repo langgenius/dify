@@ -37,11 +37,12 @@ class AnalyticdbVector(BaseVector):
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
-        self.analyticdb_vector._create_collection_if_not_exists(dimension)
+        self.analyticdb_vector.create_collection_if_not_exists(dimension)
         self.analyticdb_vector.add_texts(texts, embeddings)
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         self.analyticdb_vector.add_texts(documents, embeddings)
+        return []
 
     def text_exists(self, id: str) -> bool:
         return self.analyticdb_vector.text_exists(id)
