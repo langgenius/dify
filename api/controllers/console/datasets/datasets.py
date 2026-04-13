@@ -9,7 +9,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from libs.url_utils import normalize_api_base_url
 from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
@@ -51,6 +50,7 @@ from fields.dataset_fields import (
 )
 from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
+from libs.url_utils import normalize_api_base_url
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.enums import ApiTokenType, SegmentStatus
