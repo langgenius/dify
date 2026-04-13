@@ -26,6 +26,7 @@ from controllers.console.error import (
     AccountInFreezeError,
     WorkspacesLimitExceeded,
 )
+from services.entities.auth_entities import LoginFailureReason
 from services.errors.account import AccountLoginError, AccountPasswordError
 
 
@@ -197,12 +198,17 @@ class TestLoginApi:
         mock_get_invitation.return_value = None
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(EmailPasswordLoginLimitError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
+            ):
+                login_api = LoginApi()
+                with pytest.raises(EmailPasswordLoginLimitError):
+                    login_api.post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "test@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.LOGIN_RATE_LIMITED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
@@ -220,12 +226,17 @@ class TestLoginApi:
         mock_is_frozen.return_value = True
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AccountInFreezeError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
+            ):
+                login_api = LoginApi()
+                with pytest.raises(AccountInFreezeError):
+                    login_api.post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "frozen@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_IN_FREEZE
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -257,14 +268,20 @@ class TestLoginApi:
         mock_authenticate.side_effect = AccountPasswordError("Invalid password")
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("WrongPass123!")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AuthenticationFailedError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "test@example.com", "password": encode_password("WrongPass123!")},
+            ):
+                login_api = LoginApi()
+                with pytest.raises(AuthenticationFailedError):
+                    login_api.post()
 
         mock_add_rate_limit.assert_called_once_with("test@example.com")
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "test@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -288,12 +305,19 @@ class TestLoginApi:
         mock_authenticate.side_effect = AccountLoginError("Account is banned")
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "banned@example.com", "password": encode_password("ValidPass123!")}
-        ):
-            login_api = LoginApi()
-            with pytest.raises(AccountBannedError):
-                login_api.post()
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "banned@example.com", "password": encode_password("ValidPass123!")},
+            ):
+                login_api = LoginApi()
+                with pytest.raises(AccountBannedError):
+                    login_api.post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "banned@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)

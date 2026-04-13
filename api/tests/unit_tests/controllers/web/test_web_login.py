@@ -4,9 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from jwt import InvalidTokenError
 
 import services.errors.account
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
+from services.entities.auth_entities import LoginFailureReason
 
 
 def encode_code(code: str) -> str:
@@ -115,13 +117,18 @@ class TestLoginApi:
     def test_login_banned_account(self, mock_auth: MagicMock, app: Flask) -> None:
         from controllers.console.error import AccountBannedError
 
-        with app.test_request_context(
-            "/web/login",
-            method="POST",
-            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-        ):
-            with pytest.raises(AccountBannedError):
-                LoginApi().post()
+        with patch("controllers.web.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/web/login",
+                method="POST",
+                json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+            ):
+                with pytest.raises(AccountBannedError):
+                    LoginApi().post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "user@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch(
         "controllers.web.login.WebAppAuthService.authenticate",
@@ -130,13 +137,54 @@ class TestLoginApi:
     def test_login_wrong_password(self, mock_auth: MagicMock, app: Flask) -> None:
         from controllers.console.auth.error import AuthenticationFailedError
 
-        with app.test_request_context(
-            "/web/login",
-            method="POST",
-            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-        ):
-            with pytest.raises(AuthenticationFailedError):
-                LoginApi().post()
+        with patch("controllers.web.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/web/login",
+                method="POST",
+                json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+            ):
+                with pytest.raises(AuthenticationFailedError):
+                    LoginApi().post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "user@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.INVALID_CREDENTIALS
+
+    @patch(
+        "controllers.web.login.WebAppAuthService.authenticate",
+        side_effect=services.errors.account.AccountNotFoundError(),
+    )
+    def test_login_account_not_found(self, mock_auth: MagicMock, app: Flask) -> None:
+        from controllers.console.auth.error import AuthenticationFailedError
+
+        with patch("controllers.web.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/web/login",
+                method="POST",
+                json={"email": "missing@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+            ):
+                with pytest.raises(AuthenticationFailedError):
+                    LoginApi().post()
+
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "missing@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_NOT_FOUND
+
+    @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data", return_value=None)
+    def test_email_code_login_logs_invalid_token(self, mock_get_token_data: MagicMock, app: Flask) -> None:
+        with patch("controllers.web.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/web/email-code-login/validity",
+                method="POST",
+                json={"email": "user@example.com", "code": encode_code("123456"), "token": "token-123"},
+            ):
+                with pytest.raises(InvalidTokenError):
+                    EmailCodeLoginApi().post()
+
+        mock_get_token_data.assert_called_once_with("token-123")
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "user@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.INVALID_EMAIL_CODE_TOKEN
 
 
 class TestLoginStatusApi:
