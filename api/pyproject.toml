@@ -109,7 +109,7 @@ package = false
 # Required for development and running tests
 ############################################################
 dev = [
-    "coverage~=7.13.4",
+    "coverage~=7.13.5",
     "dotenv-linter~=0.7.0",
     "faker~=40.13.0",
     "lxml-stubs~=0.5.1",
@@ -153,25 +153,25 @@ dev = [
     "types-six>=1.17.0.20260408",
     "types-tensorflow>=2.18.0.20260408",
     "types-tqdm>=4.67.3.20260408",
-    "types-ujson>=5.10.0",
+    "types-ujson>=5.10.0.20250822",
     "boto3-stubs>=1.42.88",
     "types-jmespath>=1.1.0.20260408",
     "hypothesis>=6.151.12",
-    "types_pyOpenSSL>=24.1.0",
+    "types_pyOpenSSL>=24.1.0.20240722",
     "types_cffi>=2.0.0.20260408",
     "types_setuptools>=82.0.0.20260408",
     "pandas-stubs~=3.0.0",
-    "scipy-stubs>=1.15.3.0",
+    "scipy-stubs>=1.17.1.3",
     "types-python-http-client>=3.3.7.20260408",
-    "import-linter>=2.3",
+    "import-linter>=2.11",
     "types-redis>=4.6.0.20241004",
-    "celery-types>=0.23.0",
-    "mypy~=1.20.0",
+    "celery-types>=0.26.0",
+    "mypy~=1.20.1",
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.60.0",
+    "pyrefly>=0.60.2",
 ]
 
 ############################################################
