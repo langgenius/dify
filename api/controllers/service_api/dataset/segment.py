@@ -33,25 +33,25 @@ from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingS
 from services.summary_index_service import SummaryIndexService
 
 
-def _marshal_segment_with_summary(segment, dataset_id: str) -> dict:
+def _marshal_segment_with_summary(segment, dataset_id: str) -> dict[str, Any]:
     """Marshal a single segment and enrich it with summary content."""
-    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+    segment_dict: dict[str, Any] = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
     summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
     segment_dict["summary"] = summary.summary_content if summary else None
     return segment_dict
 
 
-def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict]:
+def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict[str, Any]]:
     """Marshal multiple segments and enrich them with summary content (batch query)."""
     segment_ids = [segment.id for segment in segments]
-    summaries: dict = {}
+    summaries: dict[str, str | None] = {}
     if segment_ids:
         summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
         summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
 
-    result = []
+    result: list[dict[str, Any]] = []
     for segment in segments:
-        segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+        segment_dict: dict[str, Any] = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
         segment_dict["summary"] = summaries.get(segment.id)
         result.append(segment_dict)
     return result
