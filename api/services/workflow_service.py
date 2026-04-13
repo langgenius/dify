@@ -1512,14 +1512,12 @@ class WorkflowService:
 
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version
-        tool_provider = (
-            session.query(WorkflowToolProvider)
-            .where(
+        tool_provider = session.scalar(
+            select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == workflow.tenant_id,
                 WorkflowToolProvider.app_id == workflow.app_id,
                 WorkflowToolProvider.version == workflow.version,
             )
-            .first()
         )
 
         if tool_provider:

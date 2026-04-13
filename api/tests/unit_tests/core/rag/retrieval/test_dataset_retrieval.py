@@ -8,7 +8,6 @@ import pytest
 from flask import Flask, current_app
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from sqlalchemy import column
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -4039,21 +4038,9 @@ class TestDatasetRetrievalAdditionalHelpers:
 
     def test_get_available_datasets(self, retrieval: DatasetRetrieval) -> None:
         session = Mock()
-        subquery_query = Mock()
-        subquery_query.where.return_value = subquery_query
-        subquery_query.group_by.return_value = subquery_query
-        subquery_query.having.return_value = subquery_query
-        subquery_query.subquery.return_value = SimpleNamespace(
-            c=SimpleNamespace(
-                dataset_id=column("dataset_id"), available_document_count=column("available_document_count")
-            )
-        )
-
-        dataset_query = Mock()
-        dataset_query.outerjoin.return_value = dataset_query
-        dataset_query.where.return_value = dataset_query
-        dataset_query.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
-        session.query.side_effect = [subquery_query, dataset_query]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
+        session.scalars.return_value = scalars_result
 
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
@@ -4902,9 +4889,6 @@ class TestInternalHooksCoverage:
             _scalars(segments),
             _scalars(bindings),
         ]
-        query = Mock()
-        query.where.return_value = query
-        session.query.return_value = query
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False
@@ -4919,7 +4903,7 @@ class TestInternalHooksCoverage:
         ):
             retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
 
-        query.update.assert_called_once()
+        session.execute.assert_called_once()
         mock_trace.assert_called_once()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
