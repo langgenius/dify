@@ -447,6 +447,7 @@ class TestLoginApi:
         mock_add_rate_limit.assert_not_called()
         mock_reset_rate_limit.assert_called_once_with("upper@example.com")
 
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
     @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
     @patch("controllers.console.auth.login._get_account_with_case_fallback")
@@ -455,8 +456,10 @@ class TestLoginApi:
         mock_get_account,
         mock_revoke_token,
         mock_get_token_data,
+        mock_db,
         app,
     ):
+        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
