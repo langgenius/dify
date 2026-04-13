@@ -26,10 +26,11 @@ type Props = {
   onRemove: () => void
 }
 
-enum TabType {
-  annotation = 'annotation',
-  hitHistory = 'hitHistory',
-}
+const TabType = {
+  annotation: 'annotation',
+  hitHistory: 'hitHistory',
+} as const
+type TabType = typeof TabType[keyof typeof TabType]
 
 const ViewAnnotationModal: FC<Props> = ({
   appId,

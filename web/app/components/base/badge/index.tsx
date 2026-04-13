@@ -4,11 +4,12 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
-enum BadgeState {
-  Warning = 'warning',
-  Accent = 'accent',
-  Default = '',
-}
+const BadgeState = {
+  Warning: 'warning',
+  Accent: 'accent',
+  Default: '',
+} as const
+type BadgeState = typeof BadgeState[keyof typeof BadgeState]
 
 const BadgeVariants = cva(
   'badge',

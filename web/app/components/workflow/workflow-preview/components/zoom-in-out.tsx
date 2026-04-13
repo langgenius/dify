@@ -24,16 +24,17 @@ import TipPopup from '@/app/components/workflow/operator/tip-popup'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { cn } from '@/utils/classnames'
 
-enum ZoomType {
-  zoomIn = 'zoomIn',
-  zoomOut = 'zoomOut',
-  zoomToFit = 'zoomToFit',
-  zoomTo25 = 'zoomTo25',
-  zoomTo50 = 'zoomTo50',
-  zoomTo75 = 'zoomTo75',
-  zoomTo100 = 'zoomTo100',
-  zoomTo200 = 'zoomTo200',
-}
+const ZoomType = {
+  zoomIn: 'zoomIn',
+  zoomOut: 'zoomOut',
+  zoomToFit: 'zoomToFit',
+  zoomTo25: 'zoomTo25',
+  zoomTo50: 'zoomTo50',
+  zoomTo75: 'zoomTo75',
+  zoomTo100: 'zoomTo100',
+  zoomTo200: 'zoomTo200',
+} as const
+type ZoomType = typeof ZoomType[keyof typeof ZoomType]
 
 const ZoomInOut: FC = () => {
   const { t } = useTranslation()

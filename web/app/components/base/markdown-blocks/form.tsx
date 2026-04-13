@@ -12,28 +12,33 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
-enum DATA_FORMAT {
-  TEXT = 'text',
-  JSON = 'json',
-}
-enum SUPPORTED_TAGS {
-  LABEL = 'label',
-  INPUT = 'input',
-  TEXTAREA = 'textarea',
-  BUTTON = 'button',
-}
-enum SUPPORTED_TYPES {
-  TEXT = 'text',
-  PASSWORD = 'password',
-  EMAIL = 'email',
-  NUMBER = 'number',
-  DATE = 'date',
-  TIME = 'time',
-  DATETIME = 'datetime',
-  CHECKBOX = 'checkbox',
-  SELECT = 'select',
-  HIDDEN = 'hidden',
-}
+const DATA_FORMAT = {
+  TEXT: 'text',
+  JSON: 'json',
+} as const
+type DATA_FORMAT = typeof DATA_FORMAT[keyof typeof DATA_FORMAT]
+
+const SUPPORTED_TAGS = {
+  LABEL: 'label',
+  INPUT: 'input',
+  TEXTAREA: 'textarea',
+  BUTTON: 'button',
+} as const
+type SUPPORTED_TAGS = typeof SUPPORTED_TAGS[keyof typeof SUPPORTED_TAGS]
+
+const SUPPORTED_TYPES = {
+  TEXT: 'text',
+  PASSWORD: 'password',
+  EMAIL: 'email',
+  NUMBER: 'number',
+  DATE: 'date',
+  TIME: 'time',
+  DATETIME: 'datetime',
+  CHECKBOX: 'checkbox',
+  SELECT: 'select',
+  HIDDEN: 'hidden',
+} as const
+type SUPPORTED_TYPES = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 

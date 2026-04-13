@@ -29,16 +29,17 @@ import {
 import ShortcutsName from '../shortcuts-name'
 import TipPopup from './tip-popup'
 
-enum ZoomType {
-  zoomIn = 'zoomIn',
-  zoomOut = 'zoomOut',
-  zoomToFit = 'zoomToFit',
-  zoomTo25 = 'zoomTo25',
-  zoomTo50 = 'zoomTo50',
-  zoomTo75 = 'zoomTo75',
-  zoomTo100 = 'zoomTo100',
-  zoomTo200 = 'zoomTo200',
-}
+const ZoomType = {
+  zoomIn: 'zoomIn',
+  zoomOut: 'zoomOut',
+  zoomToFit: 'zoomToFit',
+  zoomTo25: 'zoomTo25',
+  zoomTo50: 'zoomTo50',
+  zoomTo75: 'zoomTo75',
+  zoomTo100: 'zoomTo100',
+  zoomTo200: 'zoomTo200',
+} as const
+type ZoomType = typeof ZoomType[keyof typeof ZoomType]
 
 const ZoomInOut: FC = () => {
   const { t } = useTranslation()

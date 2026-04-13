@@ -4,13 +4,14 @@ import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
-enum ActionButtonState {
-  Destructive = 'destructive',
-  Active = 'active',
-  Disabled = 'disabled',
-  Default = '',
-  Hover = 'hover',
-}
+const ActionButtonState = {
+  Destructive: 'destructive',
+  Active: 'active',
+  Disabled: 'disabled',
+  Default: '',
+  Hover: 'hover',
+} as const
+type ActionButtonState = typeof ActionButtonState[keyof typeof ActionButtonState]
 
 const actionButtonVariants = cva(
   'action-btn',

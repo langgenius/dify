@@ -14,11 +14,12 @@ type Props = {
   show: boolean
   onClose: () => void
 }
-enum STEP {
-  start = 'start',
-  verify = 'verify',
-  transfer = 'transfer',
-}
+const STEP = {
+  start: 'start',
+  verify: 'verify',
+  transfer: 'transfer',
+} as const
+type STEP = typeof STEP[keyof typeof STEP]
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
   const { currentWorkspace, userProfile } = useAppContext()

@@ -20,10 +20,11 @@ type Props = {
   onManage: () => void
 } & CreateContentProps
 
-enum Step {
-  select = 'select',
-  create = 'create',
-}
+const Step = {
+  select: 'select',
+  create: 'create',
+} as const
+type Step = typeof Step[keyof typeof Step]
 
 const SelectMetadataModal: FC<Props> = ({
   datasetId,

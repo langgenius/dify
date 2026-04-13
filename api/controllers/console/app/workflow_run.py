@@ -36,7 +36,7 @@ from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowR
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
-from services.workflow_run_service import WorkflowRunListArgs, WorkflowRunService
+from services.workflow_run_service import WorkflowRunService
 
 
 def _build_backstage_input_url(form_token: str | None) -> str | None:
@@ -214,11 +214,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         Get advanced chat app workflow run list
         """
         args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args: WorkflowRunListArgs = {"limit": args_model.limit}
-        if args_model.last_id is not None:
-            args["last_id"] = args_model.last_id
-        if args_model.status is not None:
-            args["status"] = args_model.status
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
@@ -360,11 +356,7 @@ class WorkflowRunListApi(Resource):
         Get workflow run list
         """
         args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args: WorkflowRunListArgs = {"limit": args_model.limit}
-        if args_model.last_id is not None:
-            args["last_id"] = args_model.last_id
-        if args_model.status is not None:
-            args["status"] = args_model.status
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (

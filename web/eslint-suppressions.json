@@ -528,9 +528,6 @@
     }
   },
   "app/components/app/annotation/view-annotation-modal/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -1425,9 +1422,6 @@
     }
   },
   "app/components/base/action-button/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "react-refresh/only-export-components": {
       "count": 1
     }
@@ -1563,11 +1557,6 @@
   "app/components/base/badge.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/base/badge/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "app/components/base/block-input/index.stories.tsx": {
@@ -2986,9 +2975,6 @@
     }
   },
   "app/components/base/markdown-blocks/form.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 3
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -5359,9 +5345,6 @@
     }
   },
   "app/components/datasets/metadata/metadata-dataset/select-metadata-modal.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5773,9 +5756,6 @@
     }
   },
   "app/components/header/account-dropdown/compliance.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 4
     }
@@ -5964,9 +5944,6 @@
     }
   },
   "app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -10705,9 +10682,6 @@
     }
   },
   "app/components/workflow/operator/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
@@ -11420,9 +11394,6 @@
     }
   },
   "app/components/workflow/workflow-preview/components/zoom-in-out.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
