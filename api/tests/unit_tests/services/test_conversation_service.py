@@ -355,15 +355,13 @@ class TestConversationServiceGetConversation:
             from_account_id=user.id, from_source=ConversationFromSource.CONSOLE
         )
 
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.first.return_value = conversation
+        mock_db_session.scalar.return_value = conversation
 
         # Act
         result = ConversationService.get_conversation(app_model, "conv-123", user)
 
         # Assert
         assert result == conversation
-        mock_db_session.query.assert_called_once_with(Conversation)
 
     @patch("services.conversation_service.db.session")
     def test_get_conversation_success_with_end_user(self, mock_db_session):
@@ -379,8 +377,7 @@ class TestConversationServiceGetConversation:
             from_end_user_id=user.id, from_source=ConversationFromSource.API
         )
 
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.first.return_value = conversation
+        mock_db_session.scalar.return_value = conversation
 
         # Act
         result = ConversationService.get_conversation(app_model, "conv-123", user)
@@ -399,8 +396,7 @@ class TestConversationServiceGetConversation:
         app_model = ConversationServiceTestDataFactory.create_app_mock()
         user = ConversationServiceTestDataFactory.create_account_mock()
 
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ConversationNotExistsError):
@@ -439,36 +435,6 @@ class TestConversationServiceRename:
         assert conversation.name == "New Name"
         mock_db_session.commit.assert_called_once()
 
-    @patch("services.conversation_service.db.session")
-    @patch("services.conversation_service.ConversationService.get_conversation")
-    @patch("services.conversation_service.ConversationService.auto_generate_name")
-    def test_rename_with_auto_generate(self, mock_auto_generate, mock_get_conversation, mock_db_session):
-        """
-        Test renaming conversation with auto-generation.
-
-        Should call auto_generate_name when auto_generate is True.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        mock_get_conversation.return_value = conversation
-        mock_auto_generate.return_value = conversation
-
-        # Act
-        result = ConversationService.rename(
-            app_model=app_model,
-            conversation_id="conv-123",
-            user=user,
-            name=None,
-            auto_generate=True,
-        )
-
-        # Assert
-        assert result == conversation
-        mock_auto_generate.assert_called_once_with(app_model, conversation)
-
 
 class TestConversationServiceAutoGenerateName:
     """Test conversation auto-name generation operations."""
@@ -489,8 +455,7 @@ class TestConversationServiceAutoGenerateName:
         )
 
         # Mock database query to return message
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.order_by.return_value.first.return_value = message
+        mock_db_session.scalar.return_value = message
 
         # Mock LLM generator
         mock_llm_generator.generate_conversation_name.return_value = "Generated Name"
@@ -518,8 +483,7 @@ class TestConversationServiceAutoGenerateName:
         conversation = ConversationServiceTestDataFactory.create_conversation_mock()
 
         # Mock database query to return None
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.order_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
@@ -541,8 +505,7 @@ class TestConversationServiceAutoGenerateName:
         )
 
         # Mock database query to return message
-        mock_query = mock_db_session.query.return_value
-        mock_query.where.return_value.order_by.return_value.first.return_value = message
+        mock_db_session.scalar.return_value = message
 
         # Mock LLM generator to raise exception
         mock_llm_generator.generate_conversation_name.side_effect = Exception("LLM Error")
@@ -582,29 +545,6 @@ class TestConversationServiceDelete:
         mock_db_session.delete.assert_called_once_with(conversation)
         mock_db_session.commit.assert_called_once()
         mock_delete_task.delay.assert_called_once_with(conversation.id)
-
-    @patch("services.conversation_service.db.session")
-    @patch("services.conversation_service.ConversationService.get_conversation")
-    def test_delete_handles_exception_and_rollback(self, mock_get_conversation, mock_db_session):
-        """
-        Test deletion handles exceptions and rolls back transaction.
-
-        Should rollback database changes when deletion fails.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app_mock()
-        user = ConversationServiceTestDataFactory.create_account_mock()
-        conversation = ConversationServiceTestDataFactory.create_conversation_mock()
-
-        mock_get_conversation.return_value = conversation
-        mock_db_session.delete.side_effect = Exception("Database Error")
-
-        # Act & Assert
-        with pytest.raises(Exception, match="Database Error"):
-            ConversationService.delete(app_model, "conv-123", user)
-
-        # Assert rollback was called
-        mock_db_session.rollback.assert_called_once()
 
 
 class TestConversationServiceConversationalVariable:

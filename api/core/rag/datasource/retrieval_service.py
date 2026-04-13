@@ -1,13 +1,12 @@
 import concurrent.futures
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, NotRequired
+from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
 from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -16,7 +15,7 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor, 
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import AttachmentInfoDict, RetrievalChildChunk, RetrievalSegments
-from core.rag.entities.metadata_entities import MetadataCondition
+from core.rag.entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -183,7 +182,9 @@ class RetrievalService:
         if not dataset:
             return []
         metadata_condition = (
-            MetadataCondition.model_validate(metadata_filtering_conditions) if metadata_filtering_conditions else None
+            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            if metadata_filtering_conditions
+            else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
             dataset.tenant_id,
@@ -241,7 +242,7 @@ class RetrievalService:
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
-            return session.query(Dataset).where(Dataset.id == dataset_id).first()
+            return session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
 
     @classmethod
     def keyword_search(
@@ -432,10 +433,11 @@ class RetrievalService:
             # Batch query dataset documents
             dataset_documents = {
                 doc.id: doc
-                for doc in db.session.query(DatasetDocument)
-                .where(DatasetDocument.id.in_(document_ids))
-                .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
-                .all()
+                for doc in db.session.scalars(
+                    select(DatasetDocument)
+                    .where(DatasetDocument.id.in_(document_ids))
+                    .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
+                ).all()
             }
 
             valid_dataset_documents = {}
@@ -573,15 +575,13 @@ class RetrievalService:
 
                 # Batch query summaries for segments retrieved via summary (only enabled summaries)
                 if summary_segment_ids:
-                    summaries = (
-                        session.query(DocumentSegmentSummary)
-                        .filter(
+                    summaries = session.scalars(
+                        select(DocumentSegmentSummary).where(
                             DocumentSegmentSummary.chunk_id.in_(list(summary_segment_ids)),
                             DocumentSegmentSummary.status == "completed",
-                            DocumentSegmentSummary.enabled == True,  # Only retrieve enabled summaries
+                            DocumentSegmentSummary.enabled.is_(True),  # Only retrieve enabled summaries
                         )
-                        .all()
-                    )
+                    ).all()
                     for summary in summaries:
                         if summary.summary_content:
                             segment_summary_map[summary.chunk_id] = summary.summary_content
@@ -851,12 +851,12 @@ class RetrievalService:
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
     ) -> SegmentAttachmentResult | None:
-        upload_file = session.query(UploadFile).where(UploadFile.id == attachment_id).first()
+        upload_file = session.scalar(select(UploadFile).where(UploadFile.id == attachment_id).limit(1))
         if upload_file:
-            attachment_binding = (
-                session.query(SegmentAttachmentBinding)
+            attachment_binding = session.scalar(
+                select(SegmentAttachmentBinding)
                 .where(SegmentAttachmentBinding.attachment_id == upload_file.id)
-                .first()
+                .limit(1)
             )
             if attachment_binding:
                 attachment_info: AttachmentInfoDict = {
@@ -875,14 +875,12 @@ class RetrievalService:
         cls, attachment_ids: list[str], session: Session
     ) -> list[SegmentAttachmentInfoResult]:
         attachment_infos: list[SegmentAttachmentInfoResult] = []
-        upload_files = session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).all()
+        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
         if upload_files:
             upload_file_ids = [upload_file.id for upload_file in upload_files]
-            attachment_bindings = (
-                session.query(SegmentAttachmentBinding)
-                .where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
-                .all()
-            )
+            attachment_bindings = session.scalars(
+                select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id.in_(upload_file_ids))
+            ).all()
             attachment_binding_map = {binding.attachment_id: binding for binding in attachment_bindings}
 
             if attachment_bindings:

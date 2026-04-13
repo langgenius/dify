@@ -4,20 +4,20 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetPermission } from '@/models/datasets'
 import { cn } from '@/utils/classnames'
 import MemberItem from './member-item'
 import Item from './permission-item'
 
-export type RoleSelectorProps = {
+type RoleSelectorProps = {
   disabled?: boolean
   permission?: DatasetPermission
   value: string[]
@@ -101,7 +101,7 @@ const PermissionSelector = ({
           onClick={() => !disabled && setOpen(v => !v)}
           className="block"
         >
-          <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', disabled && '!cursor-not-allowed !bg-components-input-bg-disabled hover:!bg-components-input-bg-disabled')}>
+          <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', disabled && 'cursor-not-allowed! bg-components-input-bg-disabled! hover:bg-components-input-bg-disabled!')}>
             {
               isOnlyMe && (
                 <>
@@ -171,12 +171,12 @@ const PermissionSelector = ({
               className={cn(
                 'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
                 open && 'text-text-secondary',
-                disabled && '!text-components-input-text-placeholder',
+                disabled && 'text-components-input-text-placeholder!',
               )}
             />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
+        <PortalToFollowElemContent className="z-1002">
           <div className="relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
             <div className="p-1">
               {/* Only me */}
@@ -212,7 +212,7 @@ const PermissionSelector = ({
               />
             </div>
             {isPartialMembers && (
-              <div className="max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular pb-1 pl-1 pr-1">
+              <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pb-1 pl-1 pr-1">
                 <div className="sticky left-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                   <Input
                     showLeftIcon

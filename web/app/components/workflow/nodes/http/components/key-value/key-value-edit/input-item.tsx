@@ -72,7 +72,7 @@ const InputItem: FC<Props> = ({
               availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
               placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
-              placeholderClassName="!leading-[21px]"
+              placeholderClassName="leading-[21px]!"
               insertVarTipToLeft={insertVarTipToLeft}
             />
           )
@@ -92,7 +92,7 @@ const InputItem: FC<Props> = ({
                   availableNodes={availableNodesWithParent}
                   onFocusChange={setIsFocus}
                   placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
-                  placeholderClassName="!leading-[21px]"
+                  placeholderClassName="leading-[21px]!"
                   promptMinHeightClassName="h-full"
                   insertVarTipToLeft={insertVarTipToLeft}
                 />

@@ -17,7 +17,7 @@ import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
-export type IAppDetailNavProps = {
+type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   navigation: Array<{
     name: string
@@ -118,7 +118,7 @@ const AppDetailNav = ({
           className={cn(
             'my-0 h-px',
             expand
-              ? 'bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent'
+              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
               : 'bg-divider-subtle',
           )}
         />

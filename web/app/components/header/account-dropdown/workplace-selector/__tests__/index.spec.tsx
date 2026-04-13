@@ -1,11 +1,14 @@
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { switchWorkspace } from '@/service/common'
 import WorkplaceSelector from '../index'
+
+const toastMocks = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+}))
 
 vi.mock('@/context/workspace-context', () => ({
   useWorkspacesContext: vi.fn(),
@@ -22,6 +25,17 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
 vi.mock('@/service/common', () => ({
   switchWorkspace: vi.fn(),
 }))
+vi.mock('@/app/components/base/ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => toastMocks.mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => toastMocks.mockNotify({ type: 'success', message }),
+    error: (message: string) => toastMocks.mockNotify({ type: 'error', message }),
+    warning: (message: string) => toastMocks.mockNotify({ type: 'warning', message }),
+    info: (message: string) => toastMocks.mockNotify({ type: 'info', message }),
+  },
+}))
 
 describe('WorkplaceSelector', () => {
   const mockWorkspaces: IWorkspace[] = [
@@ -29,7 +43,7 @@ describe('WorkplaceSelector', () => {
     { id: '2', name: 'Workspace 2', current: false, plan: 'sandbox', status: 'normal', created_at: Date.now() },
   ]
 
-  const mockNotify = vi.fn()
+  const { mockNotify } = toastMocks
   const mockAssign = vi.fn()
 
   beforeEach(() => {
@@ -47,9 +61,9 @@ describe('WorkplaceSelector', () => {
 
   const renderComponent = () => {
     return render(
-      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+      <>
         <WorkplaceSelector />
-      </ToastContext.Provider>,
+      </>,
     )
   }
 

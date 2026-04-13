@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useMembers } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 
@@ -77,8 +77,8 @@ const MemberSelector: FC<Props> = ({
           <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1002]">
-        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+      <PortalToFollowElemContent className="z-1002">
+        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
               data-testid="member-selector-search"

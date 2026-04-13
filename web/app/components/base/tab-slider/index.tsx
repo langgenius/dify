@@ -48,11 +48,11 @@ const TabSlider: FC<TabSliderProps> = ({
   return (
     <div
       data-testid="tab-slider-container"
-      className={cn(className, 'relative inline-flex items-center justify-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5')}
+      className={cn(className, 'relative inline-flex items-center justify-center radius-lg bg-components-segmented-control-bg-normal p-0.5')}
     >
       <div
         data-testid="tab-slider-bg"
-        className="shadows-shadow-xs absolute bottom-0.5 left-0 right-0 top-0.5 rounded-[10px] bg-components-panel-bg transition-transform duration-300 ease-in-out"
+        className="shadows-shadow-xs absolute bottom-0.5 left-0 right-0 top-0.5 radius-lg bg-components-panel-bg transition-transform duration-300 ease-in-out"
         style={sliderStyle}
       />
       {options.map((option, index) => (
@@ -61,7 +61,7 @@ const TabSlider: FC<TabSliderProps> = ({
           key={option.value}
           data-testid={`tab-item-${option.value}`}
           className={cn(
-            'relative z-10 flex cursor-pointer items-center justify-center gap-1 rounded-[10px] px-2.5 py-1.5 transition-colors duration-300 ease-in-out',
+            'relative z-10 flex cursor-pointer items-center justify-center gap-1 radius-lg px-2.5 py-1.5 transition-colors duration-300 ease-in-out',
             'system-md-semibold',
             index === activeIndex
               ? 'text-text-primary'

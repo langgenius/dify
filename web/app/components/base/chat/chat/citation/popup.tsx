@@ -116,7 +116,7 @@ const Popup: FC<PopupProps> = ({
                             )
                           }
                         </div>
-                        <div data-testid="popup-source-content" className="break-words text-[13px] text-text-secondary">{source.content}</div>
+                        <div data-testid="popup-source-content" className="wrap-break-word text-[13px] text-text-secondary">{source.content}</div>
                         {
                           showHitInfo && (
                             <div data-testid="popup-hit-info" className="mt-2 flex flex-wrap items-center text-text-quaternary system-xs-medium">

@@ -1,5 +1,5 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CommonNodeType, Node, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { createLoopNode, createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -33,7 +33,7 @@ describe('var-reference-picker.helpers', () => {
   })
 
   it('should resolve output variable nodes for normal, system, iteration, and loop variables', () => {
-    const startNode = createStartNode({ id: 'start-1', data: { title: 'Start Node' } })
+    const startNode = createStartNode({ id: 'inset-s-1', data: { title: 'Start Node' } })
     const normalNode = createNode({ id: 'node-a', data: { type: BlockEnum.Code, title: 'Answer Node' } })
     const iterationNode = createNode({ id: 'iter-parent', data: { type: BlockEnum.Iteration, title: 'Iteration Parent' } }) as Node<CommonNodeType>
     const loopNode = createLoopNode({ id: 'loop-parent', data: { title: 'Loop Parent' } }) as Node<CommonNodeType>
@@ -114,11 +114,24 @@ describe('var-reference-picker.helpers', () => {
   })
 
   it('should derive variable meta and category from selectors', () => {
-    const meta = getVariableMeta({ type: BlockEnum.Code }, ['env', 'API_KEY'], 'API_KEY')
+    const envVars: NodeOutPutVar[] = [{
+      nodeId: 'env',
+      title: 'ENVIRONMENT',
+      vars: [{ variable: 'env.API_KEY', type: VarType.string }],
+    }]
+    const meta = getVariableMeta(null, ['env', 'API_KEY'], 'API_KEY', envVars, true)
     expect(meta).toMatchObject({
       isEnv: true,
       isValidVar: true,
-      isException: true,
+      isException: false,
+    })
+    expect(getVariableMeta(null, ['env', 'MISSING_KEY'], 'MISSING_KEY', envVars, true)).toMatchObject({
+      isEnv: true,
+      isValidVar: false,
+    })
+    expect(getVariableMeta(null, ['env', 'MISSING_KEY'], 'MISSING_KEY', envVars)).toMatchObject({
+      isEnv: true,
+      isValidVar: true,
     })
 
     expect(getVariableCategory({

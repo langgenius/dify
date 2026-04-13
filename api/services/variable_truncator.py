@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, Generic, TypeAlias, TypeVar, overload
+from typing import Any, overload
 
 from graphon.file import File
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
@@ -43,12 +43,9 @@ class _PCKeys:
     CHILD_CONTENTS = "child_contents"
 
 
-_T = TypeVar("_T")
-
-
 @dataclasses.dataclass(frozen=True)
-class _PartResult(Generic[_T]):
-    value: _T
+class _PartResult[T]:
+    value: T
     value_size: int
     truncated: bool
 
@@ -61,7 +58,7 @@ class UnknownTypeError(Exception):
     pass
 
 
-JSONTypes: TypeAlias = int | float | str | list[object] | dict[str, object] | None | bool
+type JSONTypes = int | float | str | list[object] | dict[str, object] | None | bool
 
 
 @dataclasses.dataclass(frozen=True)
@@ -132,6 +129,7 @@ class VariableTruncator(BaseTruncator):
             used_size += self.calculate_json_size(key)
             if used_size > budget:
                 truncated_mapping[key] = "..."
+                is_truncated = True
                 continue
             value_budget = (budget - used_size) // (length - len(truncated_mapping))
             if isinstance(value, Segment):
@@ -167,9 +165,9 @@ class VariableTruncator(BaseTruncator):
             result = self._truncate_segment(segment, self._max_size_bytes)
 
         if result.value_size > self._max_size_bytes:
-            if isinstance(result.value, str):
-                result = self._truncate_string(result.value, self._max_size_bytes)
-                return TruncationResult(StringSegment(value=result.value), True)
+            if isinstance(result.value, StringSegment):
+                fallback_result = self._truncate_string(result.value.value, self._max_size_bytes)
+                return TruncationResult(StringSegment(value=fallback_result.value), True)
 
             # Apply final fallback - convert to JSON string and truncate
             json_str = dumps_with_segments(result.value, ensure_ascii=False)

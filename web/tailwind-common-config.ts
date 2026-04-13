@@ -1,28 +1,9 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { icons as customPublicIcons } from '@dify/iconify-collections/custom-public'
+import { icons as customVenderIcons } from '@dify/iconify-collections/custom-vender'
 import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindTypography from '@tailwindcss/typography'
-import { importSvgCollections } from 'iconify-import-svg'
-import { cssAsPlugin } from './tailwind-css-plugin'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
 import typography from './typography.js'
-
-const _dirname = typeof __dirname !== 'undefined'
-  ? __dirname
-  : path.dirname(fileURLToPath(import.meta.url))
-
-const disableSVGOptimize = process.env.TAILWIND_MODE === 'ESLINT'
-const parseColorOptions = {
-  fallback: () => 'currentColor',
-}
-const svgOptimizeConfig = {
-  cleanupSVG: !disableSVGOptimize,
-  deOptimisePaths: !disableSVGOptimize,
-  runSVGO: !disableSVGOptimize,
-  parseColors: !disableSVGOptimize
-    ? parseColorOptions
-    : false,
-}
 
 const config = {
   theme: {
@@ -171,18 +152,8 @@ const config = {
     iconsPlugin({
       collections: {
         ...getIconCollections(['heroicons', 'ri']),
-        ...importSvgCollections({
-          source: path.resolve(_dirname, 'app/components/base/icons/assets/public'),
-          prefix: 'custom-public',
-          ignoreImportErrors: true,
-          ...svgOptimizeConfig,
-        }),
-        ...importSvgCollections({
-          source: path.resolve(_dirname, 'app/components/base/icons/assets/vender'),
-          prefix: 'custom-vender',
-          ignoreImportErrors: true,
-          ...svgOptimizeConfig,
-        }),
+        'custom-public': customPublicIcons,
+        'custom-vender': customVenderIcons,
       },
       extraProperties: {
         width: '1rem',
@@ -190,15 +161,6 @@ const config = {
         display: 'block',
       },
     }),
-    cssAsPlugin([
-      path.resolve(_dirname, './app/styles/globals.css'),
-      path.resolve(_dirname, './app/components/base/action-button/index.css'),
-      path.resolve(_dirname, './app/components/base/badge/index.css'),
-      path.resolve(_dirname, './app/components/base/button/index.css'),
-      path.resolve(_dirname, './app/components/base/modal/index.css'),
-      path.resolve(_dirname, './app/components/base/premium-badge/index.css'),
-      path.resolve(_dirname, './app/components/base/segmented-control/index.css'),
-    ]),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {

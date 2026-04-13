@@ -63,15 +63,15 @@ export const Playground: Story = {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2 rounded-xl border border-divider-subtle bg-background-default p-4">
-              <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-tertiary">Site favicon</span>
+              <span className="text-[11px] font-medium uppercase tracking-widest text-text-tertiary">Site favicon</span>
               <LogoSite />
             </div>
             <div className="flex flex-col gap-2 rounded-xl border border-divider-subtle bg-background-default p-4">
-              <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-tertiary">Embedded header</span>
+              <span className="text-[11px] font-medium uppercase tracking-widest text-text-tertiary">Embedded header</span>
               <LogoEmbeddedChatHeader />
             </div>
             <div className="flex flex-col gap-2 rounded-xl border border-divider-subtle bg-background-default p-4 sm:col-span-2">
-              <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-tertiary">Embedded avatar</span>
+              <span className="text-[11px] font-medium uppercase tracking-widest text-text-tertiary">Embedded avatar</span>
               <LogoEmbeddedChatAvatar className="border-divider-strong rounded-2xl border" />
             </div>
           </div>

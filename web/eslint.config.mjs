@@ -1,14 +1,12 @@
 // @ts-check
 
 import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX, isInEditorEnv, isInGitHooksOrLintStaged } from '@antfu/eslint-config'
-import pluginReact from '@eslint-react/eslint-plugin'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
-import { reactRefresh } from 'eslint-plugin-react-refresh'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
@@ -26,11 +24,14 @@ process.env.TAILWIND_MODE ??= 'ESLINT'
 
 const disableRuleAutoFix = !(isInEditorEnv() || isInGitHooksOrLintStaged())
 
-const plugins = pluginReact.configs.all.plugins
-
 export default antfu(
   {
-    react: false,
+    react: {
+      overrides: {
+        'react/set-state-in-effect': 'error',
+        'react/no-unnecessary-use-prefix': 'error',
+      },
+    },
     nextjs: {
       overrides: {
         'next/no-img-element': 'off',
@@ -56,24 +57,7 @@ export default antfu(
       },
     },
     e18e: false,
-  },
-  {
-    plugins: {
-      'react': plugins?.['@eslint-react'],
-      'react-dom': plugins?.['@eslint-react/dom'],
-      'react-naming-convention': plugins?.['@eslint-react/naming-convention'],
-      'react-rsc': plugins?.['@eslint-react/rsc'],
-      'react-web-api': plugins?.['@eslint-react/web-api'],
-    },
-  },
-  {
-    files: [GLOB_TS, GLOB_TSX],
-    rules: {
-      ...pluginReact.configs['recommended-typescript'].rules,
-      'react/prefer-namespace-import': 'error',
-      'react/set-state-in-effect': 'error',
-      'react/no-unnecessary-use-prefix': 'error',
-    },
+    pnpm: false,
   },
   {
     files: [...GLOB_TESTS, GLOB_MARKDOWN_CODE, 'vitest.setup.ts', 'test/i18n-mock.ts'],
@@ -91,7 +75,6 @@ export default antfu(
       'no-barrel-files/no-barrel-files': 'error',
     },
   },
-  reactRefresh.configs.next(),
   markdownPreferences.configs.standard,
   {
     files: [GLOB_MARKDOWN],
@@ -149,6 +132,11 @@ export default antfu(
       'tailwindcss/no-unnecessary-whitespace': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
+    settings: {
+      'better-tailwindcss': {
+        entryPoint: 'app/styles/globals.css',
+      },
+    },
   },
   {
     name: 'dify/custom/setup',
@@ -183,7 +171,7 @@ export default antfu(
   },
   {
     name: 'dify/base-ui-primitives',
-    files: ['app/components/base/ui/**/*.tsx', 'app/components/base/avatar/**/*.tsx'],
+    files: ['app/components/base/ui/**/*.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
@@ -225,10 +213,3 @@ export default antfu(
         'tailwindcss/no-unnecessary-whitespace',
       ]
     : [])
-  .renamePlugins({
-    '@eslint-react': 'react',
-    '@eslint-react/dom': 'react-dom',
-    '@eslint-react/naming-convention': 'react-naming-convention',
-    '@eslint-react/rsc': 'react-rsc',
-    '@eslint-react/web-api': 'react-web-api',
-  })

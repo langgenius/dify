@@ -41,7 +41,7 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, onClick, disabled }) => {
   return (
     <div
-      className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 rounded-xl bg-gray-25 p-3 pr-4 hover:bg-gray-50')}
+      className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-2 border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 rounded-xl bg-gray-25 p-3 pr-4 hover:bg-gray-50')}
       onClick={() => !disabled && onClick(value)}
     >
       <div className="flex items-center justify-between">

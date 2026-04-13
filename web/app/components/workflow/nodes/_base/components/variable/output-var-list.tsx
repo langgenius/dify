@@ -59,7 +59,9 @@ const OutputVarList: FC<Props> = ({
 
       const newOutputs = produce(outputs, (draft) => {
         draft[newKey] = draft[oldKey]
-        delete draft[oldKey]
+        // Only delete old key if no other entry shares this name
+        if (!list.some((item, i) => i !== index && item.variable === oldKey))
+          delete draft[oldKey]
       })
       onChange(newOutputs, index, newKey)
     }
@@ -97,7 +99,7 @@ const OutputVarList: FC<Props> = ({
             onChange={handleVarTypeChange(index)}
           />
           <RemoveButton
-            className="!bg-gray-100 !p-2 hover:!bg-gray-200"
+            className="bg-gray-100! p-2! hover:bg-gray-200!"
             onClick={handleVarRemove(index)}
           />
         </div>

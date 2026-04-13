@@ -156,7 +156,7 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
       />
 
       <div className="rounded-lg border border-divider-subtle bg-background-default p-2">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-text-tertiary">
+        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">
           Files state
         </span>
         <pre className="max-h-40 overflow-auto text-[11px] leading-relaxed text-text-tertiary">

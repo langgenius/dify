@@ -1,16 +1,6 @@
 from pydantic import BaseModel
 
-
-class VectorSetting(BaseModel):
-    vector_weight: float
-
-    embedding_provider_name: str
-
-    embedding_model_name: str
-
-
-class KeywordSetting(BaseModel):
-    keyword_weight: float
+from core.rag.entities import KeywordSetting, VectorSetting
 
 
 class Weights(BaseModel):

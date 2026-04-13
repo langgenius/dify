@@ -2,11 +2,12 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
+from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
@@ -32,18 +33,6 @@ class ConversationListQuery(BaseModel):
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort order for conversations"
     )
-
-
-class ConversationRenamePayload(BaseModel):
-    name: str | None = Field(default=None, description="New conversation name (required if auto_generate is false)")
-    auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
-
-    @model_validator(mode="after")
-    def validate_name_requirement(self):
-        if not self.auto_generate:
-            if self.name is None or not self.name.strip():
-                raise ValueError("name is required when auto_generate is false")
-        return self
 
 
 class ConversationVariablesQuery(BaseModel):
@@ -116,7 +105,7 @@ class ConversationApi(Resource):
         last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine).begin() as session:
                 pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
