@@ -280,7 +280,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_tenant_id)
+        query = select(Document).where(Document.dataset_id == str(dataset_id), Document.tenant_id == current_tenant_id)
 
         if status:
             query = DocumentService.apply_display_status_filter(query, status)
