@@ -59,7 +59,7 @@ class BaiduConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values["endpoint"]:
             raise ValueError("config BAIDU_VECTOR_DB_ENDPOINT is required")
         if not values["account"]:
