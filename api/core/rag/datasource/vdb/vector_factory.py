@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.model_manager import ModelManager
-from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
@@ -30,15 +30,34 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
-        index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> VectorIndexStructDict:
+        index_struct_dict: VectorIndexStructDict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name},
+        }
         return index_struct_dict
 
 
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
-            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
+            # `is_summary` and `original_chunk_id` are stored on summary vectors
+            # by `SummaryIndexService` and read back by `RetrievalService` to
+            # route summary hits through their original parent chunks. They
+            # must be listed here so vector backends that use this list as an
+            # explicit return-properties projection (notably Weaviate) actually
+            # return those fields; without them, summary hits silently
+            # collapse into `is_summary = False` branches and the summary
+            # retrieval path is a no-op. See #34884.
+            attributes = [
+                "doc_id",
+                "dataset_id",
+                "document_id",
+                "doc_hash",
+                "doc_type",
+                "is_summary",
+                "original_chunk_id",
+            ]
         self._dataset = dataset
         self._embeddings = self._get_embeddings()
         self._attributes = attributes

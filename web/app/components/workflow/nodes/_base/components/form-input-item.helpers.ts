@@ -41,7 +41,7 @@ export type SelectItem = {
   value: string
 }
 
-export type FormInputState = {
+type FormInputState = {
   defaultValue: unknown
   isAppSelector: boolean
   isArray: boolean

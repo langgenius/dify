@@ -19,6 +19,18 @@ import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'singleRun'
 
+const getLoopRunKey = (loop: NodeTracing[], fallbackIndex: number) => {
+  const executionMetadata = loop[0]?.execution_metadata
+
+  if (executionMetadata?.parallel_mode_run_id !== undefined)
+    return executionMetadata.parallel_mode_run_id
+
+  if (executionMetadata?.loop_index !== undefined)
+    return String(executionMetadata.loop_index)
+
+  return String(fallbackIndex)
+}
+
 type Props = {
   list: NodeTracing[][]
   onBack: () => void
@@ -42,10 +54,8 @@ const LoopResultPanel: FC<Props> = ({
     }))
   }, [])
 
-  const countLoopDuration = (loop: NodeTracing[], loopDurationMap: LoopDurationMap): string => {
-    const loopRunIndex = loop[0]?.execution_metadata?.loop_index as number
-    const loopRunId = loop[0]?.execution_metadata?.parallel_mode_run_id
-    const loopItem = loopDurationMap[loopRunId || loopRunIndex]
+  const countLoopDuration = (loop: NodeTracing[], index: number, loopDurationMap: LoopDurationMap): string => {
+    const loopItem = loopDurationMap[getLoopRunKey(loop, index)]
     const duration = loopItem
     return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
   }
@@ -59,13 +69,13 @@ const LoopResultPanel: FC<Props> = ({
       return <RiErrorWarningLine className="h-4 w-4 text-text-destructive" />
 
     if (isRunning)
-      return <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-primary-600" />
+      return <RiLoader2Line className="text-primary-600 h-3.5 w-3.5 animate-spin" />
 
     return (
       <>
         {hasDurationMap && (
           <div className="system-xs-regular text-text-tertiary">
-            {countLoopDuration(loop, loopDurationMap)}
+            {countLoopDuration(loop, index, loopDurationMap)}
           </div>
         )}
         <RiArrowRightSLine
@@ -98,7 +108,7 @@ const LoopResultPanel: FC<Props> = ({
             <div
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
-                expandedLoops[index] ? 'pb-2 pt-3' : 'py-3',
+                expandedLoops[index] ? 'pt-3 pb-2' : 'py-3',
                 'rounded-xl text-left',
               )}
               onClick={() => toggleLoop(index)}
@@ -107,7 +117,7 @@ const LoopResultPanel: FC<Props> = ({
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
                   <Loop className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
-                <span className="system-sm-semibold-uppercase grow text-text-primary">
+                <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
                   {' '}
                   {index + 1}
@@ -129,14 +139,14 @@ const LoopResultPanel: FC<Props> = ({
             )}
             >
               {
-                loopVariableMap?.[index] && (
+                loopVariableMap?.[getLoopRunKey(loop, index)] && (
                   <div className="p-2 pb-0">
                     <CodeEditor
                       readOnly
                       title={<div>{t('nodes.loop.loopVariables', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
                       language={CodeLanguage.json}
                       height={112}
-                      value={loopVariableMap[index]}
+                      value={loopVariableMap[getLoopRunKey(loop, index)]}
                       isJSONStringifyBeauty
                     />
                   </div>

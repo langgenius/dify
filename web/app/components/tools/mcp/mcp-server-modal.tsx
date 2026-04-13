@@ -17,7 +17,7 @@ import {
 } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 
-export type ModalProps = {
+type ModalProps = {
   appID: string
   latestParams?: any[]
   data?: MCPServerDetail

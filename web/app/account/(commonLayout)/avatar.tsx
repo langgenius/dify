@@ -6,16 +6,12 @@ import {
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import { Avatar } from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout, useUserProfile } from '@/service/use-common'
-
-export type IAppSelector = {
-  isMobile: boolean
-}
 
 export default function AppSelector() {
   const router = useRouter()

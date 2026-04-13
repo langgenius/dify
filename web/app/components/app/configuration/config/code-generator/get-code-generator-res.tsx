@@ -31,7 +31,7 @@ import { GeneratorType } from '../automatic/types'
 import useGenData from '../automatic/use-gen-data'
 
 const i18nPrefix = 'generate'
-export type IGetCodeGeneratorResProps = {
+type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string

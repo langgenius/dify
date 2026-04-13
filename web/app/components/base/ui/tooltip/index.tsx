@@ -8,7 +8,7 @@ import { cn } from '@/utils/classnames'
 
 type TooltipContentVariant = 'default' | 'plain'
 
-export type TooltipContentProps = {
+type TooltipContentProps = {
   children: React.ReactNode
   placement?: Placement
   sideOffset?: number
@@ -41,8 +41,8 @@ export function TooltipContent({
       >
         <BaseTooltip.Popup
           className={cn(
-            variant === 'default' && 'max-w-[300px] wrap-break-word rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
-            'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:transition-none motion-reduce:transition-none',
+            variant === 'default' && 'max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
+            'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...props}

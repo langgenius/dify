@@ -335,10 +335,12 @@ class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.auth.forgot_password.db")
     @patch("controllers.console.auth.forgot_password.TenantService.get_join_tenants")
     def test_reset_password_success(
         self,
         mock_get_tenants,
+        mock_db,
         mock_get_account,
         mock_revoke_token,
         mock_get_data,
@@ -356,6 +358,7 @@ class TestForgotPasswordResetApi:
         # Arrange
         mock_get_data.return_value = {"email": "test@example.com", "phase": "reset"}
         mock_get_account.return_value = mock_account
+        mock_db.session.merge.return_value = mock_account
         mock_get_tenants.return_value = [MagicMock()]
 
         # Act

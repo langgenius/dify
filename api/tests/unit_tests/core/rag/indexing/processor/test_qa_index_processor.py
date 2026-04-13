@@ -220,10 +220,10 @@ class TestQAIndexProcessor:
         self, processor: QAIndexProcessor, dataset: Mock
     ) -> None:
         mock_segment = SimpleNamespace(id="seg-1")
-        mock_query = Mock()
-        mock_query.filter.return_value.all.return_value = [mock_segment]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [mock_segment]
         mock_session = Mock()
-        mock_session.query.return_value = mock_query
+        mock_session.scalars.return_value = scalars_result
         session_context = MagicMock()
         session_context.__enter__.return_value = mock_session
         session_context.__exit__.return_value = False

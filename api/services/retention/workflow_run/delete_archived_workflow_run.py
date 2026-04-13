@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from models.workflow import WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, RunsWithRelatedCountsDict
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 
 
@@ -23,7 +23,17 @@ class DeleteResult:
     run_id: str
     tenant_id: str
     success: bool
-    deleted_counts: dict[str, int] = field(default_factory=dict)
+    deleted_counts: RunsWithRelatedCountsDict = field(
+        default_factory=lambda: {  # type: ignore[assignment]
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
+    )
     error: str | None = None
     elapsed_time: float = 0.0
 
