@@ -2161,7 +2161,12 @@ class UploadFile(TypeBase):
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips
     # (especially when generating `source_url`).
     # The `server_default` serves as a fallback mechanism.
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        init=False,
+        default_factory=lambda: str(uuid4()),
+        server_default=sa.text("gen_random_uuid()"),
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[StorageType] = mapped_column(EnumText(StorageType, length=255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
