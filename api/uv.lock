@@ -1555,7 +1555,7 @@ requires-dist = [
     { name = "transformers", specifier = "~=5.3.0" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.21.5" },
     { name = "weave", specifier = ">=0.52.16" },
-    { name = "weaviate-client", specifier = "==4.20.4" },
+    { name = "weaviate-client", specifier = "==4.20.5" },
     { name = "yarl", specifier = "~=1.23.0" },
 ]
 
@@ -1653,18 +1653,18 @@ vdb = [
     { name = "mysql-connector-python", specifier = ">=9.3.0" },
     { name = "opensearch-py", specifier = "==3.1.0" },
     { name = "oracledb", specifier = "==3.4.2" },
-    { name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=0.2.1" },
+    { name = "pgvecto-rs", extras = ["sqlalchemy"], specifier = "~=0.2.2" },
     { name = "pgvector", specifier = "==0.4.2" },
-    { name = "pymilvus", specifier = "~=2.6.10" },
+    { name = "pymilvus", specifier = "~=2.6.12" },
     { name = "pymochow", specifier = "==2.4.0" },
     { name = "pyobvector", specifier = "~=0.2.17" },
     { name = "qdrant-client", specifier = "==1.9.0" },
-    { name = "tablestore", specifier = "==6.4.3" },
+    { name = "tablestore", specifier = "==6.4.4" },
     { name = "tcvectordb", specifier = "~=2.1.0" },
     { name = "tidb-vector", specifier = "==0.0.15" },
     { name = "upstash-vector", specifier = "==0.8.0" },
     { name = "volcengine-compat", specifier = "~=1.0.0" },
-    { name = "weaviate-client", specifier = "==4.20.4" },
+    { name = "weaviate-client", specifier = "==4.20.5" },
     { name = "xinference-client", specifier = "~=2.4.0" },
 ]
 
@@ -4673,7 +4673,7 @@ crypto = [
 
 [[package]]
 name = "pymilvus"
-version = "2.6.11"
+version = "2.6.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
@@ -4685,9 +4685,9 @@ dependencies = [
     { name = "requests" },
     { name = "setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/e6/0adc3b374f5c5d1eebd4f551b455c6865c449b170b17545001b208e2b153/pymilvus-2.6.11.tar.gz", hash = "sha256:a40c10322cde25184a8c3d84993a14dfb67ad2bdcfc5dff7e68b11a79ff8f6d8", size = 1583634, upload-time = "2026-03-27T06:25:46.023Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/d7/c5d1381248a33975ccc864a0f980f93270ecc35354de8646c8a16443cccb/pymilvus-2.6.12.tar.gz", hash = "sha256:8323e990dc305e607fef525498eb779e42940a69e0691dde009cd02d48845f7a", size = 1584521, upload-time = "2026-04-09T07:49:11.374Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/1c/bccb331d71f824738f80f11e9b8b4da47973c903826355526ae4fa2b762f/pymilvus-2.6.11-py3-none-any.whl", hash = "sha256:a11e1718b15045361c71ca671b959900cb7e2faae863c896f6b7e87bf2e4d10a", size = 315252, upload-time = "2026-03-27T06:25:44.215Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/5d/44b0fa94c91503381e6f12298277f84f8e7b0bb00715ab89fc273c4d681e/pymilvus-2.6.12-py3-none-any.whl", hash = "sha256:69051b8b62712f157b2b50aeb7bde7fd7cdb5940aac0122094eb3cd58bc20f0d", size = 315183, upload-time = "2026-04-09T07:49:09.013Z" },
 ]
 
 [[package]]
@@ -5710,7 +5710,7 @@ wheels = [
 
 [[package]]
 name = "tablestore"
-version = "6.4.3"
+version = "6.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -5723,9 +5723,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/0b/c875c2314d472eed9f9644a94ae0aa7e702a6084779a0136e539d5e7ed32/tablestore-6.4.3.tar.gz", hash = "sha256:4981139e68705052ade6341060a4b6238b1fb9a8c18b43a77383fda14f7554a9", size = 5072450, upload-time = "2026-03-31T04:34:37.832Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/bc/84d7592188b060950f4fe5713eb3b03068d42b2e43ad37decdb5242c1879/tablestore-6.4.4.tar.gz", hash = "sha256:0f40834030aff0c67e568b09deaab97144229b569710d66557edf7a06a5dcb19", size = 5076731, upload-time = "2026-04-09T09:40:20.399Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/e0/e11626aea61e1352dafe7707c548d482769afd3ca28f45653d380ba85a5d/tablestore-6.4.3-py3-none-any.whl", hash = "sha256:207b89324cd4157db4559c7619d42b9510a55c0565f00a439389f14426d114c5", size = 5115764, upload-time = "2026-03-31T04:34:35.761Z" },
+    { url = "https://files.pythonhosted.org/packages/45/3f/48af1e72e59d60481724b326317bd311615bdedc31f8f81f9508fb84cda6/tablestore-6.4.4-py3-none-any.whl", hash = "sha256:984f086fa7acabaa3558da93205ad6df562b266b85fd249bc5891f2dd1d65814", size = 5118758, upload-time = "2026-04-09T09:40:17.209Z" },
 ]
 
 [[package]]
@@ -6784,20 +6784,19 @@ wheels = [
 
 [[package]]
 name = "weaviate-client"
-version = "4.20.4"
+version = "4.20.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
-    { name = "deprecation" },
     { name = "grpcio" },
     { name = "httpx" },
     { name = "protobuf" },
     { name = "pydantic" },
     { name = "validators" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/1c/82b560254f612f95b644849d86e092da6407f17965d61e22b583b30b72cf/weaviate_client-4.20.4.tar.gz", hash = "sha256:08703234b59e4e03739f39e740e9e88cb50cd0aa147d9408b88ea6ce995c37b6", size = 809529, upload-time = "2026-03-10T15:08:13.845Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/c8/aa47cfa0a2b1e260846eaf04ce4cc2ab1bb03f29d793e7b009bc3e3babc7/weaviate_client-4.20.5.tar.gz", hash = "sha256:c07c688f0e6b78723dfecbcfeebf897cefa75f1a89c63ebd84aab88c662e4394", size = 811866, upload-time = "2026-04-09T20:08:45.268Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/d7/9461c3e7d8c44080d2307078e33dc7fefefa3171c8f930f2b83a5cbf67f2/weaviate_client-4.20.4-py3-none-any.whl", hash = "sha256:7af3a213bebcb30dcf456b0db8b6225d8926106b835d7b883276de9dc1c301fe", size = 619517, upload-time = "2026-03-10T15:08:12.047Z" },
+    { url = "https://files.pythonhosted.org/packages/58/ba/d55f1a665802f736436d09198afc0d00806a405aadb9977193a2f009cfcb/weaviate_client-4.20.5-py3-none-any.whl", hash = "sha256:3f508e3dc08257f85230f9d2ea0562443ed0715e7e89156f22b7e950d6c08cdb", size = 620766, upload-time = "2026-04-09T20:08:43.215Z" },
 ]
 
 [[package]]
