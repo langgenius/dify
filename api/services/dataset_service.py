@@ -233,7 +233,7 @@ class DatasetService:
         embedding_model_provider: str | None = None,
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: dict[str, Any] | None = None,
     ):
         # check if dataset name already exists
         if db.session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -2493,7 +2493,7 @@ class DocumentService:
         data_source_type: str,
         document_form: str,
         document_language: str,
-        data_source_info: dict,
+        data_source_info: dict[str, Any],
         created_from: str,
         position: int,
         account: Account,
@@ -2850,7 +2850,7 @@ class DocumentService:
                     raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @classmethod
-    def estimate_args_validate(cls, args: dict):
+    def estimate_args_validate(cls, args: dict[str, Any]):
         if "info_list" not in args or not args["info_list"]:
             raise ValueError("Data source info is required")
 
@@ -3132,7 +3132,7 @@ class DocumentService:
 
 class SegmentService:
     @classmethod
-    def segment_create_args_validate(cls, args: dict, document: Document):
+    def segment_create_args_validate(cls, args: dict[str, Any], document: Document):
         if document.doc_form == IndexStructureType.QA_INDEX:
             if "answer" not in args or not args["answer"]:
                 raise ValueError("Answer is required")
@@ -3149,7 +3149,7 @@ class SegmentService:
                 raise ValueError(f"Exceeded maximum attachment limit of {single_chunk_attachment_limit}")
 
     @classmethod
-    def create_segment(cls, args: dict, document: Document, dataset: Dataset):
+    def create_segment(cls, args: dict[str, Any], document: Document, dataset: Dataset):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
