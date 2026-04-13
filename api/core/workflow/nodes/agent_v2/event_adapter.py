@@ -7,7 +7,6 @@ graphon NodeEventBase events consumable by the workflow engine.
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
 
 from graphon.model_runtime.entities import LLMResultChunk
 from graphon.node_events import (

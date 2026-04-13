@@ -136,8 +136,8 @@ class TestAgentChatAppRunnerRun:
     @pytest.mark.parametrize(
         ("mode", "expected_runner"),
         [
-            (LLMMode.CHAT, "CotChatAgentRunner"),
-            (LLMMode.COMPLETION, "CotCompletionAgentRunner"),
+            (LLMMode.CHAT, "AgentAppRunner"),
+            (LLMMode.COMPLETION, "AgentAppRunner"),
         ],
     )
     def test_run_chain_of_thought_modes(self, runner, mocker, mode, expected_runner):
@@ -286,7 +286,7 @@ class TestAgentChatAppRunnerRun:
         )
 
         runner_cls = mocker.MagicMock()
-        mocker.patch("core.app.apps.agent_chat.app_runner.FunctionCallAgentRunner", runner_cls)
+        mocker.patch("core.app.apps.agent_chat.app_runner.AgentAppRunner", runner_cls)
 
         runner_instance = mocker.MagicMock()
         runner_cls.return_value = runner_instance

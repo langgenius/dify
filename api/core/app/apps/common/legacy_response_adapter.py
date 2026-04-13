@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Generator
-from typing import Any
 
 logger = logging.getLogger(__name__)
 

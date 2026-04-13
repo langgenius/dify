@@ -10,12 +10,11 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
-    LLMResult,
     LLMResultChunk,
     PromptMessage,
     SystemPromptMessage,
@@ -23,15 +22,10 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    ImagePromptMessageContent,
-    PromptMessageContentUnionTypes,
-)
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.node_events import (
     NodeEventBase,
     NodeRunResult,
-    StreamChunkEvent,
     StreamCompletedEvent,
 )
 from graphon.nodes.base.node import Node
@@ -545,11 +539,11 @@ class AgentV2Node(Node[AgentV2NodeData]):
                 content = jinja2_text or text
                 selectors = VariableTemplateParser(content).extract_variable_selectors()
                 for selector in selectors:
-                    result[selector.variable] = selector.value_selector
+                    result[selector.variable] = list(selector.value_selector)
         else:
             text_content = getattr(node_data.prompt_template, "text", "") or ""
             selectors = VariableTemplateParser(text_content).extract_variable_selectors()
             for selector in selectors:
-                result[selector.variable] = selector.value_selector
+                result[selector.variable] = list(selector.value_selector)
 
         return {f"{node_id}.{key}": value for key, value in result.items()}
