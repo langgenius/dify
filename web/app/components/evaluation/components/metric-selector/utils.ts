@@ -1,6 +1,7 @@
 import type { MetricOption } from '../../types'
 import type { MetricVisualTone } from './types'
 import type { EvaluationTargetType, NodeInfo } from '@/types/evaluation'
+import { getDefaultMetricDescription } from '../../default-metric-descriptions'
 
 export const toEvaluationTargetType = (resourceType: 'apps' | 'snippets'): EvaluationTargetType => {
   return resourceType === 'snippets' ? 'snippets' : 'apps'
@@ -17,7 +18,7 @@ const humanizeMetricId = (metricId: string) => {
 export const buildMetricOption = (metricId: string): MetricOption => ({
   id: metricId,
   label: humanizeMetricId(metricId),
-  description: '',
+  description: getDefaultMetricDescription(metricId),
   valueType: 'number',
 })
 

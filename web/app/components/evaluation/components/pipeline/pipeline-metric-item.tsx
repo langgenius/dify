@@ -6,6 +6,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { cn } from '@/utils/classnames'
+import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
 import { DEFAULT_PIPELINE_METRIC_THRESHOLD } from '../../store-utils'
 
 type PipelineMetricItemProps = {
@@ -26,6 +27,7 @@ const PipelineMetricItem = ({
   onThresholdChange,
 }: PipelineMetricItemProps) => {
   const { t } = useTranslation('evaluation')
+  const metricDescription = getTranslatedMetricDescription(t, metric.id, metric.description)
 
   return (
     <div className="flex items-center justify-between gap-3 px-1 py-1">
@@ -45,7 +47,7 @@ const PipelineMetricItem = ({
             )}
           />
           <TooltipContent>
-            {metric.description}
+            {metricDescription}
           </TooltipContent>
         </Tooltip>
       </button>

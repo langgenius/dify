@@ -4,6 +4,7 @@ import type {
   EvaluationResourceType,
   MetricOption,
 } from './types'
+import { getDefaultMetricDescription } from './default-metric-descriptions'
 
 const judgeModels = [
   {
@@ -27,19 +28,19 @@ const builtinMetrics: MetricOption[] = [
   {
     id: 'answer-correctness',
     label: 'Answer Correctness',
-    description: 'Compares the response with the expected answer and scores factual alignment.',
+    description: getDefaultMetricDescription('answer-correctness'),
     valueType: 'number',
   },
   {
     id: 'faithfulness',
     label: 'Faithfulness',
-    description: 'Checks whether the answer stays grounded in the retrieved evidence.',
+    description: getDefaultMetricDescription('faithfulness'),
     valueType: 'number',
   },
   {
     id: 'relevance',
     label: 'Relevance',
-    description: 'Evaluates how directly the answer addresses the original request.',
+    description: getDefaultMetricDescription('relevance'),
     valueType: 'number',
   },
   {
@@ -66,19 +67,19 @@ const pipelineBuiltinMetrics: MetricOption[] = [
   {
     id: 'context-precision',
     label: 'Context Precision',
-    description: 'Measures whether retrieved chunks stay tightly aligned to the request.',
+    description: getDefaultMetricDescription('context-precision'),
     valueType: 'number',
   },
   {
     id: 'context-recall',
     label: 'Context Recall',
-    description: 'Checks whether the retrieval result includes the evidence needed to answer.',
+    description: getDefaultMetricDescription('context-recall'),
     valueType: 'number',
   },
   {
     id: 'context-relevance',
     label: 'Context Relevance',
-    description: 'Scores how useful the retrieved context is for downstream generation.',
+    description: getDefaultMetricDescription('context-relevance'),
     valueType: 'number',
   },
 ]

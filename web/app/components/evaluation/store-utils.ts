@@ -20,6 +20,7 @@ import type {
   EvaluationRunRequest,
   NodeInfo,
 } from '@/types/evaluation'
+import { getDefaultMetricDescription } from './default-metric-descriptions'
 import { getEvaluationMockConfig } from './mock'
 import {
   buildConditionMetricOptions,
@@ -51,7 +52,7 @@ const resolveMetricOption = (resourceType: EvaluationResourceType, metricId: str
   return config.builtinMetrics.find(metric => metric.id === metricId) ?? {
     id: metricId,
     label: humanizeMetricId(metricId),
-    description: '',
+    description: getDefaultMetricDescription(metricId),
     valueType: 'number',
   }
 }

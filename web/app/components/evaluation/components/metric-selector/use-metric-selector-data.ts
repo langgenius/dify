@@ -1,7 +1,9 @@
 import type { BuiltinMetricMap, MetricSelectorSection } from './types'
 import type { NodeInfo } from '@/types/evaluation'
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAvailableEvaluationMetrics, useEvaluationNodeInfoMutation } from '@/service/use-evaluation'
+import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
 import { getEvaluationMockConfig } from '../../mock'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 import {
@@ -34,6 +36,7 @@ export const useMetricSelectorData = ({
   nodeInfoMap,
   setNodeInfoMap,
 }: UseMetricSelectorDataOptions): UseMetricSelectorDataResult => {
+  const { t } = useTranslation('evaluation')
   const config = getEvaluationMockConfig(resourceType)
   const metrics = useEvaluationResource(resourceType, resourceId).metrics
   const addBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
@@ -102,9 +105,10 @@ export const useMetricSelectorData = ({
     const keyword = query.trim().toLowerCase()
 
     return resolvedMetrics.map((metric) => {
+      const metricDescription = getTranslatedMetricDescription(t, metric.id, metric.description)
       const metricMatches = !keyword
         || metric.label.toLowerCase().includes(keyword)
-        || metric.description.toLowerCase().includes(keyword)
+        || metricDescription.toLowerCase().includes(keyword)
       const metricNodes = nodeInfoMap[metric.id] ?? []
       const supportsNodeSelection = resourceType !== 'datasets'
       const hasNoNodeInfo = supportsNodeSelection && metricNodes.length === 0
@@ -114,7 +118,10 @@ export const useMetricSelectorData = ({
           return null
 
         return {
-          metric,
+          metric: {
+            ...metric,
+            description: metricDescription,
+          },
           hasNoNodeInfo: true,
           visibleNodes: [] as NodeInfo[],
         }
@@ -132,12 +139,15 @@ export const useMetricSelectorData = ({
         return null
 
       return {
-        metric,
+        metric: {
+          ...metric,
+          description: metricDescription,
+        },
         hasNoNodeInfo: false,
         visibleNodes,
       }
     }).filter(section => !!section)
-  }, [nodeInfoMap, query, resolvedMetrics, resourceType])
+  }, [nodeInfoMap, query, resolvedMetrics, resourceType, t])
 
   const toggleNodeSelection = (metricId: string, nodeInfo: NodeInfo) => {
     const addedMetric = builtinMetricMap.get(metricId)
