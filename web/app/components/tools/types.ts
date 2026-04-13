@@ -21,24 +21,21 @@ type OutputSchema = {
   [key: string]: unknown
 }
 
-export enum LOC {
-  tools = 'tools',
-  app = 'app',
-}
+export const AuthType = {
+  none: 'none',
+  apiKey: 'api_key', // backward compatibility
+  apiKeyHeader: 'api_key_header',
+  apiKeyQuery: 'api_key_query',
+  basicAuth: 'basic_auth',
+} as const
+export type AuthType = (typeof AuthType)[keyof typeof AuthType]
 
-export enum AuthType {
-  none = 'none',
-  apiKey = 'api_key', // backward compatibility
-  apiKeyHeader = 'api_key_header',
-  apiKeyQuery = 'api_key_query',
-  basicAuth = 'basic_auth',
-}
-
-export enum AuthHeaderPrefix {
-  basic = 'basic',
-  bearer = 'bearer',
-  custom = 'custom',
-}
+export const AuthHeaderPrefix = {
+  basic: 'basic',
+  bearer: 'bearer',
+  custom: 'custom',
+} as const
+export type AuthHeaderPrefix = (typeof AuthHeaderPrefix)[keyof typeof AuthHeaderPrefix]
 
 export type Credential = {
   auth_type: AuthType
@@ -50,16 +47,17 @@ export type Credential = {
   basic_password?: string
 }
 
-export enum CollectionType {
-  all = 'all',
-  builtIn = 'builtin',
-  custom = 'api',
-  model = 'model',
-  workflow = 'workflow',
-  mcp = 'mcp',
-  datasource = 'datasource',
-  trigger = 'trigger',
-}
+export const CollectionType = {
+  all: 'all',
+  builtIn: 'builtin',
+  custom: 'api',
+  model: 'model',
+  workflow: 'workflow',
+  mcp: 'mcp',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
+export type CollectionType = (typeof CollectionType)[keyof typeof CollectionType]
 
 export type Emoji = {
   background: string
@@ -274,8 +272,9 @@ export type MCPServerDetail = {
   headers?: Record<string, string>
 }
 
-export enum MCPAuthMethod {
-  authentication = 'authentication',
-  headers = 'headers',
-  configurations = 'configurations',
-}
+export const MCPAuthMethod = {
+  authentication: 'authentication',
+  headers: 'headers',
+  configurations: 'configurations',
+} as const
+export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]
