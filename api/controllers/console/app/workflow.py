@@ -6,7 +6,8 @@ from typing import Any
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
 from graphon.enums import NodeType
-from graphon.file import File, helpers as file_helpers
+from graphon.file import File
+from graphon.file import helpers as file_helpers
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, ValidationError, field_validator
