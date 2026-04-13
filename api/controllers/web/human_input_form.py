@@ -5,11 +5,11 @@ Web App Human Input Form APIs.
 import json
 import logging
 from datetime import datetime
+from typing import Any, NotRequired, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel
-from typing import Any, NotRequired, TypedDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
