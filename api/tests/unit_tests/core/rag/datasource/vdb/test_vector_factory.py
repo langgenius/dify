@@ -121,7 +121,18 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
         default_vector = vector_factory_module.Vector(dataset)
         custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"])
 
-    assert default_vector._attributes == ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
+    # `is_summary` and `original_chunk_id` must be in the default return-properties
+    # projection so summary index retrieval works on backends that honor the list
+    # as an explicit projection (e.g. Weaviate). See #34884.
+    assert default_vector._attributes == [
+        "doc_id",
+        "dataset_id",
+        "document_id",
+        "doc_hash",
+        "doc_type",
+        "is_summary",
+        "original_chunk_id",
+    ]
     assert custom_vector._attributes == ["doc_id"]
     assert default_vector._embeddings == "embeddings"
     assert default_vector._vector_processor == "processor"
