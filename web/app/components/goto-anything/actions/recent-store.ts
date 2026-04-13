@@ -1,7 +1,7 @@
 const RECENT_ITEMS_KEY = 'goto-anything:recent'
 const MAX_RECENT_ITEMS = 8
 
-export type RecentItem = {
+type RecentItem = {
   id: string
   title: string
   description?: string

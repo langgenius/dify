@@ -10,10 +10,6 @@ import {
 import * as React from 'react'
 import { registerCommands, unregisterCommands } from './command-bus'
 
-type GoDeps = {
-  router?: { push: (path: string) => void }
-}
-
 const NAV_ITEMS = [
   { id: 'apps', label: 'Apps', path: '/apps', icon: RiApps2Line },
   { id: 'datasets', label: 'Knowledge', path: '/datasets', icon: RiBookOpenLine },
@@ -26,7 +22,7 @@ const NAV_ITEMS = [
 /**
  * Go command - Navigate to a top-level section of the app
  */
-export const goCommand: SlashCommandHandler<GoDeps> = {
+export const goCommand: SlashCommandHandler = {
   name: 'go',
   aliases: ['navigate', 'nav'],
   description: 'Navigate to a section',
@@ -51,11 +47,11 @@ export const goCommand: SlashCommandHandler<GoDeps> = {
     }))
   },
 
-  register(deps: GoDeps) {
+  register() {
     registerCommands({
       'navigation.go': async (args) => {
         if (args?.path)
-          deps.router?.push(args.path)
+          window.location.href = args.path
       },
     })
   },
