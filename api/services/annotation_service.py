@@ -69,10 +69,11 @@ class InsertAnnotationArgs(TypedDict):
     answer: str
 
 
-class UpdateAnnotationArgs(TypedDict):
+class UpdateAnnotationArgs(TypedDict, total=False):
     """Expected shape of the args dict passed to update_app_annotation_directly.
 
-    Both fields are required; runtime validation in the service enforces this.
+    Both fields are optional at the type level; the service validates at runtime
+    and raises ValueError if either is missing.
     """
 
     answer: str
@@ -311,7 +312,11 @@ class AppAnnotationService:
         if question is None:
             raise ValueError("'question' is required")
 
-        annotation.content = args["answer"]
+        answer = args.get("answer")
+        if answer is None:
+            raise ValueError("'answer' is required")
+
+        annotation.content = answer
         annotation.question = question
 
         db.session.commit()

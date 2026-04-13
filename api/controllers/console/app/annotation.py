@@ -335,11 +335,11 @@ class AnnotationUpdateDeleteApi(Resource):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         args = UpdateAnnotationPayload.model_validate(console_ns.payload)
-        if args.answer is None:
-            raise ValueError("'answer' is required")
-        if args.question is None:
-            raise ValueError("'question' is required")
-        update_args: UpdateAnnotationArgs = {"question": args.question, "answer": args.answer}
+        update_args: UpdateAnnotationArgs = {}
+        if args.answer is not None:
+            update_args["answer"] = args.answer
+        if args.question is not None:
+            update_args["question"] = args.question
         annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_id, annotation_id)
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
