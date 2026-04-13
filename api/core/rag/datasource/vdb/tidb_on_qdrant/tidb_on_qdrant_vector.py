@@ -292,26 +292,27 @@ class TidbOnQdrantVector(BaseVector):
         if not ids:
             return
 
-        try:
-            filter = models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="metadata.doc_id",
-                        match=models.MatchAny(any=ids),
-                    ),
-                ],
-            )
-            self._client.delete(
-                collection_name=self._collection_name,
-                points_selector=FilterSelector(filter=filter),
-            )
-        except UnexpectedResponse as e:
-            # Collection does not exist, so return
-            if e.status_code == 404:
-                return
-            # Some other error occurred, so re-raise the exception
-            else:
-                raise e
+        batch_size = 1000
+        for i in range(0, len(ids), batch_size):
+            batch = ids[i : i + batch_size]
+
+            try:
+                filter = models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="metadata.doc_id",
+                            match=models.MatchAny(any=batch),
+                        ),
+                    ],
+                )
+                self._client.delete(
+                    collection_name=self._collection_name,
+                    points_selector=FilterSelector(filter=filter),
+                )
+            except UnexpectedResponse as e:
+                # Collection does not exist, so return
+                if e.status_code != 404:
+                    raise e
 
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
