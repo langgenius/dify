@@ -25,18 +25,6 @@ from services.errors.dataset import DatasetNameDuplicateError
 
 
 class ExternalDatasetService:
-    class ExternalKnowledgeApiArgs(TypedDict):
-        name: str
-        settings: dict[str, Any]
-        description: NotRequired[str]
-
-    class ExternalDatasetArgs(TypedDict):
-        name: str
-        external_knowledge_api_id: str
-        external_knowledge_id: str
-        external_retrieval_model: NotRequired[dict[str, Any]]
-        description: NotRequired[str]
-
     class ExternalRetrievalParameters(TypedDict, total=False):
         top_k: int
         score_threshold_enabled: bool
@@ -74,7 +62,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def create_external_knowledge_api(
-        tenant_id: str, user_id: str, args: ExternalKnowledgeApiArgs
+        tenant_id: str, user_id: str, args: dict[str, Any]
     ) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
@@ -243,7 +231,9 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: dict[str, Any] | None = None) -> dict[str, Any]:
+    def assembling_headers(
+        authorization: Authorization, headers: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -273,7 +263,7 @@ class ExternalDatasetService:
         return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
-    def create_external_dataset(tenant_id: str, user_id: str, args: ExternalDatasetArgs) -> Dataset:
+    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any]) -> Dataset:
         # check if dataset name already exists
         if db.session.scalar(
             select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
