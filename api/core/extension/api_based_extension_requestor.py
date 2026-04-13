@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 import httpx
 
@@ -14,7 +14,7 @@ class APIBasedExtensionRequestor:
         self.api_endpoint = api_endpoint
         self.api_key = api_key
 
-    def request(self, point: APIBasedExtensionPoint, params: dict):
+    def request(self, point: APIBasedExtensionPoint, params: dict[str, Any]):
         """
         Request the api.
 

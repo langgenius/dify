@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import NamedTuple, Union
+from typing import Any, NamedTuple, Union
 
 
 @dataclass
@@ -19,7 +19,7 @@ class ReactAction:
 class ReactFinish(NamedTuple):
     """The final return value of an ReactFinish."""
 
-    return_values: dict
+    return_values: dict[str, Any]
     """Dictionary of return values."""
     log: str
     """Additional information to log about the return value"""
