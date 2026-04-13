@@ -353,13 +353,17 @@ class Dataset(Base):
         if self.provider != "external":
             return None
         external_knowledge_binding = db.session.scalar(
-            select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == self.id)
+            select(ExternalKnowledgeBindings).where(
+                ExternalKnowledgeBindings.dataset_id == self.id,
+                ExternalKnowledgeBindings.tenant_id == self.tenant_id,
+            )
         )
         if not external_knowledge_binding:
             return None
         external_knowledge_api = db.session.scalar(
             select(ExternalKnowledgeApis).where(
-                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id
+                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
+                ExternalKnowledgeApis.tenant_id == self.tenant_id,
             )
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:
