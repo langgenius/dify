@@ -61,7 +61,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsMixin, TypeBase
+from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from .types import EnumText, LongText, StringUUID
@@ -742,8 +742,8 @@ class WorkflowRun(Base):
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
-        "WorkflowPause",
-        primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
+        lambda: WorkflowPause,
+        primaryjoin=lambda: WorkflowRun.id == orm.foreign(WorkflowPause.workflow_run_id),
         uselist=False,
         # require explicit preloading.
         lazy="raise",
@@ -1941,7 +1941,7 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class WorkflowPause(DefaultFieldsMixin, Base):
+class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
 
@@ -1980,6 +1980,11 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         nullable=False,
     )
 
+    # state_object_key stores the object key referencing the serialized runtime state
+    # of the `GraphEngine`. This object captures the complete execution context of the
+    # workflow at the moment it was paused, enabling accurate resumption.
+    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
+
     # `resumed_at` records the timestamp when the suspended workflow was resumed.
     # It is set to `NULL` if the workflow has not been resumed.
     #
@@ -1988,25 +1993,23 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     resumed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
         nullable=True,
+        default=None,
     )
 
-    # state_object_key stores the object key referencing the serialized runtime state
-    # of the `GraphEngine`. This object captures the complete execution context of the
-    # workflow at the moment it was paused, enabling accurate resumption.
-    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
-
-    # Relationship to WorkflowRun
+    # Relationship to WorkflowRun (uses lambda to resolve across Base/TypeBase registries)
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+        lambda: WorkflowRun,
         foreign_keys=[workflow_run_id],
         # require explicit preloading.
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
+        primaryjoin=lambda: WorkflowPause.workflow_run_id == WorkflowRun.id,
         back_populates="pause",
+        init=False,
     )
 
 
-class WorkflowPauseReason(DefaultFieldsMixin, Base):
+class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "workflow_pause_reasons"
 
     # `pause_id` represents the identifier of the pause,
@@ -2049,16 +2052,20 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
+        init=False,
     )
 
     @classmethod
-    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
         if isinstance(pause_reason, HumanInputRequired):
             return cls(
-                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+                pause_id=pause_id,
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                form_id=pause_reason.form_id,
+                node_id=pause_reason.node_id,
             )
         elif isinstance(pause_reason, SchedulingPause):
-            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+            return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
         else:
             raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
