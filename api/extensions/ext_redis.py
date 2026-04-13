@@ -141,6 +141,12 @@ class RedisHealthParamsDict(TypedDict):
     health_check_interval: int | None
 
 
+class RedisClusterHealthParamsDict(TypedDict):
+    retry: Retry
+    socket_timeout: float | None
+    socket_connect_timeout: float | None
+
+
 class RedisBaseParamsDict(TypedDict):
     username: str | None
     password: str | None
@@ -211,7 +217,7 @@ def _get_connection_health_params() -> RedisHealthParamsDict:
     )
 
 
-def _get_cluster_connection_health_params() -> dict[str, Any]:
+def _get_cluster_connection_health_params() -> RedisClusterHealthParamsDict:
     """Get retry and timeout parameters for Redis Cluster clients.
 
     RedisCluster does not support ``health_check_interval`` as a constructor
@@ -219,8 +225,13 @@ def _get_cluster_connection_health_params() -> dict[str, Any]:
     here. Only ``retry``, ``socket_timeout``, and ``socket_connect_timeout``
     are passed through.
     """
-    params: dict[str, Any] = dict(_get_connection_health_params())
-    return {k: v for k, v in params.items() if k != "health_check_interval"}
+    health_params = _get_connection_health_params()
+    result: RedisClusterHealthParamsDict = {
+        "retry": health_params["retry"],
+        "socket_timeout": health_params["socket_timeout"],
+        "socket_connect_timeout": health_params["socket_connect_timeout"],
+    }
+    return result
 
 
 def _get_base_redis_params() -> RedisBaseParamsDict:

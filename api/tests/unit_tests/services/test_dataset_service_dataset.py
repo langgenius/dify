@@ -532,6 +532,9 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             patch.object(DatasetService, "_update_external_knowledge_binding") as update_binding,
+            patch(
+                "services.dataset_service.ExternalDatasetService.get_external_knowledge_api", return_value=object()
+            ) as get_external_knowledge_api,
             patch("services.dataset_service.naive_utc_now", return_value=now),
             patch("services.dataset_service.db") as mock_db,
         ):
@@ -557,6 +560,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM
         assert dataset.updated_by == "user-1"
         assert dataset.updated_at is now
+        get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1")
         mock_db.session.add.assert_called_once_with(dataset)
         mock_db.session.commit.assert_called_once()
@@ -573,6 +577,31 @@ class TestDatasetServiceCreationAndUpdate:
 
         with pytest.raises(ValueError, match=message):
             DatasetService._update_external_dataset(dataset, payload, SimpleNamespace(id="user-1"))
+
+    def test_update_external_dataset_rejects_cross_tenant_external_api_id(self):
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
+
+        with (
+            patch(
+                "services.dataset_service.ExternalDatasetService.get_external_knowledge_api",
+                side_effect=ValueError("api template not found"),
+            ) as get_external_knowledge_api,
+            patch.object(DatasetService, "_update_external_knowledge_binding") as update_binding,
+            patch("services.dataset_service.db") as mock_db,
+        ):
+            with pytest.raises(ValueError, match="api template not found"):
+                DatasetService._update_external_dataset(
+                    dataset,
+                    {
+                        "external_knowledge_id": "knowledge-1",
+                        "external_knowledge_api_id": "foreign-api",
+                    },
+                    SimpleNamespace(id="user-1"),
+                )
+
+        get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id)
+        update_binding.assert_not_called()
+        mock_db.session.commit.assert_not_called()
 
     def test_update_external_knowledge_binding_updates_changed_binding_values(self):
         binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
