@@ -12,6 +12,7 @@ from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
+from models.account import Account
 from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
