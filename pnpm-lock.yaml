@@ -24,6 +24,9 @@ catalogs:
     '@cucumber/cucumber':
       specifier: 12.8.0
       version: 12.8.0
+    '@date-fns/tz':
+      specifier: 1.2.0
+      version: 1.2.0
     '@egoist/tailwindcss-icons':
       specifier: 1.9.2
       version: 1.9.2
@@ -267,6 +270,9 @@ catalogs:
     cron-parser:
       specifier: 5.5.0
       version: 5.5.0
+    date-fns:
+      specifier: 4.0.0
+      version: 4.0.0
     dayjs:
       specifier: 1.11.20
       version: 1.11.20
@@ -648,7 +654,10 @@ importers:
         version: 1.27.7(@amplitude/rrweb@2.0.0-alpha.37)(rollup@4.59.0)
       '@base-ui/react':
         specifier: 'catalog:'
-        version: 1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 1.4.0(@date-fns/tz@1.2.0)(@types/react@19.2.14)(date-fns@4.0.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@date-fns/tz':
+        specifier: 'catalog:'
+        version: 1.2.0
       '@emoji-mart/data':
         specifier: 'catalog:'
         version: 1.2.1
@@ -751,6 +760,9 @@ importers:
       cron-parser:
         specifier: 'catalog:'
         version: 5.5.0
+      date-fns:
+        specifier: 'catalog:'
+        version: 4.0.0
       dayjs:
         specifier: 'catalog:'
         version: 1.11.20
@@ -1534,8 +1546,8 @@ packages:
   '@cucumber/tag-expressions@9.1.0':
     resolution: {integrity: sha512-bvHjcRFZ+J1TqIa9eFNO1wGHqwx4V9ZKV3hYgkuK/VahHx73uiP4rKV3JVrvWSMrwrFvJG6C8aEwnCWSvbyFdQ==}
 
-  '@date-fns/tz@1.4.1':
-    resolution: {integrity: sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA==}
+  '@date-fns/tz@1.2.0':
+    resolution: {integrity: sha512-LBrd7MiJZ9McsOgxqWX7AaxrDjcFVjWH/tIKJd7pnR7McaslGYOP1QmmiBXdJH/H/yLCT+rcQ7FaPBUxRGUtrg==}
 
   '@e18e/eslint-plugin@0.3.0':
     resolution: {integrity: sha512-hHgfpxsrZ2UYHcicA+tGZnmk19uJTaye9VH79O+XS8R4ona2Hx3xjhXghclNW58uXMk3xXlbYEOMr8thsoBmWg==}
@@ -5333,8 +5345,8 @@ packages:
   dagre-d3-es@7.0.14:
     resolution: {integrity: sha512-P4rFMVq9ESWqmOgK+dlXvOtLwYg0i7u0HBGJER0LZDJT2VHIPAMZ/riPxqJceWMStH5+E61QxFra9kIS3AqdMg==}
 
-  date-fns@4.1.0:
-    resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
+  date-fns@4.0.0:
+    resolution: {integrity: sha512-6K33+I8fQ5otvHgLIvKK1xmMbLAh0pduyrx7dwMXKiGYeoWhmk6M3Zoak9n7bXHMJQlHq1yqmdGy1QxKddJjUA==}
 
   dayjs@1.11.20:
     resolution: {integrity: sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==}
@@ -8916,14 +8928,14 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@base-ui/react@1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@base-ui/react@1.4.0(@date-fns/tz@1.2.0)(@types/react@19.2.14)(date-fns@4.0.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@babel/runtime': 7.29.2
       '@base-ui/utils': 0.2.7(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@date-fns/tz': 1.4.1
+      '@date-fns/tz': 1.2.0
       '@floating-ui/react-dom': 2.1.8(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@floating-ui/utils': 0.2.11
-      date-fns: 4.1.0
+      date-fns: 4.0.0
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
       use-sync-external-store: 1.6.0(react@19.2.5)
@@ -9149,7 +9161,7 @@ snapshots:
 
   '@cucumber/tag-expressions@9.1.0': {}
 
-  '@date-fns/tz@1.4.1': {}
+  '@date-fns/tz@1.2.0': {}
 
   '@e18e/eslint-plugin@0.3.0(eslint@10.2.0(jiti@2.6.1))(oxlint@1.58.0(oxlint-tsgolint@0.20.0))':
     dependencies:
@@ -11600,6 +11612,7 @@ snapshots:
   '@types/node@25.5.2':
     dependencies:
       undici-types: 7.18.2
+    optional: true
 
   '@types/node@25.6.0':
     dependencies:
@@ -12820,7 +12833,7 @@ snapshots:
       d3: 7.9.0
       lodash-es: 4.18.0
 
-  date-fns@4.1.0: {}
+  date-fns@4.0.0: {}
 
   dayjs@1.11.20: {}
 
@@ -14083,7 +14096,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 25.5.2
+      '@types/node': 25.6.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -16366,7 +16379,8 @@ snapshots:
 
   unbash@2.2.0: {}
 
-  undici-types@7.18.2: {}
+  undici-types@7.18.2:
+    optional: true
 
   undici-types@7.19.2: {}
 

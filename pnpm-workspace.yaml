@@ -49,6 +49,7 @@ catalog:
   "@amplitude/plugin-session-replay-browser": 1.27.7
   "@antfu/eslint-config": 8.2.0
   "@base-ui/react": 1.4.0
+  "@date-fns/tz": 1.2.0
   "@chromatic-com/storybook": 5.1.2
   "@cucumber/cucumber": 12.8.0
   "@egoist/tailwindcss-icons": 1.9.2
@@ -135,6 +136,7 @@ catalog:
   code-inspector-plugin: 1.5.1
   copy-to-clipboard: 3.3.3
   cron-parser: 5.5.0
+  date-fns: 4.0.0
   dayjs: 1.11.20
   decimal.js: 10.6.0
   dompurify: 3.3.3
