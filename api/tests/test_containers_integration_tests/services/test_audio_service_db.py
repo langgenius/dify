@@ -100,7 +100,6 @@ class AudioServiceDBIntegrationTestDataFactory:
             dialogue_count=0,
             is_deleted=False,
         )
-        conversation.inputs = {}
         db_session.add(conversation)
         db_session.commit()
         return conversation
