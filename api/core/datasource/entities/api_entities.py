@@ -1,10 +1,10 @@
-from typing import Literal, Optional
+from typing import Any, Literal, TypedDict
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, Field, field_validator
 
 from core.datasource.entities.datasource_entities import DatasourceParameter
-from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.common_entities import I18nObject, I18nObjectDict
 
 
 class DatasourceApiEntity(BaseModel):
@@ -17,7 +17,24 @@ class DatasourceApiEntity(BaseModel):
     output_schema: dict | None = None
 
 
-ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
+ToolProviderTypeApiLiteral = Literal["builtin", "api", "workflow"] | None
+
+
+class DatasourceProviderApiEntityDict(TypedDict):
+    id: str
+    author: str
+    name: str
+    plugin_id: str | None
+    plugin_unique_identifier: str | None
+    description: I18nObjectDict
+    icon: str | dict
+    label: I18nObjectDict
+    type: str
+    team_credentials: dict | None
+    is_team_authorization: bool
+    allow_delete: bool
+    datasources: list[Any]
+    labels: list[str]
 
 
 class DatasourceProviderApiEntity(BaseModel):
@@ -42,7 +59,7 @@ class DatasourceProviderApiEntity(BaseModel):
     def convert_none_to_empty_list(cls, v):
         return v if v is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> DatasourceProviderApiEntityDict:
         # -------------
         # overwrite datasource parameter types for temp fix
         datasources = jsonable_encoder(self.datasources)
@@ -53,7 +70,7 @@ class DatasourceProviderApiEntity(BaseModel):
                         parameter["type"] = "files"
         # -------------
 
-        return {
+        result: DatasourceProviderApiEntityDict = {
             "id": self.id,
             "author": self.author,
             "name": self.name,
@@ -69,3 +86,4 @@ class DatasourceProviderApiEntity(BaseModel):
             "datasources": datasources,
             "labels": self.labels,
         }
+        return result

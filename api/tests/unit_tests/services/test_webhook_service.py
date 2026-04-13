@@ -617,6 +617,20 @@ class _SessionContext:
         return False
 
 
+class _SessionmakerContext:
+    def __init__(self, session: Any) -> None:
+        self._session = session
+
+    def begin(self) -> "_SessionmakerContext":
+        return self
+
+    def __enter__(self) -> Any:
+        return self._session
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+
 @pytest.fixture
 def flask_app() -> Flask:
     return Flask(__name__)
@@ -625,6 +639,7 @@ def flask_app() -> Flask:
 def _patch_session(monkeypatch: pytest.MonkeyPatch, session: Any) -> None:
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=MagicMock(), session=MagicMock()))
     monkeypatch.setattr(service_module, "Session", lambda *args, **kwargs: _SessionContext(session))
+    monkeypatch.setattr(service_module, "sessionmaker", lambda *args, **kwargs: _SessionmakerContext(session))
 
 
 def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
@@ -642,7 +657,7 @@ def _app(**kwargs: Any) -> App:
 def test_get_webhook_trigger_and_workflow_should_raise_when_webhook_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     fake_session = MagicMock()
-    fake_session.query.return_value = _FakeQuery(None)
+    fake_session.scalar.return_value = None
     _patch_session(monkeypatch, fake_session)
 
     # Act / Assert
@@ -656,7 +671,7 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_not_foun
     # Arrange
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     fake_session = MagicMock()
-    fake_session.query.side_effect = [_FakeQuery(webhook_trigger), _FakeQuery(None)]
+    fake_session.scalar.side_effect = [webhook_trigger, None]
     _patch_session(monkeypatch, fake_session)
 
     # Act / Assert
@@ -671,7 +686,7 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_rate_lim
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     app_trigger = SimpleNamespace(status=AppTriggerStatus.RATE_LIMITED)
     fake_session = MagicMock()
-    fake_session.query.side_effect = [_FakeQuery(webhook_trigger), _FakeQuery(app_trigger)]
+    fake_session.scalar.side_effect = [webhook_trigger, app_trigger]
     _patch_session(monkeypatch, fake_session)
 
     # Act / Assert
@@ -686,7 +701,7 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_app_trigger_disabled
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     app_trigger = SimpleNamespace(status=AppTriggerStatus.DISABLED)
     fake_session = MagicMock()
-    fake_session.query.side_effect = [_FakeQuery(webhook_trigger), _FakeQuery(app_trigger)]
+    fake_session.scalar.side_effect = [webhook_trigger, app_trigger]
     _patch_session(monkeypatch, fake_session)
 
     # Act / Assert
@@ -699,7 +714,7 @@ def test_get_webhook_trigger_and_workflow_should_raise_when_workflow_not_found(m
     webhook_trigger = SimpleNamespace(app_id="app-1", node_id="node-1")
     app_trigger = SimpleNamespace(status=AppTriggerStatus.ENABLED)
     fake_session = MagicMock()
-    fake_session.query.side_effect = [_FakeQuery(webhook_trigger), _FakeQuery(app_trigger), _FakeQuery(None)]
+    fake_session.scalar.side_effect = [webhook_trigger, app_trigger, None]
     _patch_session(monkeypatch, fake_session)
 
     # Act / Assert
@@ -717,7 +732,7 @@ def test_get_webhook_trigger_and_workflow_should_return_values_for_non_debug_mod
     workflow.get_node_config_by_id.return_value = {"data": {"key": "value"}}
 
     fake_session = MagicMock()
-    fake_session.query.side_effect = [_FakeQuery(webhook_trigger), _FakeQuery(app_trigger), _FakeQuery(workflow)]
+    fake_session.scalar.side_effect = [webhook_trigger, app_trigger, workflow]
     _patch_session(monkeypatch, fake_session)
 
     # Act
@@ -736,7 +751,7 @@ def test_get_webhook_trigger_and_workflow_should_return_values_for_debug_mode(mo
     workflow.get_node_config_by_id.return_value = {"data": {"mode": "debug"}}
 
     fake_session = MagicMock()
-    fake_session.query.side_effect = [_FakeQuery(webhook_trigger), _FakeQuery(workflow)]
+    fake_session.scalar.side_effect = [webhook_trigger, workflow]
     _patch_session(monkeypatch, fake_session)
 
     # Act
@@ -1241,7 +1256,6 @@ def test_sync_webhook_relationships_should_create_missing_records_and_delete_sta
     # Assert
     assert len(fake_session.added) == 1
     assert len(fake_session.deleted) == 1
-    assert fake_session.commit_count == 2
     redis_set_mock.assert_called_once()
     redis_delete_mock.assert_called_once()
     lock.release.assert_called_once()

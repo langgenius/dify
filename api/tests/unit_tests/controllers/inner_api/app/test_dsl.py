@@ -102,14 +102,16 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.fixture
     def _mock_import_deps(self):
-        """Patch db, Session, and AppDslService for import handler tests."""
+        """Patch db, sessionmaker, and AppDslService for import handler tests."""
+        mock_session_ctx = MagicMock()
+        mock_session_ctx.__enter__ = MagicMock(return_value=MagicMock())
+        mock_session_ctx.__exit__ = MagicMock(return_value=False)
+        mock_sessionmaker = MagicMock(return_value=MagicMock(begin=MagicMock(return_value=mock_session_ctx)))
         with (
             patch("controllers.inner_api.app.dsl.db"),
-            patch("controllers.inner_api.app.dsl.Session") as mock_session,
+            patch("controllers.inner_api.app.dsl.sessionmaker", mock_sessionmaker),
             patch("controllers.inner_api.app.dsl.AppDslService") as mock_dsl_cls,
         ):
-            mock_session.return_value.__enter__ = MagicMock(return_value=MagicMock())
-            mock_session.return_value.__exit__ = MagicMock(return_value=False)
             self._mock_dsl = MagicMock()
             mock_dsl_cls.return_value = self._mock_dsl
             yield

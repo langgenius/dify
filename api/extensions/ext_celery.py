@@ -5,12 +5,30 @@ from typing import Any
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
 from celery.schedules import crontab
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
 
 
-def _get_celery_ssl_options() -> dict[str, Any] | None:
+class _CelerySentinelKwargsDict(TypedDict):
+    socket_timeout: float | None
+    password: str | None
+
+
+class CelerySentinelTransportDict(TypedDict):
+    master_name: str | None
+    sentinel_kwargs: _CelerySentinelKwargsDict
+
+
+class CelerySSLOptionsDict(TypedDict):
+    ssl_cert_reqs: int
+    ssl_ca_certs: str | None
+    ssl_certfile: str | None
+    ssl_keyfile: str | None
+
+
+def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
     """Get SSL configuration for Celery broker/backend connections."""
     # Only apply SSL if we're using Redis as broker/backend
     if not dify_config.BROKER_USE_SSL:
@@ -33,14 +51,25 @@ def _get_celery_ssl_options() -> dict[str, Any] | None:
 
     ssl_cert_reqs = cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
 
-    ssl_options = {
-        "ssl_cert_reqs": ssl_cert_reqs,
-        "ssl_ca_certs": dify_config.REDIS_SSL_CA_CERTS,
-        "ssl_certfile": dify_config.REDIS_SSL_CERTFILE,
-        "ssl_keyfile": dify_config.REDIS_SSL_KEYFILE,
-    }
+    return CelerySSLOptionsDict(
+        ssl_cert_reqs=ssl_cert_reqs,
+        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS,
+        ssl_certfile=dify_config.REDIS_SSL_CERTFILE,
+        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE,
+    )
 
-    return ssl_options
+
+def get_celery_broker_transport_options() -> CelerySentinelTransportDict | dict[str, Any]:
+    """Get broker transport options (e.g. Redis Sentinel) for Celery connections."""
+    if dify_config.CELERY_USE_SENTINEL:
+        return CelerySentinelTransportDict(
+            master_name=dify_config.CELERY_SENTINEL_MASTER_NAME,
+            sentinel_kwargs=_CelerySentinelKwargsDict(
+                socket_timeout=dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
+                password=dify_config.CELERY_SENTINEL_PASSWORD,
+            ),
+        )
+    return {}
 
 
 def init_app(app: DifyApp) -> Celery:
@@ -53,16 +82,7 @@ def init_app(app: DifyApp) -> Celery:
                 init_request_context()
                 return self.run(*args, **kwargs)
 
-    broker_transport_options = {}
-
-    if dify_config.CELERY_USE_SENTINEL:
-        broker_transport_options = {
-            "master_name": dify_config.CELERY_SENTINEL_MASTER_NAME,
-            "sentinel_kwargs": {
-                "socket_timeout": dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
-                "password": dify_config.CELERY_SENTINEL_PASSWORD,
-            },
-        }
+    broker_transport_options = get_celery_broker_transport_options()
 
     celery_app = Celery(
         app.name,
@@ -89,7 +109,7 @@ def init_app(app: DifyApp) -> Celery:
         )
 
     # Apply SSL configuration if enabled
-    ssl_options = _get_celery_ssl_options()
+    ssl_options = get_celery_ssl_options()
     if ssl_options:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,

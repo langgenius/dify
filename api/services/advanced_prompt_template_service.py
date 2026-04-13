@@ -32,22 +32,33 @@ class AdvancedPromptTemplateService:
     def get_common_prompt(cls, app_mode: str, model_mode: str, has_context: str):
         context_prompt = copy.deepcopy(CONTEXT)
 
-        if app_mode == AppMode.CHAT:
-            if model_mode == "completion":
-                return cls.get_completion_prompt(
-                    copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG), has_context, context_prompt
-                )
-            elif model_mode == "chat":
-                return cls.get_chat_prompt(copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt)
-        elif app_mode == AppMode.COMPLETION:
-            if model_mode == "completion":
-                return cls.get_completion_prompt(
-                    copy.deepcopy(COMPLETION_APP_COMPLETION_PROMPT_CONFIG), has_context, context_prompt
-                )
-            elif model_mode == "chat":
-                return cls.get_chat_prompt(
-                    copy.deepcopy(COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt
-                )
+        match app_mode:
+            case AppMode.CHAT:
+                match model_mode:
+                    case "completion":
+                        return cls.get_completion_prompt(
+                            copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG), has_context, context_prompt
+                        )
+                    case "chat":
+                        return cls.get_chat_prompt(
+                            copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt
+                        )
+                    case _:
+                        pass
+            case AppMode.COMPLETION:
+                match model_mode:
+                    case "completion":
+                        return cls.get_completion_prompt(
+                            copy.deepcopy(COMPLETION_APP_COMPLETION_PROMPT_CONFIG), has_context, context_prompt
+                        )
+                    case "chat":
+                        return cls.get_chat_prompt(
+                            copy.deepcopy(COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt
+                        )
+                    case _:
+                        pass
+            case _:
+                pass
         # default return empty dict
         return {}
 
@@ -73,25 +84,38 @@ class AdvancedPromptTemplateService:
     def get_baichuan_prompt(cls, app_mode: str, model_mode: str, has_context: str):
         baichuan_context_prompt = copy.deepcopy(BAICHUAN_CONTEXT)
 
-        if app_mode == AppMode.CHAT:
-            if model_mode == "completion":
-                return cls.get_completion_prompt(
-                    copy.deepcopy(BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG), has_context, baichuan_context_prompt
-                )
-            elif model_mode == "chat":
-                return cls.get_chat_prompt(
-                    copy.deepcopy(BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG), has_context, baichuan_context_prompt
-                )
-        elif app_mode == AppMode.COMPLETION:
-            if model_mode == "completion":
-                return cls.get_completion_prompt(
-                    copy.deepcopy(BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG),
-                    has_context,
-                    baichuan_context_prompt,
-                )
-            elif model_mode == "chat":
-                return cls.get_chat_prompt(
-                    copy.deepcopy(BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, baichuan_context_prompt
-                )
+        match app_mode:
+            case AppMode.CHAT:
+                match model_mode:
+                    case "completion":
+                        return cls.get_completion_prompt(
+                            copy.deepcopy(BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG),
+                            has_context,
+                            baichuan_context_prompt,
+                        )
+                    case "chat":
+                        return cls.get_chat_prompt(
+                            copy.deepcopy(BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG), has_context, baichuan_context_prompt
+                        )
+                    case _:
+                        pass
+            case AppMode.COMPLETION:
+                match model_mode:
+                    case "completion":
+                        return cls.get_completion_prompt(
+                            copy.deepcopy(BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG),
+                            has_context,
+                            baichuan_context_prompt,
+                        )
+                    case "chat":
+                        return cls.get_chat_prompt(
+                            copy.deepcopy(BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG),
+                            has_context,
+                            baichuan_context_prompt,
+                        )
+                    case _:
+                        pass
+            case _:
+                pass
         # default return empty dict
         return {}

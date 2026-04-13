@@ -29,7 +29,7 @@ class TriggerWebhookNode(Node[WebhookData]):
     def post_init(self) -> None:
         from core.workflow.node_runtime import DifyFileReferenceFactory
 
-        self._file_reference_factory = DifyFileReferenceFactory(self.graph_init_params.run_context)
+        self._file_reference_factory = DifyFileReferenceFactory(self.run_context)
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -155,24 +155,25 @@ class TriggerWebhookNode(Node[WebhookData]):
                     outputs[param_name] = raw_data
                 continue
 
-            if param_type == SegmentType.FILE:
-                # Get File object (already processed by webhook controller)
-                files = webhook_data.get("files", {})
-                if files and isinstance(files, dict):
-                    file = files.get(param_name)
-                    if file and isinstance(file, dict):
-                        file_var = self.generate_file_var(param_name, file)
-                        if file_var:
-                            outputs[param_name] = file_var
+            match param_type:
+                case SegmentType.FILE:
+                    # Get File object (already processed by webhook controller)
+                    files = webhook_data.get("files", {})
+                    if files and isinstance(files, dict):
+                        file = files.get(param_name)
+                        if file and isinstance(file, dict):
+                            file_var = self.generate_file_var(param_name, file)
+                            if file_var:
+                                outputs[param_name] = file_var
+                            else:
+                                outputs[param_name] = files
                         else:
                             outputs[param_name] = files
                     else:
                         outputs[param_name] = files
-                else:
-                    outputs[param_name] = files
-            else:
-                # Get regular body parameter
-                outputs[param_name] = webhook_data.get("body", {}).get(param_name)
+                case _:
+                    # Get regular body parameter
+                    outputs[param_name] = webhook_data.get("body", {}).get(param_name)
 
         # Include raw webhook data for debugging/advanced use
         outputs["_webhook_raw"] = webhook_data

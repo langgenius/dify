@@ -24,6 +24,30 @@ When('I confirm app creation', async function (this: DifyWorld) {
   await createButton.click()
 })
 
+When('I select the {string} app type', async function (this: DifyWorld, appType: string) {
+  const dialog = this.getPage().getByRole('dialog')
+  const appTypeTitle = dialog.getByText(appType, { exact: true })
+
+  await expect(appTypeTitle).toBeVisible()
+  await appTypeTitle.click()
+})
+
+When('I expand the beginner app types', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const toggle = page.getByRole('button', { name: 'More basic app types' })
+
+  await expect(toggle).toBeVisible()
+  await toggle.click()
+})
+
 Then('I should land on the app editor', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/(workflow|configuration)(?:\?.*)?$/)
+})
+
+Then('I should land on the workflow editor', async function (this: DifyWorld) {
+  await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/workflow(?:\?.*)?$/)
+})
+
+Then('I should land on the app configuration page', async function (this: DifyWorld) {
+  await expect(this.getPage()).toHaveURL(/\/app\/[^/]+\/configuration(?:\?.*)?$/)
 })
