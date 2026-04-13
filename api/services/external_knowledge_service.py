@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, cast
+from typing import Any, NotRequired, TypedDict, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -25,6 +25,23 @@ from services.errors.dataset import DatasetNameDuplicateError
 
 
 class ExternalDatasetService:
+    class ExternalKnowledgeApiArgs(TypedDict):
+        name: str
+        settings: dict[str, Any]
+        description: NotRequired[str]
+
+    class ExternalDatasetArgs(TypedDict):
+        name: str
+        external_knowledge_api_id: str
+        external_knowledge_id: str
+        external_retrieval_model: NotRequired[dict[str, Any]]
+        description: NotRequired[str]
+
+    class ExternalRetrievalParameters(TypedDict, total=False):
+        top_k: int
+        score_threshold_enabled: bool
+        score_threshold: float
+
     @staticmethod
     def get_external_knowledge_apis(
         page, per_page, tenant_id, search=None
@@ -47,7 +64,7 @@ class ExternalDatasetService:
         return external_knowledge_apis.items, external_knowledge_apis.total
 
     @classmethod
-    def validate_api_list(cls, api_settings: dict):
+    def validate_api_list(cls, api_settings: dict[str, Any]):
         if not api_settings:
             raise ValueError("api list is empty")
         if not api_settings.get("endpoint"):
@@ -56,7 +73,9 @@ class ExternalDatasetService:
             raise ValueError("api_key is required")
 
     @staticmethod
-    def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict) -> ExternalKnowledgeApis:
+    def create_external_knowledge_api(
+        tenant_id: str, user_id: str, args: ExternalKnowledgeApiArgs
+    ) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
             raise ValueError("settings is required")
@@ -75,7 +94,7 @@ class ExternalDatasetService:
         return external_knowledge_api
 
     @staticmethod
-    def check_endpoint_and_api_key(settings: dict):
+    def check_endpoint_and_api_key(settings: dict[str, Any]):
         if "endpoint" not in settings or not settings["endpoint"]:
             raise ValueError("endpoint is required")
         if "api_key" not in settings or not settings["api_key"]:
@@ -178,7 +197,9 @@ class ExternalDatasetService:
         return external_knowledge_binding
 
     @staticmethod
-    def document_create_args_validate(tenant_id: str, external_knowledge_api_id: str, process_parameter: dict):
+    def document_create_args_validate(
+        tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
+    ):
         external_knowledge_api = db.session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -222,7 +243,9 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: dict | None = None) -> dict[str, Any]:
+    def assembling_headers(
+        authorization: Authorization, headers: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -248,11 +271,11 @@ class ExternalDatasetService:
         return headers
 
     @staticmethod
-    def get_external_knowledge_api_settings(settings: dict) -> ExternalKnowledgeApiSetting:
+    def get_external_knowledge_api_settings(settings: dict[str, Any]) -> ExternalKnowledgeApiSetting:
         return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
-    def create_external_dataset(tenant_id: str, user_id: str, args: dict) -> Dataset:
+    def create_external_dataset(tenant_id: str, user_id: str, args: ExternalDatasetArgs) -> Dataset:
         # check if dataset name already exists
         if db.session.scalar(
             select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
@@ -304,7 +327,7 @@ class ExternalDatasetService:
         tenant_id: str,
         dataset_id: str,
         query: str,
-        external_retrieval_parameters: dict,
+        external_retrieval_parameters: ExternalRetrievalParameters,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalar(
