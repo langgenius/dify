@@ -2602,9 +2602,9 @@ class DocumentService:
                         .limit(1)
                     )
 
-                    # raise error if file not found
-                    if not file:
-                        raise FileNotExistsError()
+                        # raise error if file not found
+                        if not file:
+                            raise FileNotExistsError()
 
                     file_name = file.name
                     data_source_info = {
@@ -2632,24 +2632,48 @@ class DocumentService:
                         raise ValueError("Data source binding not found.")
                     for page in notion_info.pages:
                         data_source_info = {
-                            "credential_id": notion_info.credential_id,
-                            "notion_workspace_id": workspace_id,
-                            "notion_page_id": page.page_id,
-                            "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
-                            "type": page.type,
+                            "upload_file_id": file_id,
                         }
-            elif document_data.data_source.info_list.data_source_type == "website_crawl":
-                website_info = document_data.data_source.info_list.website_info_list
-                if website_info:
-                    urls = website_info.urls
-                    for url in urls:
-                        data_source_info = {
-                            "url": url,
-                            "provider": website_info.provider,
-                            "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content,
-                            "mode": "crawl",
-                        }
+                case "notion_import":
+                    if not document_data.data_source.info_list.notion_info_list:
+                        raise ValueError("No notion info list found.")
+                    notion_info_list = document_data.data_source.info_list.notion_info_list
+                    for notion_info in notion_info_list:
+                        workspace_id = notion_info.workspace_id
+                        data_source_binding = (
+                            db.session.query(DataSourceOauthBinding)
+                            .where(
+                                sa.and_(
+                                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                                    DataSourceOauthBinding.provider == "notion",
+                                    DataSourceOauthBinding.disabled == False,
+                                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                                )
+                            )
+                            .first()
+                        )
+                        if not data_source_binding:
+                            raise ValueError("Data source binding not found.")
+                        for page in notion_info.pages:
+                            data_source_info = {
+                                "credential_id": notion_info.credential_id,
+                                "notion_workspace_id": workspace_id,
+                                "notion_page_id": page.page_id,
+                                "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
+                                "type": page.type,
+                            }
+                case "website_crawl":
+                    website_info = document_data.data_source.info_list.website_info_list
+                    if website_info:
+                        urls = website_info.urls
+                        for url in urls:
+                            data_source_info = {
+                                "url": url,
+                                "provider": website_info.provider,
+                                "job_id": website_info.job_id,
+                                "only_main_content": website_info.only_main_content,
+                                "mode": "crawl",
+                            }
             document.data_source_type = document_data.data_source.info_list.data_source_type
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
@@ -2691,22 +2715,23 @@ class DocumentService:
 
         if features.billing.enabled:
             count = 0
-            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-                upload_file_list = (
-                    knowledge_config.data_source.info_list.file_info_list.file_ids
-                    if knowledge_config.data_source.info_list.file_info_list
-                    else []
-                )
-                count = len(upload_file_list)
-            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-                if notion_info_list:
-                    for notion_info in notion_info_list:
-                        count = count + len(notion_info.pages)
-            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                website_info = knowledge_config.data_source.info_list.website_info_list
-                if website_info:
-                    count = len(website_info.urls)
+            match knowledge_config.data_source.info_list.data_source_type:
+                case "upload_file":
+                    upload_file_list = (
+                        knowledge_config.data_source.info_list.file_info_list.file_ids
+                        if knowledge_config.data_source.info_list.file_info_list
+                        else []
+                    )
+                    count = len(upload_file_list)
+                case "notion_import":
+                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list
+                    if notion_info_list:
+                        for notion_info in notion_info_list:
+                            count = count + len(notion_info.pages)
+                case "website_crawl":
+                    website_info = knowledge_config.data_source.info_list.website_info_list
+                    if website_info:
+                        count = len(website_info.urls)
             if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                 raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
@@ -2784,15 +2809,16 @@ class DocumentService:
         if not knowledge_config.data_source.info_list:
             raise ValueError("Data source info is required")
 
-        if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-            if not knowledge_config.data_source.info_list.file_info_list:
-                raise ValueError("File source info is required")
-        if knowledge_config.data_source.info_list.data_source_type == "notion_import":
-            if not knowledge_config.data_source.info_list.notion_info_list:
-                raise ValueError("Notion source info is required")
-        if knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-            if not knowledge_config.data_source.info_list.website_info_list:
-                raise ValueError("Website source info is required")
+        match knowledge_config.data_source.info_list.data_source_type:
+            case "upload_file":
+                if not knowledge_config.data_source.info_list.file_info_list:
+                    raise ValueError("File source info is required")
+            case "notion_import":
+                if not knowledge_config.data_source.info_list.notion_info_list:
+                    raise ValueError("Notion source info is required")
+            case "website_crawl":
+                if not knowledge_config.data_source.info_list.website_info_list:
+                    raise ValueError("Website source info is required")
 
     @classmethod
     def process_rule_args_validate(cls, knowledge_config: KnowledgeConfig):
