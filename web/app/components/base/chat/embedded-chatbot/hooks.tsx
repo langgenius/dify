@@ -67,14 +67,18 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (isTryApp)
       return
     getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
+      // eslint-disable-next-line react/set-state-in-effect
       setUserId(user_id)
+      // eslint-disable-next-line react/set-state-in-effect
       setConversationId(conversation_id)
     })
   }, [])
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect
     setUserId(embeddedUserId || undefined)
   }, [embeddedUserId])
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect
     setConversationId(embeddedConversationId || undefined)
   }, [embeddedConversationId])
   useEffect(() => {
@@ -167,7 +171,9 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (status === 404 && chatShouldReloadKey) {
       // The conversation was removed remotely. Clear persisted id to avoid 404 retry loops.
       handleConversationIdInfoChange('')
+      // eslint-disable-next-line react/set-state-in-effect
       setNewConversationId('')
+      // eslint-disable-next-line react/set-state-in-effect
       setClearChatList(true)
     }
   }, [appChatListError, chatShouldReloadKey, handleConversationIdInfoChange])
@@ -304,6 +310,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   }, [originConversationList, showNewConversationItemInList, t])
   useEffect(() => {
     if (newConversation) {
+      // eslint-disable-next-line react/set-state-in-effect
       setOriginConversationList(produce((draft) => {
         const index = draft.findIndex(item => item.id === newConversation.id)
         if (index > -1)
