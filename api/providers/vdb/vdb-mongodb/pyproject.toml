@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-mongodb"
+version = "0.0.1"
+
+dependencies = [
+    "pymongo~=4.10.1",
+]
+description = "Dify vector store backend (dify-vdb-mongodb)."
+
+[project.entry-points."dify.vector_backends"]
+mongodb = "dify_vdb_mongodb.mongodb_vector:MongoDBVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]
