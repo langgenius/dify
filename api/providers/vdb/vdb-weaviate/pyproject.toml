@@ -3,7 +3,7 @@ name = "dify-vdb-weaviate"
 version = "0.0.1"
 
 dependencies = [
-    "weaviate-client==4.20.4",
+    "weaviate-client==4.20.5",
 ]
 description = "Dify vector store backend (dify-vdb-weaviate)."
 
