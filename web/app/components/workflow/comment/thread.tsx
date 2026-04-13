@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
-import { Avatar } from '@/app/components/base/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,13 +124,20 @@ const ThreadMessage: FC<{
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
       <div className="shrink-0">
-        <Avatar
-          name={authorName}
-          avatar={avatarUrl || null}
-          size="sm"
-          className={cn('h-8 w-8 rounded-full')}
-          backgroundColor={userColor}
-        />
+        <AvatarRoot size="sm" className={cn('h-8 w-8 rounded-full')}>
+          {avatarUrl && (
+            <AvatarImage
+              src={avatarUrl}
+              alt={authorName}
+            />
+          )}
+          <AvatarFallback
+            size="sm"
+            style={userColor ? { backgroundColor: userColor } : undefined}
+          >
+            {authorName?.[0]?.toLocaleUpperCase()}
+          </AvatarFallback>
+        </AvatarRoot>
       </div>
       <div className="min-w-0 flex-1 pb-4 text-text-primary last:pb-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

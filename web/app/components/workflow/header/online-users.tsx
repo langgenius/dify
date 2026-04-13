@@ -4,7 +4,7 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { Avatar } from '@/app/components/base/ui/avatar'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import {
   Popover,
   PopoverContent,
@@ -123,6 +123,8 @@ const OnlineUsers = () => {
           {visibleUsers.map((user, index) => {
             const isCurrentUser = user.user_id === currentUserId
             const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
+            const avatarUrl = getAvatarUrl(user)
+            const displayName = user.username || fallbackUsername
             return (
               <Tooltip key={`${user.sid}-${index}`}>
                 <TooltipTrigger>
@@ -135,13 +137,20 @@ const OnlineUsers = () => {
                     style={{ zIndex: visibleUsers.length - index }}
                     onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                   >
-                    <Avatar
-                      name={user.username || fallbackUsername}
-                      avatar={getAvatarUrl(user)}
-                      size="sm"
-                      className="ring-1 ring-components-panel-bg"
-                      backgroundColor={userColor}
-                    />
+                    <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
+                      {avatarUrl && (
+                        <AvatarImage
+                          src={avatarUrl}
+                          alt={displayName}
+                        />
+                      )}
+                      <AvatarFallback
+                        size="sm"
+                        style={userColor ? { backgroundColor: userColor } : undefined}
+                      >
+                        {displayName?.[0]?.toLocaleUpperCase()}
+                      </AvatarFallback>
+                    </AvatarRoot>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent
@@ -190,6 +199,8 @@ const OnlineUsers = () => {
                 {onlineUsers.map((user) => {
                   const isCurrentUser = user.user_id === currentUserId
                   const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
+                  const avatarUrl = getAvatarUrl(user)
+                  const displayName = user.username || fallbackUsername
                   return (
                     <div
                       key={user.sid}
@@ -205,12 +216,20 @@ const OnlineUsers = () => {
                       }}
                     >
                       <div className="relative">
-                        <Avatar
-                          name={user.username || fallbackUsername}
-                          avatar={getAvatarUrl(user)}
-                          size="sm"
-                          backgroundColor={userColor}
-                        />
+                        <AvatarRoot size="sm">
+                          {avatarUrl && (
+                            <AvatarImage
+                              src={avatarUrl}
+                              alt={displayName}
+                            />
+                          )}
+                          <AvatarFallback
+                            size="sm"
+                            style={userColor ? { backgroundColor: userColor } : undefined}
+                          >
+                            {displayName?.[0]?.toLocaleUpperCase()}
+                          </AvatarFallback>
+                        </AvatarRoot>
                       </div>
                       {renderDisplayName(
                         user,
