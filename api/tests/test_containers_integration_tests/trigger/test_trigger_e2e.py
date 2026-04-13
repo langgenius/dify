@@ -11,6 +11,7 @@ import pytest
 from flask import Flask, Response
 from flask.testing import FlaskClient
 from graphon.enums import BuiltinNodeTypes
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -227,7 +228,9 @@ def test_webhook_trigger_creates_trigger_log(
     assert response.status_code == 200
 
     db_session_with_containers.expire_all()
-    logs = db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app_model.id).all()
+    logs = db_session_with_containers.scalars(
+        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
+    ).all()
     assert logs, "Webhook trigger should create trigger log"
 
 
@@ -611,7 +614,9 @@ def test_schedule_trigger_creates_trigger_log(
 
     # Verify WorkflowTriggerLog was created
     db_session_with_containers.expire_all()
-    logs = db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app_model.id).all()
+    logs = db_session_with_containers.scalars(
+        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
+    ).all()
     assert logs, "Schedule trigger should create WorkflowTriggerLog"
     assert logs[0].trigger_type == AppTriggerType.TRIGGER_SCHEDULE
     assert logs[0].root_node_id == schedule_node_id
@@ -786,11 +791,12 @@ def test_plugin_trigger_full_chain_with_db_verification(
 
     # Verify database records exist
     db_session_with_containers.expire_all()
-    plugin_triggers = (
-        db_session_with_containers.query(WorkflowPluginTrigger)
-        .filter_by(app_id=app_model.id, node_id=plugin_node_id)
-        .all()
-    )
+    plugin_triggers = db_session_with_containers.scalars(
+        select(WorkflowPluginTrigger).where(
+            WorkflowPluginTrigger.app_id == app_model.id,
+            WorkflowPluginTrigger.node_id == plugin_node_id,
+        )
+    ).all()
     assert plugin_triggers, "WorkflowPluginTrigger record should exist"
     assert plugin_triggers[0].provider_id == provider_id
     assert plugin_triggers[0].event_name == "test_event"

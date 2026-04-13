@@ -129,7 +129,7 @@ class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
-    output_schema: dict | None = None
+    output_schema: dict[str, Any] | None = None
 
     @field_validator("parameters", mode="before")
     @classmethod
@@ -192,7 +192,7 @@ class DatasourceInvokeMeta(BaseModel):
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
-    tool_config: dict | None = None
+    tool_config: dict[str, Any] | None = None
 
     @classmethod
     def empty(cls) -> DatasourceInvokeMeta:
@@ -242,7 +242,7 @@ class OnlineDocumentPage(BaseModel):
 
     page_id: str = Field(..., description="The page id")
     page_name: str = Field(..., description="The page title")
-    page_icon: dict | None = Field(None, description="The page icon")
+    page_icon: dict[str, Any] | None = Field(None, description="The page icon")
     type: str = Field(..., description="The type of the page")
     last_edited_time: str = Field(..., description="The last edited time")
     parent_id: str | None = Field(None, description="The parent page id")
@@ -301,7 +301,7 @@ class GetWebsiteCrawlRequest(BaseModel):
     Get website crawl request
     """
 
-    crawl_parameters: dict = Field(..., description="The crawl parameters")
+    crawl_parameters: dict[str, Any] = Field(..., description="The crawl parameters")
 
 
 class WebSiteInfoDetail(BaseModel):
@@ -358,7 +358,7 @@ class OnlineDriveFileBucket(BaseModel):
     bucket: str | None = Field(None, description="The file bucket")
     files: list[OnlineDriveFile] = Field(..., description="The file list")
     is_truncated: bool = Field(False, description="Whether the result is truncated")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesRequest(BaseModel):
@@ -369,7 +369,7 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     bucket: str | None = Field(None, description="The file bucket")
     prefix: str = Field(..., description="The parent folder ID")
     max_keys: int = Field(20, description="Page size for pagination")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesResponse(BaseModel):
