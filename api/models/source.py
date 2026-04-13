@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Any, TypedDict
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -38,6 +39,17 @@ class DataSourceOauthBinding(TypeBase):
     disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"), default=False)
 
 
+class DataSourceApiKeyAuthBindingDict(TypedDict):
+    id: str
+    tenant_id: str
+    category: str
+    provider: str
+    credentials: Any
+    created_at: float
+    updated_at: float
+    disabled: bool
+
+
 class DataSourceApiKeyAuthBinding(TypeBase):
     __tablename__ = "data_source_api_key_auth_bindings"
     __table_args__ = (
@@ -65,8 +77,8 @@ class DataSourceApiKeyAuthBinding(TypeBase):
     )
     disabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"), default=False)
 
-    def to_dict(self):
-        return {
+    def to_dict(self) -> DataSourceApiKeyAuthBindingDict:
+        result: DataSourceApiKeyAuthBindingDict = {
             "id": self.id,
             "tenant_id": self.tenant_id,
             "category": self.category,
@@ -76,3 +88,4 @@ class DataSourceApiKeyAuthBinding(TypeBase):
             "updated_at": self.updated_at.timestamp(),
             "disabled": self.disabled,
         }
+        return result
