@@ -26,6 +26,7 @@ import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import TryApp from '../try-app'
 import s from './style.module.css'
 
@@ -91,6 +92,7 @@ const Apps = ({
 
   const [currApp, setCurrApp] = useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+  const [createAppSource, setCreateAppSource] = useState<'explore_template_list' | 'explore_template_preview'>('explore_template_list')
 
   const {
     handleImportDSL,
@@ -110,10 +112,18 @@ const Apps = ({
   }, [])
   const handleShowFromTryApp = useCallback(() => {
     setCurrApp(currentTryApp?.app || null)
+    setCreateAppSource('explore_template_preview')
     setIsShowCreateModal(true)
   }, [currentTryApp?.app])
+  const trackCurrentCreateApp = useCallback(() => {
+    const templateId = currApp?.app.id
+    if (!templateId)
+      return
 
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+    trackCreateApp({ source: createAppSource, templateId })
+  }, [createAppSource, currApp?.app.id])
+
+  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
     icon,
@@ -136,19 +146,23 @@ const Apps = ({
     }
     await handleImportDSL(payload, {
       onSuccess: () => {
+        trackCurrentCreateApp()
         setIsShowCreateModal(false)
       },
       onPending: () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }
+  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess,
+      onSuccess: () => {
+        trackCurrentCreateApp()
+        onSuccess?.()
+      },
     })
-  }, [handleImportDSLConfirm, onSuccess])
+  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
   if (isLoading) {
     return (
@@ -226,6 +240,7 @@ const Apps = ({
                 canCreate={hasEditPermission}
                 onCreate={() => {
                   setCurrApp(app)
+                  setCreateAppSource('explore_template_list')
                   setIsShowCreateModal(true)
                 }}
                 onTry={handleTryApp}

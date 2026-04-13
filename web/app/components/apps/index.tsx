@@ -10,6 +10,7 @@ import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { fetchAppDetail } from '@/service/explore'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import List from './list'
 
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
@@ -40,6 +41,13 @@ const Apps = () => {
   const handleShowFromTryApp = useCallback(() => {
     setIsShowCreateModal(true)
   }, [])
+  const trackCurrentCreateApp = useCallback(() => {
+    const templateId = currApp?.app.id
+    if (!templateId)
+      return
+
+    trackCreateApp({ source: 'studio_template_preview', templateId })
+  }, [currApp?.app.id])
 
   const [controlRefreshList, setControlRefreshList] = useState(0)
   const [controlHideCreateFromTemplatePanel, setControlHideCreateFromTemplatePanel] = useState(0)
@@ -59,11 +67,14 @@ const Apps = () => {
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
-      onSuccess,
+      onSuccess: () => {
+        trackCurrentCreateApp()
+        onSuccess()
+      },
     })
-  }, [handleImportDSLConfirm, onSuccess])
+  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
     icon,
@@ -86,13 +97,14 @@ const Apps = () => {
     }
     await handleImportDSL(payload, {
       onSuccess: () => {
+        trackCurrentCreateApp()
         setIsShowCreateModal(false)
       },
       onPending: () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }
+  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   return (
     <AppListContext.Provider value={{

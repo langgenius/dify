@@ -7,7 +7,7 @@ import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
 const mockPush = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-const mockTrackEvent = vi.fn()
+const mockTrackCreateApp = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
 const toastMocks = vi.hoisted(() => ({
@@ -43,8 +43,8 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -196,10 +196,7 @@ describe('CreateFromDSLModal', () => {
       mode: DSLImportMode.YAML_URL,
       yaml_url: 'https://example.com/app.yml',
     })
-    expect(mockTrackEvent).toHaveBeenCalledWith('create_app_with_dsl', expect.objectContaining({
-      creation_method: 'dsl_url',
-      has_warnings: false,
-    }))
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload' })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
@@ -305,6 +302,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload' })
   })
 
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
