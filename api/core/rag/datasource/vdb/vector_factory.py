@@ -41,7 +41,23 @@ class AbstractVectorFactory(ABC):
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
-            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
+            # `is_summary` and `original_chunk_id` are stored on summary vectors
+            # by `SummaryIndexService` and read back by `RetrievalService` to
+            # route summary hits through their original parent chunks. They
+            # must be listed here so vector backends that use this list as an
+            # explicit return-properties projection (notably Weaviate) actually
+            # return those fields; without them, summary hits silently
+            # collapse into `is_summary = False` branches and the summary
+            # retrieval path is a no-op. See #34884.
+            attributes = [
+                "doc_id",
+                "dataset_id",
+                "document_id",
+                "doc_hash",
+                "doc_type",
+                "is_summary",
+                "original_chunk_id",
+            ]
         self._dataset = dataset
         self._embeddings = self._get_embeddings()
         self._attributes = attributes
