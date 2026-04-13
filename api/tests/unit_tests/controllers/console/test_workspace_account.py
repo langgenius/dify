@@ -20,7 +20,7 @@ def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["RESTX_MASK_HEADER"] = "X-Fields"
-    app.login_manager = SimpleNamespace(_load_user=lambda: None)
+    app.login_manager = SimpleNamespace(load_user_from_request_context=lambda: None)
     return app
 
 
@@ -233,15 +233,20 @@ class TestCheckEmailUnique:
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
-    session = MagicMock()
+    mock_session = MagicMock()
     first = MagicMock()
     first.scalar_one_or_none.return_value = None
     second = MagicMock()
     expected_account = MagicMock()
     second.scalar_one_or_none.return_value = expected_account
-    session.execute.side_effect = [first, second]
+    mock_session.execute.side_effect = [first, second]
 
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=session)
+    mock_factory = MagicMock()
+    mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+    mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("services.account_service.session_factory", mock_factory):
+        result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com")
 
     assert result is expected_account
-    assert session.execute.call_count == 2
+    assert mock_session.execute.call_count == 2

@@ -17,7 +17,9 @@ from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
+from core.mcp.entities import AuthActionType, AuthResult
 from core.mcp.error import MCPAuthError, MCPError
+from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
@@ -284,7 +286,7 @@ class MCPToolManageService:
 
         # Batch query all users to avoid N+1 problem
         user_ids = {provider.user_id for provider in mcp_providers}
-        users = self._session.query(Account).where(Account.id.in_(user_ids)).all()
+        users = self._session.scalars(select(Account).where(Account.id.in_(user_ids))).all()
         user_name_map = {user.id: user.name for user in users}
 
         return [
@@ -495,7 +497,13 @@ class MCPToolManageService:
         ) as mcp_client:
             return mcp_client.list_tools()
 
-    def execute_auth_actions(self, auth_result: Any) -> dict[str, str]:
+    _ACTION_TO_OAUTH: dict[AuthActionType, OAuthDataType] = {
+        AuthActionType.SAVE_CLIENT_INFO: OAuthDataType.CLIENT_INFO,
+        AuthActionType.SAVE_TOKENS: OAuthDataType.TOKENS,
+        AuthActionType.SAVE_CODE_VERIFIER: OAuthDataType.CODE_VERIFIER,
+    }
+
+    def execute_auth_actions(self, auth_result: AuthResult) -> dict[str, str]:
         """
         Execute the actions returned by the auth function.
 
@@ -507,19 +515,13 @@ class MCPToolManageService:
         Returns:
             The response from the auth result
         """
-        from core.mcp.entities import AuthAction, AuthActionType
-
-        action: AuthAction
         for action in auth_result.actions:
             if action.provider_id is None or action.tenant_id is None:
                 continue
 
-            if action.action_type == AuthActionType.SAVE_CLIENT_INFO:
-                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, OAuthDataType.CLIENT_INFO)
-            elif action.action_type == AuthActionType.SAVE_TOKENS:
-                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, OAuthDataType.TOKENS)
-            elif action.action_type == AuthActionType.SAVE_CODE_VERIFIER:
-                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, OAuthDataType.CODE_VERIFIER)
+            oauth_type = self._ACTION_TO_OAUTH.get(action.action_type)
+            if oauth_type is not None:
+                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, oauth_type)
 
         return auth_result.response
 
@@ -681,7 +683,7 @@ class MCPToolManageService:
             raise ValueError(f"Failed to re-connect MCP server: {e}") from e
 
     def _build_tool_provider_response(
-        self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list
+        self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list[MCPTool]
     ) -> ToolProviderApiEntity:
         """Build API response for tool provider."""
         user = db_provider.load_user()
@@ -703,7 +705,7 @@ class MCPToolManageService:
             raise ValueError(f"MCP tool {server_url} already exists")
         if "unique_mcp_provider_server_identifier" in error_msg:
             raise ValueError(f"MCP tool {server_identifier} already exists")
-        raise
+        raise error
 
     def _is_valid_url(self, url: str) -> bool:
         """Validate URL format."""

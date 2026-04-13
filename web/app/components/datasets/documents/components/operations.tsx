@@ -1,46 +1,23 @@
 import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDownloadResponse } from '@/service/datasets'
-import {
-  RiArchive2Line,
-  RiDeleteBinLine,
-  RiDownload2Line,
-  RiEditLine,
-  RiEqualizer2Line,
-  RiLoopLeftLine,
-  RiMoreFill,
-  RiPauseCircleLine,
-  RiPlayCircleLine,
-} from '@remixicon/react'
+import { RiArchive2Line, RiDeleteBinLine, RiDownload2Line, RiEditLine, RiEqualizer2Line, RiLoopLeftLine, RiMoreFill, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import CustomPopover from '@/app/components/base/popover'
 import Switch from '@/app/components/base/switch'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import {
-  useDocumentArchive,
-  useDocumentDelete,
-  useDocumentDisable,
-  useDocumentDownload,
-  useDocumentEnable,
-  useDocumentPause,
-  useDocumentResume,
-  useDocumentSummary,
-  useDocumentUnArchive,
-  useSyncDocument,
-  useSyncWebsite,
-} from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentDownload, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentSummary, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
@@ -65,21 +42,10 @@ type OperationsProps = {
   scene?: 'list' | 'detail'
   className?: string
 }
-
-const Operations = ({
-  embeddingAvailable,
-  datasetId,
-  detail,
-  selectedIds,
-  onSelectedIdChange,
-  onUpdate,
-  scene = 'list',
-  className = '',
-}: OperationsProps) => {
+const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSelectedIdChange, onUpdate, scene = 'list', className = '' }: OperationsProps) => {
   const { id, name, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
   const { mutateAsync: archiveDocument } = useDocumentArchive()
@@ -94,7 +60,6 @@ const Operations = ({
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
-
   const onOperate = async (operationName: OperationName) => {
     let opApi
     switch (operationName) {
@@ -132,17 +97,18 @@ const Operations = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       // If it is a delete operation, need to update the selectedIds state
       if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
         onSelectedIdChange(selectedIds.filter(selectedId => selectedId !== id))
       onUpdate(operationName)
     }
-    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
+    else {
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    }
     if (operationName === DocumentActionType.delete)
       setDeleting(false)
   }
-
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
     if (operationName === DocumentActionType.enable && enabled)
       return
@@ -150,15 +116,11 @@ const Operations = ({
       return
     onOperate(operationName)
   }, { wait: 500 })
-
   const [currDocument, setCurrDocument] = useState<{
     id: string
     name: string
   } | null>(null)
-  const [isShowRenameModal, {
-    setTrue: setShowRenameModalTrue,
-    setFalse: setShowRenameModalFalse,
-  }] = useBoolean(false)
+  const [isShowRenameModal, { setTrue: setShowRenameModalTrue, setFalse: setShowRenameModalFalse }] = useBoolean(false)
   const handleShowRenameModal = useCallback((doc: {
     id: string
     name: string
@@ -169,38 +131,27 @@ const Operations = ({
   const handleRenamed = useCallback(() => {
     onUpdate()
   }, [onUpdate])
-
   const handleDownload = useCallback(async () => {
     // Avoid repeated clicks while the signed URL request is in-flight.
     if (isDownloading)
       return
-
     // Request a signed URL first (it points to `/files/<id>/file-preview?...&as_attachment=true`).
-    const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(
-      downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
-    )
+    const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>)
     if (e || !res?.url) {
-      notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.downloadUnsuccessfully', { ns: 'common' }))
       return
     }
-
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name })
-  }, [datasetId, downloadDocument, id, isDownloading, name, notify, t])
-
+  }, [datasetId, downloadDocument, id, isDownloading, name, t])
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
-      {isListScene && !embeddingAvailable && (
-        <Switch value={false} onChange={noop} disabled={true} size="md" />
-      )}
+      {isListScene && !embeddingAvailable && (<Switch value={false} onChange={noop} disabled={true} size="md" />)}
       {isListScene && embeddingAvailable && (
         <>
           {archived
             ? (
-                <Tooltip
-                  popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
-                  popupClassName="!font-semibold"
-                >
+                <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="!font-semibold">
                   <div>
                     <Switch value={false} onChange={noop} disabled={true} size="md" />
                   </div>
@@ -212,11 +163,7 @@ const Operations = ({
       )}
       {embeddingAvailable && (
         <>
-          <Tooltip
-            popupContent={t('list.action.settings', { ns: 'datasetDocuments' })}
-            popupClassName="text-text-secondary system-xs-medium"
-            needsDelay={false}
-          >
+          <Tooltip popupContent={t('list.action.settings', { ns: 'datasetDocuments' })} popupClassName="text-text-secondary system-xs-medium" needsDelay={false}>
             <button
               type="button"
               className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
@@ -264,14 +211,12 @@ const Operations = ({
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
-                    {
-                      IS_CE_EDITION && (
-                        <div className={s.actionItem} onClick={() => onOperate('summary')}>
-                          <SearchLinesSparkle className="h-4 w-4 text-text-tertiary" />
-                          <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
-                        </div>
-                      )
-                    }
+                    {IS_CE_EDITION && (
+                      <div className={s.actionItem} onClick={() => onOperate('summary')}>
+                        <SearchLinesSparkle className="h-4 w-4 text-text-tertiary" />
+                        <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                      </div>
+                    )}
                     <Divider className="my-1" />
                   </>
                 )}
@@ -336,30 +281,10 @@ const Operations = ({
         </>
       )}
       {showModal
-        && (
-          <Confirm
-            isShow={showModal}
-            isLoading={deleting}
-            isDisabled={deleting}
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            content={t('list.delete.content', { ns: 'datasetDocuments' })}
-            confirmText={t('operation.sure', { ns: 'common' })}
-            onConfirm={() => onOperate('delete')}
-            onCancel={() => setShowModal(false)}
-          />
-        )}
+        && (<Confirm isShow={showModal} isLoading={deleting} isDisabled={deleting} title={t('list.delete.title', { ns: 'datasetDocuments' })} content={t('list.delete.content', { ns: 'datasetDocuments' })} confirmText={t('operation.sure', { ns: 'common' })} onConfirm={() => onOperate('delete')} onCancel={() => setShowModal(false)} />)}
 
-      {isShowRenameModal && currDocument && (
-        <RenameModal
-          datasetId={datasetId}
-          documentId={currDocument.id}
-          name={currDocument.name}
-          onClose={setShowRenameModalFalse}
-          onSaved={handleRenamed}
-        />
-      )}
+      {isShowRenameModal && currDocument && (<RenameModal datasetId={datasetId} documentId={currDocument.id} name={currDocument.name} onClose={setShowRenameModalFalse} onSaved={handleRenamed} />)}
     </div>
   )
 }
-
 export default React.memo(Operations)

@@ -6,16 +6,12 @@ import {
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import { Avatar } from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout, useUserProfile } from '@/service/use-common'
-
-export type IAppSelector = {
-  isMobile: boolean
-}
 
 export default function AppSelector() {
   const router = useRouter()
@@ -48,7 +44,7 @@ export default function AppSelector() {
               <MenuButton
                 className={`
                     p-1x inline-flex
-                    items-center rounded-[20px] text-sm
+                    items-center radius-3xl text-sm
                     text-text-primary
                     mobile:px-1
                     ${open && 'bg-components-panel-bg-blur'}
@@ -80,7 +76,7 @@ export default function AppSelector() {
                         <div className="system-md-medium break-all text-text-primary">
                           {userProfile.name}
                           {isEducationAccount && (
-                            <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
+                            <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
                               <RiGraduationCapFill className="mr-1 h-3 w-3" />
                               <span className="system-2xs-medium">EDU</span>
                             </PremiumBadge>

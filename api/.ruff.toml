@@ -100,7 +100,7 @@ ignore = [
 "configs/*" = [
     "N802", # invalid-function-name
 ]
-"dify_graph/model_runtime/callbacks/base_callback.py" = ["T201"]
+"graphon/model_runtime/callbacks/base_callback.py" = ["T201"]
 "core/workflow/callbacks/workflow_logging_callback.py" = ["T201"]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
@@ -114,12 +114,6 @@ ignore = [
 "controllers/console/explore/trial.py" = ["TID251"]
 "controllers/console/human_input_form.py" = ["TID251"]
 "controllers/web/human_input_form.py" = ["TID251"]
-
-[lint.pyflakes]
-allowed-unused-imports = [
-    "tests.integration_tests",
-    "tests.unit_tests",
-]
 
 [lint.flake8-tidy-imports]
 

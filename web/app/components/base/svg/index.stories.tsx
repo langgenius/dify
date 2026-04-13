@@ -12,7 +12,7 @@ const SvgToggleDemo = () => {
       <span className="text-xs text-text-secondary">
         Mode:
         {' '}
-        <code className="rounded bg-background-default px-2 py-1 text-[11px]">{isSVG ? 'SVG' : 'PNG'}</code>
+        <code className="rounded-sm bg-background-default px-2 py-1 text-[11px]">{isSVG ? 'SVG' : 'PNG'}</code>
       </span>
     </div>
   )

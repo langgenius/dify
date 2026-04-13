@@ -13,7 +13,7 @@ const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
 
   return (
     <div className="flex flex-col items-start rounded-2xl bg-workflow-process-bg p-6">
-      <div className="mb-2 h-12 w-12 rounded-[10px] border-[0.5px] border-components-card-border p-3 shadow-lg shadow-shadow-shadow-5">
+      <div className="mb-2 h-12 w-12 radius-lg border-[0.5px] border-components-card-border p-3 shadow-lg shadow-shadow-shadow-5">
         <Notion className="size-6" />
       </div>
       <div className="mb-1 flex flex-col gap-y-1 pb-3 pt-1">

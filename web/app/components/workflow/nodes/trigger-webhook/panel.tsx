@@ -1,14 +1,13 @@
 import type { FC } from 'react'
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-
 import copy from 'copy-to-clipboard'
+
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import { SimpleSelect } from '@/app/components/base/select'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
@@ -18,6 +17,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@/app/components/base/ui/number-field'
+import { toast } from '@/app/components/base/ui/toast'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -91,7 +91,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   disabled={readOnly}
                   className="h-8 pr-8 text-sm"
                   wrapperClassName="h-8"
-                  optionWrapClassName="w-26 min-w-26 z-[5]"
+                  optionWrapClassName="w-26 min-w-26 z-5"
                   allowSearch={false}
                   notClearable={true}
                 />
@@ -102,10 +102,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`, { ns: 'workflow' })}
                   readOnly
                   onCopy={() => {
-                    Toast.notify({
-                      type: 'success',
-                      message: t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }),
-                    })
+                    toast.success(t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }))
                   }}
                 />
               </div>
@@ -114,7 +111,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <div className="space-y-2">
                 <Tooltip
                   popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`, { ns: 'workflow' }) : t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
-                  popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
+                  popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-xs rounded-md px-1.5 py-1"
                   position="top"
                   offset={{ mainAxis: -20 }}
                   needsDelay={true}
@@ -159,7 +156,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               disabled={readOnly}
               className="h-8 text-sm"
               wrapperClassName="h-8"
-              optionWrapClassName="min-w-48 z-[5]"
+              optionWrapClassName="min-w-48 z-5"
               allowSearch={false}
               notClearable={true}
             />

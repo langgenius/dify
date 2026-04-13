@@ -15,11 +15,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
+import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
 import Button from '../../button'
-import Toast from '../../toast'
+import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -163,14 +164,14 @@ const Question: FC<QuestionProps> = ({
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
-            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
+            className="absolute hidden gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
             <ActionButton
               data-testid="copy-btn"
               onClick={() => {
                 copy(content)
-                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
               }}
             >
               <div className="i-ri-clipboard-line h-4 w-4" />
@@ -209,7 +210,7 @@ const Question: FC<QuestionProps> = ({
                   <div className="max-h-[158px] overflow-y-auto overflow-x-hidden pr-1">
                     <Textarea
                       className={cn(
-                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-none body-lg-regular',
+                        'w-full resize-none bg-transparent p-0 leading-7 text-text-primary outline-hidden body-lg-regular',
                       )}
                       autoFocus
                       minRows={1}
@@ -243,7 +244,7 @@ const Question: FC<QuestionProps> = ({
           {
             questionIcon || (
               <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-                <div className="i-custom-public-avatar-user h-full w-full" />
+                <User className="question-default-user-icon h-full w-full" />
               </div>
             )
           }

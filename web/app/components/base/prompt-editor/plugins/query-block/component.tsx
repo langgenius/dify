@@ -18,7 +18,7 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
     <div
       className={`
         inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pl-1 pr-0.5 hover:bg-[#FFEAD5]
-        ${isSelected && '!border-[#FD853A]'}
+        ${isSelected && 'border-[#FD853A]!'}
       `}
       ref={ref}
     >

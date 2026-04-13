@@ -1,9 +1,9 @@
 from typing import Literal
 
 from flask_restx import Resource, marshal_with
-from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
@@ -17,11 +17,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
-
-
-class MetadataUpdatePayload(BaseModel):
-    name: str
-
 
 register_schema_models(
     console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation, MetadataDetail

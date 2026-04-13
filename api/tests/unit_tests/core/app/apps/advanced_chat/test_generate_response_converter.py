@@ -1,5 +1,7 @@
 from collections.abc import Generator
 
+from graphon.enums import WorkflowNodeExecutionStatus
+
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
@@ -10,7 +12,6 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
 )
-from dify_graph.enums import WorkflowNodeExecutionStatus
 
 
 class TestAdvancedChatGenerateResponseConverter:

@@ -12,7 +12,7 @@ This test suite covers:
 import json
 from uuid import uuid4
 
-from core.tools.entities.tool_entities import ApiProviderSchemaType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from models.tools import (
     ApiToolProvider,
     BuiltinToolProvider,
@@ -238,7 +238,7 @@ class TestApiToolProviderValidation:
             name=provider_name,
             icon='{"type": "emoji", "value": "🔧"}',
             schema=schema,
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Custom API for testing",
             tools_str=json.dumps(tools),
             credentials_str=json.dumps(credentials),
@@ -249,7 +249,7 @@ class TestApiToolProviderValidation:
         assert api_provider.user_id == user_id
         assert api_provider.name == provider_name
         assert api_provider.schema == schema
-        assert api_provider.schema_type_str == "openapi"
+        assert api_provider.schema_type_str == ApiProviderSchemaType.OPENAPI
         assert api_provider.description == "Custom API for testing"
 
     def test_api_tool_provider_schema_type_property(self):
@@ -261,7 +261,7 @@ class TestApiToolProviderValidation:
             name="Test API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Test",
             tools_str="[]",
             credentials_str="{}",
@@ -314,7 +314,7 @@ class TestApiToolProviderValidation:
             name="Weather API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Weather API",
             tools_str=json.dumps(tools_data),
             credentials_str="{}",
@@ -343,7 +343,7 @@ class TestApiToolProviderValidation:
             name="Secure API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Secure API",
             tools_str="[]",
             credentials_str=json.dumps(credentials_data),
@@ -369,7 +369,7 @@ class TestApiToolProviderValidation:
             name="Privacy API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="API with privacy policy",
             tools_str="[]",
             credentials_str="{}",
@@ -391,7 +391,7 @@ class TestApiToolProviderValidation:
             name="Disclaimer API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="API with disclaimer",
             tools_str="[]",
             credentials_str="{}",
@@ -410,7 +410,7 @@ class TestApiToolProviderValidation:
             name="Default API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="API",
             tools_str="[]",
             credentials_str="{}",
@@ -432,7 +432,7 @@ class TestApiToolProviderValidation:
             name=provider_name,
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Unique API",
             tools_str="[]",
             credentials_str="{}",
@@ -454,7 +454,7 @@ class TestApiToolProviderValidation:
             name="Public API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Public API with no auth",
             tools_str="[]",
             credentials_str=json.dumps(credentials),
@@ -479,7 +479,7 @@ class TestApiToolProviderValidation:
             name="Query Auth API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="API with query auth",
             tools_str="[]",
             credentials_str=json.dumps(credentials),
@@ -631,7 +631,7 @@ class TestToolLabelBinding:
         """Test creating a tool label binding."""
         # Arrange
         tool_id = "google.search"
-        tool_type = "builtin"
+        tool_type = ToolProviderType.BUILT_IN
         label_name = "search"
 
         # Act
@@ -655,7 +655,7 @@ class TestToolLabelBinding:
         # Act
         label_binding = ToolLabelBinding(
             tool_id=tool_id,
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             label_name=label_name,
         )
 
@@ -667,7 +667,7 @@ class TestToolLabelBinding:
         """Test multiple labels can be bound to the same tool."""
         # Arrange
         tool_id = "google.search"
-        tool_type = "builtin"
+        tool_type = ToolProviderType.BUILT_IN
 
         # Act
         binding1 = ToolLabelBinding(
@@ -688,7 +688,7 @@ class TestToolLabelBinding:
     def test_tool_label_binding_different_tool_types(self):
         """Test label bindings for different tool types."""
         # Arrange
-        tool_types = ["builtin", "api", "workflow"]
+        tool_types = [ToolProviderType.BUILT_IN, ToolProviderType.API, ToolProviderType.WORKFLOW]
 
         # Act & Assert
         for tool_type in tool_types:
@@ -741,7 +741,7 @@ class TestCredentialStorage:
             name="Test API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Test",
             tools_str="[]",
             credentials_str=json.dumps(credentials),
@@ -788,7 +788,7 @@ class TestCredentialStorage:
             name="Update Test",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Test",
             tools_str="[]",
             credentials_str=json.dumps(original_credentials),
@@ -897,7 +897,7 @@ class TestToolProviderRelationships:
             name="User API",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Test",
             tools_str="[]",
             credentials_str="{}",
@@ -931,7 +931,7 @@ class TestToolProviderRelationships:
             name="Custom API 1",
             icon="{}",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             description="Test",
             tools_str="[]",
             credentials_str="{}",
@@ -951,12 +951,12 @@ class TestToolProviderRelationships:
         # Act
         binding1 = ToolLabelBinding(
             tool_id=tool_id,
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             label_name="search",
         )
         binding2 = ToolLabelBinding(
             tool_id=tool_id,
-            tool_type="builtin",
+            tool_type=ToolProviderType.BUILT_IN,
             label_name="web",
         )
 

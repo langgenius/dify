@@ -2,6 +2,8 @@ import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import TencentConfig
 from core.ops.entities.trace_entity import (
@@ -14,8 +16,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.tencent_trace.tencent_trace import TencentDataTrace
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin
 
 logger = logging.getLogger(__name__)
@@ -407,13 +407,12 @@ class TestTencentDataTrace:
             mock_db.engine = "engine"
             with patch("core.ops.tencent_trace.tencent_trace.Session") as mock_session_ctx:
                 session = mock_session_ctx.return_value.__enter__.return_value
-                session.scalar.side_effect = [app, account]
-                session.query.return_value.filter_by.return_value.first.return_value = tenant_join
+                session.scalar.side_effect = [app, account, tenant_join]
 
                 with patch(
                     "core.ops.tencent_trace.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"
                 ) as mock_repo:
-                    mock_repo.return_value.get_by_workflow_run.return_value = mock_executions
+                    mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
 
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)
 

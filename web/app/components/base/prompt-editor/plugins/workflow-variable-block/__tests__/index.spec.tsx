@@ -9,7 +9,6 @@ import { $insertNodes, COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
-  CLEAR_HIDE_MENU_TIMEOUT,
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
@@ -106,7 +105,10 @@ describe('WorkflowVariableBlock', () => {
     )
 
     expect(mockUpdate).toHaveBeenCalled()
-    expect(mockDispatchCommand).toHaveBeenCalledWith(UPDATE_WORKFLOW_NODES_MAP, workflowNodesMap)
+    expect(mockDispatchCommand).toHaveBeenCalledWith(UPDATE_WORKFLOW_NODES_MAP, {
+      workflowNodesMap,
+      availableVariables: [],
+    })
   })
 
   it('should throw when WorkflowVariableBlockNode is not registered', () => {
@@ -134,11 +136,11 @@ describe('WorkflowVariableBlock', () => {
     const insertHandler = mockRegisterCommand.mock.calls[0][1] as (variables: string[]) => boolean
     const result = insertHandler(['node-1', 'answer'])
 
-    expect(mockDispatchCommand).toHaveBeenCalledWith(CLEAR_HIDE_MENU_TIMEOUT, undefined)
     expect($createWorkflowVariableBlockNode).toHaveBeenCalledWith(
       ['node-1', 'answer'],
       workflowNodesMap,
       getVarType,
+      [],
     )
     expect($insertNodes).toHaveBeenCalledWith([{ id: 'workflow-node' }])
     expect(onInsert).toHaveBeenCalledTimes(1)

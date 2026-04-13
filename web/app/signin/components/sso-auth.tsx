@@ -49,10 +49,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       })
     }
     else {
-      toast.add({
-        type: 'error',
-        title: t('error.invalidSSOProtocol', { ns: 'login' }),
-      })
+      toast.error(t('error.invalidSSOProtocol', { ns: 'login' }))
       setIsLoading(false)
     }
   }

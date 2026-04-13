@@ -46,11 +46,11 @@ const ResultPreview = ({
         <div className="flex grow flex-col bg-background-body p-1">
           <ChunkCardList chunkType={outputs.chunk_structure} chunkInfo={previewChunks} />
           <div className="system-xs-regular mt-1 flex items-center gap-x-2 text-text-tertiary">
-            <div className="h-px flex-1 bg-gradient-to-r from-background-gradient-mask-transparent to-divider-regular" />
+            <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular" />
             <span className="shrink-0truncate" title={t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}>
               {t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}
             </span>
-            <div className="h-px flex-1 bg-gradient-to-l from-background-gradient-mask-transparent to-divider-regular" />
+            <div className="h-px flex-1 bg-linear-to-l from-background-gradient-mask-transparent to-divider-regular" />
           </div>
         </div>
       )}

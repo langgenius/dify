@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 
 from redis import RedisError
+from sqlalchemy import select
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -104,7 +105,9 @@ def sync_account_deletion(account_id: str, *, source: str) -> bool:
         return True
 
     # Fetch all workspaces the account belongs to
-    workspace_joins = db.session.query(TenantAccountJoin).filter_by(account_id=account_id).all()
+    workspace_joins = db.session.scalars(
+        select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)
+    ).all()
 
     # Queue sync task for each workspace
     success = True
