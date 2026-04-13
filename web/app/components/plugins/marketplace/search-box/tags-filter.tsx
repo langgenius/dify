@@ -73,8 +73,8 @@ const TagsFilter = ({
           )
         }
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+      <PortalToFollowElemContent className="z-1000">
+        <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
               showLeftIcon

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account
-from models.enums import MessageFileBelongsTo
+from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -28,7 +28,7 @@ class TestAgentService:
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
             patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
-            patch("services.app_service.ModelManager", autospec=True) as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant", autospec=True) as mock_model_manager,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
@@ -165,7 +165,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(conversation)
         db_session_with_containers.commit()
@@ -204,7 +204,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -406,7 +406,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(conversation)
         db_session_with_containers.commit()
@@ -445,7 +445,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -478,7 +478,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(conversation)
         db_session_with_containers.commit()
@@ -517,7 +517,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -624,7 +624,7 @@ class TestAgentService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             app_model_config_id=None,  # Explicitly set to None
         )
         db_session_with_containers.add(conversation)
@@ -647,7 +647,7 @@ class TestAgentService:
             answer_unit_price=0.001,
             provider_response_latency=1.5,
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
         )
         db_session_with_containers.add(message)
         db_session_with_containers.commit()
@@ -841,7 +841,8 @@ class TestAgentService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
-        from dify_graph.file import FileTransferMethod, FileType
+        from graphon.file import FileTransferMethod, FileType
+
         from models.enums import CreatorUserRole
 
         # Add files to message

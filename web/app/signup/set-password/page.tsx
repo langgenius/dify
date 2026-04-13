@@ -37,10 +37,7 @@ const ChangePasswordForm = () => {
   const { mutateAsync: register, isPending } = useMailRegister()
 
   const showErrorMessage = useCallback((message: string) => {
-    toast.add({
-      type: 'error',
-      title: message,
-    })
+    toast.error(message)
   }, [])
 
   const valid = useCallback(() => {
@@ -82,10 +79,7 @@ const ChangePasswordForm = () => {
         })
         Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-        toast.add({
-          type: 'success',
-          title: t('api.actionSuccess', { ns: 'common' }),
-        })
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
         router.replace('/apps')
       }
     }

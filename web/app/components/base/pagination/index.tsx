@@ -98,7 +98,7 @@ const CustomizedPagination: FC<Props> = ({
       truncableClassName="flex items-center justify-center w-8 px-1 py-2 system-sm-medium text-text-tertiary"
       truncableText="..."
     >
-      <div className="flex items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
+      <div className="flex items-center gap-0.5 radius-lg bg-background-section-burn p-0.5">
         <Pagination.PrevButton
           as={<div></div>}
           disabled={current === 0}
@@ -160,7 +160,7 @@ const CustomizedPagination: FC<Props> = ({
         <div className="flex shrink-0 items-center gap-2">
           <div className="system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary">{showPerPageTip ? t('pagination.perPage', { ns: 'common' }) : ''}</div>
           <div
-            className="flex items-center gap-[1px] rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
+            className="flex items-center gap-px radius-lg bg-components-segmented-control-bg-normal p-0.5"
             onMouseEnter={() => setShowPerPageTip(true)}
             onMouseLeave={() => setShowPerPageTip(false)}
           >

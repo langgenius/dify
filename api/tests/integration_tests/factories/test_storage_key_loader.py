@@ -4,9 +4,10 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
 from sqlalchemy.orm import Session
 
-from dify_graph.file import File, FileTransferMethod, FileType
+from core.app.file_access import DatabaseFileAccessController
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from factories.file_factory import StorageKeyLoader
@@ -35,7 +36,11 @@ class TestStorageKeyLoader(unittest.TestCase):
         self.test_tool_files = []
 
         # Create StorageKeyLoader instance
-        self.loader = StorageKeyLoader(self.session, self.tenant_id)
+        self.loader = StorageKeyLoader(
+            self.session,
+            self.tenant_id,
+            access_controller=DatabaseFileAccessController(),
+        )
 
     def tearDown(self):
         """Clean up test data after each test method."""
@@ -192,19 +197,16 @@ class TestStorageKeyLoader(unittest.TestCase):
         # Should not raise any exceptions
         self.loader.load_storage_keys([])
 
-    def test_load_storage_keys_tenant_mismatch(self):
-        """Test tenant_id validation."""
-        # Create file with different tenant_id
+    def test_load_storage_keys_ignores_legacy_file_tenant_id(self):
+        """Legacy file tenant_id should not override the loader tenant scope."""
         upload_file = self._create_upload_file()
         file = self._create_file(
             related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=str(uuid4())
         )
 
-        # Should raise ValueError for tenant mismatch
-        with pytest.raises(ValueError) as context:
-            self.loader.load_storage_keys([file])
+        self.loader.load_storage_keys([file])
 
-        assert "invalid file, expected tenant_id" in str(context.value)
+        assert file._storage_key == upload_file.key
 
     def test_load_storage_keys_missing_file_id(self):
         """Test with None file.related_id."""
@@ -313,7 +315,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         with pytest.raises(ValueError) as context:
             self.loader.load_storage_keys([file_other])
 
-        assert "invalid file, expected tenant_id" in str(context.value)
+        assert "Upload file not found for id:" in str(context.value)
 
         # Current tenant's file should still work
         self.loader.load_storage_keys([file_current])
@@ -337,7 +339,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         with pytest.raises(ValueError) as context:
             self.loader.load_storage_keys([file_current, file_other])
 
-        assert "invalid file, expected tenant_id" in str(context.value)
+        assert "Upload file not found for id:" in str(context.value)
 
     def test_load_storage_keys_duplicate_file_ids(self):
         """Test handling of duplicate file IDs in the batch."""
@@ -364,6 +366,10 @@ class TestStorageKeyLoader(unittest.TestCase):
         # Create loader with different session (same underlying connection)
 
         with Session(bind=db.engine) as other_session:
-            other_loader = StorageKeyLoader(other_session, self.tenant_id)
+            other_loader = StorageKeyLoader(
+                other_session,
+                self.tenant_id,
+                access_controller=DatabaseFileAccessController(),
+            )
             with pytest.raises(ValueError):
                 other_loader.load_storage_keys([file])

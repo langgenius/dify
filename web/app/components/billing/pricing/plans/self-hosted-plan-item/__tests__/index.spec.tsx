@@ -58,7 +58,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  toast.close()
+  toast.dismiss()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   assignedHref = ''
 })

@@ -9,7 +9,14 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from libs.login import current_account_with_tenant, login_required
-from services.tag_service import TagService
+from models.enums import TagType
+from services.tag_service import (
+    SaveTagPayload,
+    TagBindingCreatePayload,
+    TagBindingDeletePayload,
+    TagService,
+    UpdateTagPayload,
+)
 
 dataset_tag_fields = {
     "id": fields.String,
@@ -25,19 +32,19 @@ def build_dataset_tag_fields(api_or_ns: Namespace):
 
 class TagBasePayload(BaseModel):
     name: str = Field(description="Tag name", min_length=1, max_length=50)
-    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
+    type: TagType = Field(description="Tag type")
 
 
 class TagBindingPayload(BaseModel):
     tag_ids: list[str] = Field(description="Tag IDs to bind")
     target_id: str = Field(description="Target ID to bind tags to")
-    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
+    type: TagType = Field(description="Tag type")
 
 
 class TagBindingRemovePayload(BaseModel):
     tag_id: str = Field(description="Tag ID to remove")
     target_id: str = Field(description="Target ID to unbind tag from")
-    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
+    type: TagType = Field(description="Tag type")
 
 
 class TagListQueryParam(BaseModel):
@@ -82,7 +89,7 @@ class TagListApi(Resource):
             raise Forbidden()
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.save_tags(payload.model_dump())
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type))
 
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
 
@@ -103,7 +110,7 @@ class TagUpdateDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(payload.model_dump(), tag_id)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=payload.type), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
@@ -136,7 +143,9 @@ class TagBindingCreateApi(Resource):
             raise Forbidden()
 
         payload = TagBindingPayload.model_validate(console_ns.payload or {})
-        TagService.save_tag_binding(payload.model_dump())
+        TagService.save_tag_binding(
+            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=payload.type)
+        )
 
         return {"result": "success"}, 200
 
@@ -154,6 +163,8 @@ class TagBindingDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
-        TagService.delete_tag_binding(payload.model_dump())
+        TagService.delete_tag_binding(
+            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=payload.type)
+        )
 
         return {"result": "success"}, 200

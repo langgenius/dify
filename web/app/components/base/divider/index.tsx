@@ -8,10 +8,10 @@ const dividerVariants = cva('', {
   variants: {
     type: {
       horizontal: 'my-2 h-[0.5px] w-full',
-      vertical: 'mx-2 h-full w-[1px]',
+      vertical: 'mx-2 h-full w-px',
     },
     bgStyle: {
-      gradient: 'bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent',
+      gradient: 'bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent',
       solid: 'bg-divider-regular',
     },
   },
@@ -21,7 +21,7 @@ const dividerVariants = cva('', {
   },
 })
 
-export type DividerProps = {
+type DividerProps = {
   className?: string
   style?: CSSProperties
 } & VariantProps<typeof dividerVariants>

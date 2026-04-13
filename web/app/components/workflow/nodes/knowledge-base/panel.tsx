@@ -237,7 +237,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                   )
                 }
                 <div className="pt-1">
-                  <Split className="h-[1px]" />
+                  <Split className="h-px" />
                 </div>
                 {
                   data.indexing_technique === IndexMethodEnum.QUALIFIED
@@ -250,7 +250,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                         readonly={nodesReadOnly}
                       />
                       <div className="pt-1">
-                        <Split className="h-[1px]" />
+                        <Split className="h-px" />
                       </div>
                     </>
                   )

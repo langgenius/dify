@@ -7,7 +7,6 @@ import type { MetadataFilteringVariableType } from '@/app/components/workflow/no
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
-import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -381,7 +380,11 @@ export type OnlineDriveInfo = {
   type: 'file' | 'folder'
 }
 
-export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo
+export type UploadFileIdInfo = {
+  upload_file_id: string
+}
+
+export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo | UploadFileIdInfo
 
 export type InitialDocumentDetail = {
   id: string
@@ -470,10 +473,6 @@ export type NotionInfo = {
   pages: DataSourceNotionPage[]
   credential_id: string
 }
-export type NotionPage = {
-  page_id: string
-  type: string
-}
 
 export type ProcessRule = {
   mode: ProcessMode
@@ -545,15 +544,6 @@ export type DocumentDetailResponse = FullDocumentDetail
 
 export const SEGMENT_STATUS_LIST = ['waiting', 'completed', 'error', 'indexing']
 export type SegmentStatus = typeof SEGMENT_STATUS_LIST[number]
-
-export type SegmentsQuery = {
-  page?: string
-  limit: number
-  // status?: SegmentStatus
-  hit_count_gte?: number
-  keyword?: string
-  enabled?: boolean | 'all'
-}
 
 export type Attachment = {
   id: string
@@ -781,11 +771,6 @@ export type ChildSegmentsResponse = {
   limit: number
 }
 
-export type UpdateDocumentParams = {
-  datasetId: string
-  documentId: string
-}
-
 // Used in api url
 export enum DocumentActionType {
   enable = 'enable',
@@ -813,12 +798,6 @@ export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.Comp
   [ChunkingMode.parentChild]: ParentChild,
   // [ChunkingMode.graph]: Graph, // todo: Graph RAG
   external: ExternalKnowledgeBase,
-}
-
-export const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | ChunkingMode.parentChild, React.ComponentType<{ className: string }>> = {
-  [ChunkingMode.text]: GeneralChunk,
-  [ChunkingMode.qa]: QuestionAndAnswer,
-  [ChunkingMode.parentChild]: ParentChildChunk,
 }
 
 type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>
@@ -851,12 +830,6 @@ export type CreateDatasetResponse = {
 export type IndexingStatusBatchRequest = {
   datasetId: string
   batchId: string
-}
-
-export type HitTestingRecordsRequest = {
-  datasetId: string
-  page: number
-  limit: number
 }
 
 export type HitTestingRequest = {

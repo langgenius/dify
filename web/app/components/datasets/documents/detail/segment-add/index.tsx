@@ -17,7 +17,7 @@ import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 
-export type ISegmentAddProps = {
+type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined
   clearProcessStatus: () => void
   showNewSegmentModal: () => void
@@ -112,7 +112,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
     >
       <button
         type="button"
-        className={`inline-flex items-center rounded-l-lg border-r-[1px] border-r-divider-subtle px-2.5 py-2
+        className={`inline-flex items-center rounded-l-lg border-r border-r-divider-subtle px-2.5 py-2
           hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
         onClick={withNeedUpgradeCheck(showNewSegmentModal)}
         disabled={embedding}
@@ -144,12 +144,12 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
           </div>
         )}
         btnClassName={open => cn(
-          `!hover:bg-state-base-hover !rounded-l-none !rounded-r-lg !border-0 !p-2 backdrop-blur-[5px]
+          `!hover:bg-state-base-hover rounded-l-none! rounded-r-lg! border-0! p-2! backdrop-blur-[5px]
           disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent`,
-          open ? '!bg-state-base-hover' : '',
+          open ? 'bg-state-base-hover!' : '',
         )}
-        popupClassName="!min-w-[128px] !bg-components-panel-bg-blur !rounded-xl border-[0.5px] !ring-0
-          border-components-panel-border !shadow-xl !shadow-shadow-shadow-5 backdrop-blur-[5px]"
+        popupClassName="min-w-[128px]! bg-components-panel-bg-blur! rounded-xl! border-[0.5px] ring-0!
+          border-components-panel-border shadow-xl! shadow-shadow-shadow-5! backdrop-blur-[5px]"
         className="h-fit min-w-[128px]"
         disabled={embedding}
       />

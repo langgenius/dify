@@ -26,15 +26,12 @@ export default function CheckCode() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        toast.add({ type: 'error', title: t('error.emailEmpty', { ns: 'login' }) })
+        toast.error(t('error.emailEmpty', { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        toast.add({
-          type: 'error',
-          title: t('error.emailInValid', { ns: 'login' }),
-        })
+        toast.error(t('error.emailInValid', { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -47,10 +44,7 @@ export default function CheckCode() {
         router.push(`/reset-password/check-code?${params.toString()}`)
       }
       else {
-        toast.add({
-          type: 'error',
-          title: res.data,
-        })
+        toast.error(res.data)
       }
     }
     catch (error) {
@@ -86,7 +80,7 @@ export default function CheckCode() {
         </div>
       </form>
       <div className="py-2">
-        <div className="h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+        <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
       <Link href={`/signin?${searchParams.toString()}`} className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary">
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">

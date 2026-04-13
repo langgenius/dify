@@ -6,10 +6,10 @@ import sqlalchemy
 from pydantic import BaseModel, model_validator
 from sqlalchemy import JSON, TEXT, Column, DateTime, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from configs import dify_config
-from core.rag.datasource.vdb.field import Field
+from core.rag.datasource.vdb.field import Field, parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -97,8 +97,7 @@ class TiDBVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             tidb_dist_func = self._get_distance_func()
-            with Session(self._engine) as session:
-                session.begin()
+            with sessionmaker(bind=self._engine).begin() as session:
                 create_statement = sql_text(f"""
                     CREATE TABLE IF NOT EXISTS {self._collection_name} (
                         id CHAR(36) PRIMARY KEY,
@@ -115,7 +114,6 @@ class TiDBVector(BaseVector):
                     );
                 """)
                 session.execute(create_statement)
-                session.commit()
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -228,7 +226,7 @@ class TiDBVector(BaseVector):
             )
             results = [(row[0], row[1], row[2]) for row in res]
             for meta, text, distance in results:
-                metadata = json.loads(meta)
+                metadata = parse_metadata_json(meta)
                 metadata["score"] = 1 - distance
                 docs.append(Document(page_content=text, metadata=metadata))
         return docs
@@ -238,9 +236,8 @@ class TiDBVector(BaseVector):
         return []
 
     def delete(self):
-        with Session(self._engine) as session:
+        with sessionmaker(bind=self._engine).begin() as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
-            session.commit()
 
     def _get_distance_func(self) -> str:
         match self._distance_func:

@@ -223,7 +223,7 @@ function Form<
                 className={`
                     flex cursor-pointer items-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2
                     ${value[variable] === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm'}
-                    ${disabled && '!cursor-not-allowed opacity-60'}
+                    ${disabled && 'cursor-not-allowed! opacity-60'}
                   `}
                 onClick={() => handleFormChange(variable, option.value)}
                 key={`${variable}-${option.value}`}
@@ -309,7 +309,7 @@ function Form<
               value={value[variable]}
               onChange={val => handleFormChange(variable, val)}
             >
-              <Radio value={true} className="!mr-1">True</Radio>
+              <Radio value={true} className="mr-1!">True</Radio>
               <Radio value={false}>False</Radio>
             </Radio.Group>
           </div>
@@ -335,7 +335,7 @@ function Form<
             {tooltipContent}
           </div>
           <ModelParameterModal
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isAdvancedMode
             isInWorkflow
             isAgentStrategy={isAgentStrategy}

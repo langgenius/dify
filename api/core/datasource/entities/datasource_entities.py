@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import enum
 from enum import StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
 
 from configs import dify_config
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.oauth import OAuthSchema
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameter,
     PluginParameterOption,
@@ -179,6 +179,12 @@ class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
     datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
+class DatasourceInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class DatasourceInvokeMeta(BaseModel):
     """
     Datasource invoke meta
@@ -202,12 +208,13 @@ class DatasourceInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self) -> DatasourceInvokeMetaDict:
+        result: DatasourceInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class DatasourceLabel(BaseModel):

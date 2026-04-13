@@ -2,14 +2,14 @@ from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.node_events import NodeRunResult
 
 from core.app.workflow.layers.persistence import (
     PersistenceWorkflowInfo,
     WorkflowPersistenceLayer,
     _NodeRuntimeSnapshot,
 )
-from dify_graph.enums import WorkflowNodeExecutionStatus, WorkflowType
-from dify_graph.node_events import NodeRunResult
 
 
 def _build_layer() -> WorkflowPersistenceLayer:
@@ -58,3 +58,42 @@ def test_update_node_execution_prefers_event_finished_at(monkeypatch: pytest.Mon
 
     assert node_execution.finished_at == event_finished_at
     assert node_execution.elapsed_time == 2.0
+
+
+def test_update_node_execution_projects_start_outputs() -> None:
+    layer = _build_layer()
+    node_execution = Mock()
+    node_execution.id = "node-exec-2"
+    node_execution.node_type = BuiltinNodeTypes.START
+    node_execution.created_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+    node_execution.update_from_mapping = Mock()
+
+    layer._node_snapshots[node_execution.id] = _NodeRuntimeSnapshot(
+        node_id="start",
+        title="Start",
+        predecessor_node_id=None,
+        iteration_id=None,
+        loop_id=None,
+        created_at=node_execution.created_at,
+    )
+
+    layer._update_node_execution(
+        node_execution,
+        NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"question": "hello"},
+            outputs={
+                "question": "hello",
+                "sys.query": "hello",
+                "env.API_KEY": "secret",
+            },
+        ),
+        WorkflowNodeExecutionStatus.SUCCEEDED,
+    )
+
+    node_execution.update_from_mapping.assert_called_once_with(
+        inputs={"question": "hello"},
+        process_data={},
+        outputs={"question": "hello"},
+        metadata={},
+    )

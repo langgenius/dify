@@ -133,9 +133,7 @@ export const ProviderContextProvider = ({
         const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
           localStorage.setItem('anthropic_quota_notice', 'true')
-          toast.add({
-            type: 'info',
-            title: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
+          toast.info(t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }), {
             timeout: 60000,
           })
         }

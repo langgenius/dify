@@ -1,4 +1,5 @@
 import yaml
+from sqlalchemy import select
 
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
@@ -32,12 +33,11 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-        pipeline_customized_templates = (
-            db.session.query(PipelineCustomizedTemplate)
+        pipeline_customized_templates = db.session.scalars(
+            select(PipelineCustomizedTemplate)
             .where(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
             .order_by(PipelineCustomizedTemplate.position.asc(), PipelineCustomizedTemplate.created_at.desc())
-            .all()
-        )
+        ).all()
         recommended_pipelines_results = []
         for pipeline_customized_template in pipeline_customized_templates:
             recommended_pipeline_result = {
@@ -59,9 +59,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param template_id: Template ID
         :return:
         """
-        pipeline_template = (
-            db.session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
-        )
+        pipeline_template = db.session.get(PipelineCustomizedTemplate, template_id)
         if not pipeline_template:
             return None
 

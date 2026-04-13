@@ -194,7 +194,7 @@ describe('SearchInput', () => {
 
       const badge = container.querySelector('.bg-gray-100')
       expect(badge).toBeInTheDocument()
-      expect(badge).toHaveClass('rounded', 'px-2', 'text-xs', 'font-medium')
+      expect(badge).toHaveClass('rounded-sm', 'px-2', 'text-xs', 'font-medium')
     })
   })
 })

@@ -24,7 +24,7 @@ export type Props = {
 }
 
 const VarItem: FC<{ item: Option }> = ({ item }) => (
-  <div className="flex h-[18px] items-center space-x-1 rounded bg-[#EFF8FF] px-1">
+  <div className="flex h-[18px] items-center space-x-1 rounded-sm bg-[#EFF8FF] px-1">
     <IconTypeIcon type={item.type as IInputTypeIconProps['type']} className="text-[#1570EF]" />
     <div className="flex text-xs font-medium text-[#1570EF]">
       <span className="opacity-60">{'{{'}</span>

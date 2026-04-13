@@ -32,7 +32,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
     with session_factory.create_session() as session:
         try:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
 
             if not dataset:
                 raise Exception("Document has no dataset")
@@ -63,7 +63,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
     if index_node_ids:
         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
         with session_factory.create_session() as session:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if dataset:
                 index_processor.clean(
                     dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
@@ -94,7 +94,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
     with session_factory.create_session() as session, session.begin():
         if file_id:
-            file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
             if file:
                 try:
                     storage.delete(file.key)
@@ -124,10 +124,12 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
     with session_factory.create_session() as session, session.begin():
         # delete dataset metadata binding
-        session.query(DatasetMetadataBinding).where(
-            DatasetMetadataBinding.dataset_id == dataset_id,
-            DatasetMetadataBinding.document_id == document_id,
-        ).delete()
+        session.execute(
+            delete(DatasetMetadataBinding).where(
+                DatasetMetadataBinding.dataset_id == dataset_id,
+                DatasetMetadataBinding.document_id == document_id,
+            )
+        )
 
     end_at = time.perf_counter()
     logger.info(

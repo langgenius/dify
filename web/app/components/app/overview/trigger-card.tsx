@@ -22,7 +22,7 @@ import {
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
 
-export type ITriggerCardProps = {
+type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   onToggleResult?: (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => void
 }
@@ -34,12 +34,12 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   const getStatusDot = () => {
     if (status === 'enabled') {
       return (
-        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-black/15 bg-green-500" />
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-xs border border-black/15 bg-green-500" />
       )
     }
     else {
       return (
-        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
       )
     }
   }
@@ -144,7 +144,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
       <div className="w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight">
         <div className="rounded-xl bg-background-default">
           <div className="flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3">
-            <div className="h-6 w-full animate-pulse rounded bg-components-input-bg-normal"></div>
+            <div className="h-6 w-full animate-pulse rounded-sm bg-components-input-bg-normal"></div>
           </div>
         </div>
       </div>
