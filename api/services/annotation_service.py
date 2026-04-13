@@ -101,8 +101,9 @@ class AppAnnotationService:
         if answer is None:
             raise ValueError("Either 'answer' or 'content' must be provided")
 
-        if args.get("message_id"):
-            message_id = str(args["message_id"])
+        raw_message_id = args.get("message_id")
+        if raw_message_id:
+            message_id = str(raw_message_id)
             message = db.session.scalar(
                 select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1)
             )
@@ -126,9 +127,10 @@ class AppAnnotationService:
                     account_id=current_user.id,
                 )
         else:
-            question = args.get("question")
-            if not question:
+            maybe_question = args.get("question")
+            if not maybe_question:
                 raise ValueError("'question' is required when 'message_id' is not provided")
+            question = maybe_question
 
             annotation = MessageAnnotation(app_id=app.id, content=answer, question=question, account_id=current_user.id)
         db.session.add(annotation)
