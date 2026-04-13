@@ -317,7 +317,10 @@ class ExternalDatasetService:
 
         external_knowledge_api = db.session.scalar(
             select(ExternalKnowledgeApis)
-            .where(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
+            .where(
+                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
+                ExternalKnowledgeApis.tenant_id == tenant_id,
+            )
             .limit(1)
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:

@@ -92,7 +92,7 @@ class HumanInputFormApi(Resource):
         _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        # TODO(QuantumGhost): forbid submision for form tokens
+        # TODO(QuantumGhost): forbid submission for form tokens
         # that are only for console.
         form = service.get_form_by_token(form_token)
 
