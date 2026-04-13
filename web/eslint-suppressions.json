@@ -1694,7 +1694,7 @@
   },
   "app/components/base/chat/chat-with-history/hooks.tsx": {
     "react/set-state-in-effect": {
-      "count": 4
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 18
@@ -1930,7 +1930,7 @@
       "count": 3
     },
     "react/set-state-in-effect": {
-      "count": 6
+      "count": 4
     }
   },
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
