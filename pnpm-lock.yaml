@@ -16,14 +16,17 @@ catalogs:
       specifier: 8.1.1
       version: 8.1.1
     '@base-ui/react':
-      specifier: 1.3.0
-      version: 1.3.0
+      specifier: 1.4.0
+      version: 1.4.0
     '@chromatic-com/storybook':
       specifier: 5.1.1
       version: 5.1.1
     '@cucumber/cucumber':
       specifier: 12.7.0
       version: 12.7.0
+    '@date-fns/tz':
+      specifier: 1.2.0
+      version: 1.2.0
     '@egoist/tailwindcss-icons':
       specifier: 1.9.2
       version: 1.9.2
@@ -267,6 +270,9 @@ catalogs:
     cron-parser:
       specifier: 5.5.0
       version: 5.5.0
+    date-fns:
+      specifier: 4.0.0
+      version: 4.0.0
     dayjs:
       specifier: 1.11.20
       version: 1.11.20
@@ -651,7 +657,10 @@ importers:
         version: 1.27.6(@amplitude/rrweb@2.0.0-alpha.37)(rollup@4.59.0)
       '@base-ui/react':
         specifier: 'catalog:'
-        version: 1.3.0(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 1.4.0(@date-fns/tz@1.2.0)(@types/react@19.2.14)(date-fns@4.0.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@date-fns/tz':
+        specifier: 'catalog:'
+        version: 1.2.0
       '@emoji-mart/data':
         specifier: 'catalog:'
         version: 1.2.1
@@ -754,6 +763,9 @@ importers:
       cron-parser:
         specifier: 'catalog:'
         version: 5.5.0
+      date-fns:
+        specifier: 'catalog:'
+        version: 4.0.0
       dayjs:
         specifier: 'catalog:'
         version: 1.11.20
@@ -1397,19 +1409,21 @@ packages:
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
-  '@base-ui/react@1.3.0':
-    resolution: {integrity: sha512-FwpKqZbPz14AITp1CVgf4AjhKPe1OeeVKSBMdgD10zbFlj3QSWelmtCMLi2+/PFZZcIm3l87G7rwtCZJwHyXWA==}
+  '@base-ui/react@1.4.0':
+    resolution: {integrity: sha512-QcqdVbr/+ba2/RAKJIV1PV6S02Q5+r6a4Eym8ndBw+ZbBILkkmQAyRxXCg/pArrHnkrGeU8goe26aw0h6eE8pg==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
+      '@date-fns/tz': ^1.2.0
       '@types/react': ^17 || ^18 || ^19
+      date-fns: ^4.0.0
       react: ^17 || ^18 || ^19
       react-dom: ^17 || ^18 || ^19
     peerDependenciesMeta:
       '@types/react':
         optional: true
 
-  '@base-ui/utils@0.2.6':
-    resolution: {integrity: sha512-yQ+qeuqohwhsNpoYDqqXaLllYAkPCP4vYdDrVo8FQXaAPfHWm1pG/Vm+jmGTA5JFS0BAIjookyapuJFY8F9PIw==}
+  '@base-ui/utils@0.2.7':
+    resolution: {integrity: sha512-nXYKhiL/0JafyJE8PfcflipGftOftlIwKd72rU15iZ1M5yqgg5J9P8NHU71GReDuXco5MJA/eVQqUT5WRqX9sA==}
     peerDependencies:
       '@types/react': ^17 || ^18 || ^19
       react: ^17 || ^18 || ^19
@@ -1537,6 +1551,9 @@ packages:
 
   '@cucumber/tag-expressions@9.1.0':
     resolution: {integrity: sha512-bvHjcRFZ+J1TqIa9eFNO1wGHqwx4V9ZKV3hYgkuK/VahHx73uiP4rKV3JVrvWSMrwrFvJG6C8aEwnCWSvbyFdQ==}
+
+  '@date-fns/tz@1.2.0':
+    resolution: {integrity: sha512-LBrd7MiJZ9McsOgxqWX7AaxrDjcFVjWH/tIKJd7pnR7McaslGYOP1QmmiBXdJH/H/yLCT+rcQ7FaPBUxRGUtrg==}
 
   '@e18e/eslint-plugin@0.3.0':
     resolution: {integrity: sha512-hHgfpxsrZ2UYHcicA+tGZnmk19uJTaye9VH79O+XS8R4ona2Hx3xjhXghclNW58uXMk3xXlbYEOMr8thsoBmWg==}
@@ -5331,6 +5348,9 @@ packages:
   dagre-d3-es@7.0.14:
     resolution: {integrity: sha512-P4rFMVq9ESWqmOgK+dlXvOtLwYg0i7u0HBGJER0LZDJT2VHIPAMZ/riPxqJceWMStH5+E61QxFra9kIS3AqdMg==}
 
+  date-fns@4.0.0:
+    resolution: {integrity: sha512-6K33+I8fQ5otvHgLIvKK1xmMbLAh0pduyrx7dwMXKiGYeoWhmk6M3Zoak9n7bXHMJQlHq1yqmdGy1QxKddJjUA==}
+
   dayjs@1.11.20:
     resolution: {integrity: sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==}
 
@@ -8922,20 +8942,21 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@base-ui/react@1.3.0(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@base-ui/react@1.4.0(@date-fns/tz@1.2.0)(@types/react@19.2.14)(date-fns@4.0.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@babel/runtime': 7.29.2
-      '@base-ui/utils': 0.2.6(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@base-ui/utils': 0.2.7(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@date-fns/tz': 1.2.0
       '@floating-ui/react-dom': 2.1.8(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@floating-ui/utils': 0.2.11
+      date-fns: 4.0.0
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
-      tabbable: 6.4.0
       use-sync-external-store: 1.6.0(react@19.2.5)
     optionalDependencies:
       '@types/react': 19.2.14
 
-  '@base-ui/utils@0.2.6(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@base-ui/utils@0.2.7(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@babel/runtime': 7.29.2
       '@floating-ui/utils': 0.2.11
@@ -9153,6 +9174,8 @@ snapshots:
       lodash.sortby: 4.7.0
 
   '@cucumber/tag-expressions@9.1.0': {}
+
+  '@date-fns/tz@1.2.0': {}
 
   '@e18e/eslint-plugin@0.3.0(eslint@10.2.0(jiti@2.6.1))(oxlint@1.58.0(oxlint-tsgolint@0.20.0))':
     dependencies:
@@ -12818,6 +12841,8 @@ snapshots:
     dependencies:
       d3: 7.9.0
       lodash-es: 4.18.0
+
+  date-fns@4.0.0: {}
 
   dayjs@1.11.20: {}
 

@@ -41,6 +41,33 @@ const renderOpenSelect = ({
 }
 
 describe('Select wrappers', () => {
+  describe('Select root integration', () => {
+    it('should associate the hidden input with an external form and preserve autocomplete hints', () => {
+      const formId = 'profile-form'
+      const { container } = render(
+        <>
+          <form id={formId} />
+          <Select defaultValue="seattle" name="city" form={formId} autoComplete="address-level2">
+            <SelectTrigger aria-label="city select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+              <SelectItem value="seattle">Seattle</SelectItem>
+              <SelectItem value="new-york">New York</SelectItem>
+            </SelectContent>
+          </Select>
+        </>,
+      )
+
+      const hiddenInput = container.querySelector('input[name="city"]')
+      const form = container.querySelector(`#${formId}`) as HTMLFormElement
+
+      expect(hiddenInput).toHaveAttribute('form', formId)
+      expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
+      expect(new FormData(form).get('city')).toBe('seattle')
+    })
+  })
+
   describe('SelectTrigger', () => {
     it('should render clear button when clearable is true and loading is false', () => {
       renderOpenSelect({

@@ -251,6 +251,32 @@ describe('base/ui/toast', () => {
     expect(screen.queryByText('Loading')).not.toBeInTheDocument()
   })
 
+  // Re-adding the same toast id should upsert in place instead of stacking duplicates.
+  it('should upsert an existing toast when add is called with the same id', async () => {
+    render(<ToastHost />)
+
+    act(() => {
+      toast('Syncing', {
+        id: 'sync-job',
+        description: 'Uploading changes…',
+      })
+    })
+
+    expect(await screen.findByText('Syncing')).toBeInTheDocument()
+
+    act(() => {
+      toast.success('Synced', {
+        id: 'sync-job',
+        description: 'All changes are uploaded.',
+      })
+    })
+
+    expect(screen.queryByText('Syncing')).not.toBeInTheDocument()
+    expect(screen.getByText('Synced')).toBeInTheDocument()
+    expect(screen.getByText('All changes are uploaded.')).toBeInTheDocument()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  })
+
   // Action props should pass through to the Base UI action button.
   it('should render and invoke toast action props', async () => {
     const onAction = vi.fn()
