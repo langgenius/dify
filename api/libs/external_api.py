@@ -6,7 +6,6 @@ from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
-from werkzeug.wrappers import Response as WerkzeugResponse
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
