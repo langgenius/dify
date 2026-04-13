@@ -672,7 +672,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def model_dict(self) -> ModelConfig:
-        return self._load_json_or_default(self.model, {})
+        return self._load_json_or_default(self.model, cast(ModelConfig, {}))
 
     @property
     def suggested_questions_list(self) -> list[str]:
@@ -730,7 +730,10 @@ class AppModelConfig(TypeBase):
 
     @property
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
-        return self._load_json_or_default(self.sensitive_word_avoidance, {"enabled": False, "type": "", "config": {}})
+        return self._load_json_or_default(
+            self.sensitive_word_avoidance,
+            cast(SensitiveWordAvoidanceConfig, {"enabled": False, "type": "", "config": {}}),
+        )
 
     @property
     def external_data_tools_list(self) -> list[ExternalDataToolConfig]:
@@ -743,16 +746,17 @@ class AppModelConfig(TypeBase):
     @property
     def agent_mode_dict(self) -> AgentModeConfig:
         return self._load_json_or_default(
-            self.agent_mode, {"enabled": False, "strategy": None, "tools": [], "prompt": None}
+            self.agent_mode,
+            cast(AgentModeConfig, {"enabled": False, "strategy": None, "tools": [], "prompt": None}),
         )
 
     @property
     def chat_prompt_config_dict(self) -> ChatPromptConfig:
-        return self._load_json_or_default(self.chat_prompt_config, {})
+        return self._load_json_or_default(self.chat_prompt_config, cast(ChatPromptConfig, {}))
 
     @property
     def completion_prompt_config_dict(self) -> CompletionPromptConfig:
-        return self._load_json_or_default(self.completion_prompt_config, {})
+        return self._load_json_or_default(self.completion_prompt_config, cast(CompletionPromptConfig, {}))
 
     @property
     def dataset_configs_dict(self) -> DatasetConfigs:
@@ -770,14 +774,17 @@ class AppModelConfig(TypeBase):
     def file_upload_dict(self) -> FileUploadConfig:
         return self._load_json_or_default(
             self.file_upload,
-            {
-                "image": {
-                    "enabled": False,
-                    "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
-                    "detail": "high",
-                    "transfer_methods": ["remote_url", "local_file"],
-                }
-            },
+            cast(
+                FileUploadConfig,
+                {
+                    "image": {
+                        "enabled": False,
+                        "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
+                        "detail": "high",
+                        "transfer_methods": ["remote_url", "local_file"],
+                    }
+                },
+            ),
         )
 
     def to_dict(self) -> AppModelConfigDict:
