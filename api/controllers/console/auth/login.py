@@ -4,6 +4,7 @@ import flask_login
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
@@ -267,6 +268,9 @@ class EmailCodeLoginApi(Resource):
         AccountService.revoke_email_code_login_token(args.token)
         try:
             account = _get_account_with_case_fallback(original_email)
+        except Unauthorized as exc:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+            raise AccountBannedError() from exc
         except AccountRegisterError:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()

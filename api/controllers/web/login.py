@@ -4,6 +4,7 @@ from flask import make_response, request
 from flask_restx import Resource
 from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
@@ -237,7 +238,11 @@ class EmailCodeLoginApi(Resource):
             raise EmailCodeError()
 
         WebAppAuthService.revoke_email_code_login_token(payload.token)
-        account = WebAppAuthService.get_user_through_email(token_email)
+        try:
+            account = WebAppAuthService.get_user_through_email(token_email)
+        except Unauthorized as exc:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+            raise AccountBannedError() from exc
         if not account:
             _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_NOT_FOUND)
             raise AuthenticationFailedError()

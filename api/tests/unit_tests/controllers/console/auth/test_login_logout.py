@@ -14,13 +14,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_restx import Api
+from werkzeug.exceptions import Unauthorized
 
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
 )
-from controllers.console.auth.login import LoginApi, LogoutApi
+from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
@@ -33,6 +34,11 @@ from services.errors.account import AccountLoginError, AccountPasswordError
 def encode_password(password: str) -> str:
     """Helper to encode password as Base64 for testing."""
     return base64.b64encode(password.encode("utf-8")).decode()
+
+
+def encode_code(code: str) -> str:
+    """Helper to encode verification code as Base64 for testing."""
+    return base64.b64encode(code.encode("utf-8")).decode()
 
 
 class TestLoginApi:
@@ -440,6 +446,33 @@ class TestLoginApi:
         ]
         mock_add_rate_limit.assert_not_called()
         mock_reset_rate_limit.assert_called_once_with("upper@example.com")
+
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    def test_email_code_login_logs_banned_account(
+        self,
+        mock_get_account,
+        mock_revoke_token,
+        mock_get_token_data,
+        app,
+    ):
+        mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
+        mock_get_account.side_effect = Unauthorized("Account is banned.")
+
+        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
+            with app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
+            ):
+                with pytest.raises(AccountBannedError):
+                    EmailCodeLoginApi().post()
+
+        mock_revoke_token.assert_called_once_with("token-123")
+        assert mock_log_warning.call_count == 1
+        assert mock_log_warning.call_args.args[1] == "user@example.com"
+        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
 
 
 class TestLogoutApi:
