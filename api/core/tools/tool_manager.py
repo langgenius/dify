@@ -682,7 +682,7 @@ class ToolManager:
 
         with Session(db.engine, autoflush=False) as session:
             ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
-            return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
+            return list(session.scalars(select(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids))))
 
     @classmethod
     def list_providers_from_api(

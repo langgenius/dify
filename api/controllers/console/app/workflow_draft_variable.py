@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
@@ -86,7 +86,14 @@ def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     return value_type.exposed_type().value
 
 
-def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
+class FullContentDict(TypedDict):
+    size_bytes: int | None
+    value_type: str
+    length: int | None
+    download_url: str
+
+
+def _serialize_full_content(variable: WorkflowDraftVariable) -> FullContentDict | None:
     """Serialize full_content information for large variables."""
     if not variable.is_truncated():
         return None
@@ -94,12 +101,13 @@ def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
     variable_file = variable.variable_file
     assert variable_file is not None
 
-    return {
+    result: FullContentDict = {
         "size_bytes": variable_file.size,
         "value_type": variable_file.value_type.exposed_type().value,
         "length": variable_file.length,
         "download_url": file_helpers.get_signed_file_url(variable_file.upload_file_id, as_attachment=True),
     }
+    return result
 
 
 def _ensure_variable_access(

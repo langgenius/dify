@@ -1,6 +1,8 @@
 import concurrent.futures
 import logging
 
+from sqlalchemy import select
+
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
@@ -21,7 +23,7 @@ class SummaryIndex:
     ) -> None:
         if is_preview:
             with session_factory.create_session() as session:
-                dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+                dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
                 if not dataset or dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                     return
 
@@ -34,32 +36,31 @@ class SummaryIndex:
                 if not document_id:
                     return
 
-                document = session.query(Document).filter_by(id=document_id).first()
+                document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
                 # Skip qa_model documents
                 if document is None or document.doc_form == "qa_model":
                     return
 
-                query = session.query(DocumentSegment).filter_by(
-                    dataset_id=dataset_id,
-                    document_id=document_id,
-                    status="completed",
-                    enabled=True,
-                )
-                segments = query.all()
+                segments = session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset_id,
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.enabled == True,
+                    )
+                ).all()
                 segment_ids = [segment.id for segment in segments]
 
                 if not segment_ids:
                     return
 
-                existing_summaries = (
-                    session.query(DocumentSegmentSummary)
-                    .filter(
+                existing_summaries = session.scalars(
+                    select(DocumentSegmentSummary).where(
                         DocumentSegmentSummary.chunk_id.in_(segment_ids),
                         DocumentSegmentSummary.dataset_id == dataset_id,
                         DocumentSegmentSummary.status == "completed",
                     )
-                    .all()
-                )
+                ).all()
                 completed_summary_segment_ids = {i.chunk_id for i in existing_summaries}
                 # Preview mode should process segments that are MISSING completed summaries
                 pending_segment_ids = [sid for sid in segment_ids if sid not in completed_summary_segment_ids]
@@ -73,7 +74,7 @@ class SummaryIndex:
             def process_segment(segment_id: str) -> None:
                 """Process a single segment in a thread with a fresh DB session."""
                 with session_factory.create_session() as session:
-                    segment = session.query(DocumentSegment).filter_by(id=segment_id).first()
+                    segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
                     if segment is None:
                         return
                     try:
