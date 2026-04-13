@@ -974,26 +974,29 @@ class TestExternalDatasetServiceAPIUseCheck:
         """Test API use check when API has one binding."""
         # Arrange
         api_id = "api-123"
+        tenant_id = "tenant-123"
 
         mock_db.session.scalar.return_value = 1
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id, tenant_id)
 
         # Assert
         assert in_use is True
         assert count == 1
+        assert "tenant_id" in str(mock_db.session.scalar.call_args.args[0])
 
     @patch("services.external_knowledge_service.db")
     def test_external_knowledge_api_use_check_in_use_multiple(self, mock_db, factory):
         """Test API use check with multiple bindings."""
         # Arrange
         api_id = "api-123"
+        tenant_id = "tenant-123"
 
         mock_db.session.scalar.return_value = 10
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id, tenant_id)
 
         # Assert
         assert in_use is True
@@ -1004,11 +1007,12 @@ class TestExternalDatasetServiceAPIUseCheck:
         """Test API use check when API is not in use."""
         # Arrange
         api_id = "api-123"
+        tenant_id = "tenant-123"
 
         mock_db.session.scalar.return_value = 0
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id, tenant_id)
 
         # Assert
         assert in_use is False
@@ -1554,6 +1558,17 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act & Assert
         with pytest.raises(ValueError, match="external knowledge binding not found"):
+            ExternalDatasetService.fetch_external_knowledge_retrieval("tenant-123", "dataset-123", "query", {})
+
+    @patch("services.external_knowledge_service.db")
+    def test_fetch_external_knowledge_retrieval_cross_tenant_api_template_error(self, mock_db, factory):
+        """Test error when a binding points to an API template outside the dataset tenant."""
+        # Arrange
+        binding = factory.create_external_knowledge_binding_mock()
+        mock_db.session.scalar.side_effect = [binding, None]
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="external api template not found"):
             ExternalDatasetService.fetch_external_knowledge_retrieval("tenant-123", "dataset-123", "query", {})
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
