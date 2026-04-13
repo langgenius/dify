@@ -12,7 +12,12 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import Annotation, AnnotationList
 from models.model import App
-from services.annotation_service import AppAnnotationService
+from services.annotation_service import (
+    AppAnnotationService,
+    EnableAnnotationArgs,
+    InsertAnnotationArgs,
+    UpdateAnnotationArgs,
+)
 
 
 class AnnotationCreatePayload(BaseModel):
@@ -46,10 +51,15 @@ class AnnotationReplyActionApi(Resource):
     @validate_app_token
     def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
-        args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
+        payload = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {})
         match action:
             case "enable":
-                result = AppAnnotationService.enable_app_annotation(args, app_model.id)
+                enable_args: EnableAnnotationArgs = {
+                    "score_threshold": payload.score_threshold,
+                    "embedding_provider_name": payload.embedding_provider_name,
+                    "embedding_model_name": payload.embedding_model_name,
+                }
+                result = AppAnnotationService.enable_app_annotation(enable_args, app_model.id)
             case "disable":
                 result = AppAnnotationService.disable_app_annotation(app_model.id)
         return result, 200
@@ -135,8 +145,9 @@ class AnnotationListApi(Resource):
     @validate_app_token
     def post(self, app_model: App):
         """Create a new annotation."""
-        args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
-        annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
+        payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
+        insert_args: InsertAnnotationArgs = {"question": payload.question, "answer": payload.answer}
+        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id)
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json"), HTTPStatus.CREATED
 
@@ -164,8 +175,9 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def put(self, app_model: App, annotation_id: str):
         """Update an existing annotation."""
-        args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
-        annotation = AppAnnotationService.update_app_annotation_directly(args, app_model.id, annotation_id)
+        payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
+        update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, annotation_id)
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 

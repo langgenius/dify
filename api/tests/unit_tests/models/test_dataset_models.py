@@ -12,7 +12,7 @@ This test suite covers:
 import json
 import pickle
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -25,6 +25,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
     Embedding,
+    ExternalKnowledgeBindings,
 )
 from models.enums import (
     DataSourceType,
@@ -179,6 +180,24 @@ class TestDatasetModelValidation:
         # Assert
         assert result["top_k"] == 2
         assert result["score_threshold"] == 0.0
+
+    def test_dataset_external_knowledge_info_returns_none_for_cross_tenant_template(self):
+        """Test external datasets fail closed when the bound template is outside the tenant."""
+        dataset = Dataset(
+            tenant_id=str(uuid4()),
+            name="External Dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=str(uuid4()),
+            provider="external",
+        )
+        binding = Mock(spec=ExternalKnowledgeBindings)
+        binding.external_knowledge_id = "knowledge-1"
+        binding.external_knowledge_api_id = str(uuid4())
+
+        with patch("models.dataset.db") as mock_db:
+            mock_db.session.scalar.side_effect = [binding, None]
+
+            assert dataset.external_knowledge_info is None
 
     def test_dataset_retrieval_model_dict_property(self):
         """Test retrieval_model_dict property with default values."""

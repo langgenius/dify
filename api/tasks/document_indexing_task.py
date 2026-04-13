@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 import click
 from celery import current_app, shared_task
+from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -53,11 +54,10 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     Usage: _document_indexing(dataset_id, document_ids)
     """
-    documents = []
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
             return
@@ -79,8 +79,8 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     )
         except Exception as e:
             for document_id in document_ids:
-                document = (
-                    session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                document = session.scalar(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
                     document.indexing_status = IndexingStatus.ERROR
@@ -92,8 +92,10 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     # Phase 1: Update status to parsing (short transaction)
     with session_factory.create_session() as session, session.begin():
-        documents = (
-            session.query(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id).all()
+        documents: list[Document] = list(
+            session.scalars(
+                select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+            ).all()
         )
 
         for document in documents:
@@ -122,7 +124,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
             # Trigger summary index generation for completed documents if enabled
             # Only generate for high_quality indexing technique and when summary_index_setting is enabled
             # Re-query dataset to get latest summary_index_setting (in case it was updated)
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 logger.warning("Dataset %s not found after indexing", dataset_id)
                 return
@@ -134,10 +136,10 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     session.expire_all()
                     # Check each document's indexing status and trigger summary generation if completed
 
-                    documents = (
-                        session.query(Document)
-                        .where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                        .all()
+                    documents = list(
+                        session.scalars(
+                            select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        ).all()
                     )
 
                     for document in documents:
