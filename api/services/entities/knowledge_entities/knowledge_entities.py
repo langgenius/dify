@@ -1,14 +1,15 @@
-from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
+from core.rag.entities import Rule
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
-class ParentMode(StrEnum):
-    FULL_DOC = "full-doc"
-    PARAGRAPH = "paragraph"
+class RerankingModel(BaseModel):
+    reranking_provider_name: str | None = None
+    reranking_model_name: str | None = None
 
 
 class NotionIcon(BaseModel):
@@ -52,32 +53,9 @@ class DataSource(BaseModel):
     info_list: InfoList
 
 
-class PreProcessingRule(BaseModel):
-    id: str
-    enabled: bool
-
-
-class Segmentation(BaseModel):
-    separator: str = "\n"
-    max_tokens: int
-    chunk_overlap: int = 0
-
-
-class Rule(BaseModel):
-    pre_processing_rules: list[PreProcessingRule] | None = None
-    segmentation: Segmentation | None = None
-    parent_mode: Literal["full-doc", "paragraph"] | None = None
-    subchunk_segmentation: Segmentation | None = None
-
-
 class ProcessRule(BaseModel):
     mode: Literal["automatic", "custom", "hierarchical"]
     rules: Rule | None = None
-
-
-class RerankingModel(BaseModel):
-    reranking_provider_name: str | None = None
-    reranking_model_name: str | None = None
 
 
 class WeightVectorSetting(BaseModel):
@@ -119,11 +97,32 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
+    summary_index_setting: dict | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     name: str | None = None
+    is_multimodal: bool = False
+
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        valid_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
+        if value not in valid_forms:
+            raise ValueError("Invalid doc_form.")
+        return value
+
+
+class SegmentCreateArgs(BaseModel):
+    content: str | None = None
+    answer: str | None = None
+    keywords: list[str] | None = None
+    attachment_ids: list[str] | None = None
 
 
 class SegmentUpdateArgs(BaseModel):
@@ -132,6 +131,8 @@ class SegmentUpdateArgs(BaseModel):
     keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
     enabled: bool | None = None
+    attachment_ids: list[str] | None = None
+    summary: str | None = None  # Summary content for summary index
 
 
 class ChildChunkUpdateArgs(BaseModel):
@@ -158,6 +159,7 @@ class MetadataDetail(BaseModel):
 class DocumentMetadataOperation(BaseModel):
     document_id: str
     metadata_list: list[MetadataDetail]
+    partial_update: bool = False
 
 
 class MetadataOperationData(BaseModel):

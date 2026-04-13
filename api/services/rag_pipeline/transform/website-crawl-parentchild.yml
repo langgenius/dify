@@ -419,7 +419,7 @@ workflow:
             type: mixed
             value: '{{#rag.1752491761974.jina_use_sitemap#}}'
         plugin_id: langgenius/jina_datasource
-        provider_name: jina
+        provider_name: jinareader
         provider_type: website_crawl
         selected: false
         title: Jina Reader

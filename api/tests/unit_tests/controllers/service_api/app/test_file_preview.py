@@ -41,6 +41,7 @@ class TestFilePreviewApi:
         upload_file = Mock(spec=UploadFile)
         upload_file.id = str(uuid.uuid4())
         upload_file.name = "test_file.jpg"
+        upload_file.extension = "jpg"
         upload_file.mime_type = "image/jpeg"
         upload_file.size = 1024
         upload_file.key = "storage/key/test_file.jpg"
@@ -78,10 +79,13 @@ class TestFilePreviewApi:
         mock_message_file.message_id = mock_message.id
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock database queries
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            # Mock scalar() for MessageFile and Message queries
+            mock_db.session.scalar.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
+            ]
+            # Mock get() for UploadFile and App PK lookups
+            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -99,8 +103,8 @@ class TestFilePreviewApi:
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock MessageFile not found
-            mock_db.session.query.return_value.where.return_value.first.return_value = None
+            # Mock MessageFile not found via scalar()
+            mock_db.session.scalar.return_value = None
 
             # Execute and assert exception
             with pytest.raises(FileNotFoundError) as exc_info:
@@ -114,8 +118,8 @@ class TestFilePreviewApi:
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock MessageFile found but Message not owned by app
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            # Mock MessageFile found but Message not owned by app via scalar()
+            mock_db.session.scalar.side_effect = [
                 mock_message_file,  # MessageFile query - found
                 None,  # Message query - not found (access denied)
             ]
@@ -132,12 +136,13 @@ class TestFilePreviewApi:
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock MessageFile and Message found but UploadFile not found
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            # Mock scalar() for MessageFile and Message
+            mock_db.session.scalar.side_effect = [
                 mock_message_file,  # MessageFile query - found
                 mock_message,  # Message query - found
-                None,  # UploadFile query - not found
             ]
+            # Mock get() for UploadFile - not found
+            mock_db.session.get.return_value = None
 
             # Execute and assert exception
             with pytest.raises(FileNotFoundError) as exc_info:
@@ -160,10 +165,13 @@ class TestFilePreviewApi:
         mock_message_file.message_id = mock_message.id
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock database queries
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            # Mock scalar() for MessageFile and Message queries
+            mock_db.session.scalar.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
+            ]
+            # Mock get() for UploadFile and App PK lookups
+            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -210,6 +218,19 @@ class TestFilePreviewApi:
         assert mock_upload_file.name in response.headers["Content-Disposition"]
         assert response.headers["Content-Type"] == "application/octet-stream"
 
+    def test_build_file_response_html_forces_attachment(self, file_preview_api, mock_upload_file):
+        """Test HTML files are forced to download"""
+        mock_generator = Mock()
+        mock_upload_file.mime_type = "text/html"
+        mock_upload_file.name = "unsafe.html"
+        mock_upload_file.extension = "html"
+
+        response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
+
+        assert "attachment" in response.headers["Content-Disposition"]
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
     def test_build_file_response_audio_video(self, file_preview_api, mock_upload_file):
         """Test file response building for audio/video files"""
         mock_generator = Mock()
@@ -248,32 +269,29 @@ class TestFilePreviewApi:
         mock_storage.load.return_value = mock_generator
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock database queries
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            # Mock scalar() for MessageFile and Message queries
+            mock_db.session.scalar.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
+            ]
+            # Mock get() for UploadFile and App PK lookups
+            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
 
-            with patch("controllers.service_api.app.file_preview.reqparse") as mock_reqparse:
-                # Mock request parsing
-                mock_parser = Mock()
-                mock_parser.parse_args.return_value = {"as_attachment": False}
-                mock_reqparse.RequestParser.return_value = mock_parser
+            # Test the core logic directly without Flask decorators
+            # Validate file ownership
+            result_message_file, result_upload_file = file_preview_api._validate_file_ownership(file_id, app_id)
+            assert result_message_file == mock_message_file
+            assert result_upload_file == mock_upload_file
 
-                # Test the core logic directly without Flask decorators
-                # Validate file ownership
-                result_message_file, result_upload_file = file_preview_api._validate_file_ownership(file_id, app_id)
-                assert result_message_file == mock_message_file
-                assert result_upload_file == mock_upload_file
+            # Test file response building
+            response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
+            assert response is not None
 
-                # Test file response building
-                response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
-                assert response is not None
-
-                # Verify storage was called correctly
-                mock_storage.load.assert_not_called()  # Since we're testing components separately
+            # Verify storage was called correctly
+            mock_storage.load.assert_not_called()  # Since we're testing components separately
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_storage_error_handling(
@@ -293,10 +311,13 @@ class TestFilePreviewApi:
         mock_storage.load.side_effect = Exception("Storage error")
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock database queries for validation
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            # Mock scalar() for MessageFile and Message queries
+            mock_db.session.scalar.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
+            ]
+            # Mock get() for UploadFile and App PK lookups
+            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -319,8 +340,8 @@ class TestFilePreviewApi:
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock database query to raise unexpected exception
-            mock_db.session.query.side_effect = Exception("Unexpected database error")
+            # Mock database scalar to raise unexpected exception
+            mock_db.session.scalar.side_effect = Exception("Unexpected database error")
 
             # Execute and assert exception
             with pytest.raises(FileAccessDeniedError) as exc_info:

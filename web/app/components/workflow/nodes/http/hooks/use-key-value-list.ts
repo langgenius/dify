@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { uniqueId } from 'lodash-es'
 import type { KeyValue } from '../types'
+import { useBoolean } from 'ahooks'
+import { uniqueId } from 'es-toolkit/compat'
+import { useCallback, useEffect, useState } from 'react'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 const strToKeyValueList = (value: string) => {

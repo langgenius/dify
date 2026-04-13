@@ -1,6 +1,6 @@
 'use client'
-import React from 'react'
 import type { FC } from 'react'
+import * as React from 'react'
 import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'

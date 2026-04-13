@@ -1,8 +1,8 @@
-import { memo } from 'react'
 import type { VariablePayload } from './types'
+import { memo } from 'react'
+import { cn } from '@/utils/classnames'
 import VariableLabel from './base/variable-label'
 import { useVarBgColorInEditor } from './hooks'
-import cn from '@/utils/classnames'
 
 type VariableLabelInEditorProps = {
   isSelected?: boolean
@@ -23,7 +23,7 @@ const VariableLabelInEditor = ({
   return (
     <VariableLabel
       className={cn(
-        'h-[18px] space-x-[1px] rounded-[5px] px-1 shadow-xs',
+        'h-[18px] space-x-px rounded-[5px] px-1 shadow-xs',
         !isSelected && hoverBgColor,
         !isSelected && hoverBorderColor,
         isSelected && 'border',

@@ -1,24 +1,26 @@
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
-import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemplate } from '@/models/pipeline'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Confirm from '@/app/components/base/confirm'
+import Modal from '@/app/components/base/modal'
+import { toast } from '@/app/components/base/ui/toast'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useRouter } from '@/next/navigation'
+import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import {
   useDeleteTemplate,
   useExportTemplateDSL,
   useInvalidCustomizedTemplateList,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
-import { downloadFile } from '@/utils/format'
-import Toast from '@/app/components/base/toast'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useRouter } from 'next/navigation'
-import Details from './details'
-import Content from './content'
+import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
-import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import Content from './content'
+import Details from './details'
+import EditPipelineInfo from './edit-pipeline-info'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -48,10 +50,7 @@ const TemplateCard = ({
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
-      Toast.notify({
-        type: 'error',
-        message: t('datasetPipeline.creation.errorTip'),
-      })
+      toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       return
     }
     const request = {
@@ -59,23 +58,22 @@ const TemplateCard = ({
     }
     await createDataset(request, {
       onSuccess: async (newDataset) => {
-        Toast.notify({
-          type: 'success',
-          message: t('datasetPipeline.creation.successTip'),
-        })
+        toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+        trackEvent('create_datasets_with_pipeline', {
+          template_name: pipeline.name,
+          template_id: pipeline.id,
+          template_type: type,
+        })
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('datasetPipeline.creation.errorTip'),
-        })
+        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
-  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList])
+  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)
@@ -96,24 +94,16 @@ const TemplateCard = ({
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
-    if (isExporting) return
+    if (isExporting)
+      return
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadFile({
-          data: blob,
-          fileName: `${pipeline.name}.pipeline`,
-        })
-        Toast.notify({
-          type: 'success',
-          message: t('datasetPipeline.exportDSL.successTip'),
-        })
+        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
+        toast.success(t('exportDSL.successTip', { ns: 'datasetPipeline' }))
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('datasetPipeline.exportDSL.errorTip'),
-        })
+        toast.error(t('exportDSL.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
@@ -139,7 +129,7 @@ const TemplateCard = ({
   }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (
-    <div className='group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3'>
+    <div className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
         name={pipeline.name}
         description={pipeline.description}
@@ -158,7 +148,7 @@ const TemplateCard = ({
         <Modal
           isShow={showEditModal}
           onClose={closeEditModal}
-          className='max-w-[520px] p-0'
+          className="max-w-[520px] p-0"
         >
           <EditPipelineInfo
             pipeline={pipeline}
@@ -168,8 +158,8 @@ const TemplateCard = ({
       )}
       {showDeleteConfirm && (
         <Confirm
-          title={t('datasetPipeline.deletePipeline.title')}
-          content={t('datasetPipeline.deletePipeline.content')}
+          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
+          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
           isShow={showDeleteConfirm}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}
@@ -179,7 +169,7 @@ const TemplateCard = ({
         <Modal
           isShow={showDetailModal}
           onClose={closeDetailsModal}
-          className='h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0'
+          className="h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0"
         >
           <Details
             id={pipeline.id}

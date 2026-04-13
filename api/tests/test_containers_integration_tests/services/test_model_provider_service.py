@@ -2,9 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
-from core.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
@@ -17,8 +18,12 @@ class TestModelProviderService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.model_provider_service.ProviderManager") as mock_provider_manager,
-            patch("services.model_provider_service.ModelProviderFactory") as mock_model_provider_factory,
+            patch(
+                "services.model_provider_service.create_plugin_provider_manager", autospec=True
+            ) as mock_provider_manager,
+            patch(
+                "services.model_provider_service.create_plugin_model_provider_factory", autospec=True
+            ) as mock_model_provider_factory,
         ):
             # Setup default mock returns
             mock_provider_manager.return_value.get_configurations.return_value = MagicMock()
@@ -29,7 +34,7 @@ class TestModelProviderService:
                 "model_provider_factory": mock_model_provider_factory,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
@@ -50,18 +55,16 @@ class TestModelProviderService:
             status="active",
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(account)
-        db.session.commit()
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db.session.add(tenant)
-        db.session.commit()
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -70,8 +73,8 @@ class TestModelProviderService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db.session.add(join)
-        db.session.commit()
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -80,7 +83,7 @@ class TestModelProviderService:
 
     def _create_test_provider(
         self,
-        db_session_with_containers,
+        db_session_with_containers: Session,
         mock_external_service_dependencies,
         tenant_id: str,
         provider_name: str = "openai",
@@ -109,16 +112,14 @@ class TestModelProviderService:
             quota_used=0,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider)
-        db.session.commit()
+        db_session_with_containers.add(provider)
+        db_session_with_containers.commit()
 
         return provider
 
     def _create_test_provider_model(
         self,
-        db_session_with_containers,
+        db_session_with_containers: Session,
         mock_external_service_dependencies,
         tenant_id: str,
         provider_name: str,
@@ -149,16 +150,14 @@ class TestModelProviderService:
             is_valid=True,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider_model)
-        db.session.commit()
+        db_session_with_containers.add(provider_model)
+        db_session_with_containers.commit()
 
         return provider_model
 
     def _create_test_provider_model_setting(
         self,
-        db_session_with_containers,
+        db_session_with_containers: Session,
         mock_external_service_dependencies,
         tenant_id: str,
         provider_name: str,
@@ -190,14 +189,12 @@ class TestModelProviderService:
             load_balancing_enabled=False,
         )
 
-        from extensions.ext_database import db
-
-        db.session.add(provider_model_setting)
-        db.session.commit()
+        db_session_with_containers.add(provider_model_setting)
+        db_session_with_containers.commit()
 
         return provider_model_setting
 
-    def test_get_provider_list_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_provider_list_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful provider list retrieval.
 
@@ -227,7 +224,7 @@ class TestModelProviderService:
         mock_provider_entity.label = {"en_US": "OpenAI", "zh_Hans": "OpenAI"}
         mock_provider_entity.description = {"en_US": "OpenAI provider", "zh_Hans": "OpenAI 提供商"}
         mock_provider_entity.icon_small = {"en_US": "icon_small.png", "zh_Hans": "icon_small.png"}
-        mock_provider_entity.icon_large = {"en_US": "icon_large.png", "zh_Hans": "icon_large.png"}
+        mock_provider_entity.icon_small_dark = None
         mock_provider_entity.background = "#FF6B6B"
         mock_provider_entity.help = None
         mock_provider_entity.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING]
@@ -275,7 +272,7 @@ class TestModelProviderService:
         mock_provider_config.is_custom_configuration_available.assert_called_once()
 
     def test_get_provider_list_with_model_type_filter(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test provider list retrieval with model type filtering.
@@ -300,7 +297,7 @@ class TestModelProviderService:
         mock_provider_entity_llm.label = {"en_US": "OpenAI", "zh_Hans": "OpenAI"}
         mock_provider_entity_llm.description = {"en_US": "OpenAI provider", "zh_Hans": "OpenAI 提供商"}
         mock_provider_entity_llm.icon_small = {"en_US": "icon_small.png", "zh_Hans": "icon_small.png"}
-        mock_provider_entity_llm.icon_large = {"en_US": "icon_large.png", "zh_Hans": "icon_large.png"}
+        mock_provider_entity_llm.icon_small_dark = None
         mock_provider_entity_llm.background = "#FF6B6B"
         mock_provider_entity_llm.help = None
         mock_provider_entity_llm.supported_model_types = [ModelType.LLM]
@@ -313,7 +310,7 @@ class TestModelProviderService:
         mock_provider_entity_embedding.label = {"en_US": "Cohere", "zh_Hans": "Cohere"}
         mock_provider_entity_embedding.description = {"en_US": "Cohere provider", "zh_Hans": "Cohere 提供商"}
         mock_provider_entity_embedding.icon_small = {"en_US": "icon_small.png", "zh_Hans": "icon_small.png"}
-        mock_provider_entity_embedding.icon_large = {"en_US": "icon_large.png", "zh_Hans": "icon_large.png"}
+        mock_provider_entity_embedding.icon_small_dark = None
         mock_provider_entity_embedding.background = "#4ECDC4"
         mock_provider_entity_embedding.help = None
         mock_provider_entity_embedding.supported_model_types = [ModelType.TEXT_EMBEDDING]
@@ -374,7 +371,9 @@ class TestModelProviderService:
         assert result[0].provider == "cohere"
         assert ModelType.TEXT_EMBEDDING in result[0].supported_model_types
 
-    def test_get_models_by_provider_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_models_by_provider_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of models by provider.
 
@@ -406,9 +405,10 @@ class TestModelProviderService:
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
 
         # Create mock models
+        from graphon.model_runtime.entities.common_entities import I18nObject
+        from graphon.model_runtime.entities.provider_entities import ProviderEntity
+
         from core.entities.model_entities import ModelWithProviderEntity, SimpleModelProviderEntity
-        from core.model_runtime.entities.common_entities import I18nObject
-        from core.model_runtime.entities.provider_entities import ProviderEntity
 
         # Create real model objects instead of mocks
         provider_entity_1 = SimpleModelProviderEntity(
@@ -416,7 +416,6 @@ class TestModelProviderService:
                 provider="openai",
                 label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
                 icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-                icon_large=I18nObject(en_US="icon_large.png", zh_Hans="icon_large.png"),
                 supported_model_types=[ModelType.LLM],
                 configurate_methods=[],
                 models=[],
@@ -428,7 +427,6 @@ class TestModelProviderService:
                 provider="openai",
                 label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
                 icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-                icon_large=I18nObject(en_US="icon_large.png", zh_Hans="icon_large.png"),
                 supported_model_types=[ModelType.LLM],
                 configurate_methods=[],
                 models=[],
@@ -487,7 +485,9 @@ class TestModelProviderService:
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
         mock_configurations.get_models.assert_called_once_with(provider="openai")
 
-    def test_get_provider_credentials_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_provider_credentials_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of provider credentials.
 
@@ -528,7 +528,9 @@ class TestModelProviderService:
 
         # Act: Execute the method under test
         service = ModelProviderService()
-        with patch.object(service, "get_provider_credential", return_value=expected_credentials) as mock_method:
+        with patch.object(
+            service, "get_provider_credential", return_value=expected_credentials, autospec=True
+        ) as mock_method:
             result = service.get_provider_credential(tenant.id, "openai")
 
             # Assert: Verify the expected outcomes
@@ -543,7 +545,7 @@ class TestModelProviderService:
             mock_method.assert_called_once_with(tenant.id, "openai")
 
     def test_provider_credentials_validate_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful validation of provider credentials.
@@ -585,7 +587,7 @@ class TestModelProviderService:
         mock_provider_configuration.validate_provider_credentials.assert_called_once_with(test_credentials)
 
     def test_provider_credentials_validate_invalid_provider(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test validation failure for non-existent provider.
@@ -617,7 +619,7 @@ class TestModelProviderService:
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
 
     def test_get_default_model_of_model_type_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful retrieval of default model for a specific model type.
@@ -642,8 +644,9 @@ class TestModelProviderService:
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
 
         # Create mock default model response
+        from graphon.model_runtime.entities.common_entities import I18nObject
+
         from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
-        from core.model_runtime.entities.common_entities import I18nObject
 
         mock_default_model = DefaultModelEntity(
             model="gpt-3.5-turbo",
@@ -652,7 +655,6 @@ class TestModelProviderService:
                 provider="openai",
                 label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
                 icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-                icon_large=I18nObject(en_US="icon_large.png", zh_Hans="icon_large.png"),
                 supported_model_types=[ModelType.LLM],
             ),
         )
@@ -674,7 +676,7 @@ class TestModelProviderService:
         mock_provider_manager.get_default_model.assert_called_once_with(tenant_id=tenant.id, model_type=ModelType.LLM)
 
     def test_update_default_model_of_model_type_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful update of default model for a specific model type.
@@ -707,7 +709,9 @@ class TestModelProviderService:
             tenant_id=tenant.id, model_type=ModelType.LLM, provider="openai", model="gpt-4"
         )
 
-    def test_get_model_provider_icon_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_model_provider_icon_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of model provider icon.
 
@@ -744,7 +748,9 @@ class TestModelProviderService:
         # Verify mock interactions
         mock_model_provider_factory.get_provider_icon.assert_called_once_with("openai", "icon_small", "en_US")
 
-    def test_switch_preferred_provider_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_switch_preferred_provider_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful switching of preferred provider type.
 
@@ -780,7 +786,7 @@ class TestModelProviderService:
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
         mock_provider_configuration.switch_preferred_provider_type.assert_called_once()
 
-    def test_enable_model_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_enable_model_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful enabling of a model.
 
@@ -816,7 +822,9 @@ class TestModelProviderService:
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
         mock_provider_configuration.enable_model.assert_called_once_with(model_type=ModelType.LLM, model="gpt-4")
 
-    def test_get_model_credentials_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_model_credentials_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of model credentials.
 
@@ -857,7 +865,9 @@ class TestModelProviderService:
 
         # Act: Execute the method under test
         service = ModelProviderService()
-        with patch.object(service, "get_model_credential", return_value=expected_credentials) as mock_method:
+        with patch.object(
+            service, "get_model_credential", return_value=expected_credentials, autospec=True
+        ) as mock_method:
             result = service.get_model_credential(tenant.id, "openai", "llm", "gpt-4", None)
 
             # Assert: Verify the expected outcomes
@@ -871,7 +881,9 @@ class TestModelProviderService:
             # Verify the method was called with correct parameters
             mock_method.assert_called_once_with(tenant.id, "openai", "llm", "gpt-4", None)
 
-    def test_model_credentials_validate_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_model_credentials_validate_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful validation of model credentials.
 
@@ -913,7 +925,9 @@ class TestModelProviderService:
             model_type=ModelType.LLM, model="gpt-4", credentials=test_credentials
         )
 
-    def test_save_model_credentials_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_save_model_credentials_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful saving of model credentials.
 
@@ -954,7 +968,9 @@ class TestModelProviderService:
             model_type=ModelType.LLM, model="gpt-4", credentials=test_credentials, credential_name="testname"
         )
 
-    def test_remove_model_credentials_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_remove_model_credentials_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful removal of model credentials.
 
@@ -992,7 +1008,9 @@ class TestModelProviderService:
             model_type=ModelType.LLM, model="gpt-4", credential_id="5540007c-b988-46e0-b1c7-9b5fb9f330d6"
         )
 
-    def test_get_models_by_model_type_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_models_by_model_type_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of models by model type.
 
@@ -1023,7 +1041,7 @@ class TestModelProviderService:
                     provider="openai",
                     label={"en_US": "OpenAI", "zh_Hans": "OpenAI"},
                     icon_small={"en_US": "icon_small.png", "zh_Hans": "icon_small.png"},
-                    icon_large={"en_US": "icon_large.png", "zh_Hans": "icon_large.png"},
+                    icon_small_dark=None,
                 ),
                 model="gpt-3.5-turbo",
                 model_type=ModelType.LLM,
@@ -1040,7 +1058,7 @@ class TestModelProviderService:
                     provider="openai",
                     label={"en_US": "OpenAI", "zh_Hans": "OpenAI"},
                     icon_small={"en_US": "icon_small.png", "zh_Hans": "icon_small.png"},
-                    icon_large={"en_US": "icon_large.png", "zh_Hans": "icon_large.png"},
+                    icon_small_dark=None,
                 ),
                 model="gpt-4",
                 model_type=ModelType.LLM,
@@ -1069,7 +1087,9 @@ class TestModelProviderService:
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
         mock_provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
 
-    def test_get_model_parameter_rules_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_model_parameter_rules_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful retrieval of model parameter rules.
 
@@ -1136,7 +1156,7 @@ class TestModelProviderService:
         )
 
     def test_get_model_parameter_rules_no_credentials(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test parameter rules retrieval when no credentials are available.
@@ -1180,7 +1200,7 @@ class TestModelProviderService:
         )
 
     def test_get_model_parameter_rules_provider_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test parameter rules retrieval when provider does not exist.

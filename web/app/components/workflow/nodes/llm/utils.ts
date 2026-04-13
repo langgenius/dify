@@ -1,16 +1,44 @@
-import { z } from 'zod'
-import { ArrayType, Type } from './types'
-import type { ArrayItems, Field, LLMNodeType } from './types'
-import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import type { ValidationError } from 'jsonschema'
+import type { ArrayItems, Field } from './types'
+import * as z from 'zod'
+import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
+import { extractPluginId } from '../../utils/plugin'
+import { ArrayType, Type } from './types'
 
-export const checkNodeValid = (_payload: LLMNodeType) => {
-  return true
+export enum LLMModelIssueCode {
+  providerRequired = 'provider-required',
+  providerPluginUnavailable = 'provider-plugin-unavailable',
+}
+
+export const getLLMModelIssue = ({
+  modelProvider,
+  isModelProviderInstalled = true,
+}: {
+  modelProvider?: string
+  isModelProviderInstalled?: boolean
+}) => {
+  if (!modelProvider)
+    return LLMModelIssueCode.providerRequired
+
+  if (!isModelProviderInstalled)
+    return LLMModelIssueCode.providerPluginUnavailable
+
+  return null
+}
+
+export const isLLMModelProviderInstalled = (modelProvider: string | undefined, installedPluginIds: ReadonlySet<string>) => {
+  if (!modelProvider)
+    return true
+
+  return installedPluginIds.has(extractPluginId(modelProvider))
 }
 
 export const getFieldType = (field: Field) => {
-  const { type, items } = field
-  if(field.schemaType === 'file') return Type.file
+  const { type, items, enum: enums } = field
+  if (field.schemaType === 'file')
+    return Type.file
+  if (enums && enums.length > 0)
+    return Type.enumType
   if (type !== Type.array || !items)
     return type
 
@@ -27,8 +55,9 @@ export const getHasChildren = (schema: Field) => {
     return schema.items && schema.items.type === Type.object && schema.items.properties && Object.keys(schema.items.properties).length > 0
 }
 
-export const getTypeOf = (target: any) => {
-  if (target === null) return 'null'
+const getTypeOf = (target: any) => {
+  if (target === null)
+    return 'null'
   if (typeof target !== 'object') {
     return typeof target
   }
@@ -40,14 +69,19 @@ export const getTypeOf = (target: any) => {
   }
 }
 
-export const inferType = (value: any): Type => {
+const inferType = (value: any): Type => {
   const type = getTypeOf(value)
-  if (type === 'array') return Type.array
+  if (type === 'array')
+    return Type.array
   // type boolean will be treated as string
-  if (type === 'boolean') return Type.string
-  if (type === 'number') return Type.number
-  if (type === 'string') return Type.string
-  if (type === 'object') return Type.object
+  if (type === 'boolean')
+    return Type.string
+  if (type === 'number')
+    return Type.number
+  if (type === 'string')
+    return Type.string
+  if (type === 'object')
+    return Type.object
   return Type.string
 }
 
@@ -132,27 +166,6 @@ export const getValidationErrorMessage = (errors: Array<ValidationError | string
       return `Error: ${error.stack}\n`
   }).join('')
   return message
-}
-
-// Previous Not support boolean type, so transform boolean to string when paste it into schema editor
-export const convertBooleanToString = (schema: any) => {
-  if (schema.type === Type.boolean)
-    schema.type = Type.string
-  if (schema.type === Type.array && schema.items && schema.items.type === Type.boolean)
-    schema.items.type = Type.string
-  if (schema.type === Type.object) {
-    schema.properties = Object.entries(schema.properties).reduce((acc, [key, value]) => {
-      acc[key] = convertBooleanToString(value)
-      return acc
-    }, {} as any)
-  }
-  if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
-    schema.items.properties = Object.entries(schema.items.properties).reduce((acc, [key, value]) => {
-      acc[key] = convertBooleanToString(value)
-      return acc
-    }, {} as any)
-  }
-  return schema
 }
 
 const schemaRootObject = z.object({

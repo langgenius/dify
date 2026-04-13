@@ -1,41 +1,57 @@
+from datetime import datetime
+
 import flask_restx
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from flask_restx._http import HTTPStatus
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from pydantic import field_validator
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
-from libs.helper import TimestampField
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
+from models.enums import ApiTokenType
 from models.model import ApiToken, App
+from services.api_token_service import ApiTokenCache
 
-from . import api, console_ns
+from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
 
-api_key_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "token": fields.String,
-    "last_used_at": TimestampField,
-    "created_at": TimestampField,
-}
 
-api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="items")}
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+class ApiKeyItem(ResponseModel):
+    id: str
+    type: str
+    token: str
+    last_used_at: int | None = None
+    created_at: int | None = None
+
+    @field_validator("last_used_at", "created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class ApiKeyList(ResponseModel):
+    data: list[ApiKeyItem]
+
+
+register_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
-    if resource_model == App:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
-    else:
-        with Session(db.engine) as session:
-            resource = session.execute(
-                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
-            ).scalar_one_or_none()
+    with sessionmaker(db.engine).begin() as session:
+        resource = session.execute(
+            select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+        ).scalar_one_or_none()
 
     if resource is None:
         flask_restx.abort(HTTPStatus.NOT_FOUND, message=f"{resource_model.__name__} not found.")
@@ -46,13 +62,12 @@ def _get_resource(resource_id, tenant_id, resource_model):
 class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type: str | None = None
+    resource_type: ApiTokenType | None = None
     resource_model: type | None = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
 
-    @marshal_with(api_key_list)
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
@@ -64,19 +79,21 @@ class BaseApiKeyListResource(Resource):
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
             )
         ).all()
-        return {"items": keys}
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
-    @marshal_with(api_key_fields)
     @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
-        current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
-            .count()
+        current_key_count: int = (
+            db.session.scalar(
+                select(func.count(ApiToken.id)).where(
+                    ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
+                )
+            )
+            or 0
         )
 
         if current_key_count >= self.max_keys:
@@ -87,6 +104,7 @@ class BaseApiKeyListResource(Resource):
             )
 
         key = ApiToken.generate_api_key(self.token_prefix or "", 24)
+        assert self.resource_type is not None, "resource_type must be set"
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
         api_token.tenant_id = current_tenant_id
@@ -94,41 +112,43 @@ class BaseApiKeyListResource(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return api_token, 201
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 201
 
 
 class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type: str | None = None
+    resource_type: ApiTokenType | None = None
     resource_model: type | None = None
     resource_id_field: str | None = None
 
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: str, api_key_id: str):
         assert self.resource_id_field is not None, "resource_id_field must be set"
-        resource_id = str(resource_id)
-        api_key_id = str(api_key_id)
         current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
 
-        # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalar(
+            select(ApiToken)
             .where(
                 getattr(ApiToken, self.resource_id_field) == resource_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
+            .limit(1)
         )
 
         if key is None:
             flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
+        # Invalidate cache before deleting from database
+        # Type assertion: key is guaranteed to be non-None here because abort() raises
+        assert key is not None  # nosec - for type checker only
+        ApiTokenCache.delete(key.token, key.type)
+
+        db.session.execute(delete(ApiToken).where(ApiToken.id == api_key_id))
         db.session.commit()
 
         return {"result": "success"}, 204
@@ -136,24 +156,24 @@ class BaseApiKeyResource(Resource):
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")
 class AppApiKeyListResource(BaseApiKeyListResource):
-    @api.doc("get_app_api_keys")
-    @api.doc(description="Get all API keys for an app")
-    @api.doc(params={"resource_id": "App ID"})
-    @api.response(200, "Success", api_key_list)
-    def get(self, resource_id):
+    @console_ns.doc("get_app_api_keys")
+    @console_ns.doc(description="Get all API keys for an app")
+    @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
+    def get(self, resource_id):  # type: ignore
         """Get all API keys for an app"""
         return super().get(resource_id)
 
-    @api.doc("create_app_api_key")
-    @api.doc(description="Create a new API key for an app")
-    @api.doc(params={"resource_id": "App ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
-    @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):
+    @console_ns.doc("create_app_api_key")
+    @console_ns.doc(description="Create a new API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
+    def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
         return super().post(resource_id)
 
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = App
     resource_id_field = "app_id"
     token_prefix = "app-"
@@ -161,39 +181,39 @@ class AppApiKeyListResource(BaseApiKeyListResource):
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class AppApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_app_api_key")
-    @api.doc(description="Delete an API key for an app")
-    @api.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
+    @console_ns.doc("delete_app_api_key")
+    @console_ns.doc(description="Delete an API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
     def delete(self, resource_id, api_key_id):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
 
-    resource_type = "app"
+    resource_type = ApiTokenType.APP
     resource_model = App
     resource_id_field = "app_id"
 
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(BaseApiKeyListResource):
-    @api.doc("get_dataset_api_keys")
-    @api.doc(description="Get all API keys for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(200, "Success", api_key_list)
-    def get(self, resource_id):
+    @console_ns.doc("get_dataset_api_keys")
+    @console_ns.doc(description="Get all API keys for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
+    def get(self, resource_id):  # type: ignore
         """Get all API keys for a dataset"""
         return super().get(resource_id)
 
-    @api.doc("create_dataset_api_key")
-    @api.doc(description="Create a new API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
-    @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):
+    @console_ns.doc("create_dataset_api_key")
+    @console_ns.doc(description="Create a new API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
+    def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
     resource_model = Dataset
     resource_id_field = "dataset_id"
     token_prefix = "ds-"
@@ -201,14 +221,14 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class DatasetApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_dataset_api_key")
-    @api.doc(description="Delete an API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
+    @console_ns.doc("delete_dataset_api_key")
+    @console_ns.doc(description="Delete an API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
     def delete(self, resource_id, api_key_id):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
 
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
     resource_model = Dataset
     resource_id_field = "dataset_id"

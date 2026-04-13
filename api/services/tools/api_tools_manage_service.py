@@ -1,13 +1,12 @@
 import json
 import logging
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
 
 from core.entities.provider_entities import ProviderConfig
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -28,9 +27,16 @@ from services.tools.tools_transform_service import ToolTransformService
 logger = logging.getLogger(__name__)
 
 
+class ApiSchemaParseResult(TypedDict):
+    schema_type: str
+    parameters_schema: list[dict[str, Any]]
+    credentials_schema: list[dict[str, Any]]
+    warning: dict[str, str]
+
+
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> Mapping[str, Any]:
+    def parser_api_schema(schema: str) -> ApiSchemaParseResult:
         """
         parse api schema to tool bundle
         """
@@ -71,7 +77,7 @@ class ApiToolManageService:
             ]
 
             return cast(
-                Mapping,
+                ApiSchemaParseResult,
                 jsonable_encoder(
                     {
                         "schema_type": schema_type,
@@ -85,7 +91,9 @@ class ApiToolManageService:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict | None = None) -> tuple[list[ApiToolBundle], str]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: dict | None = None
+    ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
 
@@ -103,7 +111,7 @@ class ApiToolManageService:
         provider_name: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
         custom_disclaimer: str,
@@ -112,19 +120,16 @@ class ApiToolManageService:
         """
         create api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is not None:
@@ -209,13 +214,13 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -241,28 +246,25 @@ class ApiToolManageService:
         original_provider: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        _schema_type: ApiProviderSchemaType,
         schema: str,
-        privacy_policy: str,
+        privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
     ):
         """
         update api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == original_provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -277,7 +279,7 @@ class ApiToolManageService:
         provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get("description", "")
-        provider.schema_type_str = ApiProviderSchemaType.OPENAPI
+        provider.schema_type_str = schema_type
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
         provider.custom_disclaimer = custom_disclaimer
@@ -300,13 +302,13 @@ class ApiToolManageService:
         )
 
         original_credentials = encrypter.decrypt(provider.credentials)
-        masked_credentials = encrypter.mask_tool_credentials(original_credentials)
+        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
         # check if the credential has changed, save the original credential
         for name, value in credentials.items():
             if name in masked_credentials and value == masked_credentials[name]:
                 credentials[name] = original_credentials[name]
 
-        credentials = encrypter.encrypt(credentials)
+        credentials = dict(encrypter.encrypt(credentials))
         provider.credentials_str = json.dumps(credentials)
 
         db.session.add(provider)
@@ -325,13 +327,13 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -356,7 +358,7 @@ class ApiToolManageService:
         tool_name: str,
         credentials: dict,
         parameters: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
     ):
         """
@@ -375,13 +377,13 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider = (
-            db.session.query(ApiToolProvider)
+        db_provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if not db_provider:
@@ -417,7 +419,7 @@ class ApiToolManageService:
             )
             decrypted_credentials = encrypter.decrypt(credentials)
             # check if the credential has changed, save the original credential
-            masked_credentials = encrypter.mask_tool_credentials(decrypted_credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(decrypted_credentials)
             for name, value in credentials.items():
                 if name in masked_credentials and value == masked_credentials[name]:
                     credentials[name] = decrypted_credentials[name]

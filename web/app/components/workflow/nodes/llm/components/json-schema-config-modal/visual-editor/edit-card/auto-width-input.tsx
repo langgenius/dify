@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
 import type { FC } from 'react'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { cn } from '@/utils/classnames'
 
 type AutoWidthInputProps = {
   value: string
@@ -43,11 +44,11 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
   }
 
   return (
-    <div className='relative inline-flex items-center'>
+    <div className="relative inline-flex items-center">
       {/* Hidden measurement span */}
       <span
         ref={textRef}
-        className='system-sm-semibold invisible absolute left-0 top-0 -z-10 whitespace-pre px-1'
+        className="system-sm-semibold invisible absolute left-0 top-0 -z-10 whitespace-pre px-1"
         aria-hidden="true"
       >
         {value || placeholder}
@@ -58,7 +59,7 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
         value={value}
         className={cn(
           'system-sm-semibold placeholder:system-sm-semibold h-5 rounded-[5px] border border-transparent px-1',
-          'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-none',
+          'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-hidden',
           'placeholder:text-text-placeholder hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
           className,
         )}

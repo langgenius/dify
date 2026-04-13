@@ -3,11 +3,15 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
+from sqlalchemy import delete, select, update
+from sqlalchemy.orm import Session
+from yarl import URL
 
 from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     PluginDeclaration,
@@ -24,8 +28,14 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID
+from services.enterprise.plugin_manager_service import (
+    PluginManagerService,
+    PreUninstallPluginRequest,
+)
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
@@ -175,6 +185,13 @@ class PluginService:
         manager = PluginInstaller()
         return manager.fetch_plugin_installation_by_ids(tenant_id, ids)
 
+    @classmethod
+    def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
+        url_prefix = (
+            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+        )
+        return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
+
     @staticmethod
     def get_asset(tenant_id: str, asset_file: str) -> tuple[bytes, str]:
         """
@@ -184,6 +201,11 @@ class PluginService:
         # guess mime type
         mime_type, _ = guess_type(asset_file)
         return manager.fetch_asset(tenant_id, asset_file), mime_type or "application/octet-stream"
+
+    @staticmethod
+    def extract_asset(tenant_id: str, plugin_unique_identifier: str, file_name: str) -> bytes:
+        manager = PluginAssetManager()
+        return manager.extract_asset(tenant_id, plugin_unique_identifier, file_name)
 
     @staticmethod
     def check_plugin_unique_identifier(tenant_id: str, plugin_unique_identifier: str) -> bool:
@@ -493,6 +515,72 @@ class PluginService:
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
         manager = PluginInstaller()
+
+        # Get plugin info before uninstalling to delete associated credentials
+        plugins = manager.list_plugins(tenant_id)
+        plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
+
+        if not plugin:
+            return manager.uninstall(tenant_id, plugin_installation_id)
+
+        if dify_config.ENTERPRISE_ENABLED:
+            PluginManagerService.try_pre_uninstall_plugin(
+                PreUninstallPluginRequest(
+                    tenant_id=tenant_id,
+                    plugin_unique_identifier=plugin.plugin_unique_identifier,
+                )
+            )
+        with Session(db.engine) as session, session.begin():
+            plugin_id = plugin.plugin_id
+            logger.info("Deleting credentials for plugin: %s", plugin_id)
+
+            session.execute(
+                delete(TenantPreferredModelProvider).where(
+                    TenantPreferredModelProvider.tenant_id == tenant_id,
+                    TenantPreferredModelProvider.provider_name.like(f"{plugin_id}/%"),
+                )
+            )
+
+            # Delete provider credentials that match this plugin
+            credential_ids = session.scalars(
+                select(ProviderCredential.id).where(
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name.like(f"{plugin_id}/%"),
+                )
+            ).all()
+
+            if not credential_ids:
+                logger.info("No credentials found for plugin: %s", plugin_id)
+                return manager.uninstall(tenant_id, plugin_installation_id)
+
+            provider_ids = session.scalars(
+                select(Provider.id).where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name.like(f"{plugin_id}/%"),
+                    Provider.credential_id.in_(credential_ids),
+                )
+            ).all()
+
+            session.execute(update(Provider).where(Provider.id.in_(provider_ids)).values(credential_id=None))
+
+            for provider_id in provider_ids:
+                ProviderCredentialsCache(
+                    tenant_id=tenant_id,
+                    identity_id=provider_id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+                ).delete()
+
+            session.execute(
+                delete(ProviderCredential).where(
+                    ProviderCredential.id.in_(credential_ids),
+                )
+            )
+
+            logger.info(
+                "Completed deleting credentials and cleaning provider associations for plugin: %s",
+                plugin_id,
+            )
+
         return manager.uninstall(tenant_id, plugin_installation_id)
 
     @staticmethod
@@ -502,3 +590,11 @@ class PluginService:
         """
         manager = PluginInstaller()
         return manager.check_tools_existence(tenant_id, provider_ids)
+
+    @staticmethod
+    def fetch_plugin_readme(tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
+        """
+        Fetch plugin readme
+        """
+        manager = PluginInstaller()
+        return manager.fetch_plugin_readme(tenant_id, plugin_unique_identifier, language)

@@ -1,10 +1,16 @@
+import base64
 import hashlib
 import os
 import uuid
-from typing import Literal, Union
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager, suppress
+from tempfile import NamedTemporaryFile
+from typing import Literal
+from zipfile import ZIP_DEFLATED, ZipFile
 
-from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
+from graphon.file import helpers as file_helpers
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -14,9 +20,10 @@ from constants import (
     IMAGE_EXTENSIONS,
     VIDEO_EXTENSIONS,
 )
-from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
+from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 from models import Account
@@ -29,7 +36,7 @@ PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
-    _session_maker: sessionmaker
+    _session_maker: sessionmaker[Session]
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
         if isinstance(session_factory, Engine):
@@ -45,15 +52,16 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
-        # check if filename contains invalid characters
-        if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
+        # Only reject path separators here. The original filename is stored as metadata,
+        # while the storage key is UUID-based.
+        if any(c in filename for c in ["/", "\\"]):
             raise ValueError("Filename contains invalid characters")
 
         if len(filename) > 200:
@@ -86,7 +94,7 @@ class FileService:
         # save file to db
         upload_file = UploadFile(
             tenant_id=current_tenant_id or "",
-            storage_type=dify_config.STORAGE_TYPE,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=filename,
             size=file_size,
@@ -123,6 +131,15 @@ class FileService:
 
         return file_size <= file_size_limit
 
+    def get_file_base64(self, file_id: str) -> str:
+        upload_file = self._session_maker(expire_on_commit=False).scalar(
+            select(UploadFile).where(UploadFile.id == file_id).limit(1)
+        )
+        if not upload_file:
+            raise NotFound("File not found")
+        blob = storage.load_once(upload_file.key)
+        return base64.b64encode(blob).decode()
+
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:
             text_name = text_name[:200]
@@ -136,7 +153,7 @@ class FileService:
         # save file to db
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type=dify_config.STORAGE_TYPE,
+            storage_type=StorageType(dify_config.STORAGE_TYPE),
             key=file_key,
             name=text_name,
             size=len(text),
@@ -157,8 +174,11 @@ class FileService:
         return upload_file
 
     def get_file_preview(self, file_id: str):
+        """
+        Return a short text preview extracted from a document file.
+        """
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")
@@ -180,7 +200,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -200,7 +220,7 @@ class FileService:
             raise NotFound("File not found or signature is invalid")
 
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -211,7 +231,7 @@ class FileService:
 
     def get_public_image_preview(self, file_id: str):
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -227,7 +247,7 @@ class FileService:
 
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file: UploadFile | None = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
 
         if not upload_file:
             raise NotFound("File not found")
@@ -236,11 +256,108 @@ class FileService:
         return content.decode("utf-8")
 
     def delete_file(self, file_id: str):
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+        with self._session_maker() as session, session.begin():
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id))
 
-        if not upload_file:
-            return
-        storage.delete(upload_file.key)
-        session.delete(upload_file)
-        session.commit()
+            if not upload_file:
+                return
+            storage.delete(upload_file.key)
+            session.delete(upload_file)
+
+    @staticmethod
+    def get_upload_files_by_ids(tenant_id: str, upload_file_ids: Sequence[str]) -> dict[str, UploadFile]:
+        """
+        Fetch `UploadFile` rows for a tenant in a single batch query.
+
+        This is a generic `UploadFile` lookup helper (not dataset/document specific), so it lives in `FileService`.
+        """
+        if not upload_file_ids:
+            return {}
+
+        # Normalize and deduplicate ids before using them in the IN clause.
+        upload_file_id_list: list[str] = [str(upload_file_id) for upload_file_id in upload_file_ids]
+        unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
+
+        # Fetch upload files in one query for efficient batch access.
+        upload_files: Sequence[UploadFile] = db.session.scalars(
+            select(UploadFile).where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id.in_(unique_upload_file_ids),
+            )
+        ).all()
+        return {str(upload_file.id): upload_file for upload_file in upload_files}
+
+    @staticmethod
+    def _sanitize_zip_entry_name(name: str) -> str:
+        """
+        Sanitize a ZIP entry name to avoid path traversal and weird separators.
+
+        We keep this conservative: the upload flow already rejects `/` and `\\`, but older rows (or imported data)
+        could still contain unsafe names.
+        """
+        # Drop any directory components and prevent empty names.
+        base = os.path.basename(name).strip() or "file"
+
+        # ZIP uses forward slashes as separators; remove any residual separator characters.
+        return base.replace("/", "_").replace("\\", "_")
+
+    @staticmethod
+    def _dedupe_zip_entry_name(original_name: str, used_names: set[str]) -> str:
+        """
+        Return a unique ZIP entry name, inserting suffixes before the extension.
+        """
+        # Keep the original name when it's not already used.
+        if original_name not in used_names:
+            return original_name
+
+        # Insert suffixes before the extension (e.g., "doc.txt" -> "doc (1).txt").
+        stem, extension = os.path.splitext(original_name)
+        suffix = 1
+        while True:
+            candidate = f"{stem} ({suffix}){extension}"
+            if candidate not in used_names:
+                return candidate
+            suffix += 1
+
+    @staticmethod
+    @contextmanager
+    def build_upload_files_zip_tempfile(
+        *,
+        upload_files: Sequence[UploadFile],
+    ) -> Iterator[str]:
+        """
+        Build a ZIP from `UploadFile`s and yield a tempfile path.
+
+        We yield a path (rather than an open file handle) to avoid "read of closed file" issues when Flask/Werkzeug
+        streams responses. The caller is expected to keep this context open until the response is fully sent, then
+        close it (e.g., via `response.call_on_close(...)`) to delete the tempfile.
+        """
+        used_names: set[str] = set()
+
+        # Build a ZIP in a temp file and keep it on disk until the caller finishes streaming it.
+        tmp_path: str | None = None
+        try:
+            with NamedTemporaryFile(mode="w+b", suffix=".zip", delete=False) as tmp:
+                tmp_path = tmp.name
+                with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
+                    for upload_file in upload_files:
+                        # Ensure the entry name is safe and unique.
+                        safe_name = FileService._sanitize_zip_entry_name(upload_file.name)
+                        arcname = FileService._dedupe_zip_entry_name(safe_name, used_names)
+                        used_names.add(arcname)
+
+                        # Stream file bytes from storage into the ZIP entry.
+                        with zf.open(arcname, "w") as entry:
+                            for chunk in storage.load(upload_file.key, stream=True):
+                                entry.write(chunk)
+
+                # Flush so `send_file(path, ...)` can re-open it safely on all platforms.
+                tmp.flush()
+
+            assert tmp_path is not None
+            yield tmp_path
+        finally:
+            # Remove the temp file when the context is closed (typically after the response finishes streaming).
+            if tmp_path is not None:
+                with suppress(FileNotFoundError):
+                    os.remove(tmp_path)

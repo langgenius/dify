@@ -29,3 +29,25 @@ class AppAccessDeniedError(BaseHTTPException):
     error_code = "access_denied"
     description = "App access denied."
     code = 403
+
+
+class TrialAppNotAllowed(BaseHTTPException):
+    """*403* `Trial App Not Allowed`
+
+    Raise if the user has reached the trial app limit.
+    """
+
+    error_code = "trial_app_not_allowed"
+    code = 403
+    description = "the app is not allowed to be trial."
+
+
+class TrialAppLimitExceeded(BaseHTTPException):
+    """*403* `Trial App Limit Exceeded`
+
+    Raise if the user has exceeded the trial app limit.
+    """
+
+    error_code = "trial_app_limit_exceeded"
+    code = 403
+    description = "The user has exceeded the trial app limit."

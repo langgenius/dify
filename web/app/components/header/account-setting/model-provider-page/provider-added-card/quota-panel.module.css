@@ -1,0 +1,8 @@
+.gridBg {
+  background-size: 4px 4px;
+  background-image:
+    linear-gradient(to right, var(--color-divider-subtle) 0.5px, transparent 0.5px),
+    linear-gradient(to bottom, var(--color-divider-subtle) 0.5px, transparent 0.5px);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), transparent 70%);
+  mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), transparent 70%);
+}

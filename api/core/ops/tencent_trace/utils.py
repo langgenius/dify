@@ -6,7 +6,6 @@ import hashlib
 import random
 import uuid
 from datetime import datetime
-from typing import cast
 
 from opentelemetry.trace import Link, SpanContext, TraceFlags
 
@@ -23,7 +22,7 @@ class TencentTraceUtils:
             uuid_obj = uuid.UUID(uuid_v4) if uuid_v4 else uuid.uuid4()
         except Exception as e:
             raise ValueError(f"Invalid UUID input: {e}")
-        return cast(int, uuid_obj.int)
+        return uuid_obj.int
 
     @staticmethod
     def convert_to_span_id(uuid_v4: str | None, span_type: str) -> int:
@@ -52,9 +51,9 @@ class TencentTraceUtils:
     @staticmethod
     def create_link(trace_id_str: str) -> Link:
         try:
-            trace_id = int(trace_id_str, 16) if len(trace_id_str) == 32 else cast(int, uuid.UUID(trace_id_str).int)
+            trace_id = int(trace_id_str, 16) if len(trace_id_str) == 32 else uuid.UUID(trace_id_str).int
         except (ValueError, TypeError):
-            trace_id = cast(int, uuid.uuid4().int)
+            trace_id = uuid.uuid4().int
 
         span_context = SpanContext(
             trace_id=trace_id,

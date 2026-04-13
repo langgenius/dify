@@ -1,6 +1,6 @@
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-import { Fragment, cloneElement, isValidElement, useRef } from 'react'
-import cn from '@/utils/classnames'
+import { cloneElement, Fragment, isValidElement, useRef } from 'react'
+import { cn } from '@/utils/classnames'
 
 export type HtmlContentProps = {
   open?: boolean
@@ -59,15 +59,15 @@ export default function CustomPopover({
               {...(trigger !== 'hover'
                 ? {}
                 : {
-                  onMouseLeave: () => onMouseLeave(open),
-                  onMouseEnter: () => onMouseEnter(open),
-                })}
+                    onMouseLeave: () => onMouseLeave(open),
+                    onMouseEnter: () => onMouseEnter(open),
+                  })}
             >
               <PopoverButton
                 ref={buttonRef}
                 disabled={disabled}
                 className={cn(
-                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-none',
+                  'group inline-flex items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-base font-medium hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus:outline-hidden',
                   open && 'border-components-button-secondary-border bg-components-button-secondary-bg-hover',
                   (btnClassName && typeof btnClassName === 'string') && btnClassName,
                   (btnClassName && typeof btnClassName !== 'string') && btnClassName?.(open),
@@ -87,9 +87,9 @@ export default function CustomPopover({
                   {...(trigger !== 'hover'
                     ? {}
                     : {
-                      onMouseLeave: () => onMouseLeave(open),
-                      onMouseEnter: () => onMouseEnter(open),
-                    })
+                        onMouseLeave: () => onMouseLeave(open),
+                        onMouseEnter: () => onMouseEnter(open),
+                      })
                   }
                 >
                   {({ close }) => (
@@ -98,21 +98,21 @@ export default function CustomPopover({
                       {...(trigger !== 'hover'
                         ? {}
                         : {
-                          onMouseLeave: () => onMouseLeave(open),
-                          onMouseEnter: () => onMouseEnter(open),
-                        })
+                            onMouseLeave: () => onMouseLeave(open),
+                            onMouseEnter: () => onMouseEnter(open),
+                          })
                       }
                     >
                       {isValidElement(htmlContent)
                         ? cloneElement(htmlContent as React.ReactElement<HtmlContentProps>, {
-                          open,
-                          onClose: close,
-                          ...(manualClose
-                            ? {
-                              onClick: close,
-                            }
-                            : {}),
-                        })
+                            open,
+                            onClose: close,
+                            ...(manualClose
+                              ? {
+                                  onClick: close,
+                                }
+                              : {}),
+                          })
                         : htmlContent}
                     </div>
                   )}

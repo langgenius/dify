@@ -1,26 +1,26 @@
+import type {
+  CustomConfigurationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import {
   Button,
 } from '@/app/components/base/button'
-import type {
-  CustomConfigurationModelFixedFields,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useCredentialStatus } from './hooks'
-import Tooltip from '@/app/components/base/tooltip'
 
 type ConfigProviderProps = {
-  provider: ModelProvider,
-  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  provider: ModelProvider
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
 }
 const ConfigProvider = ({
   provider,
@@ -37,16 +37,16 @@ const ConfigProvider = ({
   const notAllowCustomCredential = provider.allow_custom_token === false
 
   const renderTrigger = useCallback(() => {
-    const text = hasCredential ? t('common.operation.config') : t('common.operation.setup')
+    const text = hasCredential ? t('operation.config', { ns: 'common' }) : t('operation.setup', { ns: 'common' })
     const Item = (
       <Button
-        className='flex grow'
-        size='small'
+        className="flex grow"
+        size="small"
         variant={!authorized ? 'secondary-accent' : 'secondary'}
         title={text}
       >
-        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5 shrink-0' />
-        <span className='w-0 grow truncate text-left'>
+        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5 shrink-0" />
+        <span className="w-0 grow truncate text-left">
           {text}
         </span>
       </Button>
@@ -55,7 +55,7 @@ const ConfigProvider = ({
       return (
         <Tooltip
           asChild
-          popupContent={t('plugin.auth.credentialUnavailable')}
+          popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}
         >
           {Item}
         </Tooltip>
@@ -71,7 +71,7 @@ const ConfigProvider = ({
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       items={[
         {
-          title: t('common.modelProvider.auth.apiKeys'),
+          title: t('modelProvider.auth.apiKeys', { ns: 'common' }),
           credentials: available_credentials ?? [],
           selectedCredential: {
             credential_id: current_credential_id ?? '',

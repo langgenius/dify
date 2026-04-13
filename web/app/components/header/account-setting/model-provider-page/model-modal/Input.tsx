@@ -38,13 +38,13 @@ const Input: FC<InputProps> = ({
   }
 
   return (
-    <div className='relative'>
+    <div className="relative">
       <input
         tabIndex={0}
         // Do not set autoComplete for security - prevents browser from storing sensitive API keys
         className={`
           block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm
-          text-components-input-text-filled caret-primary-600 outline-none
+          text-components-input-text-filled caret-primary-600 outline-hidden
           placeholder:text-sm placeholder:text-text-tertiary
           hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active
           focus:bg-components-input-bg-active focus:shadow-xs
@@ -62,8 +62,8 @@ const Input: FC<InputProps> = ({
         max={max}
       />
       {validated && (
-        <div className='absolute right-2.5 top-2.5'>
-          <CheckCircle className='h-4 w-4 text-[#039855]' />
+        <div className="absolute right-2.5 top-2.5">
+          <CheckCircle className="h-4 w-4 text-[#039855]" />
         </div>
       )}
     </div>

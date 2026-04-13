@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import enum
 from enum import StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
 
 from configs import dify_config
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.oauth import OAuthSchema
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameter,
     PluginParameterOption,
@@ -31,7 +33,7 @@ class DatasourceProviderType(enum.StrEnum):
     ONLINE_DRIVE = "online_drive"
 
     @classmethod
-    def value_of(cls, value: str) -> "DatasourceProviderType":
+    def value_of(cls, value: str) -> DatasourceProviderType:
         """
         Get value of given mode.
 
@@ -81,7 +83,7 @@ class DatasourceParameter(PluginParameter):
         typ: DatasourceParameterType,
         required: bool,
         options: list[str] | None = None,
-    ) -> "DatasourceParameter":
+    ) -> DatasourceParameter:
         """
         get a simple datasource parameter
 
@@ -177,6 +179,12 @@ class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
     datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
+class DatasourceInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class DatasourceInvokeMeta(BaseModel):
     """
     Datasource invoke meta
@@ -187,25 +195,26 @@ class DatasourceInvokeMeta(BaseModel):
     tool_config: dict | None = None
 
     @classmethod
-    def empty(cls) -> "DatasourceInvokeMeta":
+    def empty(cls) -> DatasourceInvokeMeta:
         """
         Get an empty instance of DatasourceInvokeMeta
         """
         return cls(time_cost=0.0, error=None, tool_config={})
 
     @classmethod
-    def error_instance(cls, error: str) -> "DatasourceInvokeMeta":
+    def error_instance(cls, error: str) -> DatasourceInvokeMeta:
         """
         Get an instance of DatasourceInvokeMeta with error
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self) -> DatasourceInvokeMetaDict:
+        result: DatasourceInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class DatasourceLabel(BaseModel):
@@ -377,4 +386,11 @@ class OnlineDriveDownloadFileRequest(BaseModel):
     """
 
     id: str = Field(..., description="The id of the file")
-    bucket: str | None = Field(None, description="The name of the bucket")
+    bucket: str = Field("", description="The name of the bucket")
+
+    @field_validator("bucket", mode="before")
+    @classmethod
+    def _coerce_bucket(cls, v) -> str:
+        if v is None:
+            return ""
+        return str(v)

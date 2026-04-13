@@ -1,12 +1,26 @@
-from flask_restx import Resource, reqparse
-from werkzeug.exceptions import Forbidden
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 
-from controllers.console import console_ns
-from controllers.console.auth.error import ApiKeyAuthFailedError
 from libs.login import current_account_with_tenant, login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
-from ..wraps import account_initialization_required, setup_required
+from .. import console_ns
+from ..auth.error import ApiKeyAuthFailedError
+from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class ApiKeyAuthBindingPayload(BaseModel):
+    category: str = Field(...)
+    provider: str = Field(...)
+    credentials: dict = Field(...)
+
+
+console_ns.schema_model(
+    ApiKeyAuthBindingPayload.__name__,
+    ApiKeyAuthBindingPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/api-key-auth/data-source")
@@ -39,22 +53,16 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @is_admin_or_owner_required
+    @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     def post(self):
         # The role of the current user in the table must be admin or owner
-        current_user, current_tenant_id = current_account_with_tenant()
-
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("category", type=str, required=True, nullable=False, location="json")
-            .add_argument("provider", type=str, required=True, nullable=False, location="json")
-            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
-        ApiKeyAuthService.validate_api_key_auth_args(args)
+        _, current_tenant_id = current_account_with_tenant()
+        payload = ApiKeyAuthBindingPayload.model_validate(console_ns.payload)
+        data = payload.model_dump()
+        ApiKeyAuthService.validate_api_key_auth_args(data)
         try:
-            ApiKeyAuthService.create_provider_auth(current_tenant_id, args)
+            ApiKeyAuthService.create_provider_auth(current_tenant_id, data)
         except Exception as e:
             raise ApiKeyAuthFailedError(str(e))
         return {"result": "success"}, 200
@@ -65,12 +73,10 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @is_admin_or_owner_required
     def delete(self, binding_id):
         # The role of the current user in the table must be admin or owner
-        current_user, current_tenant_id = current_account_with_tenant()
-
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
         ApiKeyAuthService.delete_provider_auth(current_tenant_id, binding_id)
 

@@ -1,28 +1,30 @@
+import type { PluginPayload } from '../types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
+import {
+  useForm,
+  useStore,
+} from '@tanstack/react-form'
 import {
   memo,
   useCallback,
   useRef,
   useState,
 } from 'react'
-import {
-  useForm,
-  useStore,
-} from '@tanstack/react-form'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import Modal from '@/app/components/base/modal/modal'
+import { toast } from '@/app/components/base/ui/toast'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useDeletePluginOAuthCustomClientHook,
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
-import type { PluginPayload } from '../types'
-import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type {
-  FormRefObject,
-  FormSchema,
-} from '@/app/components/base/form/types'
-import { useToastContext } from '@/app/components/base/toast'
-import Button from '@/app/components/base/button'
 
 type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -45,7 +47,6 @@ const OAuthClientSettings = ({
   onUpdate,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -84,10 +85,7 @@ const OAuthClientSettings = ({
         client_params: restValues,
         enable_oauth_custom_client: __oauth_client__ === 'custom',
       })
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
 
       onClose?.()
       onUpdate?.()
@@ -96,7 +94,7 @@ const OAuthClientSettings = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [onClose, onUpdate, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
+  }, [onClose, onUpdate, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, t, handleSetDoingAction])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     await handleConfirm()
@@ -111,10 +109,7 @@ const OAuthClientSettings = ({
     try {
       handleSetDoingAction(true)
       await deletePluginOAuthCustomClient()
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
@@ -122,19 +117,19 @@ const OAuthClientSettings = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [onUpdate, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction, onClose])
+  }, [onUpdate, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, t, handleSetDoingAction, onClose])
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })
   const __oauth_client__ = useStore(form.store, s => s.values.__oauth_client__)
   return (
     <Modal
-      title={t('plugin.auth.oauthClientSettings')}
-      confirmButtonText={t('plugin.auth.saveAndAuth')}
-      cancelButtonText={t('plugin.auth.saveOnly')}
-      extraButtonText={t('common.operation.cancel')}
+      title={t('auth.oauthClientSettings', { ns: 'plugin' })}
+      confirmButtonText={t('auth.saveAndAuth', { ns: 'plugin' })}
+      cancelButtonText={t('auth.saveOnly', { ns: 'plugin' })}
+      extraButtonText={t('operation.cancel', { ns: 'common' })}
       showExtraButton
-      extraButtonVariant='secondary'
+      extraButtonVariant="secondary"
       onExtraButtonClick={onClose}
       onClose={onClose}
       onCancel={handleConfirm}
@@ -142,28 +137,32 @@ const OAuthClientSettings = ({
       disabled={disabled || doingAction}
       footerSlot={
         __oauth_client__ === 'custom' && hasOriginalClientParams && (
-          <div className='grow'>
+          <div className="grow">
             <Button
-              variant='secondary'
-              className='text-components-button-destructive-secondary-text'
+              variant="secondary"
+              className="text-components-button-destructive-secondary-text"
               disabled={disabled || doingAction || !editValues}
               onClick={handleRemove}
             >
-              {t('common.operation.remove')}
+              {t('operation.remove', { ns: 'common' })}
             </Button>
           </div>
         )
       }
+      containerClassName="pt-0"
+      wrapperClassName="z-1002!"
+      clickOutsideNotClose={true}
     >
-      <>
-        <AuthForm
-          formFromProps={form}
-          ref={formRef}
-          formSchemas={schemas}
-          defaultValues={editValues || defaultValues}
-          disabled={disabled}
-        />
-      </>
+      {pluginPayload.detail && (
+        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      )}
+      <AuthForm
+        formFromProps={form}
+        ref={formRef}
+        formSchemas={schemas}
+        defaultValues={editValues || defaultValues}
+        disabled={disabled}
+      />
     </Modal>
   )
 }

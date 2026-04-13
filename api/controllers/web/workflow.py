@@ -1,8 +1,11 @@
 import logging
 
-from flask_restx import reqparse
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -20,8 +23,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
+from extensions.ext_redis import redis_client
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -29,17 +31,14 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
+register_schema_models(web_ns, WorkflowRunPayload)
+
 
 @web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
     @web_ns.doc("Run Workflow")
     @web_ns.doc(description="Execute a workflow with provided inputs and files.")
-    @web_ns.doc(
-        params={
-            "inputs": {"description": "Input variables for the workflow", "type": "object", "required": True},
-            "files": {"description": "Files to be processed by the workflow", "type": "array", "required": False},
-        }
-    )
+    @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
     @web_ns.doc(
         responses={
             200: "Success",
@@ -58,12 +57,8 @@ class WorkflowRunApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("files", type=list, required=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate(
@@ -120,6 +115,6 @@ class WorkflowTaskStopApi(WebApiResource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager.send_stop_command(task_id)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}

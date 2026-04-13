@@ -45,7 +45,6 @@ class ClickZettaVolumeConfig(BaseModel):
         This method will first try to use CLICKZETTA_VOLUME_* environment variables,
         then fall back to CLICKZETTA_* environment variables (for vector DB config).
         """
-        import os
 
         # Helper function to get environment variable with fallback
         def get_env_with_fallback(volume_key: str, fallback_key: str, default: str | None = None) -> str:
@@ -391,8 +390,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         """
         content = self.load_once(filename)
 
-        with Path(target_filepath).open("wb") as f:
-            f.write(content)
+        Path(target_filepath).write_bytes(content)
 
         logger.debug("File %s downloaded from ClickZetta Volume to %s", filename, target_filepath)
 

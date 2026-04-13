@@ -90,7 +90,13 @@ class MCPClientWithAuthRetry(MCPClient):
                 mcp_service = MCPToolManageService(session=session)
 
                 # Perform authentication using the service's auth method
-                mcp_service.auth_with_actions(self.provider_entity, self.authorization_code)
+                # Extract OAuth metadata hints from the error
+                mcp_service.auth_with_actions(
+                    self.provider_entity,
+                    self.authorization_code,
+                    resource_metadata_url=error.resource_metadata_url,
+                    scope_hint=error.scope_hint,
+                )
 
                 # Retrieve new tokens
                 self.provider_entity = mcp_service.get_provider_entity(
@@ -116,7 +122,7 @@ class MCPClientWithAuthRetry(MCPClient):
             logger.exception("Authentication retry failed")
             raise MCPAuthError(f"Authentication retry failed: {e}") from e
 
-    def _execute_with_retry(self, func: Callable[..., Any], *args, **kwargs) -> Any:
+    def _execute_with_retry[**P, R](self, func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
         Execute a function with authentication retry logic.
 

@@ -3,15 +3,20 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.entities.tool_entities import CredentialType, ToolInvokeFrom
+from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.entities.tool_entities import ToolInvokeFrom
 
 
 class ToolRuntime(BaseModel):
     """
-    Meta data of a tool call processing
+    Meta data of a tool call processing.
+
+    ``user_id`` is optional so read-only tooling flows can stay tenant-scoped,
+    while execution paths may bind caller identity for model runtime lookups.
     """
 
     tenant_id: str
+    user_id: str | None = None
     tool_id: str | None = None
     invoke_from: InvokeFrom | None = None
     tool_invoke_from: ToolInvokeFrom | None = None

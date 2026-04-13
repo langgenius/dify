@@ -1,7 +1,6 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post } from './base'
-import { DatasourceType } from '@/models/pipeline'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { IconInfo } from '@/models/datasets'
 import type {
   ConversionResponse,
   DatasourceNodeSingleRunRequest,
@@ -31,18 +30,17 @@ import type {
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
-import type { ToolCredential } from '@/app/components/tools/types'
-import type { IconInfo } from '@/models/datasets'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { DatasourceType } from '@/models/pipeline'
+import { del, get, patch, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
 
-export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
+const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams, enabled = true) => {
-  const { type, language } = params
   return useQuery<PipelineTemplateListResponse>({
-    queryKey: [...PipelineTemplateListQueryKeyPrefix, type, language],
+    queryKey: [...PipelineTemplateListQueryKeyPrefix, params],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
@@ -225,46 +223,6 @@ export const useRunPublishedPipeline = (
   })
 }
 
-export const useDataSourceCredentials = (provider: string, pluginId: string, onSuccess: (value: ToolCredential[]) => void) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'datasource-credentials', provider, pluginId],
-    queryFn: async () => {
-      const result = await get<{ result: ToolCredential[] }>(`/auth/plugin/datasource?provider=${provider}&plugin_id=${pluginId}`)
-      onSuccess(result.result)
-      return result.result
-    },
-    enabled: !!provider && !!pluginId,
-    retry: 2,
-  })
-}
-
-export const useUpdateDataSourceCredentials = (
-) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-datasource-credentials'],
-    mutationFn: ({
-      provider,
-      pluginId,
-      credentials,
-      name,
-    }: { provider: string; pluginId: string; credentials: Record<string, any>; name: string; }) => {
-      return post('/auth/plugin/datasource', {
-        body: {
-          provider,
-          plugin_id: pluginId,
-          credentials,
-          name,
-        },
-      }).then(() => {
-        queryClient.invalidateQueries({
-          queryKey: [NAME_SPACE, 'datasource'],
-        })
-      })
-    },
-  })
-}
-
 export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelinePreProcessingParamsResponse>({
@@ -303,7 +261,7 @@ export const useExportPipelineDSL = () => {
     mutationFn: ({
       pipelineId,
       include = false,
-    }: { pipelineId: string; include?: boolean }) => {
+    }: { pipelineId: string, include?: boolean }) => {
       return get<ExportTemplateDSLResponse>(`/rag/pipelines/${pipelineId}/exports?include_secret=${include}`)
     },
   })
@@ -318,10 +276,10 @@ export const usePublishAsCustomizedPipeline = () => {
       icon_info,
       description,
     }: {
-      pipelineId: string,
-      name: string,
-      icon_info: IconInfo,
-      description?: string,
+      pipelineId: string
+      name: string
+      icon_info: IconInfo
+      description?: string
     }) => {
       return post(`/rag/pipelines/${pipelineId}/customized/publish`, {
         body: {

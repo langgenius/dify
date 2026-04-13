@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { useRef } from 'react'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isShow: boolean
@@ -31,7 +32,7 @@ const DrawerPlus: FC<Props> = ({
   dialogClassName = '',
   dialogBackdropClassName = '',
   panelClassName = '',
-  maxWidthClassName = '!max-w-[640px]',
+  maxWidthClassName = 'max-w-[640px]!',
   height = 'calc(100vh - 72px)',
   contentClassName,
   headerClassName,
@@ -61,7 +62,7 @@ const DrawerPlus: FC<Props> = ({
       positionCenter={positionCenter}
       dialogClassName={dialogClassName}
       dialogBackdropClassName={dialogBackdropClassName}
-      panelClassName={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', panelClassName, maxWidthClassName)}
+      panelClassName={cn('mx-2 mb-3 mt-16 rounded-xl p-0! sm:mr-2', panelClassName, maxWidthClassName)}
     >
       <div
         className={cn(contentClassName, 'flex w-full flex-col rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl')}
@@ -71,30 +72,30 @@ const DrawerPlus: FC<Props> = ({
         ref={ref}
       >
         <div className={cn(headerClassName, 'shrink-0 border-b border-divider-subtle py-4')}>
-          <div className='flex h-6 items-center justify-between pl-6 pr-5'>
-            <div className='system-xl-semibold text-text-primary'>
+          <div className="flex h-6 items-center justify-between pl-6 pr-5">
+            <div className="system-xl-semibold text-text-primary">
               {title}
             </div>
-            <div className='flex items-center'>
+            <div className="flex items-center">
               <div
                 onClick={onHide}
-                className='flex h-6 w-6 cursor-pointer items-center justify-center'
+                className="flex h-6 w-6 cursor-pointer items-center justify-center"
               >
-                <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
           </div>
           {titleDescription && (
-            <div className='system-xs-regular pl-6 pr-10 text-text-tertiary'>
+            <div className="system-xs-regular pl-6 pr-10 text-text-tertiary">
               {titleDescription}
             </div>
           )}
         </div>
-        <div className='grow overflow-y-auto'>
+        <div className="grow overflow-y-auto">
           {body}
         </div>
         {foot && (
-          <div className='shrink-0'>
+          <div className="shrink-0">
             {foot}
           </div>
         )}

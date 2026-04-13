@@ -1,3 +1,0 @@
-recursive-include dify_client *.py
-include README.md
-include LICENSE

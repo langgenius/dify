@@ -1,3 +1,8 @@
+import type { PluginPayload } from '../types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 import {
   memo,
   useCallback,
@@ -6,23 +11,20 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Modal from '@/app/components/base/modal/modal'
-import { CredentialTypeEnum } from '../types'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type {
-  FormRefObject,
-  FormSchema,
-} from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { useToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
-import type { PluginPayload } from '../types'
+import Modal from '@/app/components/base/modal/modal'
+import { toast } from '@/app/components/base/ui/toast'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { CredentialTypeEnum } from '../types'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -43,7 +45,6 @@ const ApiKeyModal = ({
   formSchemas: formSchemasFromProps = [],
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -62,7 +63,7 @@ const ApiKeyModal = ({
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: t('plugin.auth.authorizationName'),
+        label: t('auth.authorizationName', { ns: 'plugin' }),
         required: false,
       },
       ...mergedData,
@@ -111,10 +112,7 @@ const ApiKeyModal = ({
           name: __name__ || '',
         })
       }
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
 
       onClose?.()
       onUpdate?.()
@@ -122,40 +120,32 @@ const ApiKeyModal = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
 
   return (
     <Modal
-      size='md'
-      title={t('plugin.auth.useApiAuth')}
-      subTitle={t('plugin.auth.useApiAuthDesc')}
+      size="md"
+      title={t('auth.useApiAuth', { ns: 'plugin' })}
+      subTitle={t('auth.useApiAuthDesc', { ns: 'plugin' })}
       onClose={onClose}
       onCancel={onClose}
       footerSlot={
         (<div></div>)
       }
-      bottomSlot={
-        <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-          <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-          {t('common.modelProvider.encrypted.front')}
-          <a
-            className='mx-1 text-text-accent'
-            target='_blank' rel='noopener noreferrer'
-            href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-          >
-            PKCS1_OAEP
-          </a>
-          {t('common.modelProvider.encrypted.back')}
-        </div>
-      }
+      bottomSlot={<EncryptedBottom />}
       onConfirm={handleConfirm}
       showExtraButton={!!editValues}
       onExtraButtonClick={onRemove}
       disabled={disabled || isLoading || doingAction}
+      clickOutsideNotClose={true}
+      wrapperClassName="z-1002!"
     >
+      {pluginPayload.detail && (
+        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      )}
       {
         isLoading && (
-          <div className='flex h-40 items-center justify-center'>
+          <div className="flex h-40 items-center justify-center">
             <Loading />
           </div>
         )

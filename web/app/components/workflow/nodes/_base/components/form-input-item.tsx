@@ -1,38 +1,61 @@
 'use client'
 import type { FC } from 'react'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { VarType } from '@/app/components/workflow/types'
-
+import type { ResourceVarInputs } from '../types'
+import type { CredentialFormSchema, FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Event, Tool } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
-import FormInputTypeSwitch from './form-input-type-switch'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { useEffect, useMemo, useState } from 'react'
+import CheckboxList from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import FormInputBoolean from './form-input-boolean'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import cn from '@/utils/classnames'
-import type { Tool } from '@/app/components/tools/types'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import { VarType } from '@/app/components/workflow/types'
+import { useFetchDynamicOptions } from '@/service/use-plugins'
+import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import { cn } from '@/utils/classnames'
+import { VarKindType } from '../types'
+import FormInputBoolean from './form-input-boolean'
+import {
+  filterVisibleOptions,
+  getCheckboxListOptions,
+  getCheckboxListValue,
+  getFilterVar,
+  getFormInputState,
+  getNumberInputValue,
+  getSelectedLabels,
+  getTargetVarType,
+  getVarKindType,
+  hasOptionIcon,
+  mapSelectItems,
+  normalizeVariableSelectorValue,
+} from './form-input-item.helpers'
+import {
+  JsonEditorField,
+  MultiSelectField,
+} from './form-input-item.sections'
+import FormInputTypeSwitch from './form-input-type-switch'
 
 type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: ToolVarInputs
+  value: ResourceVarInputs
   onChange: (value: any) => void
   inPanel?: boolean
-  currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentTool?: Tool | Event
+  currentProvider?: ToolWithProvider | TriggerWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void
+  extraParams?: Record<string, any>
+  providerType?: string
+  disableVariableInsertion?: boolean
 }
 
 const FormInputItem: FC<Props> = ({
@@ -46,31 +69,42 @@ const FormInputItem: FC<Props> = ({
   currentProvider,
   showManageInputField,
   onManageInputField,
+  extraParams,
+  providerType,
+  disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
+  const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
+  const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
+
+  const formState = getFormInputState(schema as CredentialFormSchema & {
+    _type?: FormTypeEnum
+    multiple?: boolean
+    options?: FormOption[]
+    scope?: string
+  }, value[schema.variable])
 
   const {
-    placeholder,
-    variable,
-    type,
-    default: defaultValue,
+    defaultValue,
+    isAppSelector,
+    isBoolean,
+    isCheckbox,
+    isConstant,
+    isDynamicSelect,
+    isModelSelector,
+    isMultipleSelect,
+    isNumber,
+    isSelect,
+    isShowJSONEditor,
+    isString,
     options,
+    placeholder,
     scope,
-  } = schema as any
+    showTypeSwitch,
+    showVariableSelector,
+    variable,
+  } = formState
   const varInput = value[variable]
-  const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-  const isNumber = type === FormTypeEnum.textNumber
-  const isObject = type === FormTypeEnum.object
-  const isArray = type === FormTypeEnum.array
-  const isShowJSONEditor = isObject || isArray
-  const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
-  const isBoolean = type === FormTypeEnum.boolean
-  const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
-  const isAppSelector = type === FormTypeEnum.appSelector
-  const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
-  const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
-  const showVariableSelector = isFile || varInput?.type === VarKindType.variable
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -79,55 +113,64 @@ const FormInputItem: FC<Props> = ({
     },
   })
 
-  const targetVarType = () => {
-    if (isString)
-      return VarType.string
-    else if (isNumber)
-      return VarType.number
-    else if (type === FormTypeEnum.files)
-      return VarType.arrayFile
-    else if (type === FormTypeEnum.file)
-      return VarType.file
-    else if (isSelect)
-      return VarType.string
-    // else if (isAppSelector)
-    //   return VarType.appSelector
-    // else if (isModelSelector)
-    //   return VarType.modelSelector
-    else if (isBoolean)
-      return VarType.boolean
-    else if (isObject)
-      return VarType.object
-    else if (isArray)
-      return VarType.arrayObject
-    else
-      return VarType.string
-  }
+  // Fetch dynamic options hook for tools
+  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
+    currentProvider?.plugin_id || '',
+    currentProvider?.name || '',
+    currentTool?.name || '',
+    variable || '',
+    providerType,
+    extraParams,
+  )
 
-  const getFilterVar = () => {
-    if (isNumber)
-      return (varPayload: any) => varPayload.type === VarType.number
-    else if (isString)
-      return (varPayload: any) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-    else if (isFile)
-      return (varPayload: any) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
-    else if (isBoolean)
-      return (varPayload: any) => varPayload.type === VarType.boolean
-    else if (isObject)
-      return (varPayload: any) => varPayload.type === VarType.object
-    else if (isArray)
-      return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
-    return undefined
-  }
+  // Fetch dynamic options hook for triggers
+  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useTriggerPluginDynamicOptions({
+    plugin_id: currentProvider?.plugin_id || '',
+    provider: currentProvider?.name || '',
+    action: currentTool?.name || '',
+    parameter: variable || '',
+    extra: extraParams,
+    credential_id: currentProvider?.credential_id || '',
+  }, isDynamicSelect && providerType === PluginCategoryEnum.trigger && !!currentTool && !!currentProvider)
 
-  const getVarKindType = () => {
-    if (isFile)
-      return VarKindType.variable
-    if (isSelect || isBoolean || isNumber || isArray || isObject)
-      return VarKindType.constant
-    if (isString)
-      return VarKindType.mixed
-  }
+  // Computed values for dynamic options (unified for triggers and tools)
+  const triggerOptions = triggerDynamicOptions?.options
+  const dynamicOptions = providerType === PluginCategoryEnum.trigger
+    ? triggerOptions ?? toolsOptions
+    : toolsOptions
+  const isLoadingOptions = providerType === PluginCategoryEnum.trigger
+    ? (isTriggerOptionsLoading || isLoadingToolsOptions)
+    : isLoadingToolsOptions
+
+  // Fetch dynamic options for tools only (triggers use hook directly)
+  useEffect(() => {
+    const fetchPanelDynamicOptions = async () => {
+      if (isDynamicSelect && currentTool && currentProvider && (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)) {
+        setIsLoadingToolsOptions(true)
+        try {
+          const data = await fetchDynamicOptions()
+          setToolsOptions(data?.options || [])
+        }
+        catch (error) {
+          console.error('Failed to fetch dynamic options:', error)
+          setToolsOptions([])
+        }
+        finally {
+          setIsLoadingToolsOptions(false)
+        }
+      }
+    }
+
+    fetchPanelDynamicOptions()
+  }, [
+    isDynamicSelect,
+    currentTool?.name,
+    currentProvider?.name,
+    variable,
+    extraParams,
+    providerType,
+    fetchDynamicOptions,
+  ])
 
   const handleTypeChange = (newType: string) => {
     if (newType === VarKindType.variable) {
@@ -157,7 +200,7 @@ const FormInputItem: FC<Props> = ({
       ...value,
       [variable]: {
         ...varInput,
-        type: getVarKindType(),
+        type: getVarKindType(formState),
         value: isNumber ? Number.parseFloat(newValue) : newValue,
       },
     })
@@ -179,7 +222,52 @@ const FormInputItem: FC<Props> = ({
       [variable]: {
         ...varInput,
         type: VarKindType.variable,
-        value: newValue || '',
+        value: normalizeVariableSelectorValue(newValue),
+      },
+    })
+  }
+
+  const availableCheckboxOptions = useMemo(
+    () => filterVisibleOptions(options, value),
+    [options, value],
+  )
+  const checkboxListOptions = useMemo(
+    () => getCheckboxListOptions(availableCheckboxOptions, language),
+    [availableCheckboxOptions, language],
+  )
+  const checkboxListValue = useMemo(
+    () => getCheckboxListValue(varInput?.value, defaultValue, availableCheckboxOptions),
+    [availableCheckboxOptions, defaultValue, varInput?.value],
+  )
+
+  const visibleSelectOptions = useMemo(
+    () => filterVisibleOptions(options, value),
+    [options, value],
+  )
+  const visibleDynamicOptions = useMemo(
+    () => filterVisibleOptions(dynamicOptions || options || [], value),
+    [dynamicOptions, options, value],
+  )
+  const staticSelectItems = useMemo(
+    () => mapSelectItems(visibleSelectOptions, language),
+    [language, visibleSelectOptions],
+  )
+  const dynamicSelectItems = useMemo(
+    () => mapSelectItems(visibleDynamicOptions, language),
+    [language, visibleDynamicOptions],
+  )
+  const selectedLabels = useMemo(
+    () => getSelectedLabels(varInput?.value as string[] | undefined, isDynamicSelect ? visibleDynamicOptions : visibleSelectOptions, language),
+    [isDynamicSelect, language, varInput?.value, visibleDynamicOptions, visibleSelectOptions],
+  )
+
+  const handleCheckboxListChange = (selected: string[]) => {
+    onChange({
+      ...value,
+      [variable]: {
+        ...varInput,
+        type: VarKindType.constant,
+        value: selected,
       },
     })
   }
@@ -198,15 +286,26 @@ const FormInputItem: FC<Props> = ({
           availableNodes={availableNodesWithParent}
           showManageInputField={showManageInputField}
           onManageInputField={onManageInputField}
+          disableVariableInsertion={disableVariableInsertion}
         />
       )}
       {isNumber && isConstant && (
         <Input
-          className='h-8 grow'
-          type='number'
-          value={Number.isNaN(varInput?.value) ? '' : varInput?.value}
+          className="h-8 grow"
+          type="number"
+          value={getNumberInputValue(varInput?.value)}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
+        />
+      )}
+      {isCheckbox && isConstant && (
+        <CheckboxList
+          title={schema.label?.[language] || schema.label?.en_US || variable}
+          value={checkboxListValue}
+          onChange={handleCheckboxListChange}
+          options={checkboxListOptions}
+          disabled={readOnly}
+          maxHeight="200px"
         />
       )}
       {isBoolean && isConstant && (
@@ -215,34 +314,71 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
         />
       )}
-      {isSelect && isConstant && (
+      {isSelect && isConstant && !isMultipleSelect && (
         <SimpleSelect
-          wrapperClassName='h-8 grow'
+          wrapperClassName="h-8 grow"
           disabled={readOnly}
-          defaultValue={varInput?.value}
-          items={options.filter((option: { show_on: any[] }) => {
-            if (option.show_on.length)
-              return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
-
-            return true
-          }).map((option: { value: any; label: { [x: string]: any; en_US: any } }) => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
+          defaultValue={varInput?.value as string | undefined}
+          items={staticSelectItems}
           onSelect={item => handleValueChange(item.value as string)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
+          renderOption={hasOptionIcon(visibleSelectOptions)
+            ? ({ item }) => (
+                <div className="flex items-center">
+                  {item.icon && (
+                    <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
+                  )}
+                  <span>{item.name}</span>
+                </div>
+              )
+            : undefined}
+        />
+      )}
+      {isSelect && isConstant && isMultipleSelect && (
+        <MultiSelectField
+          disabled={readOnly}
+          value={(varInput?.value as string[] | undefined) || []}
+          items={staticSelectItems}
+          onChange={handleValueChange}
+          placeholder={placeholder?.[language] || placeholder?.en_US}
+          selectedLabel={selectedLabels}
+        />
+      )}
+      {isDynamicSelect && !isMultipleSelect && (
+        <SimpleSelect
+          wrapperClassName="h-8 grow"
+          disabled={readOnly || isLoadingOptions}
+          defaultValue={varInput?.value as string | undefined}
+          items={dynamicSelectItems}
+          onSelect={item => handleValueChange(item.value as string)}
+          placeholder={isLoadingOptions ? 'Loading...' : (placeholder?.[language] || placeholder?.en_US)}
+          renderOption={({ item }) => (
+            <div className="flex items-center">
+              {item.icon && (
+                <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
+              )}
+              <span>{item.name}</span>
+            </div>
+          )}
+        />
+      )}
+      {isDynamicSelect && isMultipleSelect && (
+        <MultiSelectField
+          disabled={readOnly || isLoadingOptions}
+          isLoading={isLoadingOptions}
+          value={(varInput?.value as string[] | undefined) || []}
+          items={dynamicSelectItems}
+          onChange={handleValueChange}
+          placeholder={placeholder?.[language] || placeholder?.en_US}
+          selectedLabel={selectedLabels}
         />
       )}
       {isShowJSONEditor && isConstant && (
-        <div className='mt-1 w-full'>
-          <CodeEditor
-            title='JSON'
-            value={varInput?.value as any}
-            isExpand
-            isInNode
-            language={CodeLanguage.json}
-            onChange={handleValueChange}
-            className='w-full'
-            placeholder={<div className='whitespace-pre'>{placeholder?.[language] || placeholder?.en_US}</div>}
-          />
-        </div>
+        <JsonEditorField
+          value={(varInput?.value as string) || ''}
+          onChange={handleValueChange}
+          placeholder={<div className="whitespace-pre">{placeholder?.[language] || placeholder?.en_US}</div>}
+        />
       )}
       {isAppSelector && (
         <AppSelector
@@ -254,7 +390,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isModelSelector && isConstant && (
         <ModelParameterModal
-          popupClassName='!w-[387px]'
+          popupClassName="w-[387px]!"
           isAdvancedMode
           isInWorkflow
           value={varInput?.value}
@@ -266,15 +402,15 @@ const FormInputItem: FC<Props> = ({
       {showVariableSelector && (
         <VarReferencePicker
           zIndex={inPanel ? 1000 : undefined}
-          className='h-8 grow'
+          className="h-8 grow"
           readonly={readOnly}
           isShowNodeName
           nodeId={nodeId}
           value={varInput?.value || []}
           onChange={value => handleVariableSelectorChange(value, variable)}
-          filterVar={getFilterVar()}
+          filterVar={getFilterVar(formState)}
           schema={schema}
-          valueTypePlaceHolder={targetVarType()}
+          valueTypePlaceHolder={getTargetVarType(formState)}
           currentTool={currentTool}
           currentProvider={currentProvider}
           isFilterFileVar={isBoolean}

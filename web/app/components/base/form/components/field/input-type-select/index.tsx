@@ -1,14 +1,14 @@
-import cn from '@/utils/classnames'
-import { useFieldContext } from '../../..'
 import type { CustomSelectProps } from '../../../../select/custom'
-import CustomSelect from '../../../../select/custom'
 import type { LabelProps } from '../../label'
-import Label from '../../label'
-import { useCallback } from 'react'
-import Trigger from './trigger'
 import type { FileTypeSelectOption, InputType } from './types'
+import { useCallback } from 'react'
+import { cn } from '@/utils/classnames'
+import { useFieldContext } from '../../..'
+import CustomSelect from '../../../../select/custom'
+import Label from '../../label'
 import { useInputTypeOptions } from './hooks'
 import Option from './option'
+import Trigger from './trigger'
 
 type InputTypeSelectFieldProps = {
   label: string
@@ -50,7 +50,7 @@ const InputTypeSelectField = ({
         }}
         popupProps={{
           className: 'w-[368px]',
-          wrapperClassName: 'z-[9999999]',
+          wrapperClassName: 'z-9999999',
           itemClassName: 'gap-x-1',
         }}
         CustomTrigger={renderTrigger}

@@ -1,12 +1,9 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import File, FileTransferMethod, FileType
-from core.variables import ArrayFileSegment
-from core.workflow.enums import WorkflowNodeExecutionStatus
-from core.workflow.nodes.list_operator.entities import (
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.nodes.list_operator.entities import (
     ExtractConfig,
     FilterBy,
     FilterCondition,
@@ -15,9 +12,11 @@ from core.workflow.nodes.list_operator.entities import (
     Order,
     OrderByConfig,
 )
-from core.workflow.nodes.list_operator.exc import InvalidKeyError
-from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
-from models.enums import UserFrom
+from graphon.nodes.list_operator.exc import InvalidKeyError
+from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from graphon.variables import ArrayFileSegment
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 
 
 @pytest.fixture
@@ -42,14 +41,18 @@ def list_operator_node():
     }
     # Create properly configured mock for graph_init_params
     graph_init_params = MagicMock()
-    graph_init_params.tenant_id = "test_tenant"
-    graph_init_params.app_id = "test_app"
     graph_init_params.workflow_id = "test_workflow"
     graph_init_params.graph_config = {}
-    graph_init_params.user_id = "test_user"
-    graph_init_params.user_from = UserFrom.ACCOUNT
-    graph_init_params.invoke_from = InvokeFrom.SERVICE_API
     graph_init_params.call_depth = 0
+    graph_init_params.run_context = {
+        DIFY_RUN_CONTEXT_KEY: {
+            "tenant_id": "test_tenant",
+            "app_id": "test_app",
+            "user_id": "test_user",
+            "user_from": UserFrom.ACCOUNT,
+            "invoke_from": InvokeFrom.SERVICE_API,
+        }
+    }
 
     node = ListOperatorNode(
         id="test_node_id",
@@ -57,8 +60,6 @@ def list_operator_node():
         graph_init_params=graph_init_params,
         graph_runtime_state=MagicMock(),
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node
@@ -70,7 +71,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="image1.jpg",
             type=FileType.IMAGE,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related1",
             storage_key="",
@@ -78,7 +78,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="document1.pdf",
             type=FileType.DOCUMENT,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related2",
             storage_key="",
@@ -86,7 +85,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="image2.png",
             type=FileType.IMAGE,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related3",
             storage_key="",
@@ -94,7 +92,6 @@ def test_filter_files_by_type(list_operator_node):
         File(
             filename="audio1.mp3",
             type=FileType.AUDIO,
-            tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related4",
             storage_key="",
@@ -118,14 +115,12 @@ def test_filter_files_by_type(list_operator_node):
         {
             "filename": "document1.pdf",
             "type": FileType.DOCUMENT,
-            "tenant_id": "tenant1",
             "transfer_method": FileTransferMethod.LOCAL_FILE,
             "related_id": "related2",
         },
         {
             "filename": "image2.png",
             "type": FileType.IMAGE,
-            "tenant_id": "tenant1",
             "transfer_method": FileTransferMethod.LOCAL_FILE,
             "related_id": "related3",
         },
@@ -134,7 +129,6 @@ def test_filter_files_by_type(list_operator_node):
     for expected_file, result_file in zip(expected_files, result.outputs["result"].value):
         assert expected_file["filename"] == result_file.filename
         assert expected_file["type"] == result_file.type
-        assert expected_file["tenant_id"] == result_file.tenant_id
         assert expected_file["transfer_method"] == result_file.transfer_method
         assert expected_file["related_id"] == result_file.related_id
 
@@ -142,7 +136,6 @@ def test_filter_files_by_type(list_operator_node):
 def test_get_file_extract_string_func():
     # Create a File object
     file = File(
-        tenant_id="test_tenant",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         filename="test_file.txt",
@@ -163,7 +156,6 @@ def test_get_file_extract_string_func():
 
     # Test with empty values
     empty_file = File(
-        tenant_id="test_tenant",
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         filename=None,

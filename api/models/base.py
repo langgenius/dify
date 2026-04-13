@@ -1,12 +1,14 @@
 from datetime import datetime
+from uuid import uuid4
 
-from sqlalchemy import DateTime, func, text
+from sqlalchemy import DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_column
 
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.engine import metadata
-from models.types import StringUUID
+
+from .engine import metadata
+from .types import StringUUID
 
 
 class Base(DeclarativeBase):
@@ -22,15 +24,16 @@ class TypeBase(MappedAsDataclass, DeclarativeBase):
 
 
 class DefaultFieldsMixin:
+    """Mixin for models that inherit from Base (non-dataclass)."""
+
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
-        # NOTE: The default and server_default serve as fallback mechanisms.
+        # NOTE: The default serve as fallback mechanisms.
         # The application can generate the `id` before saving to optimize
         # the insertion process (especially for interdependent models)
         # and reduce database roundtrips.
-        default=uuidv7,
-        server_default=text("uuidv7()"),
+        default=lambda: str(uuidv7()),
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -41,7 +44,7 @@ class DefaultFieldsMixin:
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        __name_pos=DateTime,
+        DateTime,
         nullable=False,
         default=naive_utc_now,
         server_default=func.current_timestamp(),
@@ -50,3 +53,52 @@ class DefaultFieldsMixin:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(id={self.id})>"
+
+
+class DefaultFieldsDCMixin(MappedAsDataclass):
+    """Mixin for models that inherit from TypeBase (MappedAsDataclass)."""
+
+    __abstract__ = True
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+        init=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        init=False,
+        server_default=func.current_timestamp(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        init=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id})>"
+
+
+def gen_uuidv4_string() -> str:
+    """gen_uuidv4_string generate a UUIDv4 string.
+
+    NOTE: This function exists only for historical reasons. New models should use uuidv7 for primary key generation.
+    """
+    return str(uuid4())
+
+
+def gen_uuidv7_string() -> str:
+    """gen_uuidv4_string generate a UUIDv4 string."""
+    return str(uuidv7())

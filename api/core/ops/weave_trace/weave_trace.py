@@ -1,12 +1,21 @@
 import logging
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import wandb
 import weave
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from sqlalchemy.orm import sessionmaker
+from weave.trace_server.trace_server_interface import (
+    CallEndReq,
+    CallStartReq,
+    EndedCallSchemaForInsert,
+    StartedCallSchemaForInsert,
+    SummaryInsertMap,
+    TraceStatus,
+)
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import WeaveConfig
@@ -23,7 +32,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -57,6 +65,7 @@ class WeaveDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.calls: dict[str, Any] = {}
+        self.project_id = f"{self.weave_client.entity}/{self.weave_client.project}"
 
     def get_project_url(
         self,
@@ -152,8 +161,8 @@ class WeaveDataTrace(BaseTraceInstance):
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         # rearrange workflow_node_executions by starting time
@@ -166,7 +175,7 @@ class WeaveDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs or {}
@@ -236,9 +245,7 @@ class WeaveDataTrace(BaseTraceInstance):
         attributes["user_id"] = user_id
 
         if message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 attributes["end_user_id"] = end_user_id
@@ -424,6 +431,13 @@ class WeaveDataTrace(BaseTraceInstance):
             logger.debug("Weave API check failed: %s", str(e))
             raise ValueError(f"Weave API check failed: {str(e)}")
 
+    def _normalize_time(self, dt: datetime | None) -> datetime:
+        if dt is None:
+            return datetime.now(UTC)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=UTC)
+        return dt
+
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
         inputs = run_data.inputs
         if inputs is None:
@@ -437,19 +451,71 @@ class WeaveDataTrace(BaseTraceInstance):
         elif not isinstance(attributes, dict):
             attributes = {"attributes": str(attributes)}
 
-        call = self.weave_client.create_call(
-            op=run_data.op,
-            inputs=inputs,
-            attributes=attributes,
+        start_time = attributes.get("start_time") if isinstance(attributes, dict) else None
+        started_at = self._normalize_time(start_time if isinstance(start_time, datetime) else None)
+        trace_id = attributes.get("trace_id") if isinstance(attributes, dict) else None
+        if trace_id is None:
+            trace_id = run_data.id
+
+        call_start_req = CallStartReq(
+            start=StartedCallSchemaForInsert(
+                project_id=self.project_id,
+                id=run_data.id,
+                op_name=str(run_data.op),
+                trace_id=trace_id,
+                parent_id=parent_run_id,
+                started_at=started_at,
+                attributes=attributes,
+                inputs=inputs,
+                wb_user_id=None,
+            )
         )
-        self.calls[run_data.id] = call
-        if parent_run_id:
-            self.calls[run_data.id].parent_id = parent_run_id
+        self.weave_client.server.call_start(call_start_req)
+        self.calls[run_data.id] = {"trace_id": trace_id, "parent_id": parent_run_id}
 
     def finish_call(self, run_data: WeaveTraceModel):
-        call = self.calls.get(run_data.id)
-        if call:
-            exception = Exception(run_data.exception) if run_data.exception else None
-            self.weave_client.finish_call(call=call, output=run_data.outputs, exception=exception)
-        else:
+        call_meta = self.calls.get(run_data.id)
+        if not call_meta:
             raise ValueError(f"Call with id {run_data.id} not found")
+
+        attributes = run_data.attributes
+        if attributes is None:
+            attributes = {}
+        elif not isinstance(attributes, dict):
+            attributes = {"attributes": str(attributes)}
+
+        start_time = attributes.get("start_time") if isinstance(attributes, dict) else None
+        end_time = attributes.get("end_time") if isinstance(attributes, dict) else None
+        started_at = self._normalize_time(start_time if isinstance(start_time, datetime) else None)
+        ended_at = self._normalize_time(end_time if isinstance(end_time, datetime) else None)
+        elapsed_ms = int((ended_at - started_at).total_seconds() * 1000)
+        if elapsed_ms < 0:
+            elapsed_ms = 0
+
+        status_counts = {
+            TraceStatus.SUCCESS: 0,
+            TraceStatus.ERROR: 0,
+        }
+        if run_data.exception:
+            status_counts[TraceStatus.ERROR] = 1
+        else:
+            status_counts[TraceStatus.SUCCESS] = 1
+
+        summary: dict[str, Any] = {
+            "status_counts": status_counts,
+            "weave": {"latency_ms": elapsed_ms},
+        }
+
+        exception_str = str(run_data.exception) if run_data.exception else None
+
+        call_end_req = CallEndReq(
+            end=EndedCallSchemaForInsert(
+                project_id=self.project_id,
+                id=run_data.id,
+                ended_at=ended_at,
+                exception=exception_str,
+                output=run_data.outputs,
+                summary=cast(SummaryInsertMap, summary),
+            )
+        )
+        self.weave_client.server.call_end(call_end_req)

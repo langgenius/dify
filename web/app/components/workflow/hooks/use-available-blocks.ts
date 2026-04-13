@@ -6,7 +6,7 @@ import { BlockEnum } from '../types'
 import { useNodesMetaData } from './use-nodes-meta-data'
 
 const availableBlocksFilter = (nodeType: BlockEnum, inContainer?: boolean) => {
-  if (inContainer && (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.Loop || nodeType === BlockEnum.End || nodeType === BlockEnum.DataSource || nodeType === BlockEnum.KnowledgeBase))
+  if (inContainer && (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.Loop || nodeType === BlockEnum.End || nodeType === BlockEnum.DataSource || nodeType === BlockEnum.KnowledgeBase || nodeType === BlockEnum.HumanInput))
     return false
 
   if (!inContainer && nodeType === BlockEnum.LoopEnd)
@@ -21,8 +21,11 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
   } = useNodesMetaData()
   const availableNodesType = useMemo(() => availableNodes.map(node => node.metaData.type), [availableNodes])
   const availablePrevBlocks = useMemo(() => {
-    if (!nodeType || nodeType === BlockEnum.Start || nodeType === BlockEnum.DataSource)
+    if (!nodeType || nodeType === BlockEnum.Start || nodeType === BlockEnum.DataSource
+      || nodeType === BlockEnum.TriggerPlugin || nodeType === BlockEnum.TriggerWebhook
+      || nodeType === BlockEnum.TriggerSchedule) {
       return []
+    }
 
     return availableNodesType
   }, [availableNodesType, nodeType])

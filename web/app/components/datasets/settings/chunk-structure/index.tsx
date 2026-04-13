@@ -1,7 +1,7 @@
 import type { ChunkingMode } from '@/models/datasets'
-import React from 'react'
-import { useChunkStructure } from './hooks'
+import * as React from 'react'
 import OptionCard from '../option-card'
+import { useChunkStructure } from './hooks'
 
 type ChunkStructureProps = {
   chunkStructure: ChunkingMode
@@ -15,7 +15,7 @@ const ChunkStructure = ({
   } = useChunkStructure()
 
   return (
-    <div className='flex flex-col gap-y-1'>
+    <div className="flex flex-col gap-y-1">
       {
         options.map(option => (
           <OptionCard
@@ -28,7 +28,7 @@ const ChunkStructure = ({
             isActive={chunkStructure === option.id}
             effectColor={option.effectColor}
             showEffectColor
-            className='gap-x-1.5 p-3 pr-4'
+            className="gap-x-1.5 p-3 pr-4"
             disabled
           />
         ))

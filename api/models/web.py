@@ -1,14 +1,15 @@
 from datetime import datetime
+from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import TypeBase
-
+from .base import TypeBase
 from .engine import db
+from .enums import CreatorUserRole
 from .model import Message
-from .types import StringUUID
+from .types import EnumText, StringUUID
 
 
 class SavedMessage(TypeBase):
@@ -16,13 +17,16 @@ class SavedMessage(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="saved_message_pkey"),
         sa.Index("saved_message_message_idx", "app_id", "message_id", "created_by_role", "created_by"),
+        sa.Index("saved_message_message_id_idx", "message_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_by_role: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'end_user'::character varying")
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255), nullable=False, server_default=sa.text("'end_user'")
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -34,7 +38,7 @@ class SavedMessage(TypeBase):
 
     @property
     def message(self):
-        return db.session.query(Message).where(Message.id == self.message_id).first()
+        return db.session.scalar(select(Message).where(Message.id == self.message_id))
 
 
 class PinnedConversation(TypeBase):
@@ -44,13 +48,15 @@ class PinnedConversation(TypeBase):
         sa.Index("pinned_conversation_conversation_idx", "app_id", "conversation_id", "created_by_role", "created_by"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
-    created_by_role: Mapped[str] = mapped_column(
-        String(255),
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255),
         nullable=False,
-        server_default=sa.text("'end_user'::character varying"),
+        server_default=sa.text("'end_user'"),
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

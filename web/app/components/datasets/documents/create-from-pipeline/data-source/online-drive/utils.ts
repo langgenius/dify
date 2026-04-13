@@ -1,19 +1,21 @@
-import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import type { OnlineDriveData } from '@/types/pipeline'
+import { OnlineDriveFileType } from '@/models/pipeline'
 
 export const isFile = (type: 'file' | 'folder'): boolean => {
   return type === 'file'
 }
 
 export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[], bucket: string): boolean => {
-  if (bucket || prefix.length > 0) return false
+  if (bucket || prefix.length > 0)
+    return false
   const hasBucket = data.every(item => !!item.bucket)
   return hasBucket && (data.length > 1 || (data.length === 1 && !!data[0].bucket && data[0].files.length === 0))
 }
 
 export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[], bucket: string): {
-  fileList: OnlineDriveFile[],
-  isTruncated: boolean,
+  fileList: OnlineDriveFile[]
+  isTruncated: boolean
   nextPageParameters: Record<string, any>
   hasBucket: boolean
 } => {

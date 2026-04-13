@@ -1,16 +1,16 @@
+import type { NodeProps } from 'reactflow'
+import type { Node } from '../types'
 import {
   memo,
   useMemo,
 } from 'react'
-import type { NodeProps } from 'reactflow'
-import type { Node } from '../types'
 import { CUSTOM_NODE } from '../constants'
+import BasePanel from './_base/components/workflow-panel'
+import BaseNode from './_base/node'
 import {
   NodeComponentMap,
   PanelComponentMap,
 } from './components'
-import BaseNode from './_base/node'
-import BasePanel from './_base/components/workflow-panel'
 
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
@@ -29,7 +29,7 @@ const CustomNode = (props: NodeProps) => {
 }
 CustomNode.displayName = 'CustomNode'
 
-export type PanelProps = {
+type PanelProps = {
   type: Node['type']
   id: Node['id']
   data: Node['data']

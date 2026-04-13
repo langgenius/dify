@@ -1,5 +1,5 @@
 declare module 'react-18-input-autosize' {
-  import type { CSSProperties, ChangeEvent, FocusEvent, KeyboardEvent } from 'react'
+  import type { ChangeEvent, CSSProperties, FocusEvent, KeyboardEvent } from 'react'
 
   export type AutosizeInputProps = {
     value?: string | number

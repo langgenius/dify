@@ -1,4 +1,6 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
+import os
+
 CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
 1. Detect Input Language
@@ -94,13 +96,23 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
 )
 
 
-SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
+# Default prompt for suggested questions (can be overridden by environment variable)
+_DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keep each question under 20 characters.\n"
     "MAKE SURE your output is the SAME language as the Assistant's latest response. "
     "The output must be an array in JSON format following the specified schema:\n"
     '["question1","question2","question3"]\n'
 )
+
+# Environment variable override for suggested questions prompt
+SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = os.getenv(
+    "SUGGESTED_QUESTIONS_PROMPT", _DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT
+)
+
+# Configurable LLM parameters for suggested questions (can be overridden by environment variables)
+SUGGESTED_QUESTIONS_MAX_TOKENS = int(os.getenv("SUGGESTED_QUESTIONS_MAX_TOKENS", "256"))
+SUGGESTED_QUESTIONS_TEMPERATURE = float(os.getenv("SUGGESTED_QUESTIONS_TEMPERATURE", "0"))
 
 GENERATOR_QA_PROMPT = (
     "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"
@@ -422,3 +434,22 @@ INSTRUCTION_GENERATE_TEMPLATE_PROMPT = """The output of this prompt is not as ex
 You should edit the prompt according to the IDEAL OUTPUT."""
 
 INSTRUCTION_GENERATE_TEMPLATE_CODE = """Please fix the errors in the {{#error_message#}}."""
+
+DEFAULT_GENERATOR_SUMMARY_PROMPT = (
+    """Summarize the following content. Extract only the key information and main points. """
+    """Remove redundant details.
+
+Requirements:
+1. Write a concise summary in plain text
+2. You must write in {language}. No language other than {language} should be used.
+3. Focus on important facts, concepts, and details
+4. If images are included, describe their key information
+5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
+6. Write directly without extra words
+7. If there is not enough content to generate a meaningful summary, 
+   return an empty string without any explanation or prompt
+
+Output only the summary text. Start summarizing now:
+
+"""
+)

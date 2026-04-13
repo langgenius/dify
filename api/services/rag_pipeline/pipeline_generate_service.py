@@ -1,11 +1,12 @@
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
+from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -16,7 +17,7 @@ class PipelineGenerateService:
     def generate(
         cls,
         pipeline: Pipeline,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
@@ -53,10 +54,11 @@ class PipelineGenerateService:
 
     @staticmethod
     def _get_max_active_requests(app_model: App) -> int:
-        max_active_requests = app_model.max_active_requests
-        if max_active_requests is None:
-            max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
-        return max_active_requests
+        app_limit = app_model.max_active_requests or dify_config.APP_DEFAULT_ACTIVE_REQUESTS
+        config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
+        # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
+        limits = [limit for limit in [app_limit, config_limit] if limit > 0]
+        return min(limits) if limits else 0
 
     @classmethod
     def generate_single_iteration(
@@ -108,8 +110,8 @@ class PipelineGenerateService:
         Update document status to waiting
         :param document_id: document id
         """
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.get(Document, document_id)
         if document:
-            document.indexing_status = "waiting"
+            document.indexing_status = IndexingStatus.WAITING
             db.session.add(document)
             db.session.commit()

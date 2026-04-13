@@ -1,21 +1,23 @@
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, Union
+from typing import Any
 
+from graphon.variables.types import SegmentType
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
-from core.variables.types import SegmentType
-from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -35,7 +37,7 @@ class ConversationService:
         *,
         session: Session,
         app_model: App,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
@@ -117,8 +119,8 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Union[Account, EndUser] | None,
-        name: str,
+        user: Account | EndUser | None,
+        name: str | None,
         auto_generate: bool,
     ):
         conversation = cls.get_conversation(app_model, conversation_id, user)
@@ -135,11 +137,11 @@ class ConversationService:
     @classmethod
     def auto_generate_name(cls, app_model: App, conversation: Conversation):
         # get conversation first message
-        message = (
-            db.session.query(Message)
+        message = db.session.scalar(
+            select(Message)
             .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
             .order_by(Message.created_at.asc())
-            .first()
+            .limit(1)
         )
 
         if not message:
@@ -157,9 +159,9 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def get_conversation(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
-        conversation = (
-            db.session.query(Conversation)
+    def get_conversation(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+        conversation = db.session.scalar(
+            select(Conversation)
             .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
@@ -168,7 +170,7 @@ class ConversationService:
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
                 Conversation.is_deleted == False,
             )
-            .first()
+            .limit(1)
         )
 
         if not conversation:
@@ -177,7 +179,15 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
+    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+        """
+        Delete a conversation only if it belongs to the given user and app context.
+
+        Raises:
+            ConversationNotExistsError: When the conversation is not visible to the current user.
+        """
+        conversation = cls.get_conversation(app_model, conversation_id, user)
+
         try:
             logger.info(
                 "Initiating conversation deletion for app_name %s, conversation_id: %s",
@@ -185,10 +195,10 @@ class ConversationService:
                 conversation_id,
             )
 
-            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
+            db.session.delete(conversation)
             db.session.commit()
 
-            delete_conversation_related_data.delay(conversation_id)
+            delete_conversation_related_data.delay(conversation.id)
 
         except Exception as e:
             db.session.rollback()
@@ -199,9 +209,10 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         limit: int,
         last_id: str | None,
+        variable_name: str | None = None,
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
@@ -212,7 +223,27 @@ class ConversationService:
             .order_by(ConversationVariable.created_at)
         )
 
-        with Session(db.engine) as session:
+        # Apply variable_name filter if provided
+        if variable_name:
+            # Filter using JSON extraction to match variable names case-insensitively
+            from libs.helper import escape_like_pattern
+
+            escaped_variable_name = escape_like_pattern(variable_name)
+            # Filter using JSON extraction to match variable names case-insensitively
+            if dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
+                stmt = stmt.where(
+                    func.json_extract(ConversationVariable.data, "$.name").ilike(
+                        f"%{escaped_variable_name}%", escape="\\"
+                    )
+                )
+            elif dify_config.DB_TYPE == "postgresql":
+                stmt = stmt.where(
+                    func.json_extract_path_text(ConversationVariable.data, "name").ilike(
+                        f"%{escaped_variable_name}%", escape="\\"
+                    )
+                )
+
+        with session_factory.create_session() as session:
             if last_id:
                 last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
                 if not last_variable:
@@ -247,7 +278,7 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         variable_id: str,
-        user: Union[Account, EndUser] | None,
+        user: Account | EndUser | None,
         new_value: Any,
     ):
         """
@@ -279,7 +310,7 @@ class ConversationService:
             .where(ConversationVariable.id == variable_id)
         )
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             existing_variable = session.scalar(stmt)
             if not existing_variable:
                 raise ConversationVariableNotExistsError()
@@ -314,7 +345,7 @@ class ConversationService:
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
             # Use the conversation variable updater to persist the changes
-            updater = conversation_variable_updater_factory()
+            updater = ConversationVariableUpdater(session_factory.get_session_maker())
             updater.update(conversation_id, updated_variable)
             updater.flush()
 

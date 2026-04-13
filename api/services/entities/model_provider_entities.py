@@ -1,6 +1,15 @@
 from collections.abc import Sequence
 from enum import StrEnum
 
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+    ProviderHelpEntity,
+    SimpleProviderEntity,
+)
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from configs import dify_config
@@ -14,15 +23,6 @@ from core.entities.provider_entities import (
     ProviderQuotaType,
     QuotaConfiguration,
     UnaddedModelConfiguration,
-)
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    ModelCredentialSchema,
-    ProviderCredentialSchema,
-    ProviderHelpEntity,
-    SimpleProviderEntity,
 )
 from models.provider import ProviderType
 
@@ -69,7 +69,7 @@ class ProviderResponse(BaseModel):
     label: I18nObject
     description: I18nObject | None = None
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     background: str | None = None
     help: ProviderHelpEntity | None = None
     supported_model_types: Sequence[ModelType]
@@ -92,10 +92,10 @@ class ProviderResponse(BaseModel):
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
-
-        if self.icon_large is not None:
-            self.icon_large = I18nObject(
-                en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US",
+                zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans",
             )
         return self
 
@@ -109,7 +109,7 @@ class ProviderWithModelsResponse(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
@@ -123,9 +123,9 @@ class ProviderWithModelsResponse(BaseModel):
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
 
-        if self.icon_large is not None:
-            self.icon_large = I18nObject(
-                en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
             )
         return self
 
@@ -147,9 +147,9 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
 
-        if self.icon_large is not None:
-            self.icon_large = I18nObject(
-                en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
             )
         return self
 

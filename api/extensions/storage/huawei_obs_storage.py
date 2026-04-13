@@ -17,6 +17,7 @@ class HuaweiObsStorage(BaseStorage):
             access_key_id=dify_config.HUAWEI_OBS_ACCESS_KEY,
             secret_access_key=dify_config.HUAWEI_OBS_SECRET_KEY,
             server=dify_config.HUAWEI_OBS_SERVER,
+            path_style=dify_config.HUAWEI_OBS_PATH_STYLE,
         )
 
     def save(self, filename, data):
@@ -40,7 +41,7 @@ class HuaweiObsStorage(BaseStorage):
             return False
         return True
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.deleteObject(bucketName=self.bucket_name, objectKey=filename)
 
     def _get_meta(self, filename):

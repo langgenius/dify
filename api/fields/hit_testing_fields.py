@@ -43,9 +43,20 @@ child_chunk_fields = {
     "score": fields.Float,
 }
 
+files_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "size": fields.Integer,
+    "extension": fields.String,
+    "mime_type": fields.String,
+    "source_url": fields.String,
+}
+
 hit_testing_record_fields = {
     "segment": fields.Nested(segment_fields),
     "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
     "score": fields.Float,
     "tsne_position": fields.Raw,
+    "files": fields.List(fields.Nested(files_fields)),
+    "summary": fields.String,  # Summary content if retrieved via summary index
 }

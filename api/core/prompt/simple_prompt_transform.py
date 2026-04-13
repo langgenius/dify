@@ -2,13 +2,10 @@ import json
 import os
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
-from core.app.app_config.entities import PromptTemplateEntity
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import file_manager
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (
+from graphon.file import file_manager
+from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentUnionTypes,
@@ -16,13 +13,17 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+
+from core.app.app_config.entities import PromptTemplateEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import AppMode
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from graphon.file import File
 
 
 class ModelMode(StrEnum):
@@ -31,6 +32,13 @@ class ModelMode(StrEnum):
 
 
 prompt_file_contents: dict[str, Any] = {}
+
+
+class PromptTemplateConfigDict(TypedDict):
+    prompt_template: PromptTemplateParser
+    custom_variable_keys: list[str]
+    special_variable_keys: list[str]
+    prompt_rules: dict[str, Any]
 
 
 class SimplePromptTransform(PromptTransform):
@@ -49,6 +57,7 @@ class SimplePromptTransform(PromptTransform):
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
@@ -64,6 +73,7 @@ class SimplePromptTransform(PromptTransform):
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
         else:
             prompt_messages, stops = self._get_completion_model_prompt_messages(
@@ -76,6 +86,7 @@ class SimplePromptTransform(PromptTransform):
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
 
         return prompt_messages, stops
@@ -101,18 +112,13 @@ class SimplePromptTransform(PromptTransform):
             with_memory_prompt=histories is not None,
         )
 
-        custom_variable_keys_obj = prompt_template_config["custom_variable_keys"]
-        special_variable_keys_obj = prompt_template_config["special_variable_keys"]
+        custom_variable_keys = prompt_template_config["custom_variable_keys"]
+        if not isinstance(custom_variable_keys, list):
+            raise TypeError(f"Expected list for custom_variable_keys, got {type(custom_variable_keys)}")
 
-        # Type check for custom_variable_keys
-        if not isinstance(custom_variable_keys_obj, list):
-            raise TypeError(f"Expected list for custom_variable_keys, got {type(custom_variable_keys_obj)}")
-        custom_variable_keys = cast(list[str], custom_variable_keys_obj)
-
-        # Type check for special_variable_keys
-        if not isinstance(special_variable_keys_obj, list):
-            raise TypeError(f"Expected list for special_variable_keys, got {type(special_variable_keys_obj)}")
-        special_variable_keys = cast(list[str], special_variable_keys_obj)
+        special_variable_keys = prompt_template_config["special_variable_keys"]
+        if not isinstance(special_variable_keys, list):
+            raise TypeError(f"Expected list for special_variable_keys, got {type(special_variable_keys)}")
 
         variables = {k: inputs[k] for k in custom_variable_keys if k in inputs}
 
@@ -146,7 +152,7 @@ class SimplePromptTransform(PromptTransform):
         has_context: bool,
         query_in_prompt: bool,
         with_memory_prompt: bool = False,
-    ) -> dict[str, object]:
+    ) -> PromptTemplateConfigDict:
         prompt_rules = self._get_prompt_rule(app_mode=app_mode, provider=provider, model=model)
 
         custom_variable_keys: list[str] = []
@@ -169,12 +175,13 @@ class SimplePromptTransform(PromptTransform):
             prompt += prompt_rules.get("query_prompt", "{{#query#}}")
             special_variable_keys.append("#query#")
 
-        return {
+        result: PromptTemplateConfigDict = {
             "prompt_template": PromptTemplateParser(template=prompt),
             "custom_variable_keys": custom_variable_keys,
             "special_variable_keys": special_variable_keys,
             "prompt_rules": prompt_rules,
         }
+        return result
 
     def _get_chat_model_prompt_messages(
         self,
@@ -187,6 +194,7 @@ class SimplePromptTransform(PromptTransform):
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
@@ -216,9 +224,9 @@ class SimplePromptTransform(PromptTransform):
             )
 
         if query:
-            prompt_messages.append(self._get_last_user_message(query, files, image_detail_config))
+            prompt_messages.append(self._get_last_user_message(query, files, image_detail_config, context_files))
         else:
-            prompt_messages.append(self._get_last_user_message(prompt, files, image_detail_config))
+            prompt_messages.append(self._get_last_user_message(prompt, files, image_detail_config, context_files))
 
         return prompt_messages, None
 
@@ -233,6 +241,7 @@ class SimplePromptTransform(PromptTransform):
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         # get prompt
         prompt, prompt_rules = self._get_prompt_str_and_rules(
@@ -247,7 +256,7 @@ class SimplePromptTransform(PromptTransform):
         if memory:
             tmp_human_message = UserPromptMessage(content=prompt)
 
-            rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
+            rest_tokens = self._calculate_rest_token([tmp_human_message], model_config=model_config)
             histories = self._get_history_messages_from_memory(
                 memory=memory,
                 memory_config=MemoryConfig(
@@ -275,20 +284,27 @@ class SimplePromptTransform(PromptTransform):
         if stops is not None and len(stops) == 0:
             stops = None
 
-        return [self._get_last_user_message(prompt, files, image_detail_config)], stops
+        return [self._get_last_user_message(prompt, files, image_detail_config, context_files)], stops
 
     def _get_last_user_message(
         self,
         prompt: str,
         files: Sequence["File"],
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> UserPromptMessage:
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         if files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+        if context_files:
+            for file in context_files:
+                prompt_message_contents.append(
+                    file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                )
+        if prompt_message_contents:
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)

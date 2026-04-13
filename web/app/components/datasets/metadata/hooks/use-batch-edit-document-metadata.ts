@@ -1,10 +1,11 @@
-import { useBoolean } from 'ahooks'
-import { type MetadataBatchEditToServer, type MetadataItemInBatchEdit, type MetadataItemWithEdit, type MetadataItemWithValue, UpdateType } from '../types'
+import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithEdit, MetadataItemWithValue } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { useMemo } from 'react'
-import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
-import Toast from '@/app/components/base/toast'
+import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
+import { useMemo } from 'react'
+import { toast } from '@/app/components/base/ui/toast'
+import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import { UpdateType } from '../types'
 
 type Props = {
   datasetId: string
@@ -12,18 +13,8 @@ type Props = {
   selectedDocumentIds?: string[]
   onUpdate: () => void
 }
-
-const useBatchEditDocumentMetadata = ({
-  datasetId,
-  docList,
-  selectedDocumentIds,
-  onUpdate,
-}: Props) => {
-  const [isShowEditModal, {
-    setTrue: showEditModal,
-    setFalse: hideEditModal,
-  }] = useBoolean(false)
-
+const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds, onUpdate }: Props) => {
+  const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
   const metaDataList: MetadataItemWithValue[][] = (() => {
     const res: MetadataItemWithValue[][] = []
     docList.forEach((item) => {
@@ -35,11 +26,12 @@ const useBatchEditDocumentMetadata = ({
     })
     return res
   })()
-
   // To check is key has multiple value
   const originalList: MetadataItemInBatchEdit[] = useMemo(() => {
-    const idNameValue: Record<string, { value: string | number | null, isMultipleValue: boolean }> = {}
-
+    const idNameValue: Record<string, {
+      value: string | number | null
+      isMultipleValue: boolean
+    }> = {}
     const res: MetadataItemInBatchEdit[] = []
     metaDataList.forEach((metaData) => {
       metaData.forEach((item) => {
@@ -52,7 +44,6 @@ const useBatchEditDocumentMetadata = ({
             isMultipleValue: false,
           }
         }
-
         if (itemInRes && itemInRes.value !== item.value) {
           idNameValue[item.id].isMultipleValue = true
           itemInRes.isMultipleValue = true
@@ -69,7 +60,12 @@ const useBatchEditDocumentMetadata = ({
     })
     return res
   }, [metaDataList])
-
+  const toCleanMetadataItem = (item: MetadataItemWithValue | MetadataItemWithEdit | MetadataItemInBatchEdit): MetadataItemWithValue => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    value: item.value ?? null,
+  })
   const formateToBackendList = (editedList: MetadataItemWithEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const updatedList = editedList.filter((editedItem) => {
       return editedItem.updateType === UpdateType.changeValue
@@ -80,7 +76,6 @@ const useBatchEditDocumentMetadata = ({
         return true
       return false
     })
-
     // Use selectedDocumentIds if available, otherwise fall back to docList
     const documentIds = selectedDocumentIds || docList.map(doc => doc.id)
     const res: MetadataBatchEditToServer = documentIds.map((documentId) => {
@@ -91,37 +86,29 @@ const useBatchEditDocumentMetadata = ({
         .filter((item) => {
           return !removedList.find(removedItem => removedItem.id === item.id)
         })
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          type: item.type,
-          value: item.value,
-        }))
+        .map(toCleanMetadataItem)
       if (isApplyToAllSelectDocument) {
         // add missing metadata item
         updatedList.forEach((editedItem) => {
           if (!newMetadataList.find(i => i.id === editedItem.id) && !editedItem.isMultipleValue)
-            newMetadataList.push(editedItem)
+            newMetadataList.push(toCleanMetadataItem(editedItem))
         })
       }
-
       newMetadataList = newMetadataList.map((item) => {
         const editedItem = updatedList.find(i => i.id === item.id)
         if (editedItem)
-          return editedItem
+          return toCleanMetadataItem(editedItem)
         return item
       })
-
       return {
         document_id: documentId,
         metadata_list: newMetadataList,
+        partial_update: docIndex < 0,
       }
     })
     return res
   }
-
   const { mutateAsync } = useBatchUpdateDocMetadata()
-
   const handleSave = async (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => {
     const backendList = formateToBackendList(editedList, addedList, isApplyToAllSelectDocument)
     await mutateAsync({
@@ -130,12 +117,8 @@ const useBatchEditDocumentMetadata = ({
     })
     onUpdate()
     hideEditModal()
-    Toast.notify({
-      type: 'success',
-      message: t('common.actionMsg.modifiedSuccessfully'),
-    })
+    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
   }
-
   return {
     isShowEditModal,
     showEditModal,
@@ -144,5 +127,4 @@ const useBatchEditDocumentMetadata = ({
     handleSave,
   }
 }
-
 export default useBatchEditDocumentMetadata

@@ -1,35 +1,19 @@
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
-import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/i18n-config/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { CollectionType } from '@/app/components/tools/types'
+import type { UploadFileSetting } from '@/app/components/workflow/types'
+import type { LanguagesSupported } from '@/i18n-config/language'
+import type { AccessMode } from '@/models/access-control'
+import type { ExternalDataTool } from '@/models/common'
 import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { AccessMode } from '@/models/access-control'
-import type { ExternalDataTool } from '@/models/common'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
 export enum Theme {
   light = 'light',
   dark = 'dark',
   system = 'system',
-}
-
-export enum ProviderType {
-  openai = 'openai',
-  anthropic = 'anthropic',
-  azure_openai = 'azure_openai',
-  replicate = 'replicate',
-  huggingface_hub = 'huggingface_hub',
-  minimax = 'minimax',
-  tongyi = 'tongyi',
-  spark = 'spark',
-}
-
-export enum AppType {
-  chat = 'chat',
-  completion = 'completion',
 }
 
 export enum ModelModeType {
@@ -51,17 +35,17 @@ export enum RETRIEVE_METHOD {
   keywordSearch = 'keyword_search',
 }
 
-export type VariableInput = {
-  key: string
-  name: string
-  value: string
-}
-
 /**
  * App modes
  */
-export const AppModes = ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'] as const
-export type AppMode = typeof AppModes[number]
+export enum AppModeEnum {
+  COMPLETION = 'completion',
+  WORKFLOW = 'workflow',
+  CHAT = 'chat',
+  ADVANCED_CHAT = 'advanced-chat',
+  AGENT_CHAT = 'agent-chat',
+}
+export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
 
 /**
  * Variable type
@@ -268,9 +252,10 @@ export type SiteConfig = {
   title: string
   /** Application Description will be shown in the Client  */
   description: string
-  /** Define the color in hex for different elements of the chatbot, such as:
+  /**
+   * Define the color in hex for different elements of the chatbot, such as:
    * The header, the button , etc.
-    */
+   */
   chat_color_theme: string
   /** Invert the color of the theme set in chat_color_theme */
   chat_color_theme_inverted: boolean
@@ -309,7 +294,7 @@ export type SiteConfig = {
   use_icon_as_answer_icon: boolean
 }
 
-export type AppIconType = 'image' | 'emoji'
+export type AppIconType = 'image' | 'emoji' | 'link'
 
 /**
  * App
@@ -322,12 +307,12 @@ export type App = {
   /** Description */
   description: string
   /** Author Name */
-  author_name: string;
+  author_name: string
 
   /**
    * Icon Type
    * @default 'emoji'
-  */
+   */
   icon_type: AppIconType | null
   /** Icon, stores file ID if icon_type is 'image' */
   icon: string
@@ -339,7 +324,7 @@ export type App = {
   use_icon_as_answer_icon: boolean
 
   /** Mode */
-  mode: AppMode
+  mode: AppModeEnum
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
@@ -369,28 +354,16 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string; tool_name: string }>
+  deleted_tools?: Array<{ id: string, tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null
+  /** whether workflow trigger has un-published draft */
+  has_draft_trigger?: boolean
 }
 
 export type AppSSO = {
   enable_sso: boolean
-}
-
-/**
- * App Template
- */
-export type AppTemplate = {
-  /** Name */
-  name: string
-  /** Description */
-  description: string
-  /** Mode */
-  mode: AppMode
-  /** Model */
-  model_config: ModelConfig
 }
 
 export enum Resolution {

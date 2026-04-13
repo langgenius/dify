@@ -1,6 +1,6 @@
-import type { CommonNodeType, Memory } from '@/app/components/workflow/types'
 import type { ToolVarInputs } from '../tool/types'
 import type { PluginMeta } from '@/app/components/plugins/types'
+import type { CommonNodeType, Memory } from '@/app/components/workflow/types'
 
 export type AgentNodeType = CommonNodeType & {
   agent_strategy_provider_name?: string

@@ -1,9 +1,9 @@
-import { get, post, ssePost } from './base'
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
-import type { ModelModeType } from '@/types/app'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export type BasicAppFirstRes = {
+import type { AppModeEnum, ModelModeType } from '@/types/app'
+import { get, post, ssePost } from './base'
+
+type BasicAppFirstRes = {
   prompt: string
   variables: string[]
   opening_statement: string
@@ -16,30 +16,6 @@ export type GenRes = {
   variables?: string[] // only for basic app first time rule
   opening_statement?: string // only for basic app first time rule
   error?: string
-}
-
-export type CodeGenRes = {
-  code: string
-  language: string[]
-  error?: string
-}
-
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onFile: IOnFile
-  onThought: IOnThought
-  onMessageEnd: IOnMessageEnd
-  onMessageReplace: IOnMessageReplace
-  onError: IOnError
-  getAbortController?: (abortController: AbortController) => void
-}) => {
-  return ssePost(`apps/${appId}/chat-messages`, {
-    body: {
-      ...body,
-      response_mode: 'streaming',
-    },
-  }, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
@@ -92,21 +68,13 @@ export const generateRule = (body: Record<string, any>) => {
   })
 }
 
-export const fetchModelParams = (providerName: string, modelId: string) => {
-  return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
-    params: {
-      model: modelId,
-    },
-  }) as Promise<{ data: ModelParameterRule[] }>
-}
-
 export const fetchPromptTemplate = ({
   appMode,
   mode,
   modelName,
   hasSetDataSet,
-}: { appMode: string; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
-  return get<Promise<{ chat_prompt_config: ChatPromptConfig; completion_prompt_config: CompletionPromptConfig; stop: [] }>>('/app/prompt-templates', {
+}: { appMode: AppModeEnum, mode: ModelModeType, modelName: string, hasSetDataSet: boolean }) => {
+  return get<Promise<{ chat_prompt_config: ChatPromptConfig, completion_prompt_config: CompletionPromptConfig, stop: [] }>>('/app/prompt-templates', {
     params: {
       app_mode: appMode,
       model_mode: mode,
@@ -119,6 +87,6 @@ export const fetchPromptTemplate = ({
 export const fetchTextGenerationMessage = ({
   appId,
   messageId,
-}: { appId: string; messageId: string }) => {
+}: { appId: string, messageId: string }) => {
   return get<Promise<any>>(`/apps/${appId}/messages/${messageId}`)
 }

@@ -1,3 +1,5 @@
+import { PluginCategoryEnum } from './types'
+
 export const tagKeys = [
   'agent',
   'rag',
@@ -17,13 +19,18 @@ export const tagKeys = [
   'entertainment',
   'utilities',
   'other',
-]
+] as const
+
+export type TagKey = typeof tagKeys[number]
 
 export const categoryKeys = [
-  'model',
-  'tool',
-  'datasource',
-  'agent-strategy',
-  'extension',
+  PluginCategoryEnum.model,
+  PluginCategoryEnum.tool,
+  PluginCategoryEnum.datasource,
+  PluginCategoryEnum.agent,
+  PluginCategoryEnum.extension,
   'bundle',
-]
+  PluginCategoryEnum.trigger,
+] as const
+
+export type CategoryKey = typeof categoryKeys[number]

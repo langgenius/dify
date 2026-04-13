@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Jurnale de acțiuni",
+  "circularInvocationTip": "Există o invocare circulară a instrumentelor/nodurilor în fluxul de lucru curent.",
+  "detail": "DETALIU",
+  "input": "INTRARE",
+  "meta.executor": "Executor",
+  "meta.startTime": "Timp de început",
+  "meta.status": "Stare",
+  "meta.steps": "Pași de rulare",
+  "meta.time": "Timp scurs",
+  "meta.title": "METADATE",
+  "meta.tokens": "Total tokeni",
+  "meta.version": "Versiune",
+  "result": "REZULTAT",
+  "resultEmpty.link": "panoul de detalii",
+  "resultEmpty.tipLeft": "vă rugăm să mergeți la ",
+  "resultEmpty.tipRight": " pentru a o vizualiza.",
+  "resultEmpty.title": "Această rulare generează doar format JSON,",
+  "resultPanel.status": "STARE",
+  "resultPanel.time": "TIMP SCURS",
+  "resultPanel.tokens": "TOTAL TOKENI",
+  "tracing": "URMĂRIRE"
+}

@@ -1,11 +1,11 @@
+import { noop } from 'es-toolkit/function'
 import {
   createContext,
   useContext,
   useRef,
 } from 'react'
-import { createVisualEditorStore } from './store'
 import { useMitt } from '@/hooks/use-mitt'
-import { noop } from 'lodash-es'
+import { createVisualEditorStore } from './store'
 
 type VisualEditorStore = ReturnType<typeof createVisualEditorStore>
 
@@ -30,7 +30,7 @@ export const VisualEditorContextProvider = ({ children }: VisualEditorProviderPr
   )
 }
 
-export const MittContext = createContext<ReturnType<typeof useMitt>>({
+const MittContext = createContext<ReturnType<typeof useMitt>>({
   emit: noop,
   useSubscribe: noop,
 })

@@ -12,8 +12,9 @@ from unittest.mock import MagicMock, patch
 
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
+from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class TestDeleteSegmentFromIndexTask:
             Tenant: Created test tenant instance
         """
         fake = fake or Faker()
-        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="active")
+        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="normal")
         tenant.id = fake.uuid4()
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
@@ -106,8 +107,8 @@ class TestDeleteSegmentFromIndexTask:
         dataset.description = fake.text(max_nb_chars=200)
         dataset.provider = "vendor"
         dataset.permission = "only_me"
-        dataset.data_source_type = "upload_file"
-        dataset.indexing_technique = "high_quality"
+        dataset.data_source_type = DataSourceType.UPLOAD_FILE
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.index_struct = '{"type": "paragraph"}'
         dataset.created_by = account.id
         dataset.created_at = fake.date_time_this_year()
@@ -145,7 +146,7 @@ class TestDeleteSegmentFromIndexTask:
         document.data_source_info = kwargs.get("data_source_info", "{}")
         document.batch = kwargs.get("batch", fake.uuid4())
         document.name = kwargs.get("name", f"Test Document {fake.word()}")
-        document.created_from = kwargs.get("created_from", "api")
+        document.created_from = kwargs.get("created_from", DocumentCreatedFrom.API)
         document.created_by = account.id
         document.created_at = fake.date_time_this_year()
         document.processing_started_at = kwargs.get("processing_started_at", fake.date_time_this_year())
@@ -162,9 +163,9 @@ class TestDeleteSegmentFromIndexTask:
         document.enabled = kwargs.get("enabled", True)
         document.archived = kwargs.get("archived", False)
         document.updated_at = fake.date_time_this_year()
-        document.doc_type = kwargs.get("doc_type", "text")
+        document.doc_type = kwargs.get("doc_type", DocumentDocType.PERSONAL_DOCUMENT)
         document.doc_metadata = kwargs.get("doc_metadata", {})
-        document.doc_form = kwargs.get("doc_form", IndexType.PARAGRAPH_INDEX)
+        document.doc_form = kwargs.get("doc_form", IndexStructureType.PARAGRAPH_INDEX)
         document.doc_language = kwargs.get("doc_language", "en")
 
         db_session_with_containers.add(document)
@@ -204,7 +205,7 @@ class TestDeleteSegmentFromIndexTask:
             segment.index_node_hash = fake.sha256()
             segment.hit_count = 0
             segment.enabled = True
-            segment.status = "completed"
+            segment.status = SegmentStatus.COMPLETED
             segment.created_by = account.id
             segment.created_at = fake.date_time_this_year()
             segment.updated_by = account.id
@@ -216,7 +217,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return segments
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_success(self, mock_index_processor_factory, db_session_with_containers):
         """
         Test successful segment deletion from index with comprehensive verification.
@@ -244,8 +245,11 @@ class TestDeleteSegmentFromIndexTask:
         mock_processor = MagicMock()
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
 
+        # Extract segment IDs for the task
+        segment_ids = [segment.id for segment in segments]
+
         # Execute the task
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
         # Verify the task completed successfully
         assert result is None  # Task should return None on success
@@ -279,7 +283,7 @@ class TestDeleteSegmentFromIndexTask:
         index_node_ids = [f"node_{fake.uuid4()}" for _ in range(3)]
 
         # Execute the task with non-existent dataset
-        result = delete_segment_from_index_task(index_node_ids, non_existent_dataset_id, non_existent_document_id)
+        result = delete_segment_from_index_task(index_node_ids, non_existent_dataset_id, non_existent_document_id, [])
 
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when dataset not found
@@ -305,7 +309,7 @@ class TestDeleteSegmentFromIndexTask:
         index_node_ids = [f"node_{fake.uuid4()}" for _ in range(3)]
 
         # Execute the task with non-existent document
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, non_existent_document_id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, non_existent_document_id, [])
 
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document not found
@@ -330,9 +334,10 @@ class TestDeleteSegmentFromIndexTask:
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
+        segment_ids = [segment.id for segment in segments]
 
         # Execute the task with disabled document
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document is disabled
@@ -357,9 +362,10 @@ class TestDeleteSegmentFromIndexTask:
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
+        segment_ids = [segment.id for segment in segments]
 
         # Execute the task with archived document
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document is archived
@@ -381,19 +387,20 @@ class TestDeleteSegmentFromIndexTask:
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
         document = self._create_test_document(
-            db_session_with_containers, dataset, account, fake, indexing_status="indexing"
+            db_session_with_containers, dataset, account, fake, indexing_status=IndexingStatus.INDEXING
         )
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
+        segment_ids = [segment.id for segment in segments]
 
         # Execute the task with incomplete indexing
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when indexing is not completed
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_index_processor_clean(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -409,7 +416,11 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Test different document forms
-        document_forms = [IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX, IndexType.PARENT_CHILD_INDEX]
+        document_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in document_forms:
             # Create test data for each document form
@@ -420,13 +431,14 @@ class TestDeleteSegmentFromIndexTask:
             segments = self._create_test_document_segments(db_session_with_containers, document, account, 2, fake)
 
             index_node_ids = [segment.index_node_id for segment in segments]
+            segment_ids = [segment.id for segment in segments]
 
             # Mock the index processor
             mock_processor = MagicMock()
             mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Execute the task
-            result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+            result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
             # Verify the task completed successfully
             assert result is None
@@ -446,7 +458,7 @@ class TestDeleteSegmentFromIndexTask:
             mock_index_processor_factory.reset_mock()
             mock_processor.reset_mock()
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_exception_handling(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -469,6 +481,7 @@ class TestDeleteSegmentFromIndexTask:
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
+        segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor to raise an exception
         mock_processor = MagicMock()
@@ -476,7 +489,7 @@ class TestDeleteSegmentFromIndexTask:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
 
         # Execute the task - should not raise exception
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
         # Verify the task completed without raising exceptions
         assert result is None  # Task should return None even when exceptions occur
@@ -489,7 +502,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_empty_index_node_ids(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -518,7 +531,7 @@ class TestDeleteSegmentFromIndexTask:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
 
         # Execute the task
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, [])
 
         # Verify the task completed successfully
         assert result is None
@@ -531,7 +544,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory")
+    @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_large_index_node_ids(
         self, mock_index_processor_factory, db_session_with_containers
     ):
@@ -555,13 +568,14 @@ class TestDeleteSegmentFromIndexTask:
         # Create large number of segments
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 50, fake)
         index_node_ids = [segment.index_node_id for segment in segments]
+        segment_ids = [segment.id for segment in segments]
 
         # Mock the index processor
         mock_processor = MagicMock()
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
 
         # Execute the task
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id)
+        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
 
         # Verify the task completed successfully
         assert result is None

@@ -1,6 +1,6 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { GitHubUrlInfo } from '@/app/components/plugins/types'
-import { isEmpty } from 'lodash-es'
+import { isEmpty } from 'es-toolkit/compat'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
   return {
@@ -17,6 +17,7 @@ export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaratio
     brief: pluginManifest.description,
     description: pluginManifest.description,
     icon: pluginManifest.icon,
+    icon_dark: pluginManifest.icon_dark,
     verified: pluginManifest.verified,
     introduction: '',
     repository: '',
@@ -60,7 +61,8 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
 }
 
 export const parseGitHubUrl = (url: string): GitHubUrlInfo => {
-  const match = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/)
+  const githubUrlRegex = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/
+  const match = githubUrlRegex.exec(url)
   return match ? { isValid: true, owner: match[1], repo: match[2] } : { isValid: false }
 }
 

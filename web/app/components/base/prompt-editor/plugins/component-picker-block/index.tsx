@@ -1,20 +1,5 @@
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import ReactDOM from 'react-dom'
-import {
-  flip,
-  offset,
-  shift,
-  useFloating,
-} from '@floating-ui/react'
-import type { TextNode } from 'lexical'
 import type { MenuRenderFn } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import type { TextNode } from 'lexical'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -23,27 +8,52 @@ import type {
   HistoryBlockType,
   LastRunBlockType,
   QueryBlockType,
+  RequestURLBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
-import { useBasicTypeaheadTriggerMatch } from '../../hooks'
-import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
-import { $splitNodeContainingQuery } from '../../utils'
-import { useOptions } from './hooks'
 import type { PickerBlockMenuOption } from './menu'
+import {
+  flip,
+  offset,
+  shift,
+  useFloating,
+} from '@floating-ui/react'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { mergeRegister } from '@lexical/utils'
+import {
+  BLUR_COMMAND,
+  COMMAND_PRIORITY_EDITOR,
+  FOCUS_COMMAND,
+  KEY_ESCAPE_COMMAND,
+} from 'lexical'
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+import ReactDOM from 'react-dom'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { KEY_ESCAPE_COMMAND } from 'lexical'
+import { useBasicTypeaheadTriggerMatch } from '../../hooks'
+import { $splitNodeContainingQuery } from '../../utils'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
-import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
+import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
+import { useOptions } from './hooks'
 
 type ComponentPickerProps = {
   triggerString: string
   contextBlock?: ContextBlockType
   queryBlock?: QueryBlockType
+  requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
@@ -57,6 +67,7 @@ const ComponentPicker = ({
   triggerString,
   contextBlock,
   queryBlock,
+  requestURLBlock,
   historyBlock,
   variableBlock,
   externalToolBlock,
@@ -84,6 +95,46 @@ const ComponentPicker = ({
   })
 
   const [queryString, setQueryString] = useState<string | null>(null)
+  const [blurHidden, setBlurHidden] = useState(false)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearBlurTimer = useCallback(() => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current)
+      blurTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const unregister = mergeRegister(
+      editor.registerCommand(
+        BLUR_COMMAND,
+        (event) => {
+          clearBlurTimer()
+          const target = event?.relatedTarget as HTMLElement
+          if (!target?.classList?.contains('var-search-input'))
+            blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        FOCUS_COMMAND,
+        () => {
+          clearBlurTimer()
+          setBlurHidden(false)
+          return false
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+    )
+
+    return () => {
+      if (blurTimerRef.current)
+        clearTimeout(blurTimerRef.current)
+      unregister()
+    }
+  }, [editor, clearBlurTimer])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
@@ -100,6 +151,7 @@ const ComponentPicker = ({
     variableBlock,
     externalToolBlock,
     workflowVariableBlock,
+    requestURLBlock,
     currentBlock,
     errorMessageBlock,
     lastRunBlock,
@@ -155,6 +207,8 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
+    if (blurHidden)
+      return null
     if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
       return null
 
@@ -170,9 +224,9 @@ const ComponentPicker = ({
             // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
             // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
-            <div className='h-0 w-0'>
+            <div className="h-0 w-0">
               <div
-                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
+                className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -181,14 +235,14 @@ const ComponentPicker = ({
               >
                 {
                   workflowVariableBlock?.show && (
-                    <div className='p-1'>
+                    <div className="p-1">
                       <VarReferenceVars
-                        searchBoxClassName='mt-1'
+                        searchBoxClassName="mt-1"
                         vars={workflowVariableOptions}
                         onChange={(variables: string[]) => {
                           handleSelectWorkflowVariable(variables)
                         }}
-                        maxHeightClass='max-h-[34vh]'
+                        maxHeightClass="max-h-[34vh]"
                         isSupportFileVar={isSupportFileVar}
                         onClose={handleClose}
                         onBlur={handleClose}
@@ -202,7 +256,7 @@ const ComponentPicker = ({
                 }
                 {
                   workflowVariableBlock?.show && !!options.length && (
-                    <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                    <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
                   )
                 }
                 <div>
@@ -212,7 +266,7 @@ const ComponentPicker = ({
                         {
                           // Divider
                           index !== 0 && options.at(index - 1)?.group !== option.group && (
-                            <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                            <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
                           )
                         }
                         {option.renderMenuOption({
@@ -236,7 +290,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
+  }, [blurHidden, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin
@@ -248,7 +302,7 @@ const ComponentPicker = ({
       //
       // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
       // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName='z-[999999] translate-y-[calc(-100%-3px)]'
+      anchorClassName="z-999999 translate-y-[calc(-100%-3px)]"
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

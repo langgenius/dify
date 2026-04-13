@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useMemo, useState } from 'react'
-import ImageList from './image-list'
-import ImageLinkInput from './image-link-input'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ImageFile } from '@/types/app'
+import { useMemo, useState } from 'react'
 import { TransferMethod } from '@/types/app'
+import ImageLinkInput from './image-link-input'
+import ImageList from './image-list'
 
 const SAMPLE_BASE64
   = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAAsSAAALEgHS3X78AAABbElEQVR4nO3SsQkAIBDARMT+V20sTg6LXhWEATnnMHDx4sWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFu2r/H3n4BG518Gr4AAAAASUVORK5CYII='
@@ -156,7 +156,7 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
       />
 
       <div className="rounded-lg border border-divider-subtle bg-background-default p-2">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-text-tertiary">
+        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">
           Files state
         </span>
         <pre className="max-h-40 overflow-auto text-[11px] leading-relaxed text-text-tertiary">

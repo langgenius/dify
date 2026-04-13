@@ -7,7 +7,7 @@ import uuid
 from collections import deque
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Final, cast
+from typing import Final
 from urllib.parse import urljoin
 
 import httpx
@@ -16,11 +16,18 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.util.instrumentation import InstrumentationScope
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+    DEPLOYMENT_ENVIRONMENT,
+)
+from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    HOST_NAME,
+)
+from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import Link, SpanContext, TraceFlags
 
 from configs import dify_config
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
+from core.ops.aliyun_trace.entities.semconv import ACS_ARMS_SERVICE_FEATURE
 
 INVALID_SPAN_ID: Final[int] = 0x0000000000000000
 INVALID_TRACE_ID: Final[int] = 0x00000000000000000000000000000000
@@ -44,10 +51,11 @@ class TraceClient:
         self.endpoint = endpoint
         self.resource = Resource(
             attributes={
-                ResourceAttributes.SERVICE_NAME: service_name,
-                ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-                ResourceAttributes.HOST_NAME: socket.gethostname(),
+                service_attributes.SERVICE_NAME: service_name,
+                service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                HOST_NAME: socket.gethostname(),
+                ACS_ARMS_SERVICE_FEATURE: "genai_app",
             }
         )
         self.span_builder = SpanBuilder(self.resource)
@@ -75,10 +83,10 @@ class TraceClient:
             if response.status_code == 405:
                 return True
             else:
-                logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
+                logger.warning("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
         except httpx.RequestError as e:
-            logger.debug("AliyunTrace API check failed: %s", str(e))
+            logger.warning("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
     def get_project_url(self) -> str:
@@ -116,7 +124,7 @@ class TraceClient:
             try:
                 self.exporter.export(spans_to_export)
             except Exception as e:
-                logger.debug("Error exporting spans: %s", e)
+                logger.warning("Error exporting spans: %s", e)
 
     def shutdown(self) -> None:
         with self.condition:
@@ -164,7 +172,7 @@ class SpanBuilder:
             attributes=span_data.attributes,
             events=span_data.events,
             links=span_data.links,
-            kind=trace_api.SpanKind.INTERNAL,
+            kind=span_data.span_kind,
             status=span_data.status,
             start_time=span_data.start_time,
             end_time=span_data.end_time,
@@ -199,7 +207,7 @@ def convert_to_trace_id(uuid_v4: str | None) -> int:
         raise ValueError("UUID cannot be None")
     try:
         uuid_obj = uuid.UUID(uuid_v4)
-        return cast(int, uuid_obj.int)
+        return uuid_obj.int
     except ValueError as e:
         raise ValueError(f"Invalid UUID input: {uuid_v4}") from e
 

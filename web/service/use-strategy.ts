@@ -1,12 +1,12 @@
+import type { QueryOptions } from '@tanstack/react-query'
 import type {
   StrategyPluginDetail,
 } from '@/app/components/plugins/types'
-import { useInvalid } from './use-base'
-import type { QueryOptions } from '@tanstack/react-query'
 import {
   useQuery,
 } from '@tanstack/react-query'
 import { fetchStrategyDetail, fetchStrategyList } from './strategy'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'agent_strategy'
 
@@ -29,8 +29,4 @@ export const useStrategyProviderDetail = (agentProvider: string, options?: Query
     queryFn: () => fetchStrategyDetail(agentProvider),
     enabled: !!agentProvider,
   })
-}
-
-export const useInvalidateStrategyProviderDetail = (agentProvider: string) => {
-  return useInvalid([NAME_SPACE, 'detail', agentProvider])
 }

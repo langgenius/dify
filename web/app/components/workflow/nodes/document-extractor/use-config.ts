@@ -1,16 +1,16 @@
-import { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { useStoreApi } from 'reactflow'
 import type { ValueSelector, Var } from '../../types'
-import { VarType } from '../../types'
 import type { DocExtractorNodeType } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
+import { useCallback, useMemo } from 'react'
+import { useStoreApi } from 'reactflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
 
 const useConfig = (id: string, payload: DocExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

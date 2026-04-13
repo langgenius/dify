@@ -1,8 +1,13 @@
+import { icons as customPublicIcons } from '@dify/iconify-collections/custom-public'
+import { icons as customVenderIcons } from '@dify/iconify-collections/custom-vender'
+import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
+import tailwindTypography from '@tailwindcss/typography'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+import typography from './typography.js'
 
 const config = {
   theme: {
-    typography: require('./typography'),
+    typography,
     extend: {
       colors: {
         gray: {
@@ -87,9 +92,6 @@ const config = {
         2: '0.02',
         8: '0.08',
       },
-      fontFamily: {
-        instrument: ['var(--font-instrument-serif)', 'serif'],
-      },
       fontSize: {
         '2xs': '0.625rem',
       },
@@ -101,6 +103,7 @@ const config = {
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'workflow-process-paused-bg': 'var(--color-workflow-process-paused-bg)',
         'workflow-run-failed-bg': 'var(--color-workflow-run-failed-bg)',
         'workflow-batch-failed-bg': 'var(--color-workflow-batch-failed-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
@@ -136,6 +139,8 @@ const config = {
         'billing-plan-card-premium-bg': 'var(--color-billing-plan-card-premium-bg)',
         'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
         'knowledge-pipeline-creation-footer-bg': 'var(--color-knowledge-pipeline-creation-footer-bg)',
+        'progress-bar-indeterminate-stripe': 'var(--color-progress-bar-indeterminate-stripe)',
+        'chat-answer-human-input-form-divider-bg': 'var(--color-chat-answer-human-input-form-divider-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
@@ -143,7 +148,19 @@ const config = {
     },
   },
   plugins: [
-    require('@tailwindcss/typography'),
+    tailwindTypography,
+    iconsPlugin({
+      collections: {
+        ...getIconCollections(['heroicons', 'ri']),
+        'custom-public': customPublicIcons,
+        'custom-vender': customVenderIcons,
+      },
+      extraProperties: {
+        width: '1rem',
+        height: '1rem',
+        display: 'block',
+      },
+    }),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {

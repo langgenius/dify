@@ -5,17 +5,24 @@ from decimal import Decimal
 from json import dumps
 
 # import monkeypatch
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import (
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import (
+    LLMMode,
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
+)
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     ModelFeature,
     ModelPropertyKey,
     ModelType,
 )
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl.model import PluginModelClient
 
@@ -47,10 +54,6 @@ class MockModelClass(PluginModelClient):
                     icon_small=I18nObject(
                         en_US="https://example.com/icon_small.png",
                         zh_Hans="https://example.com/icon_small.png",
-                    ),
-                    icon_large=I18nObject(
-                        en_US="https://example.com/icon_large.png",
-                        zh_Hans="https://example.com/icon_large.png",
                     ),
                     supported_model_types=[ModelType.LLM],
                     configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],

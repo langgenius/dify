@@ -1,5 +1,5 @@
-import type { Tool } from '@/app/components/tools/types'
 import type { DataSourceItem } from './types'
+import type { Tool } from '@/app/components/tools/types'
 
 export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
   return {
@@ -17,6 +17,7 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
     is_authorized: dataSourceItem.is_authorized,
     labels: dataSourceItem.declaration.identity.tags || [],
     plugin_id: dataSourceItem.plugin_id,
+    plugin_unique_identifier: dataSourceItem.plugin_unique_identifier,
     tools: dataSourceItem.declaration.datasources.map((datasource) => {
       return {
         name: datasource.identity.name,

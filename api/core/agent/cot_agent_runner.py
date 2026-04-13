@@ -1,27 +1,39 @@
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
-from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.entities import AgentScratchpadUnit
-from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
     ToolPromptMessage,
     UserPromptMessage,
 )
+
+from core.agent.base_agent_runner import BaseAgentRunner
+from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
+from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
+from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
+
+logger = logging.getLogger(__name__)
+
+
+class ActionDict(TypedDict):
+    """Shape produced by AgentScratchpadUnit.Action.to_dict()."""
+
+    action: str
+    action_input: dict[str, Any] | str
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -118,7 +130,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 tools=[],
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
-                user=self.user_id,
                 callbacks=[],
             )
 
@@ -161,6 +172,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             assert scratchpad.thought is not None
             scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
             self._agent_scratchpad.append(scratchpad)
+
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and scratchpad.action:
+                if scratchpad.action.action_name.lower() != "final answer":
+                    raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # get llm usage
             if "usage" in usage_dict:
@@ -236,7 +252,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             iteration_step += 1
 
         yield LLMResultChunk(
-            model=model_instance.model,
+            model=model_instance.model_name,
             prompt_messages=prompt_messages,
             delta=LLMResultChunkDelta(
                 index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
@@ -259,7 +275,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self.queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=model_instance.model,
+                    model=model_instance.model_name,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
                     usage=llm_usage["usage"] or LLMUsage.empty_usage(),
@@ -322,7 +338,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return tool_invoke_response, tool_invoke_meta
 
-    def _convert_dict_to_action(self, action: dict) -> AgentScratchpadUnit.Action:
+    def _convert_dict_to_action(self, action: ActionDict) -> AgentScratchpadUnit.Action:
         """
         convert dict to action
         """
@@ -400,8 +416,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                             action_input=json.loads(message.tool_calls[0].function.arguments),
                         )
                         current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict())
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse tool call from assistant message")
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
                     assert isinstance(message.content, str)
