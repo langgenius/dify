@@ -671,6 +671,29 @@ class Workflow(Base):  # bug
         return str(d)
 
 
+class WorkflowRunDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    type: WorkflowType
+    triggered_from: WorkflowRunTriggeredFrom
+    version: str
+    graph: Mapping[str, Any]
+    inputs: Mapping[str, Any]
+    status: WorkflowExecutionStatus
+    outputs: Mapping[str, Any]
+    error: str | None
+    elapsed_time: float
+    total_tokens: int
+    total_steps: int
+    created_by_role: CreatorUserRole
+    created_by: str
+    created_at: datetime
+    finished_at: datetime | None
+    exceptions_count: int
+
+
 class WorkflowRun(Base):
     """
     Workflow Run
@@ -790,29 +813,29 @@ class WorkflowRun(Base):
     def workflow(self):
         return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "app_id": self.app_id,
-            "workflow_id": self.workflow_id,
-            "type": self.type,
-            "triggered_from": self.triggered_from,
-            "version": self.version,
-            "graph": self.graph_dict,
-            "inputs": self.inputs_dict,
-            "status": self.status,
-            "outputs": self.outputs_dict,
-            "error": self.error,
-            "elapsed_time": self.elapsed_time,
-            "total_tokens": self.total_tokens,
-            "total_steps": self.total_steps,
-            "created_by_role": self.created_by_role,
-            "created_by": self.created_by,
-            "created_at": self.created_at,
-            "finished_at": self.finished_at,
-            "exceptions_count": self.exceptions_count,
-        }
+    def to_dict(self) -> WorkflowRunDict:
+        return WorkflowRunDict(
+            id=self.id,
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            type=self.type,
+            triggered_from=self.triggered_from,
+            version=self.version,
+            graph=self.graph_dict,
+            inputs=self.inputs_dict,
+            status=self.status,
+            outputs=self.outputs_dict,
+            error=self.error,
+            elapsed_time=self.elapsed_time,
+            total_tokens=self.total_tokens,
+            total_steps=self.total_steps,
+            created_by_role=self.created_by_role,
+            created_by=self.created_by,
+            created_at=self.created_at,
+            finished_at=self.finished_at,
+            exceptions_count=self.exceptions_count,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
