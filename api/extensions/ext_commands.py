@@ -34,6 +34,9 @@ def init_app(app: DifyApp):
         transform_datasource_credentials,
         upgrade_db,
         vdb_migrate,
+        export_custom_data,
+        import_custom_data,
+        migration_custom_datas
     )
 
     cmds_to_register = [
@@ -68,6 +71,9 @@ def init_app(app: DifyApp):
         clean_workflow_runs,
         clean_expired_messages,
         export_app_messages,
+        export_custom_data,
+        import_custom_data,
+        migration_custom_datas
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
