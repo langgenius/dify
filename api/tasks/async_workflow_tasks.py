@@ -162,7 +162,12 @@ def _execute_workflow_common(
                 state_owner_user_id=workflow.created_by,
             )
 
-            # Execute the workflow with the trigger type
+            # NOTE (hj24)
+            # Release the transaction before the blocking generate() call,
+            # otherwise the connection stays "idle in transaction" for hours.
+            session.commit()
+            # NOTE END
+
             generator.generate(
                 app_model=app_model,
                 workflow=workflow,
