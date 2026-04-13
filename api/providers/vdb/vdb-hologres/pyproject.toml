@@ -3,7 +3,7 @@ name = "dify-vdb-hologres"
 version = "0.0.1"
 
 dependencies = [
-    "holo-search-sdk>=0.4.1",
+    "holo-search-sdk>=0.4.2",
 ]
 description = "Dify vector store backend (dify-vdb-hologres)."
 

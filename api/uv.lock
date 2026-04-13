@@ -1926,7 +1926,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.1" }]
+requires-dist = [{ name = "holo-search-sdk", specifier = ">=0.4.2" }]
 
 [[package]]
 name = "dify-vdb-huawei-cloud"
@@ -1985,7 +1985,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pymilvus", specifier = "~=2.6.10" }]
+requires-dist = [{ name = "pymilvus", specifier = "~=2.6.12" }]
 
 [[package]]
 name = "dify-vdb-myscale"
@@ -2087,7 +2087,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "tablestore", specifier = "==6.4.3" }]
+requires-dist = [{ name = "tablestore", specifier = "==6.4.4" }]
 
 [[package]]
 name = "dify-vdb-tencent"
@@ -6184,7 +6184,7 @@ wheels = [
 
 [[package]]
 name = "tablestore"
-version = "6.4.3"
+version = "6.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -6197,9 +6197,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/0b/c875c2314d472eed9f9644a94ae0aa7e702a6084779a0136e539d5e7ed32/tablestore-6.4.3.tar.gz", hash = "sha256:4981139e68705052ade6341060a4b6238b1fb9a8c18b43a77383fda14f7554a9", size = 5072450, upload-time = "2026-03-31T04:34:37.832Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/bc/84d7592188b060950f4fe5713eb3b03068d42b2e43ad37decdb5242c1879/tablestore-6.4.4.tar.gz", hash = "sha256:0f40834030aff0c67e568b09deaab97144229b569710d66557edf7a06a5dcb19", size = 5076731, upload-time = "2026-04-09T09:40:20.399Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/e0/e11626aea61e1352dafe7707c548d482769afd3ca28f45653d380ba85a5d/tablestore-6.4.3-py3-none-any.whl", hash = "sha256:207b89324cd4157db4559c7619d42b9510a55c0565f00a439389f14426d114c5", size = 5115764, upload-time = "2026-03-31T04:34:35.761Z" },
+    { url = "https://files.pythonhosted.org/packages/45/3f/48af1e72e59d60481724b326317bd311615bdedc31f8f81f9508fb84cda6/tablestore-6.4.4-py3-none-any.whl", hash = "sha256:984f086fa7acabaa3558da93205ad6df562b266b85fd249bc5891f2dd1d65814", size = 5118758, upload-time = "2026-04-09T09:40:17.209Z" },
 ]
 
 [[package]]
