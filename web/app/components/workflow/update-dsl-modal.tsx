@@ -114,6 +114,7 @@ const UpdateDSLModal = ({
     }
 
     await handleWorkflowUpdate(appId)
+    collaborationManager.emitWorkflowUpdate(appId)
     onImport?.()
     const payload = getImportNotificationPayload(status, t)
     toast[payload.type](payload.message, payload.children ? { description: payload.children } : undefined)
@@ -183,9 +184,6 @@ const UpdateDSLModal = ({
 
       if (isImportCompleted(status)) {
         await handleCompletedImport(status, app_id)
-        // Notify other collaboration clients about the workflow update
-        if (app_id)
-          collaborationManager.emitWorkflowUpdate(app_id)
       }
       else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
