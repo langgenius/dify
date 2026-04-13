@@ -11753,16 +11753,6 @@
       "count": 1
     }
   },
-  "models/access-control.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
-  "models/app.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "models/common.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -11780,17 +11770,11 @@
     }
   },
   "models/debug.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
   },
   "models/log.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -11862,9 +11846,6 @@
     }
   },
   "service/share.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }

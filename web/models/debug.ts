@@ -13,10 +13,11 @@ import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay
 
 export type Inputs = Record<string, string | number | object | boolean>
 
-export enum PromptMode {
-  simple = 'simple',
-  advanced = 'advanced',
-}
+export const PromptMode = {
+  simple: 'simple',
+  advanced: 'advanced',
+} as const
+export type PromptMode = typeof PromptMode[keyof typeof PromptMode]
 
 export type PromptItem = {
   role?: PromptRole
@@ -42,11 +43,12 @@ export type BlockStatus = {
   query: boolean
 }
 
-export enum PromptRole {
-  system = 'system',
-  user = 'user',
-  assistant = 'assistant',
-}
+export const PromptRole = {
+  system: 'system',
+  user: 'user',
+  assistant: 'assistant',
+} as const
+export type PromptRole = typeof PromptRole[keyof typeof PromptRole]
 
 export type PromptVariable = {
   key: string
