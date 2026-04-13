@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import DatabricksConfig, MLflowConfig
 from core.ops.entities.trace_entity import (
@@ -21,7 +22,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace, datetime_to_nanoseconds
-from dify_graph.enums import NodeType
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,7 +161,7 @@ def _make_node(**overrides):
         "tenant_id": "t1",
         "app_id": "app-1",
         "title": "Node Title",
-        "node_type": NodeType.CODE,
+        "node_type": BuiltinNodeTypes.CODE,
         "status": "succeeded",
         "inputs": '{"key": "value"}',
         "outputs": '{"result": "ok"}',
@@ -330,7 +330,7 @@ class TestTraceDispatcher:
 
 class TestWorkflowTrace:
     def test_basic_workflow_no_nodes(self, trace_instance, mock_tracing, mock_db):
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -343,7 +343,7 @@ class TestWorkflowTrace:
         span.end.assert_called_once()
 
     def test_workflow_filters_sys_inputs_and_adds_query(self, trace_instance, mock_tracing, mock_db):
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -362,7 +362,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_llm_node(self, trace_instance, mock_tracing, mock_db):
         llm_node = _make_node(
-            node_type=NodeType.LLM,
+            node_type=BuiltinNodeTypes.LLM,
             process_data=json.dumps(
                 {
                     "prompts": [{"role": "user", "text": "hi"}],
@@ -374,7 +374,7 @@ class TestWorkflowTrace:
             ),
             outputs='{"text": "hello world"}',
         )
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [llm_node]
+        mock_db.session.scalars.return_value.all.return_value = [llm_node]
 
         workflow_span = MagicMock()
         node_span = MagicMock()
@@ -388,7 +388,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_question_classifier_node(self, trace_instance, mock_tracing, mock_db):
         qc_node = _make_node(
-            node_type=NodeType.QUESTION_CLASSIFIER,
+            node_type=BuiltinNodeTypes.QUESTION_CLASSIFIER,
             process_data=json.dumps(
                 {
                     "prompts": "classify this",
@@ -397,7 +397,7 @@ class TestWorkflowTrace:
                 }
             ),
         )
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [qc_node]
+        mock_db.session.scalars.return_value.all.return_value = [qc_node]
         workflow_span = MagicMock()
         node_span = MagicMock()
         mock_tracing["start"].side_effect = [workflow_span, node_span]
@@ -408,10 +408,10 @@ class TestWorkflowTrace:
 
     def test_workflow_with_http_request_node(self, trace_instance, mock_tracing, mock_db):
         http_node = _make_node(
-            node_type=NodeType.HTTP_REQUEST,
+            node_type=BuiltinNodeTypes.HTTP_REQUEST,
             process_data='{"url": "https://api.com"}',
         )
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [http_node]
+        mock_db.session.scalars.return_value.all.return_value = [http_node]
         workflow_span = MagicMock()
         node_span = MagicMock()
         mock_tracing["start"].side_effect = [workflow_span, node_span]
@@ -424,7 +424,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_knowledge_retrieval_node(self, trace_instance, mock_tracing, mock_db):
         kr_node = _make_node(
-            node_type=NodeType.KNOWLEDGE_RETRIEVAL,
+            node_type=BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
             outputs=json.dumps(
                 {
                     "result": [
@@ -434,7 +434,7 @@ class TestWorkflowTrace:
                 }
             ),
         )
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [kr_node]
+        mock_db.session.scalars.return_value.all.return_value = [kr_node]
         workflow_span = MagicMock()
         node_span = MagicMock()
         mock_tracing["start"].side_effect = [workflow_span, node_span]
@@ -448,7 +448,7 @@ class TestWorkflowTrace:
 
     def test_workflow_with_failed_node(self, trace_instance, mock_tracing, mock_db):
         failed_node = _make_node(status="failed")
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [failed_node]
+        mock_db.session.scalars.return_value.all.return_value = [failed_node]
         workflow_span = MagicMock()
         node_span = MagicMock()
         mock_tracing["start"].side_effect = [workflow_span, node_span]
@@ -459,7 +459,7 @@ class TestWorkflowTrace:
         node_span.add_event.assert_called_once()
 
     def test_workflow_with_workflow_error(self, trace_instance, mock_tracing, mock_db):
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.session.scalars.return_value.all.return_value = []
         workflow_span = MagicMock()
         mock_tracing["start"].return_value = workflow_span
         mock_tracing["set"].return_value = "token"
@@ -473,7 +473,7 @@ class TestWorkflowTrace:
 
     def test_workflow_node_no_inputs_no_outputs(self, trace_instance, mock_tracing, mock_db):
         node = _make_node(inputs=None, outputs=None)
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = [node]
+        mock_db.session.scalars.return_value.all.return_value = [node]
         workflow_span = MagicMock()
         node_span = MagicMock()
         mock_tracing["start"].side_effect = [workflow_span, node_span]
@@ -486,7 +486,7 @@ class TestWorkflowTrace:
         assert end_call.kwargs["outputs"] == {}
 
     def test_workflow_no_user_id_no_conversation_id(self, trace_instance, mock_tracing, mock_db):
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -501,7 +501,7 @@ class TestWorkflowTrace:
 
     def test_workflow_empty_query(self, trace_instance, mock_tracing, mock_db):
         """When query is empty string, it's falsy so no query key added."""
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        mock_db.session.scalars.return_value.all.return_value = []
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
@@ -680,12 +680,12 @@ class TestGetMessageUserId:
     def test_returns_end_user_session_id(self, trace_instance, mock_db):
         end_user = MagicMock()
         end_user.session_id = "session-1"
-        mock_db.session.query.return_value.where.return_value.first.return_value = end_user
+        mock_db.session.get.return_value = end_user
         result = trace_instance._get_message_user_id({"from_end_user_id": "eu-1"})
         assert result == "session-1"
 
     def test_returns_account_id_when_no_end_user(self, trace_instance, mock_db):
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
         result = trace_instance._get_message_user_id({"from_end_user_id": "eu-1", "from_account_id": "acc-1"})
         assert result == "acc-1"
 
@@ -834,7 +834,7 @@ class TestGenerateNameTrace:
 
 class TestGetWorkflowNodes:
     def test_queries_db(self, trace_instance, mock_db):
-        mock_db.session.query.return_value.filter.return_value.order_by.return_value.all.return_value = ["n1", "n2"]
+        mock_db.session.scalars.return_value.all.return_value = ["n1", "n2"]
         result = trace_instance._get_workflow_nodes("run-1")
         assert result == ["n1", "n2"]
 
@@ -846,13 +846,13 @@ class TestGetNodeSpanType:
     @pytest.mark.parametrize(
         ("node_type", "expected_contains"),
         [
-            (NodeType.LLM, "LLM"),
-            (NodeType.QUESTION_CLASSIFIER, "LLM"),
-            (NodeType.KNOWLEDGE_RETRIEVAL, "RETRIEVER"),
-            (NodeType.TOOL, "TOOL"),
-            (NodeType.CODE, "TOOL"),
-            (NodeType.HTTP_REQUEST, "TOOL"),
-            (NodeType.AGENT, "AGENT"),
+            (BuiltinNodeTypes.LLM, "LLM"),
+            (BuiltinNodeTypes.QUESTION_CLASSIFIER, "LLM"),
+            (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "RETRIEVER"),
+            (BuiltinNodeTypes.TOOL, "TOOL"),
+            (BuiltinNodeTypes.CODE, "TOOL"),
+            (BuiltinNodeTypes.HTTP_REQUEST, "TOOL"),
+            (BuiltinNodeTypes.AGENT, "AGENT"),
         ],
     )
     def test_mapped_types(self, trace_instance, node_type, expected_contains):

@@ -5,8 +5,8 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
-import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
+import { Slider } from '@/app/components/base/ui/slider'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { MAX_PARALLEL_LIMIT } from '@/config'
@@ -57,7 +57,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           title={t(`${i18nPrefix}.input`, { ns: 'workflow' })}
           required
           operations={(
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary system-2xs-medium-uppercase">Array</div>
           )}
         >
           <VarReferencePicker
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           title={t(`${i18nPrefix}.output`, { ns: 'workflow' })}
           required
           operations={(
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary system-2xs-medium-uppercase">Array</div>
           )}
         >
           <VarReferencePicker
@@ -103,10 +103,11 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                 <Input type="number" wrapperClassName="w-18 mr-4 " max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
                 <Slider
                   value={inputs.parallel_nums}
-                  onChange={changeParallelNums}
+                  onValueChange={changeParallelNums}
                   max={MAX_PARALLEL_LIMIT}
                   min={MIN_ITERATION_PARALLEL_NUM}
-                  className=" mt-4 flex-1 shrink-0"
+                  className="mt-4 flex-1 shrink-0"
+                  aria-label={t(`${i18nPrefix}.MaxParallelismTitle`, { ns: 'workflow' })}
                 />
               </div>
 

@@ -35,7 +35,8 @@
     "tos",
     "gmpy2",
     "sendgrid",
-    "sendgrid.helpers.mail"
+    "sendgrid.helpers.mail",
+    "holo_search_sdk.types"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
@@ -46,9 +47,8 @@
   "reportMissingTypeArgument": "hint",
   "reportUnnecessaryComparison": "hint",
   "reportUnnecessaryIsInstance": "hint",
-  "reportUntypedFunctionDecorator": "hint",
   "reportUnnecessaryTypeIgnoreComment": "hint",
   "reportAttributeAccessIssue": "hint",
-  "pythonVersion": "3.11",
+  "pythonVersion": "3.12",
   "pythonPlatform": "All"
 }

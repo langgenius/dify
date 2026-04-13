@@ -86,5 +86,3 @@ export const useProviderContext = () => useContext(ProviderContext)
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useProviderContextSelector = <T>(selector: (state: ProviderContextState) => T): T =>
   useContextSelector(ProviderContext, selector)
-
-export default ProviderContext

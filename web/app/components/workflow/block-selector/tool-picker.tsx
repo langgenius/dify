@@ -16,7 +16,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
@@ -137,10 +137,7 @@ const ToolPicker: FC<Props> = ({
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
   }
@@ -169,8 +166,8 @@ const ToolPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
+      <PortalToFollowElemContent className="z-1002">
+        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
           <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
@@ -186,7 +183,7 @@ const ToolPicker: FC<Props> = ({
           </div>
           <AllTools
             className="mt-1"
-            toolContentClassName="max-w-[100%]"
+            toolContentClassName="max-w-full"
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect as OnSelectBlock}

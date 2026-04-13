@@ -1,11 +1,11 @@
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
 import { useInvalidateAllWorkflowTools, useInvalidateWorkflowToolDetailByAppID, useWorkflowToolDetailByAppID } from '@/service/use-tools'
 
@@ -188,14 +188,11 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail(workflowAppId)
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       setShowModal(false)
     }
     catch (e) {
-      Toast.notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
     }
   }
 
@@ -209,14 +206,11 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail(workflowAppId)
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       setShowModal(false)
     }
     catch (e) {
-      Toast.notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
     }
   }
 

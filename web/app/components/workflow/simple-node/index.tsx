@@ -53,7 +53,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px]',
+        'flex rounded-2xl border-2',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
       )}
@@ -68,11 +68,11 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           'rounded-[15px] border border-transparent',
           'w-[240px] bg-workflow-block-bg',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && '!border-state-accent-solid',
-          showSuccessBorder && '!border-state-success-solid',
-          showFailedBorder && '!border-state-destructive-solid',
-          showExceptionBorder && '!border-state-warning-solid',
-          data._isBundled && '!shadow-lg',
+          showRunningBorder && 'border-state-accent-solid!',
+          showSuccessBorder && 'border-state-success-solid!',
+          showFailedBorder && 'border-state-destructive-solid!',
+          showExceptionBorder && 'border-state-warning-solid!',
+          data._isBundled && 'shadow-lg!',
         )}
       >
         {
@@ -80,7 +80,7 @@ const SimpleNode: FC<SimpleNodeProps> = ({
             <NodeTargetHandle
               id={id}
               data={data}
-              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleClassName="top-4! -left-[9px]! translate-y-0!"
               handleId="target"
             />
           )

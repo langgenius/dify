@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import (
@@ -25,7 +26,6 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
-from dify_graph.enums import NodeType
 from models import EndUser
 from models.enums import MessageStatus
 
@@ -147,7 +147,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_llm = MagicMock()
     node_llm.id = "node-llm"
     node_llm.title = "LLM Node"
-    node_llm.node_type = NodeType.LLM
+    node_llm.node_type = BuiltinNodeTypes.LLM
     node_llm.status = "succeeded"
     node_llm.process_data = {
         "model_mode": "chat",
@@ -164,7 +164,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_other = MagicMock()
     node_other.id = "node-other"
     node_other.title = "Other Node"
-    node_other.node_type = NodeType.CODE
+    node_other.node_type = BuiltinNodeTypes.CODE
     node_other.status = "failed"
     node_other.process_data = None
     node_other.inputs = {"code": "print"}
@@ -174,7 +174,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     node_other.metadata = None
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = [node_llm, node_other]
+    repo.get_by_workflow_execution.return_value = [node_llm, node_other]
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
@@ -244,7 +244,7 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
     monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.db", MagicMock(engine="engine"))
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = []
+    repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
@@ -365,9 +365,7 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch):
     mock_end_user = MagicMock(spec=EndUser)
     mock_end_user.session_id = "session-id-123"
 
-    mock_query = MagicMock()
-    mock_query.where.return_value.first.return_value = mock_end_user
-    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.db.session.query", lambda model: mock_query)
+    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.db.session.get", lambda model, pk: mock_end_user)
 
     trace_instance.add_trace = MagicMock()
     trace_instance.add_generation = MagicMock()
@@ -523,11 +521,11 @@ def test_generate_name_trace(trace_instance):
 def test_add_trace_success(trace_instance):
     data = LangfuseTrace(id="t1", name="trace")
     trace_instance.add_trace(data)
-    trace_instance.langfuse_client.trace.assert_called_once()
+    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
 
 
 def test_add_trace_error(trace_instance):
-    trace_instance.langfuse_client.trace.side_effect = Exception("error")
+    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
     data = LangfuseTrace(id="t1", name="trace")
     with pytest.raises(ValueError, match="LangFuse Failed to create trace: error"):
         trace_instance.add_trace(data)
@@ -536,11 +534,11 @@ def test_add_trace_error(trace_instance):
 def test_add_span_success(trace_instance):
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     trace_instance.add_span(data)
-    trace_instance.langfuse_client.span.assert_called_once()
+    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
 
 
 def test_add_span_error(trace_instance):
-    trace_instance.langfuse_client.span.side_effect = Exception("error")
+    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
     data = LangfuseSpan(id="s1", name="span", trace_id="t1")
     with pytest.raises(ValueError, match="LangFuse Failed to create span: error"):
         trace_instance.add_span(data)
@@ -556,11 +554,11 @@ def test_update_span(trace_instance):
 def test_add_generation_success(trace_instance):
     data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
     trace_instance.add_generation(data)
-    trace_instance.langfuse_client.generation.assert_called_once()
+    trace_instance.langfuse_client.api.ingestion.batch.assert_called_once()
 
 
 def test_add_generation_error(trace_instance):
-    trace_instance.langfuse_client.generation.side_effect = Exception("error")
+    trace_instance.langfuse_client.api.ingestion.batch.side_effect = Exception("error")
     data = LangfuseGeneration(id="g1", name="gen", trace_id="t1")
     with pytest.raises(ValueError, match="LangFuse Failed to create generation: error"):
         trace_instance.add_generation(data)
@@ -587,12 +585,12 @@ def test_api_check_error(trace_instance):
 def test_get_project_key_success(trace_instance):
     mock_data = MagicMock()
     mock_data.id = "proj-1"
-    trace_instance.langfuse_client.client.projects.get.return_value = MagicMock(data=[mock_data])
+    trace_instance.langfuse_client.api.projects.get.return_value = MagicMock(data=[mock_data])
     assert trace_instance.get_project_key() == "proj-1"
 
 
 def test_get_project_key_error(trace_instance):
-    trace_instance.langfuse_client.client.projects.get.side_effect = Exception("fail")
+    trace_instance.langfuse_client.api.projects.get.side_effect = Exception("fail")
     with pytest.raises(ValueError, match="LangFuse get project key failed: fail"):
         trace_instance.get_project_key()
 
@@ -664,7 +662,7 @@ def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypat
     node = MagicMock()
     node.id = "n1"
     node.title = "LLM Node"
-    node.node_type = NodeType.LLM
+    node.node_type = BuiltinNodeTypes.LLM
     node.status = "succeeded"
 
     class BadDict(collections.UserDict):
@@ -680,7 +678,7 @@ def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypat
     node.outputs = {}
 
     repo = MagicMock()
-    repo.get_by_workflow_run.return_value = [node]
+    repo.get_by_workflow_execution.return_value = [node]
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)

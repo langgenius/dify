@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -10,12 +10,8 @@ from core.mcp.types import LATEST_PROTOCOL_VERSION, OAuthClientInformation, OAut
 SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", "2025-03-26", LATEST_PROTOCOL_VERSION]
 
 
-SessionT = TypeVar("SessionT", bound=BaseSession[Any, Any, Any, Any, Any])
-LifespanContextT = TypeVar("LifespanContextT")
-
-
 @dataclass
-class RequestContext(Generic[SessionT, LifespanContextT]):
+class RequestContext[SessionT: BaseSession, LifespanContextT]:
     request_id: RequestId
     meta: RequestParams.Meta | None
     session: SessionT

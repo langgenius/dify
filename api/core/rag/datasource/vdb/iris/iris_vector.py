@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
 from configs.middleware.vdb.iris_config import IrisVectorConfig
+from core.rag.datasource.vdb.field import parse_metadata_json
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -269,7 +270,7 @@ class IrisVector(BaseVector):
                 if len(row) >= 4:
                     text, meta_str, score = row[1], row[2], float(row[3])
                     if score >= score_threshold:
-                        metadata = json.loads(meta_str) if meta_str else {}
+                        metadata = parse_metadata_json(meta_str)
                         metadata["score"] = score
                         docs.append(Document(page_content=text, metadata=metadata))
             return docs
@@ -384,7 +385,7 @@ class IrisVector(BaseVector):
                     meta_str = row[2]
                     score_value = row[3]
 
-                    metadata = json.loads(meta_str) if meta_str else {}
+                    metadata = parse_metadata_json(meta_str)
                     # Add score to metadata for hybrid search compatibility
                     score = float(score_value) if score_value is not None else 0.0
                     metadata["score"] = score

@@ -8,7 +8,7 @@ import List from '../list'
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(''),
 }))
@@ -124,7 +124,7 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 

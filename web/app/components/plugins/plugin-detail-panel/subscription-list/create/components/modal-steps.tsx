@@ -19,7 +19,7 @@ type StatusStepProps = {
   text: string
 }
 
-export const StatusStep = ({ isActive, text }: StatusStepProps) => {
+const StatusStep = ({ isActive, text }: StatusStepProps) => {
   return (
     <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
       ? 'text-state-accent-solid'
@@ -81,7 +81,7 @@ type SubscriptionFormProps = {
   endpoint?: string
 }
 
-export const SubscriptionForm = ({
+const SubscriptionForm = ({
   subscriptionFormRef,
   endpoint,
 }: SubscriptionFormProps) => {
@@ -143,7 +143,7 @@ type AutoParametersFormProps = {
   credentialId: string
 }
 
-export const AutoParametersForm = ({
+const AutoParametersForm = ({
   schemas,
   formRef,
   pluginId,
@@ -192,7 +192,7 @@ type ManualPropertiesSectionProps = {
   pluginName: string
 }
 
-export const ManualPropertiesSection = ({
+const ManualPropertiesSection = ({
   schemas,
   formRef,
   onChange,
@@ -225,7 +225,7 @@ export const ManualPropertiesSection = ({
           <div className="system-xs-medium-uppercase text-text-tertiary">
             {t('modal.manual.logs.title', { ns: 'pluginTrigger' })}
           </div>
-          <div className="h-px flex-1 bg-gradient-to-r from-divider-regular to-transparent" />
+          <div className="h-px flex-1 bg-linear-to-r from-divider-regular to-transparent" />
         </div>
 
         <div className="mb-1 flex items-center justify-center gap-1 rounded-lg bg-background-section p-3">

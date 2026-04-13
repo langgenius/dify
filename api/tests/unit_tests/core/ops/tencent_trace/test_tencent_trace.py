@@ -2,6 +2,8 @@ import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import TencentConfig
 from core.ops.entities.trace_entity import (
@@ -14,8 +16,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.tencent_trace.tencent_trace import TencentDataTrace
-from dify_graph.entities import WorkflowNodeExecution
-from dify_graph.enums import NodeType
 from models import Account, App, TenantAccountJoin
 
 logger = logging.getLogger(__name__)
@@ -320,10 +320,10 @@ class TestTencentDataTrace:
 
         node1 = MagicMock(spec=WorkflowNodeExecution)
         node1.id = "n1"
-        node1.node_type = NodeType.LLM
+        node1.node_type = BuiltinNodeTypes.LLM
         node2 = MagicMock(spec=WorkflowNodeExecution)
         node2.id = "n2"
-        node2.node_type = NodeType.TOOL
+        node2.node_type = BuiltinNodeTypes.TOOL
 
         with patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node1, node2]):
             with patch.object(tencent_data_trace, "_build_workflow_node_span", side_effect=["span1", "span2"]):
@@ -359,10 +359,10 @@ class TestTencentDataTrace:
         trace_info = MagicMock(spec=WorkflowTraceInfo)
 
         nodes = [
-            (NodeType.LLM, mock_span_builder.build_workflow_llm_span),
-            (NodeType.KNOWLEDGE_RETRIEVAL, mock_span_builder.build_workflow_retrieval_span),
-            (NodeType.TOOL, mock_span_builder.build_workflow_tool_span),
-            (NodeType.CODE, mock_span_builder.build_workflow_task_span),
+            (BuiltinNodeTypes.LLM, mock_span_builder.build_workflow_llm_span),
+            (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, mock_span_builder.build_workflow_retrieval_span),
+            (BuiltinNodeTypes.TOOL, mock_span_builder.build_workflow_tool_span),
+            (BuiltinNodeTypes.CODE, mock_span_builder.build_workflow_task_span),
         ]
 
         for node_type, builder_method in nodes:
@@ -377,7 +377,7 @@ class TestTencentDataTrace:
 
     def test_build_workflow_node_span_exception(self, tencent_data_trace, mock_span_builder):
         node = MagicMock(spec=WorkflowNodeExecution)
-        node.node_type = NodeType.LLM
+        node.node_type = BuiltinNodeTypes.LLM
         node.id = "n1"
         mock_span_builder.build_workflow_llm_span.side_effect = Exception("error")
 
@@ -407,13 +407,12 @@ class TestTencentDataTrace:
             mock_db.engine = "engine"
             with patch("core.ops.tencent_trace.tencent_trace.Session") as mock_session_ctx:
                 session = mock_session_ctx.return_value.__enter__.return_value
-                session.scalar.side_effect = [app, account]
-                session.query.return_value.filter_by.return_value.first.return_value = tenant_join
+                session.scalar.side_effect = [app, account, tenant_join]
 
                 with patch(
                     "core.ops.tencent_trace.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"
                 ) as mock_repo:
-                    mock_repo.return_value.get_by_workflow_run.return_value = mock_executions
+                    mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
 
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)
 

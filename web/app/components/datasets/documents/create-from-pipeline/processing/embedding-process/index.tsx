@@ -10,8 +10,6 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +24,8 @@ import DocumentFileIcon from '@/app/components/datasets/common/document-file-ico
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
+import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { cn } from '@/utils/classnames'
@@ -169,11 +169,11 @@ const EmbeddingProcess = ({
             >
               {isSourceEmbedding(indexingStatusDetail) && (
                 <div
-                  className="absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+                  className="absolute left-0 top-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
                   style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
                 />
               )}
-              <div className="z-[1] flex h-full items-center gap-1 pl-[6px] pr-2">
+              <div className="z-1 flex h-full items-center gap-1 pl-[6px] pr-2">
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
                   <DocumentFileIcon
                     size="sm"

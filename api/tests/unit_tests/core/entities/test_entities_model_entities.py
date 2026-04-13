@@ -8,6 +8,9 @@ drive provider mapping behavior.
 """
 
 import pytest
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 from core.entities.model_entities import (
     DefaultModelEntity,
@@ -16,9 +19,6 @@ from core.entities.model_entities import (
     ProviderModelWithStatusEntity,
     SimpleModelProviderEntity,
 )
-from dify_graph.model_runtime.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.model_entities import FetchFrom, ModelType
-from dify_graph.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
 
 def _build_model_with_status(status: ModelStatus) -> ProviderModelWithStatusEntity:

@@ -1,7 +1,7 @@
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { RiLock2Fill } from '@remixicon/react'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 
 type EncryptedKey = I18nKeysWithPrefix<'common', 'provider.encrypted.'>

@@ -1,12 +1,16 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, NoReturn, ParamSpec, TypeVar
+from typing import Any, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
+from graphon.file import helpers as file_helpers
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -15,21 +19,19 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.file import helpers as file_helpers
-from dify_graph.variables.segment_group import SegmentGroup
-from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
-from dify_graph.variables.types import SegmentType
+from core.app.file_access import DatabaseFileAccessController
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
@@ -84,7 +86,14 @@ def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     return value_type.exposed_type().value
 
 
-def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
+class FullContentDict(TypedDict):
+    size_bytes: int | None
+    value_type: str
+    length: int | None
+    download_url: str
+
+
+def _serialize_full_content(variable: WorkflowDraftVariable) -> FullContentDict | None:
     """Serialize full_content information for large variables."""
     if not variable.is_truncated():
         return None
@@ -92,12 +101,25 @@ def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
     variable_file = variable.variable_file
     assert variable_file is not None
 
-    return {
+    result: FullContentDict = {
         "size_bytes": variable_file.size,
         "value_type": variable_file.value_type.exposed_type().value,
         "length": variable_file.length,
         "download_url": file_helpers.get_signed_file_url(variable_file.upload_file_id, as_attachment=True),
     }
+    return result
+
+
+def _ensure_variable_access(
+    variable: WorkflowDraftVariable | None,
+    app_id: str,
+    variable_id: str,
+) -> WorkflowDraftVariable:
+    if variable is None:
+        raise NotFoundError(description=f"variable not found, id={variable_id}")
+    if variable.app_id != app_id or variable.user_id != current_user.id:
+        raise NotFoundError(description=f"variable not found, id={variable_id}")
+    return variable
 
 
 _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
@@ -178,11 +200,8 @@ workflow_draft_variable_list_model = console_ns.model(
     "WorkflowDraftVariableList", workflow_draft_variable_list_fields_copy
 )
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-
-def _api_prerequisite(f: Callable[P, R]):
+def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -199,7 +218,7 @@ def _api_prerequisite(f: Callable[P, R]):
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         return f(*args, **kwargs)
 
     return wrapper
@@ -230,7 +249,7 @@ class WorkflowVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -238,6 +257,7 @@ class WorkflowVariableCollectionApi(Resource):
                 app_id=app_model.id,
                 page=args.page,
                 limit=args.limit,
+                user_id=current_user.id,
             )
 
         return workflow_vars
@@ -250,12 +270,12 @@ class WorkflowVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        draft_var_srv.delete_workflow_variables(app_model.id)
+        draft_var_srv.delete_user_workflow_variables(app_model.id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
 
-def validate_node_id(node_id: str) -> NoReturn | None:
+def validate_node_id(node_id: str) -> None:
     if node_id in [
         CONVERSATION_VARIABLE_NODE_ID,
         SYSTEM_VARIABLE_NODE_ID,
@@ -270,7 +290,6 @@ def validate_node_id(node_id: str) -> NoReturn | None:
         raise InvalidArgumentError(
             f"invalid node_id, please use correspond api for conversation and system variables, node_id={node_id}",
         )
-    return None
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
@@ -283,11 +302,11 @@ class NodeVariableCollectionApi(Resource):
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-            node_vars = draft_var_srv.list_node_variables(app_model.id, node_id)
+            node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
 
         return node_vars
 
@@ -298,7 +317,7 @@ class NodeVariableCollectionApi(Resource):
     def delete(self, app_model: App, node_id: str):
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
-        srv.delete_node_variables(app_model.id, node_id)
+        srv.delete_node_variables(app_model.id, node_id, user_id=current_user.id)
         db.session.commit()
         return Response("", 204)
 
@@ -319,11 +338,11 @@ class VariableApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
         return variable
 
     @console_ns.doc("update_variable")
@@ -360,11 +379,11 @@ class VariableApi(Resource):
         )
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
 
         new_name = args_model.name
         raw_value = args_model.value
@@ -373,16 +392,27 @@ class VariableApi(Resource):
 
         new_value = None
         if raw_value is not None:
-            if variable.value_type == SegmentType.FILE:
-                if not isinstance(raw_value, dict):
-                    raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(mapping=raw_value, tenant_id=app_model.tenant_id)
-            elif variable.value_type == SegmentType.ARRAY_FILE:
-                if not isinstance(raw_value, list):
-                    raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
-                if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
-                    raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(mappings=raw_value, tenant_id=app_model.tenant_id)
+            match variable.value_type:
+                case SegmentType.FILE:
+                    if not isinstance(raw_value, dict):
+                        raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
+                    raw_value = build_from_mapping(
+                        mapping=raw_value,
+                        tenant_id=app_model.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
+                case SegmentType.ARRAY_FILE:
+                    if not isinstance(raw_value, list):
+                        raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
+                    if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
+                        raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
+                    raw_value = build_from_mappings(
+                        mappings=raw_value,
+                        tenant_id=app_model.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
+                case _:
+                    pass
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
@@ -397,11 +427,11 @@ class VariableApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
         draft_var_srv.delete_variable(variable)
         db.session.commit()
         return Response("", 204)
@@ -427,11 +457,11 @@ class VariableResetApi(Resource):
             raise NotFoundError(
                 f"Draft workflow not found, app_id={app_model.id}",
             )
-        variable = draft_var_srv.get_variable(variable_id=variable_id)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
-        if variable.app_id != app_model.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        variable = _ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id),
+            app_id=app_model.id,
+            variable_id=variable_id,
+        )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()
@@ -442,16 +472,20 @@ class VariableResetApi(Resource):
 
 
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )
         if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(app_model.id)
+            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user.id)
         elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(app_model.id)
+            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user.id)
         else:
-            draft_vars = draft_var_srv.list_node_variables(app_id=app_model.id, node_id=node_id)
+            draft_vars = draft_var_srv.list_node_variables(
+                app_id=app_model.id,
+                node_id=node_id,
+                user_id=current_user.id,
+            )
     return draft_vars
 
 
@@ -472,7 +506,7 @@ class ConversationVariableCollectionApi(Resource):
         if draft_workflow is None:
             raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
         draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
+        draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
         db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 

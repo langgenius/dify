@@ -53,7 +53,7 @@ const createSelectorWithTransientPrefix = (prefix: string, suffix: string): stri
 }
 
 const hasErrorIcon = (container: HTMLElement) => {
-  return container.querySelector('svg.text-text-destructive') !== null
+  return container.querySelector('svg.text-text-warning') !== null
 }
 
 const renderVariableBlock = (props: {
@@ -148,7 +148,10 @@ describe('HITLInputVariableBlockComponent', () => {
         editor!.update(() => {
           $getRoot().selectEnd()
         })
-        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, createWorkflowNodesMap())
+        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
+          workflowNodesMap: createWorkflowNodesMap(),
+          availableVariables: [],
+        })
       })
 
       expect(handled).toBe(true)

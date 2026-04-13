@@ -233,11 +233,10 @@ class TestWebAppAuthService:
         assert result.status == AccountStatus.ACTIVE
 
         # Verify database state
-
-        db_session_with_containers.refresh(result)
-        assert result.id is not None
-        assert result.password is not None
-        assert result.password_salt is not None
+        refreshed = db_session_with_containers.get(Account, result.id)
+        assert refreshed is not None
+        assert refreshed.password is not None
+        assert refreshed.password_salt is not None
 
     def test_authenticate_account_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -414,9 +413,8 @@ class TestWebAppAuthService:
         assert result.status == AccountStatus.ACTIVE
 
         # Verify database state
-
-        db_session_with_containers.refresh(result)
-        assert result.id is not None
+        refreshed = db_session_with_containers.get(Account, result.id)
+        assert refreshed is not None
 
     def test_get_user_through_email_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies

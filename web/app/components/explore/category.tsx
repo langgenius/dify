@@ -7,7 +7,7 @@ import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndF
 import exploreI18n from '@/i18n/en-US/explore.json'
 import { cn } from '@/utils/classnames'
 
-export type ICategoryProps = {
+type ICategoryProps = {
   className?: string
   list: AppCategory[]
   value: string

@@ -11,22 +11,42 @@ import AppCard from '../app-card'
 
 // Mock next/navigation
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
-// Mock use-context-selector with stable mockNotify reference for tracking calls
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  return {
+    record,
+    api: Object.assign(api, {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: toastMocks.api,
+}))
+
+// Mock use-context-selector with stable toast reference for tracking calls
 // Include createContext for components that use it (like Toast)
-const mockNotify = vi.fn()
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
   useContext: () => ({
-    notify: mockNotify,
+    notify: toastMocks.api,
   }),
   useContextSelector: (_context: unknown, selector: (state: Record<string, unknown>) => unknown) => selector({
-    notify: mockNotify,
+    notify: toastMocks.api,
   }),
 }))
 
@@ -111,7 +131,7 @@ vi.mock('@/utils/time', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
@@ -528,7 +548,7 @@ describe('AppCard', () => {
       expect(card).toBeInTheDocument()
     })
 
-    it('should have rounded corners', () => {
+    it('should have rounded-sm corners', () => {
       const { container } = render(<AppCard app={mockApp} />)
       const card = container.querySelector('[class*="rounded-xl"]')
       expect(card).toBeInTheDocument()
@@ -543,6 +563,11 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
@@ -556,6 +581,11 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
@@ -572,11 +602,16 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      // Fill in the confirmation input with app name
+      const deleteInput = screen.getByRole('textbox')
+      fireEvent.change(deleteInput, { target: { value: mockApp.name } })
+
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(mockDeleteAppMutation).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Delete failed') })
+        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Delete failed') })
       })
     })
 
@@ -655,7 +690,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.copyApp).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
       })
     })
 
@@ -684,7 +719,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.exportAppConfig).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
       })
     })
   })
@@ -930,7 +965,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.updateAppInfo).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Edit failed') })
+        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Edit failed') })
       })
     })
 
@@ -983,7 +1018,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
       })
     })
   })

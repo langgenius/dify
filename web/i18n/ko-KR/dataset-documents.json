@@ -300,7 +300,7 @@
   "segment.collapseChunks": "청크 축소",
   "segment.contentEmpty": "내용을 비워둘 수 없습니다",
   "segment.contentPlaceholder": "내용을 입력하세요",
-  "segment.dateTimeFormat": "MM/DD/YYYY h:mm",
+  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
   "segment.delete": "이 청크를 삭제하시겠습니까?",
   "segment.editChildChunk": "자손 청크 편집 (Edit Child Chunk)",
   "segment.editChunk": "청크 편집 (Edit Chunk)",

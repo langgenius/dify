@@ -108,7 +108,7 @@ describe('OperationsPopover', () => {
     it('should have correct positioning styles', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('absolute', 'right-2', 'top-2', 'z-[15]')
+      expect(wrapper).toHaveClass('absolute', 'right-2', 'top-2', 'z-15')
     })
 
     it('should have icon with correct size classes', () => {
