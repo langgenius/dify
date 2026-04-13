@@ -416,16 +416,14 @@ export class CollaborationManager {
     this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
   }
 
-  private cleanupNodePanelPresence(activeClientIds: Set<string>, activeUserIds: Set<string>): void {
+  private cleanupNodePanelPresence(activeClientIds: Set<string>): void {
     let hasChanges = false
 
     Object.entries(this.nodePanelPresence).forEach(([nodeId, viewers]) => {
       Object.keys(viewers).forEach((clientId) => {
-        const viewer = viewers[clientId]
         const clientActive = activeClientIds.has(clientId)
-        const userActive = viewer?.userId ? activeUserIds.has(viewer.userId) : false
 
-        if (!clientActive && !userActive) {
+        if (!clientActive) {
           delete viewers[clientId]
           hasChanges = true
         }
@@ -1513,7 +1511,7 @@ export class CollaborationManager {
             delete this.cursors[userId]
         })
 
-        this.cleanupNodePanelPresence(onlineClientIds, onlineUserIds)
+        this.cleanupNodePanelPresence(onlineClientIds)
 
         // Update leader information
         if (data.leader && typeof data.leader === 'string')

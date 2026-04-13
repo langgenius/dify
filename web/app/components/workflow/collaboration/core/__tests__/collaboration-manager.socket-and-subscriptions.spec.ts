@@ -72,7 +72,7 @@ type CollaborationManagerInternals = {
   emitGraphResyncRequest: () => void
   broadcastCurrentGraph: () => void
   requestInitialSyncIfNeeded: () => void
-  cleanupNodePanelPresence: (activeClientIds: Set<string>, activeUserIds: Set<string>) => void
+  cleanupNodePanelPresence: (activeClientIds: Set<string>) => void
   recordGraphSyncDiagnostic: (
     stage: 'nodes_subscribe' | 'edges_subscribe' | 'nodes_import_apply' | 'edges_import_apply' | 'schedule_graph_import_emit' | 'graph_import_emit' | 'start_import_log' | 'finalize_import_log',
     status: 'triggered' | 'skipped' | 'applied' | 'queued' | 'emitted' | 'snapshot',
@@ -424,6 +424,65 @@ describe('CollaborationManager socket and subscription behavior', () => {
       { isConnected: false, error: 'connect failed' },
     ])
     expect(errorSpy).toHaveBeenCalled()
+  })
+
+  it('removes stale node panel viewers by inactive client even when the same user is still online in another tab', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const socket = createMockSocket('socket-tab-b')
+
+    internals.nodePanelPresence = {
+      'n-1': {
+        'socket-tab-a': {
+          userId: 'u-1',
+          username: 'Alice',
+          clientId: 'socket-tab-a',
+          timestamp: 1,
+        },
+        'socket-tab-b': {
+          userId: 'u-1',
+          username: 'Alice',
+          clientId: 'socket-tab-b',
+          timestamp: 2,
+        },
+      },
+    }
+
+    const presenceUpdates: NodePanelPresenceMap[] = []
+    manager.onNodePanelPresenceUpdate((presence) => {
+      presenceUpdates.push(presence)
+    })
+
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    socket.trigger('online_users', {
+      users: [{
+        user_id: 'u-1',
+        username: 'Alice',
+        avatar: '',
+        sid: 'socket-tab-b',
+      }],
+    })
+
+    expect(internals.nodePanelPresence).toEqual({
+      'n-1': {
+        'socket-tab-b': {
+          userId: 'u-1',
+          username: 'Alice',
+          clientId: 'socket-tab-b',
+          timestamp: 2,
+        },
+      },
+    })
+    expect(presenceUpdates.at(-1)).toEqual({
+      'n-1': {
+        'socket-tab-b': {
+          userId: 'u-1',
+          username: 'Alice',
+          clientId: 'socket-tab-b',
+          timestamp: 2,
+        },
+      },
+    })
   })
 
   it('setupSubscriptions applies import updates and emits merged graph payload', () => {
