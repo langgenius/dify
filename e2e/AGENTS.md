@@ -178,7 +178,7 @@ open cucumber-report/report.html
 
 ### Feature file conventions
 
-Tag every feature with a capability tag and an auth tag:
+Tag every feature or scenario with a capability tag. Add auth tags only when they clarify intent or change the browser session behavior:
 
 ```gherkin
 @datasets @authenticated
@@ -190,9 +190,10 @@ Feature: Create dataset
 ```
 
 - Capability tags (`@apps`, `@auth`, `@datasets`, …) group related scenarios for selective runs
-- Auth tags control the `Before` hook behavior:
-  - `@authenticated` — injects the shared auth storageState into the BrowserContext
+- Auth/session tags:
+  - default behavior — scenarios run with the shared authenticated storageState unless marked otherwise
   - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
+  - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
 - `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
 - `@skip` — excluded from all runs
 
@@ -287,13 +288,7 @@ Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML rep
 
 ## Reusing existing steps
 
-Before writing a new step definition, check what already exists. Steps in `common/` are designed for broad reuse across all features.
-
-List all registered step patterns:
-
-```bash
-grep -rn "Given\|When\|Then" e2e/features/step-definitions/ --include='*.ts' | grep -oP "'[^']+'"
-```
+Before writing a new step definition, inspect the existing step definition files first. Reuse a matching step when the wording and behavior already fit, and only add a new step when the scenario needs a genuinely new user action or assertion. Steps in `common/` are designed for broad reuse across all features.
 
 Or browse the step definition files directly:
 
