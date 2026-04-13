@@ -5,7 +5,7 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
@@ -16,6 +16,7 @@ import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidateMCPServerDetail } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
@@ -166,6 +167,11 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   const docLink = useDocLink()
   const appId = appInfo.id
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
+  const invalidateMCPServerDetailRef = useRef(invalidateMCPServerDetail)
+
+  useEffect(() => {
+    invalidateMCPServerDetailRef.current = invalidateMCPServerDetail
+  }, [invalidateMCPServerDetail])
 
   const {
     genLoading,
@@ -258,34 +264,17 @@ const MCPServiceCard: FC<IAppCardProps> = ({
     if (!appId)
       return
 
-    let unsubscribe: (() => void) | undefined
-    let cancelled = false
-
-    void (async () => {
+    const unsubscribe = collaborationManager.onMcpServerUpdate((_update: CollaborationUpdate) => {
       try {
-        const { collaborationManager } = await import('@/app/components/workflow/collaboration/core/collaboration-manager')
-        if (cancelled)
-          return
-
-        unsubscribe = collaborationManager.onMcpServerUpdate((_update: CollaborationUpdate) => {
-          try {
-            invalidateMCPServerDetail(appId)
-          }
-          catch (error) {
-            console.error('MCP server update failed:', error)
-          }
-        })
+        invalidateMCPServerDetailRef.current(appId)
       }
       catch (error) {
-        console.error('MCP collaboration subscription failed:', error)
+        console.error('MCP server update failed:', error)
       }
     })
 
-    return () => {
-      cancelled = true
-      unsubscribe?.()
-    }
-  }, [appId, invalidateMCPServerDetail])
+    return unsubscribe
+  }, [appId])
 
   if (isLoading)
     return null
