@@ -26,17 +26,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class WorkflowCommentContentPayload(BaseModel):
+class WorkflowCommentCreatePayload(BaseModel):
     content: str = Field(..., description="Comment content")
+    position_x: float = Field(..., description="Comment X position")
+    position_y: float = Field(..., description="Comment Y position")
     mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
 
 
-class WorkflowCommentCreatePayload(WorkflowCommentContentPayload):
-    position_x: float = Field(..., description="Comment X position")
-    position_y: float = Field(..., description="Comment Y position")
-
-
-class WorkflowCommentUpdatePayload(WorkflowCommentContentPayload):
+class WorkflowCommentUpdatePayload(BaseModel):
+    content: str = Field(..., description="Comment content")
     position_x: float | None = Field(default=None, description="Comment X position")
     position_y: float | None = Field(default=None, description="Comment Y position")
     mentioned_user_ids: list[str] | None = Field(
@@ -45,8 +43,9 @@ class WorkflowCommentUpdatePayload(WorkflowCommentContentPayload):
     )
 
 
-class WorkflowCommentReplyPayload(WorkflowCommentContentPayload):
+class WorkflowCommentReplyPayload(BaseModel):
     content: str = Field(..., description="Reply content")
+    mentioned_user_ids: list[str] = Field(default_factory=list, description="Mentioned user IDs")
 
 
 class WorkflowCommentMentionUsersPayload(BaseModel):

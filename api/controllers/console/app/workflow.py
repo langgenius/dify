@@ -1425,9 +1425,14 @@ class WorkflowOnlineUsersApi(Resource):
                 if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
                     try:
                         user_info["avatar"] = file_helpers.get_signed_file_url(avatar)
-                    except Exception:
-                        # keep original avatar value when signing fails
-                        pass
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to sign workflow online user avatar; using original value. "
+                            "app_id=%s avatar=%s error=%s",
+                            app_id,
+                            avatar,
+                            exc,
+                        )
 
                 users.append(user_info)
             results.append({"app_id": app_id, "users": users})
