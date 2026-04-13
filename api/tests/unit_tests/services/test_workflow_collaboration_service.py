@@ -101,6 +101,25 @@ class TestWorkflowCollaborationService:
             {"user_id": "u-1", "username": "Jane", "avatar": "avatar.png", "tenant_id": "t-1"},
         )
 
+    def test_can_access_workflow_uses_session_factory(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, _repository, _socketio = service
+        session = Mock()
+        session.scalar.return_value = "wf-1"
+        session_context = Mock()
+        session_context.__enter__ = Mock(return_value=session)
+        session_context.__exit__ = Mock(return_value=False)
+
+        with patch(
+            "services.workflow_collaboration_service.session_factory.create_session",
+            return_value=session_context,
+        ):
+            result = collaboration_service._can_access_workflow("wf-1", "tenant-1")
+
+        assert result is True
+        session.scalar.assert_called_once()
+
     def test_relay_collaboration_event_unauthorized(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
     ) -> None:

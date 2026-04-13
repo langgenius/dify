@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 from sqlalchemy import select
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
@@ -78,10 +78,9 @@ class WorkflowCollaborationService:
         return str(user_id), is_leader
 
     def _can_access_workflow(self, workflow_id: str, tenant_id: str) -> bool:
-        """Check that the collaboration room belongs to an active app in the caller's current tenant."""
-        app_id = db.session.scalar(
-            select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1)
-        )
+        """Check room access without relying on Flask's app-context-bound scoped session."""
+        with session_factory.create_session() as session:
+            app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
         return app_id is not None
 
     def disconnect_session(self, sid: str) -> None:
