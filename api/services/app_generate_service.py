@@ -52,20 +52,15 @@ class AppGenerateService:
             nonlocal started
             with lock:
                 if started:
-                    logger.info("[DEBUG-AGENT] _try_start: already started, skipping")
                     return True
                 try:
-                    logger.info("[DEBUG-AGENT] _try_start: calling start_task()...")
                     start_task()
-                    logger.info("[DEBUG-AGENT] _try_start: start_task() succeeded")
                 except Exception:
-                    logger.exception("[DEBUG-AGENT] _try_start: Failed to enqueue streaming task")
                     return False
                 started = True
                 return True
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
-        logger.info("[DEBUG-AGENT] channel_type=%s", channel_type)
         if channel_type == "streams":
             # With Redis Streams, we can safely start right away; consumers can read past events.
             _try_start()
@@ -228,10 +223,8 @@ class AppGenerateService:
                         request_id=request_id,
                     )
                 case AppMode.AGENT:
-                    logger.info("[DEBUG-AGENT] Entered AGENT case, streaming=%s", streaming)
                     workflow_id = args.get("workflow_id")
                     workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
-                    logger.info("[DEBUG-AGENT] Got workflow id=%s", workflow.id)
 
                     if streaming:
                         with rate_limit_context(rate_limit, request_id):
