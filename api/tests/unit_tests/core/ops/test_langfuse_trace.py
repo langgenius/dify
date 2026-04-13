@@ -110,7 +110,7 @@ class TestLangFuseDataTraceCompletionStartTime:
             end_time=start_time + timedelta(seconds=3.5),
         )
         repository = MagicMock()
-        repository.get_by_workflow_run.return_value = [node_execution]
+        repository.get_by_workflow_execution.return_value = [node_execution]
 
         with (
             patch.object(trace, "add_trace"),
