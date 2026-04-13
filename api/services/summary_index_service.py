@@ -348,6 +348,8 @@ class SummaryIndexService:
                                     status=SummaryStatus.COMPLETED,
                                     enabled=True,
                                 )
+                                if summary_record_in_session is None:
+                                    raise RuntimeError("summary_record_in_session should not be None at this point")
                                 summary_record_in_session.id = summary_record_id
                                 session.add(summary_record_in_session)
                                 logger.info(
