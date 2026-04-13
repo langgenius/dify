@@ -9,6 +9,7 @@ from core.ops.entities.trace_entity import MessageTraceInfo, WorkflowTraceInfo
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from dify_graph.enums import BuiltinNodeTypes
 
+
 def _create_trace_instance() -> LangFuseDataTrace:
     with patch("core.ops.langfuse_trace.langfuse_trace.Langfuse", autospec=True):
         return LangFuseDataTrace(
