@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from flask_restx import marshal
+from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -19,11 +20,11 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.model_runtime.errors.invoke import InvokeError
 from fields.hit_testing_fields import hit_testing_record_fields
 from libs.login import current_user
 from models.account import Account
 from services.dataset_service import DatasetService
+from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class HitTestingPayload(BaseModel):
     query: str = Field(max_length=250)
-    retrieval_model: dict[str, Any] | None = None
+    retrieval_model: RetrievalModel | None = None
     external_retrieval_model: dict[str, Any] | None = None
     attachment_ids: list[str] | None = None
 

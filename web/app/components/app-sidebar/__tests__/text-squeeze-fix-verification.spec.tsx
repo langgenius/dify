@@ -7,7 +7,7 @@ import { render } from '@testing-library/react'
 import * as React from 'react'
 
 // Mock Next.js navigation
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 

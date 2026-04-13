@@ -17,7 +17,7 @@ const Textarea: FC<IContentProps> = React.memo(({
 }) => {
   return (
     <textarea
-      className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-none', className)}
+      className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-hidden', className)}
       placeholder={placeholder}
       value={value}
       disabled={disabled}
@@ -80,7 +80,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
   return (
     <textarea
       ref={textareaRef}
-      className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-none', className)}
+      className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-hidden', className)}
       style={{
         maxHeight,
       }}
@@ -176,7 +176,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
   if (!isEditMode) {
     return (
       <Markdown
-        className="h-full w-full !text-text-secondary"
+        className="h-full w-full text-text-secondary!"
         content={question}
         customDisallowedElements={['input']}
       />

@@ -52,7 +52,7 @@ vi.mock('@/context/workspace-context-provider', () => ({
   WorkspaceProvider: ({ children }: { children?: React.ReactNode }) => children,
 }))
 
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children?: React.ReactNode, href?: string }) => <a href={href}>{children}</a>,
 }))
 

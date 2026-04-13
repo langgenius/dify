@@ -3,16 +3,17 @@ import unittest
 import uuid
 
 import pytest
+from graphon.nodes import BuiltinNodeTypes
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
+from graphon.variables.variables import StringVariable
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from dify_graph.nodes import BuiltinNodeTypes
-from dify_graph.variables.segments import StringSegment
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.variables import StringVariable
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
 from libs import datetime_utils
 from models.enums import CreatorUserRole
@@ -347,7 +348,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         # Create an upload file record
         upload_file = UploadFile(
             tenant_id=self._test_tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_offload_{uuid.uuid4()}.json",
             name="test_offload.json",
             size=len(content_bytes),
@@ -450,7 +451,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         # Create upload file record
         upload_file = UploadFile(
             tenant_id=self._test_tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_integration_{uuid.uuid4()}.txt",
             name="test_integration.txt",
             size=len(content_bytes),

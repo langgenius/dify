@@ -4,7 +4,6 @@ import type { VariantProps } from 'class-variance-authority'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 export const NumberField = BaseNumberField.Root
@@ -12,12 +11,12 @@ export type NumberFieldRootProps = React.ComponentPropsWithoutRef<typeof BaseNum
 
 export const numberFieldGroupVariants = cva(
   [
-    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-none transition-[background-color,border-color,box-shadow]',
+    'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'data-[focused]:border-components-input-border-active data-[focused]:bg-components-input-bg-active data-[focused]:shadow-xs',
-    'data-[disabled]:cursor-not-allowed data-[disabled]:border-transparent data-[disabled]:bg-components-input-bg-disabled data-[disabled]:text-components-input-text-filled-disabled',
-    'data-[disabled]:hover:border-transparent data-[disabled]:hover:bg-components-input-bg-disabled',
-    'data-[readonly]:shadow-none data-[readonly]:hover:border-transparent data-[readonly]:hover:bg-components-input-bg-normal motion-reduce:transition-none',
+    'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
+    'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
+    'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
+    'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal motion-reduce:transition-none',
   ],
   {
     variants: {
@@ -50,10 +49,10 @@ export function NumberFieldGroup({
 
 export const numberFieldInputVariants = cva(
   [
-    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-none',
+    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-[readonly]:cursor-default',
+    'data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -84,7 +83,7 @@ export function NumberFieldInput({
 }
 
 export const numberFieldUnitVariants = cva(
-  'flex shrink-0 items-center self-stretch text-text-tertiary system-sm-regular',
+  'flex shrink-0 items-center self-stretch system-sm-regular text-text-tertiary',
   {
     variants: {
       size: {
@@ -113,7 +112,7 @@ export function NumberFieldUnit({
   )
 }
 
-export const numberFieldControlsVariants = cva(
+const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
@@ -131,14 +130,14 @@ export function NumberFieldControls({
   )
 }
 
-export const numberFieldControlButtonVariants = cva(
+const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation select-none items-center justify-center px-1.5 text-text-tertiary outline-none transition-colors',
+    'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
+    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
-    'group-data-[disabled]/number-field:cursor-not-allowed group-data-[disabled]/number-field:hover:bg-transparent group-data-[disabled]/number-field:focus-visible:bg-transparent group-data-[disabled]/number-field:focus-visible:ring-0',
-    'group-data-[readonly]/number-field:cursor-default group-data-[readonly]/number-field:hover:bg-transparent group-data-[readonly]/number-field:focus-visible:bg-transparent group-data-[readonly]/number-field:focus-visible:ring-0',
+    'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
+    'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',
     'motion-reduce:transition-none',
   ],
   {
@@ -188,18 +187,19 @@ type NumberFieldButtonVariantProps = Omit<
 
 export type NumberFieldButtonProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Increment> & NumberFieldButtonVariantProps
 
+const incrementAriaLabel = 'Increment value'
+const decrementAriaLabel = 'Decrement value'
+
 export function NumberFieldIncrement({
   className,
   children,
   size = 'regular',
   ...props
 }: NumberFieldButtonProps) {
-  const { t } = useTranslation()
-
   return (
     <BaseNumberField.Increment
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.increment', { ns: 'common' }))}
+      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
@@ -213,12 +213,10 @@ export function NumberFieldDecrement({
   size = 'regular',
   ...props
 }: NumberFieldButtonProps) {
-  const { t } = useTranslation()
-
   return (
     <BaseNumberField.Decrement
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : t('operation.decrement', { ns: 'common' }))}
+      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)}
       className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}

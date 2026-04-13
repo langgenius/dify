@@ -13,10 +13,6 @@ import {
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
-export const checkNodeValid = () => {
-  return true
-}
-
 export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
   if (datasets === null)
     datasets = []

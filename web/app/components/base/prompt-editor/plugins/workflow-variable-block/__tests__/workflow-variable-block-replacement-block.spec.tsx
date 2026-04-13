@@ -183,12 +183,7 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       ['node-1', 'output'],
       workflowNodesMap,
       getVarType,
-      variables[0].vars,
-      variables[1].vars,
-      [
-        { variable: 'ragVarA', type: VarType.string, isRagVariable: true },
-        { variable: 'rag.shared.answer', type: VarType.string, isRagVariable: true },
-      ],
+      variables,
     )
     expect($applyNodeReplacement).toHaveBeenCalledWith({ type: 'workflow-node' })
     expect(created).toEqual({ type: 'workflow-node' })
@@ -214,8 +209,6 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       workflowNodesMap,
       undefined,
       [],
-      [],
-      undefined,
     )
   })
 })

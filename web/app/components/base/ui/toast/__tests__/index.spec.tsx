@@ -7,38 +7,37 @@ describe('base/ui/toast', () => {
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     act(() => {
-      toast.close()
+      toast.dismiss()
     })
   })
 
   afterEach(() => {
     act(() => {
-      toast.close()
+      toast.dismiss()
       vi.runOnlyPendingTimers()
     })
     vi.useRealTimers()
   })
 
   // Core host and manager integration.
-  it('should render a toast when add is called', async () => {
+  it('should render a success toast when called through the typed shortcut', async () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'Saved',
+      toast.success('Saved', {
         description: 'Your changes are available now.',
-        type: 'success',
       })
     })
 
     expect(await screen.findByText('Saved')).toBeInTheDocument()
     expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    const viewport = screen.getByRole('region', { name: 'common.toast.notifications' })
+    const viewport = screen.getByRole('region', { name: 'Notifications' })
     expect(viewport).toHaveAttribute('aria-live', 'polite')
-    expect(viewport).toHaveClass('z-[1101]')
+    expect(viewport).toHaveClass('z-1101')
     expect(viewport.firstElementChild).toHaveClass('top-4')
+    expect(screen.getByRole('dialog')).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
-    expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).toBeInTheDocument()
+    expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).toBeInTheDocument()
   })
 
   // Collapsed stacks should keep multiple toast roots mounted for smooth stack animation.
@@ -46,31 +45,37 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'First toast',
-      })
+      toast('First toast')
     })
 
     expect(await screen.findByText('First toast')).toBeInTheDocument()
 
     act(() => {
-      toast.add({
-        title: 'Second toast',
-      })
-      toast.add({
-        title: 'Third toast',
-      })
+      toast('Second toast')
+      toast('Third toast')
     })
 
     expect(await screen.findByText('Third toast')).toBeInTheDocument()
     expect(screen.getAllByRole('dialog')).toHaveLength(3)
-    expect(document.body.querySelectorAll('button[aria-label="common.toast.close"][aria-hidden="true"]')).toHaveLength(3)
+    expect(document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]')).toHaveLength(3)
 
-    fireEvent.mouseEnter(screen.getByRole('region', { name: 'common.toast.notifications' }))
+    fireEvent.mouseEnter(screen.getByRole('region', { name: 'Notifications' }))
 
     await waitFor(() => {
-      expect(document.body.querySelector('button[aria-label="common.toast.close"][aria-hidden="true"]')).not.toBeInTheDocument()
+      expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
     })
+  })
+
+  // Neutral calls should map directly to a toast with only a title.
+  it('should render a neutral toast when called directly', async () => {
+    render(<ToastHost />)
+
+    act(() => {
+      toast('Neutral toast')
+    })
+
+    expect(await screen.findByText('Neutral toast')).toBeInTheDocument()
+    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
   })
 
   // Base UI limit should cap the visible stack and mark overflow toasts as limited.
@@ -78,8 +83,8 @@ describe('base/ui/toast', () => {
     render(<ToastHost limit={1} />)
 
     act(() => {
-      toast.add({ title: 'First toast' })
-      toast.add({ title: 'Second toast' })
+      toast('First toast')
+      toast('Second toast')
     })
 
     expect(await screen.findByText('Second toast')).toBeInTheDocument()
@@ -87,13 +92,12 @@ describe('base/ui/toast', () => {
   })
 
   // Closing should work through the public manager API.
-  it('should close a toast when close(id) is called', async () => {
+  it('should dismiss a toast when dismiss(id) is called', async () => {
     render(<ToastHost />)
 
     let toastId = ''
     act(() => {
-      toastId = toast.add({
-        title: 'Closable',
+      toastId = toast('Closable', {
         description: 'This toast can be removed.',
       })
     })
@@ -101,7 +105,7 @@ describe('base/ui/toast', () => {
     expect(await screen.findByText('Closable')).toBeInTheDocument()
 
     act(() => {
-      toast.close(toastId)
+      toast.dismiss(toastId)
     })
 
     await waitFor(() => {
@@ -116,16 +120,15 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'Dismiss me',
+      toast('Dismiss me', {
         description: 'Manual dismissal path.',
         onClose,
       })
     })
 
-    fireEvent.mouseEnter(screen.getByRole('region', { name: 'common.toast.notifications' }))
+    fireEvent.mouseEnter(screen.getByRole('region', { name: 'Notifications' }))
 
-    const dismissButton = await screen.findByRole('button', { name: 'common.toast.close' })
+    const dismissButton = await screen.findByRole('button', { name: 'Close notification' })
 
     act(() => {
       dismissButton.click()
@@ -142,9 +145,7 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'Default timeout',
-      })
+      toast('Default timeout')
     })
 
     expect(await screen.findByText('Default timeout')).toBeInTheDocument()
@@ -169,9 +170,7 @@ describe('base/ui/toast', () => {
     render(<ToastHost timeout={3000} />)
 
     act(() => {
-      toast.add({
-        title: 'Configured timeout',
-      })
+      toast('Configured timeout')
     })
 
     expect(await screen.findByText('Configured timeout')).toBeInTheDocument()
@@ -196,8 +195,7 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'Custom timeout',
+      toast('Custom timeout', {
         timeout: 1000,
       })
     })
@@ -213,8 +211,7 @@ describe('base/ui/toast', () => {
     })
 
     act(() => {
-      toast.add({
-        title: 'Persistent',
+      toast('Persistent', {
         timeout: 0,
       })
     })
@@ -234,10 +231,8 @@ describe('base/ui/toast', () => {
 
     let toastId = ''
     act(() => {
-      toastId = toast.add({
-        title: 'Loading',
+      toastId = toast.info('Loading', {
         description: 'Preparing your data…',
-        type: 'info',
       })
     })
 
@@ -263,8 +258,7 @@ describe('base/ui/toast', () => {
     render(<ToastHost />)
 
     act(() => {
-      toast.add({
-        title: 'Action toast',
+      toast('Action toast', {
         actionProps: {
           children: 'Undo',
           onClick: onAction,

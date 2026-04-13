@@ -1,46 +1,27 @@
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-// Import component after mocks
-import Toast from '@/app/components/base/toast'
-
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+
+// Import component after mocks
 import ModelParameterModal from '../index'
 
 // ==================== Mock Setup ====================
 
-// Mock shared state for portal
-let mockPortalOpenState = false
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    mockPortalOpenState = open || false
-    return (
-      <div data-testid="portal-elem" data-open={open}>
-        {children}
-      </div>
-    )
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
+const mockToastNotify = vi.fn()
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
   ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
-      return null
-    return (
-      <div data-testid="portal-content" className={className}>
-        {children}
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
 }))
 
 // Mock provider context
@@ -108,30 +89,33 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger', () => ({
-  default: ({ disabled, hasDeprecated, modelDisabled, currentProvider, currentModel, providerName, modelId, isInWorkflow }: {
-    disabled?: boolean
-    hasDeprecated?: boolean
-    modelDisabled?: boolean
+  default: ({ currentProvider, currentModel, providerName, modelId, isInWorkflow }: {
     currentProvider?: Model
     currentModel?: ModelItem
     providerName?: string
     modelId?: string
     isInWorkflow?: boolean
-  }) => (
-    <div
-      data-testid="trigger"
-      data-disabled={disabled}
-      data-has-deprecated={hasDeprecated}
-      data-model-disabled={modelDisabled}
-      data-provider={providerName}
-      data-model={modelId}
-      data-in-workflow={isInWorkflow}
-      data-has-current-provider={!!currentProvider}
-      data-has-current-model={!!currentModel}
-    >
-      Trigger
-    </div>
-  ),
+  }) => {
+    const hasDeprecated = !currentProvider || !currentModel
+    const modelDisabled = currentModel?.status !== ModelStatusEnum.active
+    const disabled = !mockProviderContextValue.isAPIKeySet || hasDeprecated || modelDisabled
+
+    return (
+      <div
+        data-testid="trigger"
+        data-disabled={disabled}
+        data-has-deprecated={hasDeprecated}
+        data-model-disabled={modelDisabled}
+        data-provider={providerName}
+        data-model={modelId}
+        data-in-workflow={isInWorkflow}
+        data-has-current-provider={!!currentProvider}
+        data-has-current-model={!!currentModel}
+      >
+        Trigger
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger', () => ({
@@ -273,7 +257,6 @@ const setupModelLists = (config: {
 describe('ModelParameterModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     mockProviderContextValue.isAPIKeySet = true
     mockProviderContextValue.modelProviders = []
     setupModelLists()
@@ -356,7 +339,7 @@ describe('ModelParameterModal', () => {
       render(<ModelParameterModal {...props} />)
 
       // Assert
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
 
     it('should render model selector inside portal content when open', async () => {
@@ -365,13 +348,12 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('model-selector')).toBeInTheDocument()
       })
-      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
     })
   })
 
@@ -405,12 +387,11 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
-        const content = screen.getByTestId('portal-content')
-        expect(content.querySelector('.custom-popup-class')).toBeInTheDocument()
+        expect(document.querySelector('.custom-popup-class')).toBeInTheDocument()
       })
     })
 
@@ -422,7 +403,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       const selector = screen.getByTestId('model-selector')
@@ -438,13 +419,13 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+        expect(screen.getByTestId('model-selector')).toBeInTheDocument()
       })
     })
 
@@ -454,15 +435,15 @@ describe('ModelParameterModal', () => {
 
       // Act
       const { rerender } = render(<ModelParameterModal {...props} />)
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Force a re-render to ensure state is stable
       rerender(<ModelParameterModal {...props} />)
 
       // Assert - open state should remain false due to readonly
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
   })
 
@@ -474,7 +455,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -489,7 +470,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -512,7 +493,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -530,7 +511,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -547,7 +528,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -564,7 +545,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -581,7 +562,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -598,7 +579,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -615,7 +596,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -632,7 +613,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -831,7 +812,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('trigger'))
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -856,7 +837,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('trigger'))
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -888,7 +869,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('trigger'))
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -896,9 +877,7 @@ describe('ModelParameterModal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(Toast.notify).toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'warning' }),
-          )
+          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
         })
       })
 
@@ -915,7 +894,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('trigger'))
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -923,9 +902,7 @@ describe('ModelParameterModal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(Toast.notify).toHaveBeenCalledWith(
-            expect.objectContaining({ type: 'error' }),
-          )
+          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
         })
       })
     })
@@ -951,7 +928,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('trigger'))
 
         await waitFor(() => {
           const panel = screen.getByTestId('llm-params-panel')
@@ -988,7 +965,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('trigger'))
 
         await waitFor(() => {
           const panel = screen.getByTestId('tts-params-panel')
@@ -1025,7 +1002,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -1051,7 +1028,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -1077,7 +1054,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -1104,12 +1081,11 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
-        const content = screen.getByTestId('portal-content')
-        expect(content.querySelector('.bg-divider-subtle')).toBeInTheDocument()
+        expect(document.querySelector('.bg-divider-subtle')).toBeInTheDocument()
       })
     })
   })
@@ -1146,7 +1122,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -1185,7 +1161,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -1264,7 +1240,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert
       await waitFor(() => {
@@ -1280,7 +1256,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert - defaultModel is created with undefined provider
       await waitFor(() => {
@@ -1297,7 +1273,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert - defaultModel is created with undefined model
       await waitFor(() => {
@@ -1314,7 +1290,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       // Assert - when defaultModel is undefined, attribute is not set (returns null)
       await waitFor(() => {
@@ -1350,14 +1326,13 @@ describe('ModelParameterModal', () => {
 
       // Act
       const { rerender } = render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('trigger'))
 
       await waitFor(() => {
         expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model-list-count', '1')
       })
 
       // Rerender with different scope
-      mockPortalOpenState = true
       rerender(<ModelParameterModal {...props} scope={ModelTypeEnum.textEmbedding} />)
 
       // Assert
@@ -1398,7 +1373,7 @@ describe('ModelParameterModal', () => {
       render(<ModelParameterModal {...props} />)
 
       // Assert
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('trigger')
       expect(trigger).toBeInTheDocument()
     })
   })

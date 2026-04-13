@@ -17,8 +17,8 @@ import AnnotationCtrlButton from '@/app/components/base/features/new-feature-pan
 import Modal from '@/app/components/base/modal/modal'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Textarea from '@/app/components/base/textarea'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import { cn } from '@/utils/classnames'
 import { useChatContext } from '../context'
 
@@ -167,14 +167,14 @@ const Operation: FC<OperationProps> = ({
           'absolute flex justify-end gap-1',
           hasWorkflowProcess && '-bottom-4 right-2',
           !positionRight && '-bottom-4 right-2',
-          !hasWorkflowProcess && positionRight && '!top-[9px]',
+          !hasWorkflowProcess && positionRight && 'top-[9px]!',
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
         data-testid="operation-bar"
       >
         {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
+            'ml-1 items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
             hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
           )}
           >
@@ -214,7 +214,7 @@ const Operation: FC<OperationProps> = ({
         )}
         {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
+            'ml-1 items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
             (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
           )}
           >
@@ -290,7 +290,7 @@ const Operation: FC<OperationProps> = ({
           </div>
         )}
         {!isOpeningStatement && (
-          <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex" data-testid="operation-actions">
+          <div className="ml-1 hidden items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex" data-testid="operation-actions">
             {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}
@@ -302,7 +302,7 @@ const Operation: FC<OperationProps> = ({
               <ActionButton
                 onClick={() => {
                   copy(content)
-                  Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                  toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                 }}
                 data-testid="copy-btn"
               >

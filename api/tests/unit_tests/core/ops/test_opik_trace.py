@@ -130,7 +130,7 @@ class TestWorkflowTraceWithoutMessageId:
     def _run(self, trace_info: WorkflowTraceInfo, node_executions: list | None = None):
         instance = _make_opik_trace_instance()
         fake_repo = MagicMock()
-        fake_repo.get_by_workflow_run.return_value = node_executions or []
+        fake_repo.get_by_workflow_execution.return_value = node_executions or []
 
         with (
             patch("core.ops.opik_trace.opik_trace.db") as mock_db,
@@ -262,7 +262,7 @@ class TestWorkflowTraceWithMessageId:
     def _run(self, trace_info: WorkflowTraceInfo, node_executions: list | None = None):
         instance = _make_opik_trace_instance()
         fake_repo = MagicMock()
-        fake_repo.get_by_workflow_run.return_value = node_executions or []
+        fake_repo.get_by_workflow_execution.return_value = node_executions or []
 
         with (
             patch("core.ops.opik_trace.opik_trace.db") as mock_db,

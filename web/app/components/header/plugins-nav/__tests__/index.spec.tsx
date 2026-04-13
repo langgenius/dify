@@ -1,11 +1,11 @@
 import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { useSelectedLayoutSegment } from 'next/navigation'
 import { usePluginTaskStatus } from '@/app/components/plugins/plugin-page/plugin-tasks/hooks'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 
 import PluginsNav from '../index'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
 }))
 

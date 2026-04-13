@@ -7,10 +7,11 @@ requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request
 
 from typing import TYPE_CHECKING, Any
 
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.base.node import Node
+
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from dify_graph.enums import BuiltinNodeTypes, NodeType
-from dify_graph.nodes.base.node import Node
 
 from .test_mock_nodes import (
     MockAgentNode,
@@ -28,8 +29,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from dify_graph.entities import GraphInitParams
-    from dify_graph.runtime import GraphRuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -111,7 +112,7 @@ class MockNodeFactory(DifyNodeFactory):
                     mock_config=self.mock_config,
                     http_request_config=self._http_request_config,
                     http_client=self._http_request_http_client,
-                    tool_file_manager_factory=self._http_request_tool_file_manager_factory,
+                    tool_file_manager_factory=self._bound_tool_file_manager_factory,
                     file_manager=self._http_request_file_manager,
                 )
             elif node_type in {

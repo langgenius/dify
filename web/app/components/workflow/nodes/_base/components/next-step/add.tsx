@@ -71,8 +71,8 @@ const Add = ({
         className={`
           bg-dropzone-bg hover:bg-dropzone-bg-hover relative flex h-9 cursor-pointer items-center rounded-lg border border-dashed
           border-divider-regular px-2 text-xs text-text-placeholder
-          ${open && '!bg-components-dropzone-bg-alt'}
-          ${nodesReadOnly && '!cursor-not-allowed'}
+          ${open && 'bg-components-dropzone-bg-alt!'}
+          ${nodesReadOnly && 'cursor-not-allowed!'}
         `}
       >
         <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
@@ -94,7 +94,7 @@ const Add = ({
       placement="top"
       offset={0}
       trigger={renderTrigger}
-      popupClassName="!w-[328px]"
+      popupClassName="w-[328px]!"
       availableBlocksTypes={availableNextBlocks}
     />
   )

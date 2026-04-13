@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Self
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -34,16 +34,10 @@ from core.mcp.types import (
 logger = logging.getLogger(__name__)
 
 
-SendRequestT = TypeVar("SendRequestT", ClientRequest, ServerRequest)
-SendResultT = TypeVar("SendResultT", ClientResult, ServerResult)
-SendNotificationT = TypeVar("SendNotificationT", ClientNotification, ServerNotification)
-ReceiveRequestT = TypeVar("ReceiveRequestT", ClientRequest, ServerRequest)
-ReceiveResultT = TypeVar("ReceiveResultT", bound=BaseModel)
-ReceiveNotificationT = TypeVar("ReceiveNotificationT", ClientNotification, ServerNotification)
 DEFAULT_RESPONSE_READ_TIMEOUT = 1.0
 
 
-class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
+class RequestResponder[ReceiveRequestT: ClientRequest | ServerRequest, SendResultT: ClientResult | ServerResult]:
     """Handles responding to MCP requests and manages request lifecycle.
 
     This class MUST be used as a context manager to ensure proper cleanup and
@@ -60,16 +54,16 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     """
 
     request: ReceiveRequestT
-    _session: Any
-    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any]
+    _session: "BaseSession[Any, Any, SendResultT, ReceiveRequestT, Any]"
+    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], object]
 
     def __init__(
         self,
         request_id: RequestId,
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
-        session: """BaseSession[SendRequestT, SendNotificationT, SendResultT, ReceiveRequestT, ReceiveNotificationT]""",
-        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
+        session: "BaseSession[Any, Any, SendResultT, ReceiveRequestT, Any]",
+        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], object],
     ):
         self.request_id = request_id
         self.request_meta = request_meta
@@ -111,7 +105,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
 
         self.completed = True
 
-        self._session._send_response(request_id=self.request_id, response=response)
+        self._session.send_response(request_id=self.request_id, response=response)
 
     def cancel(self):
         """Cancel this request and mark it as completed."""
@@ -120,21 +114,19 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
 
         self.completed = True  # Mark as completed so it's removed from in_flight
         # Send an error response to indicate cancellation
-        self._session._send_response(
+        self._session.send_response(
             request_id=self.request_id,
             response=ErrorData(code=0, message="Request cancelled", data=None),
         )
 
 
-class BaseSession(
-    Generic[
-        SendRequestT,
-        SendNotificationT,
-        SendResultT,
-        ReceiveRequestT,
-        ReceiveNotificationT,
-    ],
-):
+class BaseSession[
+    SendRequestT: ClientRequest | ServerRequest,
+    SendNotificationT: ClientNotification | ServerNotification,
+    SendResultT: ClientResult | ServerResult,
+    ReceiveRequestT: ClientRequest | ServerRequest,
+    ReceiveNotificationT: ClientNotification | ServerNotification,
+]:
     """
     Implements an MCP "session" on top of read/write streams, including features
     like request/response linking, notifications, and progress.
@@ -204,13 +196,13 @@ class BaseSession(
             # The receiver thread should have already exited due to the None message in the queue
             self._executor.shutdown(wait=False)
 
-    def send_request(
+    def send_request[T: BaseModel](
         self,
         request: SendRequestT,
-        result_type: type[ReceiveResultT],
+        result_type: type[T],
         request_read_timeout_seconds: timedelta | None = None,
         metadata: MessageMetadata | None = None,
-    ) -> ReceiveResultT:
+    ) -> T:
         """
         Sends a request and wait for a response. Raises an McpError if the
         response contains an error. If a request read timeout is provided, it
@@ -299,7 +291,7 @@ class BaseSession(
         )
         self._write_stream.put(session_message)
 
-    def _send_response(self, request_id: RequestId, response: SendResultT | ErrorData):
+    def send_response(self, request_id: RequestId, response: SendResultT | ErrorData):
         if isinstance(response, ErrorData):
             jsonrpc_error = JSONRPCError(jsonrpc="2.0", id=request_id, error=response)
             session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_error))
@@ -350,7 +342,7 @@ class BaseSession(
                     responder = RequestResponder[ReceiveRequestT, SendResultT](
                         request_id=message.message.root.id,
                         request_meta=validated_request.root.params.meta if validated_request.root.params else None,
-                        request=validated_request,
+                        request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
                         session=self,
                         on_complete=lambda r: self._in_flight.pop(r.request_id, None),
                     )
@@ -372,8 +364,8 @@ class BaseSession(
                             if cancelled_id in self._in_flight:
                                 self._in_flight[cancelled_id].cancel()
                         else:
-                            self._received_notification(notification)
-                            self._handle_incoming(notification)
+                            self._received_notification(notification)  # type: ignore[arg-type]
+                            self._handle_incoming(notification)  # type: ignore[arg-type]
                     except Exception as e:
                         # For other validation errors, log and continue
                         logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)

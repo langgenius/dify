@@ -26,7 +26,7 @@ const VarPanel: FC<Props> = ({
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   return (
-    <div className="rounded-[10px] border border-divider-subtle bg-chat-bubble-bg">
+    <div className="radius-lg border border-divider-subtle bg-chat-bubble-bg">
       <div
         className={cn('flex cursor-pointer items-center gap-1 border-b border-divider-subtle px-3 pb-2 pt-2.5 text-text-secondary', isCollapse && 'border-0 pb-2.5')}
         onClick={toggleCollapse}

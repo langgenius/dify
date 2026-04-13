@@ -13,7 +13,7 @@ import { DataSourceType } from '@/models/datasets'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
   useRouter: () => ({ push: mockPush }),
   usePathname: () => '/datasets/ds-1/documents',

@@ -28,8 +28,14 @@ vi.mock('@/service/annotation', () => ({
   addAnnotation: (...args: unknown[]) => mockAddAnnotation(...args),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/ui/toast', () => ({
   default: { notify: vi.fn() },
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
 }))
 
 describe('AnnotationCtrlButton', () => {

@@ -7,14 +7,14 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ActionButton from '../../base/action-button'
 import Confirm from '../../base/confirm'
 import Tooltip from '../../base/tooltip'
-import { useGitHubReleases } from '../install-plugin/hooks'
+import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
 
@@ -54,7 +54,6 @@ const Action: FC<Props> = ({
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
-  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
@@ -65,7 +64,7 @@ const Action: FC<Props> = ({
     if (fetchedReleases.length === 0)
       return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
-    Toast.notify(toastProps)
+    toast(toastProps.message, { type: toastProps.type })
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {

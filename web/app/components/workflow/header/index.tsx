@@ -1,8 +1,8 @@
 import type { HeaderInNormalProps } from './header-in-normal'
 import type { HeaderInRestoringProps } from './header-in-restoring'
 import type { HeaderInHistoryProps } from './header-in-view-history'
-import dynamic from 'next/dynamic'
-import { usePathname } from 'next/navigation'
+import dynamic from '@/next/dynamic'
+import { usePathname } from '@/next/navigation'
 import {
   useWorkflowMode,
 } from '../hooks'
