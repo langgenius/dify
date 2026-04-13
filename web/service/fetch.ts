@@ -23,7 +23,7 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, any> | null
 }
 
-const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
+const afterResponse204: AfterResponseHook = async ({ response }) => {
   if (response.status === 204) {
     return new Response(JSON.stringify({ result: 'success' }), {
       status: 200,
@@ -38,12 +38,15 @@ export type ResponseError = {
   status: number
 }
 
-const createResponseFromHTTPError = async (error: HTTPError): Promise<Response> => {
+const createResponseFromHTTPError = (error: HTTPError): Response => {
   const headers = new Headers(error.response.headers)
   headers.delete('content-length')
 
-  const text = await error.response.clone().text().catch(() => '')
-  const body: BodyInit | null = text.length > 0 ? text : null
+  let body: BodyInit | null = null
+  if (typeof error.data === 'string')
+    body = error.data
+  else if (error.data !== undefined)
+    body = JSON.stringify(error.data)
 
   if (body !== null && !headers.has('content-type'))
     headers.set('content-type', ContentType.json)
@@ -56,7 +59,7 @@ const createResponseFromHTTPError = async (error: HTTPError): Promise<Response> 
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async (_request, _options, response) => {
+  return async ({ response }) => {
     if (!/^([23])\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
       try {
@@ -97,7 +100,7 @@ const resolveShareCode = () => {
   }
 }
 
-const beforeRequestPublicWithCode: BeforeRequestHook = (request) => {
+const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   const accessToken = getWebAppAccessToken()
   if (accessToken)
     request.headers.set('Authorization', `Bearer ${accessToken}`)
@@ -228,7 +231,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   }
   catch (error) {
     if (error instanceof HTTPError)
-      throw await createResponseFromHTTPError(error)
+      throw createResponseFromHTTPError(error)
     throw error
   }
 
