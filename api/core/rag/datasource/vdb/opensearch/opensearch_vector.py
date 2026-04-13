@@ -6,6 +6,7 @@ from uuid import uuid4
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from configs.middleware.vdb.opensearch_config import AuthMethod
@@ -19,6 +20,20 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+
+class _OpenSearchHostDict(TypedDict):
+    host: str
+    port: int
+
+
+class OpenSearchParamsDict(TypedDict, total=False):
+    hosts: list[_OpenSearchHostDict]
+    use_ssl: bool
+    verify_certs: bool
+    connection_class: type
+    pool_maxsize: int
+    http_auth: tuple[str | None, str | None] | Urllib3AWSV4SignerAuth
 
 
 class OpenSearchConfig(BaseModel):
@@ -57,14 +72,14 @@ class OpenSearchConfig(BaseModel):
             service=self.aws_service,  # type: ignore[arg-type]
         )
 
-    def to_opensearch_params(self) -> dict[str, Any]:
-        params = {
-            "hosts": [{"host": self.host, "port": self.port}],
-            "use_ssl": self.secure,
-            "verify_certs": self.verify_certs,
-            "connection_class": Urllib3HttpConnection,
-            "pool_maxsize": 20,
-        }
+    def to_opensearch_params(self) -> OpenSearchParamsDict:
+        params = OpenSearchParamsDict(
+            hosts=[{"host": self.host, "port": self.port}],
+            use_ssl=self.secure,
+            verify_certs=self.verify_certs,
+            connection_class=Urllib3HttpConnection,
+            pool_maxsize=20,
+        )
 
         if self.auth_method == "basic":
             logger.info("Using basic authentication for OpenSearch Vector DB")

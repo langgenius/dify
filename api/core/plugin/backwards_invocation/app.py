@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -207,7 +207,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         )
 
     @classmethod
-    def _get_user(cls, user_id: str) -> Union[EndUser, Account]:
+    def _get_user(cls, user_id: str) -> EndUser | Account:
         """
         get the user by user id
         """

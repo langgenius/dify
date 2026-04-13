@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -107,6 +107,17 @@ class KeywordStoreConfig(BaseSettings):
     )
 
 
+class SQLAlchemyEngineOptionsDict(TypedDict):
+    pool_size: int
+    max_overflow: int
+    pool_recycle: int
+    pool_pre_ping: bool
+    connect_args: dict[str, str]
+    pool_use_lifo: bool
+    pool_reset_on_return: None
+    pool_timeout: int
+
+
 class DatabaseConfig(BaseSettings):
     # Database type selector
     DB_TYPE: Literal["postgresql", "mysql", "oceanbase", "seekdb"] = Field(
@@ -209,11 +220,11 @@ class DatabaseConfig(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
+    def SQLALCHEMY_ENGINE_OPTIONS(self) -> SQLAlchemyEngineOptionsDict:
         # Parse DB_EXTRAS for 'options'
         db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
         options = db_extras_dict.get("options", "")
-        connect_args = {}
+        connect_args: dict[str, str] = {}
         # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
         if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
             timezone_opt = "-c timezone=UTC"
@@ -223,7 +234,7 @@ class DatabaseConfig(BaseSettings):
                 merged_options = timezone_opt
             connect_args = {"options": merged_options}
 
-        return {
+        result: SQLAlchemyEngineOptionsDict = {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
@@ -233,6 +244,7 @@ class DatabaseConfig(BaseSettings):
             "pool_reset_on_return": None,
             "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
+        return result
 
 
 class CeleryConfig(DatabaseConfig):
