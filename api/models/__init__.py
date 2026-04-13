@@ -98,6 +98,7 @@ from .trigger import (
     TriggerSubscription,
     WorkflowSchedulePlan,
 )
+from .comment import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 from .web import PinnedConversation, SavedMessage
 from .workflow import (
     ConversationVariable,
@@ -205,6 +206,9 @@ __all__ = [
     "UploadFile",
     "Whitelist",
     "Workflow",
+    "WorkflowComment",
+    "WorkflowCommentMention",
+    "WorkflowCommentReply",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
     "WorkflowArchiveLog",

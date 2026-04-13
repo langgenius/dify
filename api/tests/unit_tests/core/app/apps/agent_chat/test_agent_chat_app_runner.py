@@ -196,7 +196,8 @@ class TestAgentChatAppRunnerRun:
         runner_instance.run.assert_called_once()
         runner._handle_invoke_result.assert_called_once()
 
-    def test_run_invalid_llm_mode_raises(self, runner, mocker):
+    def test_run_invalid_llm_mode_proceeds(self, runner, mocker):
+        """With unified AgentAppRunner, invalid LLM mode no longer raises ValueError."""
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
@@ -239,8 +240,16 @@ class TestAgentChatAppRunnerRun:
             side_effect=[app_record, conversation, message],
         )
 
-        with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+        runner_cls = mocker.MagicMock()
+        mocker.patch("core.app.apps.agent_chat.app_runner.AgentAppRunner", runner_cls)
+        runner_instance = mocker.MagicMock()
+        runner_cls.return_value = runner_instance
+        runner_instance.run.return_value = []
+        mocker.patch.object(runner, "_handle_invoke_result")
+
+        runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+
+        runner_instance.run.assert_called_once()
 
     def test_run_function_calling_strategy_selected_by_features(self, runner, mocker):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
@@ -366,7 +375,8 @@ class TestAgentChatAppRunnerRun:
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
 
-    def test_run_invalid_agent_strategy_raises(self, runner, mocker):
+    def test_run_invalid_agent_strategy_defaults_to_react(self, runner, mocker):
+        """With StrategyFactory, invalid strategy defaults to ReAct instead of raising ValueError."""
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = mocker.MagicMock(strategy="invalid", provider="p", model="m")
@@ -409,5 +419,13 @@ class TestAgentChatAppRunnerRun:
             side_effect=[app_record, conversation, message],
         )
 
-        with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+        runner_cls = mocker.MagicMock()
+        mocker.patch("core.app.apps.agent_chat.app_runner.AgentAppRunner", runner_cls)
+        runner_instance = mocker.MagicMock()
+        runner_cls.return_value = runner_instance
+        runner_instance.run.return_value = []
+        mocker.patch.object(runner, "_handle_invoke_result")
+
+        runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+
+        runner_instance.run.assert_called_once()

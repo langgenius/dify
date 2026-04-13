@@ -1,10 +1,10 @@
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.entities import AgentEntity, AgentLog, AgentResult
+from core.agent.entities import AgentEntity, AgentLog, AgentResult, ExecutionContext
 from core.agent.patterns.strategy_factory import StrategyFactory
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
@@ -25,12 +25,31 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.model_entities import ModelFeature
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from models.model import Message
 
 logger = logging.getLogger(__name__)
 
 
 class AgentAppRunner(BaseAgentRunner):
+
+    @property
+    def model_features(self) -> list[ModelFeature]:
+        llm_model = cast(LargeLanguageModel, self.model_instance.model_type_instance)
+        model_schema = llm_model.get_model_schema(self.model_instance.model_name, self.model_instance.credentials)
+        if not model_schema:
+            return []
+        return list(model_schema.features or [])
+
+    def build_execution_context(self) -> ExecutionContext:
+        return ExecutionContext(
+            user_id=self.user_id,
+            app_id=self.application_generate_entity.app_config.app_id,
+            conversation_id=self.conversation.id if self.conversation else None,
+            message_id=self.message.id if self.message else None,
+            tenant_id=self.tenant_id,
+        )
     def _create_tool_invoke_hook(self, message: Message):
         """
         Create a tool invoke hook that uses ToolEngine.agent_invoke.
