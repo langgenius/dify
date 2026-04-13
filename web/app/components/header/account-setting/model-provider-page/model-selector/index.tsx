@@ -1,21 +1,19 @@
 import type { FC } from 'react'
-import { useState } from 'react'
 import type {
   DefaultModel,
   Model,
+  ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useCurrentProviderAndModel } from '../hooks'
-import ModelTrigger from './model-trigger'
-import EmptyTrigger from './empty-trigger'
-import DeprecatedModelTrigger from './deprecated-model-trigger'
-import Popup from './popup'
+import { useState } from 'react'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import classNames from '@/utils/classnames'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
+import { useCurrentProviderAndModel } from '../hooks'
+import ModelSelectorTrigger from './model-selector-trigger'
+import Popup from './popup'
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -23,8 +21,9 @@ type ModelSelectorProps = {
   triggerClassName?: string
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
+  onHide?: () => void
   readonly?: boolean
-  scopeFeatures?: string[]
+  scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
 }
@@ -34,10 +33,11 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   triggerClassName,
   popupClassName,
   onSelect,
+  onHide,
   readonly,
   scopeFeatures = [],
   deprecatedClassName,
-  showDeprecatedWarnIcon = false,
+  showDeprecatedWarnIcon = true,
 }) => {
   const [open, setOpen] = useState(false)
   const {
@@ -55,67 +55,54 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       onSelect({ provider, model: model.model })
   }
 
-  const handleToggle = () => {
-    if (readonly)
-      return
-
-    setOpen(v => !v)
-  }
-
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement='bottom-start'
-      offset={4}
+      onOpenChange={(newOpen) => {
+        if (readonly)
+          return
+        setOpen(newOpen)
+      }}
     >
-      <div className={classNames('relative')}>
-        <PortalToFollowElemTrigger
-          onClick={handleToggle}
-          className='block'
-        >
-          {
-            currentModel && currentProvider && (
-              <ModelTrigger
-                open={open}
-                provider={currentProvider}
-                model={currentModel}
-                className={triggerClassName}
-                readonly={readonly}
-              />
-            )
-          }
-          {
-            !currentModel && defaultModel && (
-              <DeprecatedModelTrigger
-                modelName={defaultModel?.model || ''}
-                providerName={defaultModel?.provider || ''}
-                className={triggerClassName}
-                showWarnIcon={showDeprecatedWarnIcon}
-                contentClassName={deprecatedClassName}
-              />
-            )
-          }
-          {
-            !defaultModel && (
-              <EmptyTrigger
-                open={open}
-                className={triggerClassName}
-              />
-            )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={`z-[1002] ${popupClassName}`}>
-          <Popup
-            defaultModel={defaultModel}
-            modelList={modelList}
-            onSelect={handleSelect}
-            scopeFeatures={scopeFeatures}
-            onHide={() => setOpen(false)}
-          />
-        </PortalToFollowElemContent>
-      </div>
-    </PortalToFollowElem>
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            className="block w-full border-0 bg-transparent p-0 text-left"
+            disabled={readonly}
+          >
+            <ModelSelectorTrigger
+              currentProvider={currentProvider}
+              currentModel={currentModel}
+              defaultModel={defaultModel}
+              open={open}
+              readonly={readonly}
+              className={triggerClassName}
+              deprecatedClassName={deprecatedClassName}
+              showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+            />
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        className={popupClassName}
+        popupClassName="overflow-hidden rounded-lg"
+        popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
+      >
+        <Popup
+          defaultModel={defaultModel}
+          modelList={modelList}
+          onSelect={handleSelect}
+          scopeFeatures={scopeFeatures}
+          onHide={() => {
+            setOpen(false)
+            onHide?.()
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 

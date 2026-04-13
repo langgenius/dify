@@ -1,33 +1,63 @@
 import json
-from typing import cast
+from typing import Any, cast
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 
-from controllers.console import api
+from controllers.common.schema import register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.datetime_utils import naive_utc_now
+from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
 
+class ModelConfigRequest(BaseModel):
+    provider: str | None = Field(default=None, description="Model provider")
+    model: str | None = Field(default=None, description="Model name")
+    configs: dict[str, Any] | None = Field(default=None, description="Model configuration parameters")
+    opening_statement: str | None = Field(default=None, description="Opening statement")
+    suggested_questions: list[str] | None = Field(default=None, description="Suggested questions")
+    more_like_this: dict[str, Any] | None = Field(default=None, description="More like this configuration")
+    speech_to_text: dict[str, Any] | None = Field(default=None, description="Speech to text configuration")
+    text_to_speech: dict[str, Any] | None = Field(default=None, description="Text to speech configuration")
+    retrieval_model: dict[str, Any] | None = Field(default=None, description="Retrieval model configuration")
+    tools: list[dict[str, Any]] | None = Field(default=None, description="Available tools")
+    dataset_configs: dict[str, Any] | None = Field(default=None, description="Dataset configurations")
+    agent_mode: dict[str, Any] | None = Field(default=None, description="Agent mode configuration")
+
+
+register_schema_models(console_ns, ModelConfigRequest)
+
+
+@console_ns.route("/apps/<uuid:app_id>/model-config")
 class ModelConfigResource(Resource):
+    @console_ns.doc("update_app_model_config")
+    @console_ns.doc(description="Update application model configuration")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[ModelConfigRequest.__name__])
+    @console_ns.response(200, "Model configuration updated successfully")
+    @console_ns.response(400, "Invalid configuration")
+    @console_ns.response(404, "App not found")
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
         """Modify app model config"""
+        current_user, current_tenant_id = current_account_with_tenant()
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             config=cast(dict, request.json),
             app_mode=AppMode.value_of(app_model.mode),
         )
@@ -39,11 +69,9 @@ class ModelConfigResource(Resource):
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
-        if app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
+        if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
             # get original app model config
-            original_app_model_config = (
-                db.session.query(AppModelConfig).filter(AppModelConfig.id == app_model.app_model_config_id).first()
-            )
+            original_app_model_config = db.session.get(AppModelConfig, app_model.app_model_config_id)
             if original_app_model_config is None:
                 raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict
@@ -55,16 +83,17 @@ class ModelConfigResource(Resource):
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
 
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity.model_validate(tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         tool_runtime=tool_runtime,
                         provider_name=agent_tool_entity.provider_id,
                         provider_type=agent_tool_entity.provider_type,
@@ -89,7 +118,7 @@ class ModelConfigResource(Resource):
             # encrypt agent tool parameters if it's secret-input
             agent_mode = new_app_model_config.agent_mode_dict
             for tool in agent_mode.get("tools") or []:
-                agent_tool_entity = AgentToolEntity(**tool)
+                agent_tool_entity = AgentToolEntity.model_validate(tool)
 
                 # get tool
                 key = f"{agent_tool_entity.provider_id}.{agent_tool_entity.provider_type}.{agent_tool_entity.tool_name}"
@@ -98,15 +127,16 @@ class ModelConfigResource(Resource):
                 else:
                     try:
                         tool_runtime = ToolManager.get_agent_tool_runtime(
-                            tenant_id=current_user.current_tenant_id,
+                            tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
+                            user_id=current_user.id,
                         )
                     except Exception:
                         continue
 
                 manager = ToolParameterConfigurationManager(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     tool_runtime=tool_runtime,
                     provider_name=agent_tool_entity.provider_id,
                     provider_type=agent_tool_entity.provider_type,
@@ -137,11 +167,10 @@ class ModelConfigResource(Resource):
         db.session.flush()
 
         app_model.app_model_config_id = new_app_model_config.id
+        app_model.updated_by = current_user.id
+        app_model.updated_at = naive_utc_now()
         db.session.commit()
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
 
         return {"result": "success"}
-
-
-api.add_resource(ModelConfigResource, "/apps/<uuid:app_id>/model-config")

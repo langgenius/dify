@@ -1,50 +1,71 @@
+import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type {
+  CommonEdgeType,
+  Node,
+} from '@/app/components/workflow/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
+import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
-import { useNodes } from 'reactflow'
-import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { useEdges } from 'reactflow'
+import AppPublisher from '@/app/components/app/app-publisher'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Button from '@/app/components/base/button'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { toast } from '@/app/components/base/ui/toast'
+import { Plan } from '@/app/components/billing/type'
+import {
+  useChecklist,
+  useChecklistBeforePublish,
+  useIsChatMode,
+  useNodesReadOnly,
+  useNodesSyncDraft,
+  // useWorkflowRunValidation,
+} from '@/app/components/workflow/hooks'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import {
-  useChecklistBeforePublish,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-} from '@/app/components/workflow/hooks'
-import Button from '@/app/components/base/button'
-import AppPublisher from '@/app/components/app/app-publisher'
-import { useFeatures } from '@/app/components/base/features/hooks'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   BlockEnum,
   InputVarType,
+  isTriggerNode,
 } from '@/app/components/workflow/types'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import { useToastContext } from '@/app/components/base/toast'
-import { usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import { useProviderContext } from '@/context/provider-context'
+import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useInvalidateAppTriggers } from '@/service/use-tools'
+import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { cn } from '@/utils/classnames'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
+  const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const {
-    nodesReadOnly,
-    getNodesReadOnly,
-  } = useNodesReadOnly()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
-  const nodes = useNodes<StartNodeType>()
+  const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
+
+  const nodes = useNodes()
+  const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  const startVariables = startNode?.data.variables
+  const endNode = nodes.find(node => node.data.type === BlockEnum.End)
+  const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
+  const edges = useEdges<CommonEdgeType>()
+
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -62,10 +83,39 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
+  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { notify } = useToastContext()
+  const startNodeIds = useMemo(
+    () => nodes.filter(node => node.data.type === BlockEnum.Start).map(node => node.id),
+    [nodes],
+  )
+  const hasUserInputNode = useMemo(() => {
+    if (!startNodeIds.length)
+      return false
+    return edges.some(edge => startNodeIds.includes(edge.source))
+  }, [edges, startNodeIds])
+  // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
+  const hasTriggerNode = useMemo(() => (
+    nodes.some(node => isTriggerNode(node.data.type as BlockEnum))
+  ), [nodes])
+  const startNodeLimitExceeded = useMemo(() => {
+    const entryCount = nodes.reduce((count, node) => {
+      const nodeType = node.data.type as BlockEnum
+      if (nodeType === BlockEnum.Start || isTriggerNode(nodeType))
+        return count + 1
+      return count
+    }, 0)
+    return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
+  }, [nodes, plan.type, isFetchedPlan])
+
+  const hasHumanInputNode = useMemo(() => {
+    return nodes.some(node => node.data.type === BlockEnum.HumanInput)
+  }, [nodes])
+
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const invalidateAppTriggers = useInvalidateAppTriggers()
 
   const handleShowFeatures = useCallback(() => {
     const {
@@ -78,8 +128,6 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory(appDetail!.id)
-
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appID! })
@@ -89,25 +137,44 @@ const FeaturesTrigger = () => {
       console.error(error)
     }
   }, [appID, setAppDetail])
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow(appID!)
+
+  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  // const { validateBeforeRun } = useWorkflowRunValidation()
+  const needWarningNodes = useChecklist(nodes, edges)
+
+  const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
+    // First check if there are any items in the checklist
+    // if (!validateBeforeRun())
+    //   throw new Error('Checklist has unresolved items')
+
+    if (needWarningNodes.length > 0) {
+      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
+      throw new Error('Checklist has unresolved items')
+    }
+
+    // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
+        url: `/apps/${appID}/workflows/publish`,
         title: params?.title || '',
         releaseNotes: params?.releaseNotes || '',
       })
 
       if (res) {
-        notify({ type: 'success', message: t('common.api.actionSuccess') })
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
+        updatePublishedWorkflow(appID!)
         updateAppDetail()
+        invalidateAppTriggers(appID!)
         workflowStore.getState().setPublishedAt(res.created_at)
+        workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
         resetWorkflowVersionHistory()
       }
     }
     else {
       throw new Error('Checklist failed')
     }
-  }, [handleCheckBeforePublish, notify, t, workflowStore, publishWorkflow, resetWorkflowVersionHistory, updateAppDetail])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -120,21 +187,37 @@ const FeaturesTrigger = () => {
 
   return (
     <>
-      <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-        <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
-        {t('workflow.common.features')}
-      </Button>
+      {/* Feature button is only visible in chatflow mode (advanced-chat) */}
+      {isChatMode && (
+        <Button
+          className={cn(
+            'rounded-lg border border-transparent text-components-button-secondary-text',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+          )}
+          onClick={handleShowFeatures}
+        >
+          <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
+          {t('common.features', { ns: 'workflow' })}
+        </Button>
+      )}
       <AppPublisher
         {...{
           publishedAt,
           draftUpdatedAt,
-          disabled: nodesReadOnly,
+          disabled: nodesReadOnly || !hasWorkflowNodes,
           toolPublished,
           inputs: variables,
+          outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
           onToggle: onPublisherToggle,
+          workflowToolAvailable: lastPublishedHasUserInput,
           crossAxisOffset: 4,
+          missingStartNode: !startNode,
+          hasTriggerNode,
+          startNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          hasHumanInputNode,
         }}
       />
     </>

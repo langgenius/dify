@@ -1,14 +1,14 @@
 import type { MouseEvent } from 'react'
-import {
-  useCallback,
-} from 'react'
-import produce from 'immer'
 import type {
   OnSelectionChangeFunc,
 } from 'reactflow'
+import type { Node } from '../types'
+import { produce } from 'immer'
+import {
+  useCallback,
+} from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
-import type { Node } from '../types'
 
 export const useSelectionInteractions = () => {
   const store = useStoreApi()
@@ -131,10 +131,35 @@ export const useSelectionInteractions = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleSelectionContextMenu = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.classList.contains('react-flow__nodesselection-rect'))
+      return
+
+    e.preventDefault()
+    workflowStore.setState({
+      nodeMenu: undefined,
+      panelMenu: undefined,
+      edgeMenu: undefined,
+      selectionMenu: {
+        clientX: e.clientX,
+        clientY: e.clientY,
+      },
+    })
+  }, [workflowStore])
+
+  const handleSelectionContextmenuCancel = useCallback(() => {
+    workflowStore.setState({
+      selectionMenu: undefined,
+    })
+  }, [workflowStore])
+
   return {
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
     handleSelectionCancel,
+    handleSelectionContextMenu,
+    handleSelectionContextmenuCancel,
   }
 }

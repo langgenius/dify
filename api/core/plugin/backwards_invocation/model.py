@@ -2,16 +2,27 @@ import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
 
-from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
+from graphon.model_runtime.entities.message_entities import (
     PromptMessage,
     SystemPromptMessage,
     UserPromptMessage,
 )
+from graphon.model_runtime.entities.model_entities import ModelType
+
+from core.app.llm import deduct_llm_quota
+from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
     RequestInvokeLLM,
+    RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
     RequestInvokeRerank,
     RequestInvokeSpeech2Text,
@@ -21,11 +32,26 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.workflow.nodes.llm import llm_utils
 from models.account import Tenant
 
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
+    @staticmethod
+    def _get_bound_model_instance(
+        *,
+        tenant_id: str,
+        user_id: str | None,
+        provider: str,
+        model_type: ModelType,
+        model: str,
+    ):
+        return ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
+            tenant_id=tenant_id,
+            provider=provider,
+            model_type=model_type,
+            model=model,
+        )
+
     @classmethod
     def invoke_llm(
         cls, user_id: str, tenant: Tenant, payload: RequestInvokeLLM
@@ -33,8 +59,9 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke llm
         """
-        model_instance = ModelManager().get_model_instance(
+        model_instance = cls._get_bound_model_instance(
             tenant_id=tenant.id,
+            user_id=user_id,
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
@@ -47,7 +74,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             tools=payload.tools,
             stop=payload.stop,
             stream=True if payload.stream is None else payload.stream,
-            user=user_id,
         )
 
         if isinstance(response, Generator):
@@ -55,16 +81,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
                     if chunk.delta.usage:
-                        llm_utils.deduct_llm_quota(
-                            tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
-                        )
+                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
             if response.usage:
-                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
@@ -82,22 +106,84 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             return handle_non_streaming(response)
 
     @classmethod
+    def invoke_llm_with_structured_output(
+        cls, user_id: str, tenant: Tenant, payload: RequestInvokeLLMWithStructuredOutput
+    ):
+        """
+        invoke llm with structured output
+        """
+        model_instance = cls._get_bound_model_instance(
+            tenant_id=tenant.id,
+            user_id=user_id,
+            provider=payload.provider,
+            model_type=payload.model_type,
+            model=payload.model,
+        )
+
+        model_schema = model_instance.model_type_instance.get_model_schema(payload.model, model_instance.credentials)
+
+        if not model_schema:
+            raise ValueError(f"Model schema not found for {payload.model}")
+
+        response = invoke_llm_with_structured_output(
+            provider=payload.provider,
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=payload.prompt_messages,
+            json_schema=payload.structured_output_schema,
+            tools=payload.tools,
+            stop=payload.stop,
+            stream=True if payload.stream is None else payload.stream,
+            model_parameters=payload.completion_params,
+        )
+
+        if isinstance(response, Generator):
+
+            def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+                for chunk in response:
+                    if chunk.delta.usage:
+                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
+                    chunk.prompt_messages = []
+                    yield chunk
+
+            return handle()
+        else:
+            if response.usage:
+                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+
+            def handle_non_streaming(
+                response: LLMResultWithStructuredOutput,
+            ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+                yield LLMResultChunkWithStructuredOutput(
+                    model=response.model,
+                    prompt_messages=[],
+                    system_fingerprint=response.system_fingerprint,
+                    structured_output=response.structured_output,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=response.message,
+                        usage=response.usage,
+                        finish_reason="",
+                    ),
+                )
+
+            return handle_non_streaming(response)
+
+    @classmethod
     def invoke_text_embedding(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTextEmbedding):
         """
         invoke text embedding
         """
-        model_instance = ModelManager().get_model_instance(
+        model_instance = cls._get_bound_model_instance(
             tenant_id=tenant.id,
+            user_id=user_id,
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
         )
 
         # invoke model
-        response = model_instance.invoke_text_embedding(
-            texts=payload.texts,
-            user=user_id,
-        )
+        response = model_instance.invoke_text_embedding(texts=payload.texts)
 
         return response
 
@@ -106,8 +192,9 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke rerank
         """
-        model_instance = ModelManager().get_model_instance(
+        model_instance = cls._get_bound_model_instance(
             tenant_id=tenant.id,
+            user_id=user_id,
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
@@ -119,7 +206,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             docs=payload.docs,
             score_threshold=payload.score_threshold,
             top_n=payload.top_n,
-            user=user_id,
         )
 
         return response
@@ -129,20 +215,16 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke tts
         """
-        model_instance = ModelManager().get_model_instance(
+        model_instance = cls._get_bound_model_instance(
             tenant_id=tenant.id,
+            user_id=user_id,
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
         )
 
         # invoke model
-        response = model_instance.invoke_tts(
-            content_text=payload.content_text,
-            tenant_id=tenant.id,
-            voice=payload.voice,
-            user=user_id,
-        )
+        response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
 
         def handle() -> Generator[dict, None, None]:
             for chunk in response:
@@ -155,8 +237,9 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke speech2text
         """
-        model_instance = ModelManager().get_model_instance(
+        model_instance = cls._get_bound_model_instance(
             tenant_id=tenant.id,
+            user_id=user_id,
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
@@ -168,10 +251,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             temp.flush()
             temp.seek(0)
 
-            response = model_instance.invoke_speech2text(
-                file=temp,
-                user=user_id,
-            )
+            response = model_instance.invoke_speech2text(file=temp)
 
             return {
                 "result": response,
@@ -182,36 +262,38 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke moderation
         """
-        model_instance = ModelManager().get_model_instance(
+        model_instance = cls._get_bound_model_instance(
             tenant_id=tenant.id,
+            user_id=user_id,
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
         )
 
         # invoke model
-        response = model_instance.invoke_moderation(
-            text=payload.text,
-            user=user_id,
-        )
+        response = model_instance.invoke_moderation(text=payload.text)
 
         return {
             "result": response,
         }
 
     @classmethod
-    def get_system_model_max_tokens(cls, tenant_id: str) -> int:
+    def get_system_model_max_tokens(cls, tenant_id: str, user_id: str | None = None) -> int:
         """
         get system model max tokens
         """
-        return ModelInvocationUtils.get_max_llm_context_tokens(tenant_id=tenant_id)
+        return ModelInvocationUtils.get_max_llm_context_tokens(tenant_id=tenant_id, user_id=user_id)
 
     @classmethod
-    def get_prompt_tokens(cls, tenant_id: str, prompt_messages: list[PromptMessage]) -> int:
+    def get_prompt_tokens(cls, tenant_id: str, prompt_messages: list[PromptMessage], user_id: str | None = None) -> int:
         """
         get prompt tokens
         """
-        return ModelInvocationUtils.calculate_tokens(tenant_id=tenant_id, prompt_messages=prompt_messages)
+        return ModelInvocationUtils.calculate_tokens(
+            tenant_id=tenant_id,
+            prompt_messages=prompt_messages,
+            user_id=user_id,
+        )
 
     @classmethod
     def invoke_system_model(
@@ -229,6 +311,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             tool_type=ToolProviderType.PLUGIN,
             tool_name="plugin",
             prompt_messages=prompt_messages,
+            caller_user_id=user_id,
         )
 
     @classmethod
@@ -236,7 +319,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke summary
         """
-        max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id)
+        max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id, user_id=user_id)
         content = payload.text
 
         SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
@@ -255,6 +338,7 @@ Here is the extra instruction you need to follow:
             cls.get_prompt_tokens(
                 tenant_id=tenant.id,
                 prompt_messages=[UserPromptMessage(content=content)],
+                user_id=user_id,
             )
             < max_tokens * 0.6
         ):
@@ -267,6 +351,7 @@ Here is the extra instruction you need to follow:
                     SystemPromptMessage(content=SUMMARY_PROMPT.replace("{payload.instruction}", payload.instruction)),
                     UserPromptMessage(content=content),
                 ],
+                user_id=user_id,
             )
 
         def summarize(content: str) -> str:
@@ -301,16 +386,16 @@ Here is the extra instruction you need to follow:
 
         # merge lines into messages with max tokens
         messages: list[str] = []
-        for i in new_lines:  # type: ignore
+        for line in new_lines:
             if len(messages) == 0:
-                messages.append(i)  # type: ignore
+                messages.append(line)
             else:
-                if len(messages[-1]) + len(i) < max_tokens * 0.5:  # type: ignore
-                    messages[-1] += i  # type: ignore
-                if get_prompt_tokens(messages[-1] + i) > max_tokens * 0.7:  # type: ignore
-                    messages.append(i)  # type: ignore
+                if len(messages[-1]) + len(line) < max_tokens * 0.5:
+                    messages[-1] += line
+                if get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
+                    messages.append(line)
                 else:
-                    messages[-1] += i  # type: ignore
+                    messages[-1] += line
 
         summaries = []
         for i in range(len(messages)):
@@ -324,6 +409,7 @@ Here is the extra instruction you need to follow:
             cls.get_prompt_tokens(
                 tenant_id=tenant.id,
                 prompt_messages=[UserPromptMessage(content=result)],
+                user_id=user_id,
             )
             > max_tokens * 0.7
         ):

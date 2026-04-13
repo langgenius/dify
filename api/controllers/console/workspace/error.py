@@ -13,12 +13,6 @@ class CurrentPasswordIncorrectError(BaseHTTPException):
     code = 400
 
 
-class ProviderRequestFailedError(BaseHTTPException):
-    error_code = "provider_request_failed"
-    description = None
-    code = 400
-
-
 class InvalidInvitationCodeError(BaseHTTPException):
     error_code = "invalid_invitation_code"
     description = "Invalid invitation code."

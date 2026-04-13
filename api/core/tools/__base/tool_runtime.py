@@ -1,22 +1,27 @@
-from typing import Any, Optional
+from typing import Any
 
-from openai import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolInvokeFrom
 
 
 class ToolRuntime(BaseModel):
     """
-    Meta data of a tool call processing
+    Meta data of a tool call processing.
+
+    ``user_id`` is optional so read-only tooling flows can stay tenant-scoped,
+    while execution paths may bind caller identity for model runtime lookups.
     """
 
     tenant_id: str
-    tool_id: Optional[str] = None
-    invoke_from: Optional[InvokeFrom] = None
-    tool_invoke_from: Optional[ToolInvokeFrom] = None
+    user_id: str | None = None
+    tool_id: str | None = None
+    invoke_from: InvokeFrom | None = None
+    tool_invoke_from: ToolInvokeFrom | None = None
     credentials: dict[str, Any] = Field(default_factory=dict)
+    credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
 
 

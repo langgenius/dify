@@ -1,14 +1,14 @@
 import json
-from typing import Optional
 
-from core.agent.cot_agent_runner import CotAgentRunner
-from core.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.utils.encoders import jsonable_encoder
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+
+from core.agent.cot_agent_runner import CotAgentRunner
 
 
 class CotCompletionAgentRunner(CotAgentRunner):
@@ -31,7 +31,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         return system_prompt
 
-    def _organize_historic_prompt(self, current_session_messages: Optional[list[PromptMessage]] = None) -> str:
+    def _organize_historic_prompt(self, current_session_messages: list[PromptMessage] | None = None) -> str:
         """
         Organize historic prompt
         """

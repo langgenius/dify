@@ -1,18 +1,24 @@
+import type { WorkflowProps } from '@/app/components/workflow'
 import {
   useCallback,
   useMemo,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import type { WorkflowProps } from '@/app/components/workflow'
-import WorkflowChildren from './workflow-children'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
+  useAvailableNodesMetaData,
+  useConfigsMap,
+  useDSL,
+  useGetRunAndTraceUrl,
+  useInspectVarsCrud,
   useNodesSyncDraft,
+  useSetWorkflowVarsWithValue,
   useWorkflowRefreshDraft,
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -60,7 +66,38 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
+  const availableNodesMetaData = useAvailableNodesMetaData()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const {
+    exportCheck,
+    handleExportDSL,
+  } = useDSL()
+
+  const configsMap = useConfigsMap()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    ...configsMap,
+  })
+  const {
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
 
   const hooksStore = useMemo(() => {
     return {
@@ -75,6 +112,30 @@ const WorkflowMain = ({
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
+      handleWorkflowTriggerScheduleRunInWorkflow,
+      handleWorkflowTriggerWebhookRunInWorkflow,
+      handleWorkflowTriggerPluginRunInWorkflow,
+      handleWorkflowRunAllTriggersInWorkflow,
+      availableNodesMetaData,
+      getWorkflowRunAndTraceUrl,
+      exportCheck,
+      handleExportDSL,
+      fetchInspectVars,
+      hasNodeInspectVars,
+      hasSetInspectVar,
+      fetchInspectVarValue,
+      editInspectVarValue,
+      renameInspectVarName,
+      appendNodeInspectVars,
+      deleteInspectVar,
+      deleteNodeInspectorVars,
+      deleteAllInspectorVars,
+      isInspectVarEdited,
+      resetToLastRunVar,
+      invalidateSysVarValues,
+      resetConversationVar,
+      invalidateConversationVarValues,
+      configsMap,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -88,6 +149,30 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
+    fetchInspectVars,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+    configsMap,
   ])
 
   return (
@@ -96,7 +181,7 @@ const WorkflowMain = ({
       edges={edges}
       viewport={viewport}
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
-      hooksStore={hooksStore}
+      hooksStore={hooksStore as any}
     >
       <WorkflowChildren />
     </WorkflowWithInnerContext>

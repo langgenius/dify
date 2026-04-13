@@ -1,24 +1,52 @@
-import { useCallback } from 'react'
+import type { HandleRunOptions } from './use-workflow-run-utils'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { Node } from '@/app/components/workflow/types'
+import type { IOtherOptions } from '@/service/base'
+import type { VersionHistory } from '@/types/workflow'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import { useCallback, useRef } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
 import { v4 as uuidV4 } from 'uuid'
-import { usePathname } from 'next/navigation'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { IOtherOptions } from '@/service/base'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
+import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import type { VersionHistory } from '@/types/workflow'
-import { noop } from 'lodash-es'
+import { AppModeEnum } from '@/types/app'
+import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useConfigsMap } from './use-configs-map'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import {
+  createBaseWorkflowRunCallbacks,
+  createFinalWorkflowRunCallbacks,
+} from './use-workflow-run-callbacks'
+import {
+  applyRunningStateForMode,
+  applyStoppedState,
+  buildRunHistoryUrl,
+  buildTTSConfig,
+  buildWorkflowRunRequestBody,
+  clearListeningState,
+  clearWindowDebugControllers,
+
+  isDebuggableTriggerType,
+  mapPublishedWorkflowFeatures,
+  normalizePublishedWorkflowNodes,
+  resolveWorkflowRunUrl,
+  runTriggerDebug,
+  validateWorkflowRunRequest,
+} from './use-workflow-run-utils'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -28,6 +56,16 @@ export const useWorkflowRun = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
+  const configsMap = useConfigsMap()
+  const { flowId, flowType } = configsMap
+  const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    ...configsMap,
+  })
+
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const {
     handleWorkflowStarted,
@@ -35,6 +73,9 @@ export const useWorkflowRun = () => {
     handleWorkflowFailed,
     handleWorkflowNodeStarted,
     handleWorkflowNodeFinished,
+    handleWorkflowNodeHumanInputRequired,
+    handleWorkflowNodeHumanInputFormFilled,
+    handleWorkflowNodeHumanInputFormTimeout,
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
@@ -45,6 +86,7 @@ export const useWorkflowRun = () => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowPaused,
   } = useWorkflowRunEvent()
 
   const handleBackupDraft = useCallback(() => {
@@ -101,12 +143,15 @@ export const useWorkflowRun = () => {
   const handleRun = useCallback(async (
     params: any,
     callback?: IOtherOptions,
+    options?: HandleRunOptions,
   ) => {
+    const runMode = options?.mode ?? TriggerType.UserInput
+    const resolvedParams = params ?? {}
     const {
       getNodes,
       setNodes,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
+    const newNodes = produce(getNodes(), (draft: Node[]) => {
       draft.forEach((node) => {
         node.data.selected = false
         node.data._runningStatus = undefined
@@ -129,10 +174,16 @@ export const useWorkflowRun = () => {
       onNodeRetry,
       onAgentLog,
       onError,
+      onWorkflowPaused,
+      onHumanInputRequired,
+      onHumanInputFormFilled,
+      onHumanInputFormTimeout,
+      onCompleted,
       ...restCallback
     } = callback || {}
     workflowStore.setState({ historyWorkflowData: undefined })
     const appDetail = useAppStore.getState().appDetail
+    const runHistoryUrl = buildRunHistoryUrl(appDetail)
     const workflowContainer = document.getElementById('workflow-container')
 
     const {
@@ -140,188 +191,234 @@ export const useWorkflowRun = () => {
       clientHeight,
     } = workflowContainer!
 
-    let url = ''
-    if (appDetail?.mode === 'advanced-chat')
-      url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
+    const isInWorkflowDebug = appDetail?.mode === AppModeEnum.WORKFLOW
 
-    if (appDetail?.mode === 'workflow')
-      url = `/apps/${appDetail.id}/workflows/draft/run`
+    const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
+    const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
+
+    if (!url)
+      return
+
+    const validationMessage = validateWorkflowRunRequest(runMode, options)
+    if (validationMessage) {
+      console.error(validationMessage)
+      return
+    }
+
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
 
     const {
       setWorkflowRunningData,
+      setIsListening,
+      setShowVariableInspectPanel,
+      setListeningTriggerType,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
+      setListeningTriggerNodeId,
     } = workflowStore.getState()
-    setWorkflowRunningData({
-      result: {
-        status: WorkflowRunningStatus.Running,
-      },
-      tracing: [],
-      resultText: '',
+
+    applyRunningStateForMode({
+      setWorkflowRunningData,
+      setIsListening,
+      setShowVariableInspectPanel,
+      setListeningTriggerType,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
+      setListeningTriggerNodeId,
+    }, runMode, options)
+
+    const { ttsUrl, ttsIsPublic } = buildTTSConfig(resolvedParams, pathname)
+    // Lazy initialization: Only create AudioPlayer when TTS is actually needed
+    // This prevents opening audio channel unnecessarily
+    let player: AudioPlayer | null = null
+    const getOrCreatePlayer = () => {
+      if (!player)
+        player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+
+      return player
+    }
+
+    const clearAbortController = () => {
+      abortControllerRef.current = null
+      clearWindowDebugControllers(window as unknown as Record<string, unknown>)
+    }
+
+    const clearListeningStateInStore = () => {
+      const state = workflowStore.getState()
+      clearListeningState({
+        setIsListening: state.setIsListening,
+        setListeningTriggerType: state.setListeningTriggerType,
+        setListeningTriggerNodeId: state.setListeningTriggerNodeId,
+        setListeningTriggerNodeIds: state.setListeningTriggerNodeIds,
+        setListeningTriggerIsAll: state.setListeningTriggerIsAll,
+      })
+    }
+
+    const workflowRunEventHandlers = {
+      handleWorkflowStarted,
+      handleWorkflowFinished,
+      handleWorkflowFailed,
+      handleWorkflowNodeStarted,
+      handleWorkflowNodeFinished,
+      handleWorkflowNodeHumanInputRequired,
+      handleWorkflowNodeHumanInputFormFilled,
+      handleWorkflowNodeHumanInputFormTimeout,
+      handleWorkflowNodeIterationStarted,
+      handleWorkflowNodeIterationNext,
+      handleWorkflowNodeIterationFinished,
+      handleWorkflowNodeLoopStarted,
+      handleWorkflowNodeLoopNext,
+      handleWorkflowNodeLoopFinished,
+      handleWorkflowNodeRetry,
+      handleWorkflowAgentLog,
+      handleWorkflowTextChunk,
+      handleWorkflowTextReplace,
+      handleWorkflowPaused,
+    }
+    const userCallbacks = {
+      onWorkflowStarted,
+      onWorkflowFinished,
+      onNodeStarted,
+      onNodeFinished,
+      onIterationStart,
+      onIterationNext,
+      onIterationFinish,
+      onLoopStart,
+      onLoopNext,
+      onLoopFinish,
+      onNodeRetry,
+      onAgentLog,
+      onError,
+      onWorkflowPaused,
+      onHumanInputRequired,
+      onHumanInputFormFilled,
+      onHumanInputFormTimeout,
+      onCompleted,
+    }
+
+    const trackWorkflowRunFailed = (eventParams: unknown) => {
+      const payload = eventParams as { error?: string, node_type?: string }
+      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: payload?.error, node_type: payload?.node_type })
+    }
+
+    const baseSseOptions = createBaseWorkflowRunCallbacks({
+      clientWidth,
+      clientHeight,
+      runHistoryUrl,
+      isInWorkflowDebug,
+      fetchInspectVars,
+      invalidAllLastRun,
+      invalidateRunHistory,
+      clearAbortController,
+      clearListeningState: clearListeningStateInStore,
+      trackWorkflowRunFailed,
+      handlers: workflowRunEventHandlers,
+      callbacks: userCallbacks,
+      restCallback,
+      getOrCreatePlayer,
     })
 
-    let ttsUrl = ''
-    let ttsIsPublic = false
-    if (params.token) {
-      ttsUrl = '/text-to-audio'
-      ttsIsPublic = true
+    if (isDebuggableTriggerType(runMode)) {
+      await runTriggerDebug({
+        debugType: runMode,
+        url,
+        requestBody,
+        baseSseOptions,
+        controllerTarget: window as unknown as Record<string, unknown>,
+        setAbortController: (controller) => {
+          abortControllerRef.current = controller
+        },
+        clearAbortController,
+        clearListeningState: clearListeningStateInStore,
+        setWorkflowRunningData,
+      })
+      return
     }
-    else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
-        ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
-      else
-        ttsUrl = `/apps/${params.appId}/text-to-audio`
-    }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+
+    const finalCallbacks = createFinalWorkflowRunCallbacks({
+      clientWidth,
+      clientHeight,
+      runHistoryUrl,
+      isInWorkflowDebug,
+      fetchInspectVars,
+      invalidAllLastRun,
+      invalidateRunHistory,
+      clearAbortController,
+      clearListeningState: clearListeningStateInStore,
+      trackWorkflowRunFailed,
+      handlers: workflowRunEventHandlers,
+      callbacks: userCallbacks,
+      restCallback,
+      baseSseOptions,
+      player,
+      setAbortController: (controller) => {
+        abortControllerRef.current = controller
+      },
+    })
 
     ssePost(
       url,
       {
-        body: params,
+        body: requestBody,
       },
-      {
-        onWorkflowStarted: (params) => {
-          handleWorkflowStarted(params)
-
-          if (onWorkflowStarted)
-            onWorkflowStarted(params)
-        },
-        onWorkflowFinished: (params) => {
-          handleWorkflowFinished(params)
-
-          if (onWorkflowFinished)
-            onWorkflowFinished(params)
-        },
-        onError: (params) => {
-          handleWorkflowFailed()
-
-          if (onError)
-            onError(params)
-        },
-        onNodeStarted: (params) => {
-          handleWorkflowNodeStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onNodeStarted)
-            onNodeStarted(params)
-        },
-        onNodeFinished: (params) => {
-          handleWorkflowNodeFinished(params)
-
-          if (onNodeFinished)
-            onNodeFinished(params)
-        },
-        onIterationStart: (params) => {
-          handleWorkflowNodeIterationStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onIterationStart)
-            onIterationStart(params)
-        },
-        onIterationNext: (params) => {
-          handleWorkflowNodeIterationNext(params)
-
-          if (onIterationNext)
-            onIterationNext(params)
-        },
-        onIterationFinish: (params) => {
-          handleWorkflowNodeIterationFinished(params)
-
-          if (onIterationFinish)
-            onIterationFinish(params)
-        },
-        onLoopStart: (params) => {
-          handleWorkflowNodeLoopStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onLoopStart)
-            onLoopStart(params)
-        },
-        onLoopNext: (params) => {
-          handleWorkflowNodeLoopNext(params)
-
-          if (onLoopNext)
-            onLoopNext(params)
-        },
-        onLoopFinish: (params) => {
-          handleWorkflowNodeLoopFinished(params)
-
-          if (onLoopFinish)
-            onLoopFinish(params)
-        },
-        onNodeRetry: (params) => {
-          handleWorkflowNodeRetry(params)
-
-          if (onNodeRetry)
-            onNodeRetry(params)
-        },
-        onAgentLog: (params) => {
-          handleWorkflowAgentLog(params)
-
-          if (onAgentLog)
-            onAgentLog(params)
-        },
-        onTextChunk: (params) => {
-          handleWorkflowTextChunk(params)
-        },
-        onTextReplace: (params) => {
-          handleWorkflowTextReplace(params)
-        },
-        onTTSChunk: (messageId: string, audio: string) => {
-          if (!audio || audio === '')
-            return
-          player.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
-        },
-        onTTSEnd: (messageId: string, audio: string) => {
-          player.playAudioWithAudio(audio, false)
-        },
-        ...restCallback,
-      },
+      finalCallbacks,
     )
-  }, [
-    store,
-    workflowStore,
-    doSyncWorkflowDraft,
-    handleWorkflowStarted,
-    handleWorkflowFinished,
-    handleWorkflowFailed,
-    handleWorkflowNodeStarted,
-    handleWorkflowNodeFinished,
-    handleWorkflowNodeIterationStarted,
-    handleWorkflowNodeIterationNext,
-    handleWorkflowNodeIterationFinished,
-    handleWorkflowNodeLoopStarted,
-    handleWorkflowNodeLoopNext,
-    handleWorkflowNodeLoopFinished,
-    handleWorkflowNodeRetry,
-    handleWorkflowTextChunk,
-    handleWorkflowTextReplace,
-    handleWorkflowAgentLog,
-    pathname],
-  )
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
 
   const handleStopRun = useCallback((taskId: string) => {
-    const appId = useAppStore.getState().appDetail?.id
+    const setStoppedState = () => {
+      const {
+        setWorkflowRunningData,
+        setIsListening,
+        setShowVariableInspectPanel,
+        setListeningTriggerType,
+        setListeningTriggerNodeId,
+      } = workflowStore.getState()
 
-    stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
-  }, [])
+      applyStoppedState({
+        setWorkflowRunningData,
+        setIsListening,
+        setShowVariableInspectPanel,
+        setListeningTriggerType,
+        setListeningTriggerNodeId,
+      })
+    }
+
+    if (taskId) {
+      const appId = useAppStore.getState().appDetail?.id
+      stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+      setStoppedState()
+      return
+    }
+
+    // Try webhook debug controller from global variable first
+    const webhookController = (window as any).__webhookDebugAbortController
+    if (webhookController)
+      webhookController.abort()
+
+    const pluginController = (window as any).__pluginDebugAbortController
+    if (pluginController)
+      pluginController.abort()
+
+    const scheduleController = (window as any).__scheduleDebugAbortController
+    if (scheduleController)
+      scheduleController.abort()
+
+    const allTriggerController = (window as any).__allTriggersDebugAbortController
+    if (allTriggerController)
+      allTriggerController.abort()
+
+    // Also try the ref
+    if (abortControllerRef.current)
+      abortControllerRef.current.abort()
+
+    abortControllerRef.current = null
+    setStoppedState()
+  }, [workflowStore])
 
   const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
-    const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))
+    const nodes = normalizePublishedWorkflowNodes(publishedWorkflow)
     const edges = publishedWorkflow.graph.edges
     const viewport = publishedWorkflow.graph.viewport!
     handleUpdateWorkflowCanvas({
@@ -329,21 +426,7 @@ export const useWorkflowRun = () => {
       edges,
       viewport,
     })
-    const mappedFeatures = {
-      opening: {
-        enabled: !!publishedWorkflow.features.opening_statement || !!publishedWorkflow.features.suggested_questions.length,
-        opening_statement: publishedWorkflow.features.opening_statement,
-        suggested_questions: publishedWorkflow.features.suggested_questions,
-      },
-      suggested: publishedWorkflow.features.suggested_questions_after_answer,
-      text2speech: publishedWorkflow.features.text_to_speech,
-      speech2text: publishedWorkflow.features.speech_to_text,
-      citation: publishedWorkflow.features.retriever_resource,
-      moderation: publishedWorkflow.features.sensitive_word_avoidance,
-      file: publishedWorkflow.features.file_upload,
-    }
-
-    featuresStore?.setState({ features: mappedFeatures })
+    featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 

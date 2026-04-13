@@ -1,4 +1,6 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
+import os
+
 CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
 1. Detect Input Language
@@ -94,13 +96,23 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
 )
 
 
-SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
+# Default prompt for suggested questions (can be overridden by environment variable)
+_DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keep each question under 20 characters.\n"
     "MAKE SURE your output is the SAME language as the Assistant's latest response. "
     "The output must be an array in JSON format following the specified schema:\n"
     '["question1","question2","question3"]\n'
 )
+
+# Environment variable override for suggested questions prompt
+SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = os.getenv(
+    "SUGGESTED_QUESTIONS_PROMPT", _DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT
+)
+
+# Configurable LLM parameters for suggested questions (can be overridden by environment variables)
+SUGGESTED_QUESTIONS_MAX_TOKENS = int(os.getenv("SUGGESTED_QUESTIONS_MAX_TOKENS", "256"))
+SUGGESTED_QUESTIONS_TEMPERATURE = float(os.getenv("SUGGESTED_QUESTIONS_TEMPERATURE", "0"))
 
 GENERATOR_QA_PROMPT = (
     "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"
@@ -291,3 +303,153 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 
 Now, generate a JSON Schema based on my description
 """  # noqa: E501
+
+STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
+constraints:
+    - You must output in JSON format.
+    - Do not output boolean value, use string type instead.
+    - Do not output integer or float value, use number type instead.
+eg:
+    Here is the JSON schema:
+    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
+
+    Here is the user's question:
+    My name is John Doe and I am 30 years old.
+
+    output:
+    {"name": "John Doe", "age": 30}
+Here is the JSON schema:
+{{schema}}
+"""  # noqa: E501
+
+LLM_MODIFY_PROMPT_SYSTEM = """
+Both your input and output should be in JSON format.
+
+! Below is the schema for input content !
+{
+    "type": "object",
+    "description": "The user is trying to process some content with a prompt, but the output is not as expected. They hope to achieve their goal by modifying the prompt.",
+    "properties": {
+        "current": {
+            "type": "string",
+            "description": "The prompt before modification, where placeholders {{}} will be replaced with actual values for the large language model. The content in the placeholders should not be changed."
+        },
+        "last_run": {
+            "type": "object",
+            "description": "The output result from the large language model after receiving the prompt.",
+        },
+        "instruction": {
+            "type": "string",
+            "description": "User's instruction to edit the current prompt"
+        },
+        "ideal_output": {
+            "type": "string",
+            "description": "The ideal output that the user expects from the large language model after modifying the prompt. You should compare the last output with the ideal output and make changes to the prompt to achieve the goal."
+        }
+    }
+}
+! Above is the schema for input content !
+
+! Below is the schema for output content !
+{
+    "type": "object",
+    "description": "Your feedback to the user after they provide modification suggestions.",
+    "properties": {
+        "modified": {
+            "type": "string",
+            "description": "Your modified prompt. You should change the original prompt as little as possible to achieve the goal. Keep the language of prompt if not asked to change"
+        },
+        "message": {
+            "type": "string",
+            "description": "Your feedback to the user, in the user's language, explaining what you did and your thought process in text, providing sufficient emotional value to the user."
+        }
+    },
+    "required": [
+        "modified",
+        "message"
+    ]
+}
+! Above is the schema for output content !
+
+Your output must strictly follow the schema format, do not output any content outside of the JSON body.
+"""  # noqa: E501
+
+LLM_MODIFY_CODE_SYSTEM = """
+Both your input and output should be in JSON format.
+
+! Below is the schema for input content !
+{
+    "type": "object",
+    "description": "The user is trying to process some data with a code snippet, but the result is not as expected. They hope to achieve their goal by modifying the code.",
+    "properties": {
+        "current": {
+            "type": "string",
+            "description": "The code before modification."
+        },
+        "last_run": {
+            "type": "object",
+            "description": "The result of the code.",
+        },
+        "message": {
+            "type": "string",
+            "description": "User's instruction to edit the current code"
+        }
+    }
+}
+! Above is the schema for input content !
+
+! Below is the schema for output content !
+{
+    "type": "object",
+    "description": "Your feedback to the user after they provide modification suggestions.",
+    "properties": {
+        "modified": {
+            "type": "string",
+            "description": "Your modified code. You should change the original code as little as possible to achieve the goal. Keep the programming language of code if not asked to change"
+        },
+        "message": {
+            "type": "string",
+            "description": "Your feedback to the user, in the user's language, explaining what you did and your thought process in text, providing sufficient emotional value to the user."
+        }
+    },
+    "required": [
+        "modified",
+        "message"
+    ]
+}
+! Above is the schema for output content !
+
+When you are modifying the code, you should remember:
+- Do not use print, this not work in dify sandbox.
+- Do not try dangerous call like deleting files. It's PROHIBITED.
+- Do not use any library that is not built-in in with Python.
+- Get inputs from the parameters of the function and have explicit type annotations.
+- Write proper imports at the top of the code.
+- Use return statement to return the result.
+- You should return a `dict`. If you need to return a `result: str`, you should `return {"result": result}`.
+Your output must strictly follow the schema format, do not output any content outside of the JSON body.
+"""  # noqa: E501
+
+INSTRUCTION_GENERATE_TEMPLATE_PROMPT = """The output of this prompt is not as expected: {{#last_run#}}.
+You should edit the prompt according to the IDEAL OUTPUT."""
+
+INSTRUCTION_GENERATE_TEMPLATE_CODE = """Please fix the errors in the {{#error_message#}}."""
+
+DEFAULT_GENERATOR_SUMMARY_PROMPT = (
+    """Summarize the following content. Extract only the key information and main points. """
+    """Remove redundant details.
+
+Requirements:
+1. Write a concise summary in plain text
+2. You must write in {language}. No language other than {language} should be used.
+3. Focus on important facts, concepts, and details
+4. If images are included, describe their key information
+5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
+6. Write directly without extra words
+7. If there is not enough content to generate a meaningful summary, 
+   return an empty string without any explanation or prompt
+
+Output only the summary text. Start summarizing now:
+
+"""
+)

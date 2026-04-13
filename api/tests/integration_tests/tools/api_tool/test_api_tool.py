@@ -3,7 +3,8 @@ from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
-from tests.integration_tests.tools.__mock.http import setup_http_mock
+
+pytest_plugins = ("tests.integration_tests.tools.__mock.http",)
 
 tool_bundle = {
     "server_url": "http://www.example.com/{path_param}",
@@ -36,7 +37,7 @@ def test_api_tool(setup_http_mock):
         entity=ToolEntity(
             identity=ToolIdentity(provider="", author="", name="", label=I18nObject(en_US="test tool")),
         ),
-        api_bundle=ApiToolBundle(**tool_bundle),
+        api_bundle=ApiToolBundle.model_validate(tool_bundle),
         runtime=ToolRuntime(tenant_id="", credentials={"auth_type": "none"}),
         provider_id="test_tool",
     )

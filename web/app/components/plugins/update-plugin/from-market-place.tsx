@@ -1,25 +1,46 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import type { UpdateFromMarketPlacePayload } from '../types'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Card from '@/app/components/plugins/card'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { TaskStatus, type UpdateFromMarketPlacePayload } from '../types'
-import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
-import useGetIcon from '../install-plugin/base/use-get-icon'
-import { updateFromMarketPlace } from '@/service/plugins'
+import Button from '@/app/components/base/button'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogTitle,
+} from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
+import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
-import { usePluginTaskList } from '@/service/use-plugins'
-import Toast from '../../base/toast'
+import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
+import { updateFromMarketPlace } from '@/service/plugins'
+import { useInvalidateReferenceSettings, usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
+import useGetIcon from '../install-plugin/base/use-get-icon'
+import { TaskStatus } from '../types'
+import DowngradeWarningModal from './downgrade-warning'
 
-const i18nPrefix = 'plugin.upgrade'
+const i18nPrefix = 'upgrade'
 
 type Props = {
   payload: UpdateFromMarketPlacePayload
+  pluginId?: string
   onSave: () => void
   onCancel: () => void
+  isShowDowngradeWarningModal?: boolean
+}
+
+type FailedUpgradeResponse = {
+  task?: {
+    status?: TaskStatus
+    plugins?: Array<{
+      plugin_unique_identifier: string
+      message: string
+    }>
+  }
 }
 
 enum UploadStep {
@@ -30,8 +51,10 @@ enum UploadStep {
 
 const UpdatePluginModal: FC<Props> = ({
   payload,
+  pluginId,
   onSave,
   onCancel,
+  isShowDowngradeWarningModal,
 }) => {
   const {
     originalPackageInfo,
@@ -60,9 +83,9 @@ const UpdatePluginModal: FC<Props> = ({
 
   const configBtnText = useMemo(() => {
     return ({
-      [UploadStep.notStarted]: t(`${i18nPrefix}.upgrade`),
-      [UploadStep.upgrading]: t(`${i18nPrefix}.upgrading`),
-      [UploadStep.installed]: t(`${i18nPrefix}.close`),
+      [UploadStep.notStarted]: t(`${i18nPrefix}.upgrade`, { ns: 'plugin' }),
+      [UploadStep.upgrading]: t(`${i18nPrefix}.upgrading`, { ns: 'plugin' }),
+      [UploadStep.installed]: t(`${i18nPrefix}.close`, { ns: 'plugin' }),
     })[uploadStep]
   }, [t, uploadStep])
 
@@ -70,13 +93,23 @@ const UpdatePluginModal: FC<Props> = ({
     if (uploadStep === UploadStep.notStarted) {
       setUploadStep(UploadStep.upgrading)
       try {
+        const response = await updateFromMarketPlace({
+          original_plugin_unique_identifier: originalPackageInfo.id,
+          new_plugin_unique_identifier: targetPackageInfo.id,
+        }) as Awaited<ReturnType<typeof updateFromMarketPlace>> & FailedUpgradeResponse
+
+        if (response.task?.status === TaskStatus.failed) {
+          const failedPlugin = response.task.plugins?.find(plugin => plugin.plugin_unique_identifier === targetPackageInfo.id)
+            ?? response.task.plugins?.[0]
+          toast.error(failedPlugin?.message || t('error', { ns: 'common' }))
+          setUploadStep(UploadStep.notStarted)
+          return
+        }
+
         const {
           all_installed: isInstalled,
           task_id: taskId,
-        } = await updateFromMarketPlace({
-          original_plugin_unique_identifier: originalPackageInfo.id,
-          new_plugin_unique_identifier: targetPackageInfo.id,
-        })
+        } = response
 
         if (isInstalled) {
           onSave()
@@ -88,7 +121,8 @@ const UpdatePluginModal: FC<Props> = ({
           pluginUniqueIdentifier: targetPackageInfo.id,
         })
         if (status === TaskStatus.failed) {
-          Toast.notify({ type: 'error', message: error! })
+          toast.error(error!)
+          setUploadStep(UploadStep.notStarted)
           return
         }
         onSave()
@@ -101,54 +135,81 @@ const UpdatePluginModal: FC<Props> = ({
     }
     if (uploadStep === UploadStep.installed)
       onSave()
-  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
+  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, t, targetPackageInfo.id])
+
+  const { mutateAsync } = useRemoveAutoUpgrade()
+  const invalidateReferenceSettings = useInvalidateReferenceSettings()
+  const handleExcludeAndDownload = async () => {
+    if (pluginId) {
+      await mutateAsync({
+        plugin_id: pluginId,
+      })
+    }
+    invalidateReferenceSettings()
+    handleConfirm()
+  }
+  const doShowDowngradeWarningModal = isShowDowngradeWarningModal && uploadStep === UploadStep.notStarted
 
   return (
-    <Modal
-      isShow={true}
-      onClose={onCancel}
-      className='min-w-[560px]'
-      closable
-      title={t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`)}
-    >
-      <div className='system-md-regular mb-2 mt-3 text-text-secondary'>
-        {t(`${i18nPrefix}.description`)}
-      </div>
-      <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
-        <Card
-          installed={uploadStep === UploadStep.installed}
-          payload={pluginManifestToCardPluginProps({
-            ...originalPackageInfo.payload,
-            icon: icon!,
-          })}
-          className='w-full'
-          titleLeft={
-            <>
-              <Badge className='mx-1' size="s" state={BadgeState.Warning}>
-                {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
-              </Badge>
-            </>
-          }
-        />
-      </div>
-      <div className='flex items-center justify-end gap-2 self-stretch pt-5'>
-        {uploadStep === UploadStep.notStarted && (
-          <Button
-            onClick={handleCancel}
-          >
-            {t('common.operation.cancel')}
-          </Button>
+    <Dialog open onOpenChange={() => onCancel()}>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn('min-w-[560px]', doShowDowngradeWarningModal && 'min-w-[640px]')}
+      >
+        <DialogCloseButton />
+        {doShowDowngradeWarningModal && (
+          <DowngradeWarningModal
+            onCancel={onCancel}
+            onJustDowngrade={handleConfirm}
+            onExcludeAndDowngrade={handleExcludeAndDownload}
+          />
         )}
-        <Button
-          variant='primary'
-          loading={uploadStep === UploadStep.upgrading}
-          onClick={handleConfirm}
-          disabled={uploadStep === UploadStep.upgrading}
-        >
-          {configBtnText}
-        </Button>
-      </div>
-    </Modal>
+        {!doShowDowngradeWarningModal && (
+          <>
+            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+              {t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
+            </DialogTitle>
+            <div className="mb-2 mt-3 text-text-secondary system-md-regular">
+              {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
+            </div>
+            <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
+              <Card
+                installed={uploadStep === UploadStep.installed}
+                payload={pluginManifestToCardPluginProps({
+                  ...originalPackageInfo.payload,
+                  icon: icon!,
+                })}
+                className="w-full"
+                titleLeft={(
+                  <>
+                    <Badge className="mx-1" size="s" state={BadgeState.Warning}>
+                      {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
+                    </Badge>
+                  </>
+                )}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 self-stretch pt-5">
+              {uploadStep === UploadStep.notStarted && (
+                <Button
+                  onClick={handleCancel}
+                >
+                  {t('operation.cancel', { ns: 'common' })}
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                loading={uploadStep === UploadStep.upgrading}
+                onClick={handleConfirm}
+                disabled={uploadStep === UploadStep.upgrading}
+              >
+                {configBtnText}
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(UpdatePluginModal)

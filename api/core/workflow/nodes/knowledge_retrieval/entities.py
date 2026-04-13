@@ -1,46 +1,13 @@
-from collections.abc import Sequence
-from typing import Any, Literal, Optional
+from typing import Literal
 
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.nodes.llm.entities import ModelConfig, VisionConfig
 from pydantic import BaseModel, Field
 
-from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.llm.entities import VisionConfig
+from core.rag.entities import Condition, MetadataFilteringCondition, RerankingModelConfig, WeightedScoreConfig
 
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    provider: str
-    model: str
-
-
-class VectorSetting(BaseModel):
-    """
-    Vector Setting.
-    """
-
-    vector_weight: float
-    embedding_provider_name: str
-    embedding_model_name: str
-
-
-class KeywordSetting(BaseModel):
-    """
-    Keyword Setting.
-    """
-
-    keyword_weight: float
-
-
-class WeightedScoreConfig(BaseModel):
-    """
-    Weighted score Config.
-    """
-
-    vector_setting: VectorSetting
-    keyword_setting: KeywordSetting
+__all__ = ["Condition"]
 
 
 class MultipleRetrievalConfig(BaseModel):
@@ -49,22 +16,11 @@ class MultipleRetrievalConfig(BaseModel):
     """
 
     top_k: int
-    score_threshold: Optional[float] = None
+    score_threshold: float | None = None
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: Optional[RerankingModelConfig] = None
-    weights: Optional[WeightedScoreConfig] = None
-
-
-class ModelConfig(BaseModel):
-    """
-    Model Config.
-    """
-
-    provider: str
-    name: str
-    mode: str
-    completion_params: dict[str, Any] = {}
+    reranking_model: RerankingModelConfig | None = None
+    weights: WeightedScoreConfig | None = None
 
 
 class SingleRetrievalConfig(BaseModel):
@@ -75,62 +31,21 @@ class SingleRetrievalConfig(BaseModel):
     model: ModelConfig
 
 
-SupportedComparisonOperator = Literal[
-    # for string or array
-    "contains",
-    "not contains",
-    "start with",
-    "end with",
-    "is",
-    "is not",
-    "empty",
-    "not empty",
-    # for number
-    "=",
-    "≠",
-    ">",
-    "<",
-    "≥",
-    "≤",
-    # for time
-    "before",
-    "after",
-]
-
-
-class Condition(BaseModel):
-    """
-    Conditon detail
-    """
-
-    name: str
-    comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None | int | float = None
-
-
-class MetadataFilteringCondition(BaseModel):
-    """
-    Metadata Filtering Condition.
-    """
-
-    logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
-
-
 class KnowledgeRetrievalNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
     """
 
-    type: str = "knowledge-retrieval"
-    query_variable_selector: list[str]
+    type: NodeType = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
+    query_variable_selector: list[str] | None | str = None
+    query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]
     retrieval_mode: Literal["single", "multiple"]
-    multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
-    single_retrieval_config: Optional[SingleRetrievalConfig] = None
-    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
-    metadata_model_config: Optional[ModelConfig] = None
-    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
+    multiple_retrieval_config: MultipleRetrievalConfig | None = None
+    single_retrieval_config: SingleRetrievalConfig | None = None
+    metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
+    metadata_model_config: ModelConfig | None = None
+    metadata_filtering_conditions: MetadataFilteringCondition | None = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
 
     @property

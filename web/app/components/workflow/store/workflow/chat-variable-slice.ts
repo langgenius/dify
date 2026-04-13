@@ -20,7 +20,12 @@ export const createChatVariableSlice: StateCreator<ChatVariableSliceShape> = (se
 
   return ({
     showChatVariablePanel: false,
-    setShowChatVariablePanel: showChatVariablePanel => set(() => ({ showChatVariablePanel })),
+    setShowChatVariablePanel: showChatVariablePanel => set(() => {
+      if (showChatVariablePanel)
+        return { ...hideAllPanel, showChatVariablePanel: true }
+      else
+        return { showChatVariablePanel: false }
+    }),
     showGlobalVariablePanel: false,
     setShowGlobalVariablePanel: showGlobalVariablePanel => set(() => {
       if (showGlobalVariablePanel)

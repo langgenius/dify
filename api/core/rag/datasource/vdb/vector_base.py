@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TypedDict
 
 from core.rag.models.document import Document
+
+
+class VectorStoreDict(TypedDict):
+    class_prefix: str
+
+
+class VectorIndexStructDict(TypedDict):
+    type: str
+    vector_store: VectorStoreDict
 
 
 class BaseVector(ABC):
@@ -15,11 +24,11 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs) -> list[str] | None:
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         raise NotImplementedError
 
     @abstractmethod

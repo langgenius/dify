@@ -1,7 +1,8 @@
-import type { AppIconType, AppMode } from '@/types/app'
+import type { AppIconType, AppModeEnum } from '@/types/app'
+
 export type AppBasicInfo = {
   id: string
-  mode: AppMode
+  mode: AppModeEnum
   icon_type: AppIconType | null
   icon: string
   icon_background: string
@@ -27,6 +28,7 @@ export type App = {
   installed: boolean
   editable: boolean
   is_agent: boolean
+  can_trial: boolean
 }
 
 export type InstalledApp = {

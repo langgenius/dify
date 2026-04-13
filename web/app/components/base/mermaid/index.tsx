@@ -1,25 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import mermaid, { type MermaidConfig } from 'mermaid'
+import type { MermaidConfig } from 'mermaid'
+import mermaid from 'mermaid'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import {
   cleanUpSvgCode,
   isMermaidCodeComplete,
   prepareMermaidCode,
   processSvgForTheme,
+  sanitizeMermaidCode,
   svgToBase64,
   waitForDOMElement,
 } from './utils'
-import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
-import cn from '@/utils/classnames'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import { Theme } from '@/types/app'
 
 // Global flags and cache for mermaid
 let isMermaidInitialized = false
 const diagramCache = new Map<string, string>()
-let mermaidAPI: any = null
+let mermaidAPI: typeof mermaid.mermaidAPI | null = null
 
 if (typeof window !== 'undefined')
   mermaidAPI = mermaid.mermaidAPI
@@ -71,7 +72,7 @@ const initMermaid = () => {
       const config: MermaidConfig = {
         startOnLoad: false,
         fontFamily: 'sans-serif',
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         flowchart: {
           htmlLabels: true,
           useMaxWidth: true,
@@ -107,29 +108,24 @@ const initMermaid = () => {
   return isMermaidInitialized
 }
 
-const Flowchart = React.forwardRef((props: {
+type FlowchartProps = {
   PrimitiveCode: string
   theme?: 'light' | 'dark'
-}, ref) => {
+  ref?: React.Ref<HTMLDivElement>
+}
+
+const Flowchart = (props: FlowchartProps) => {
   const { t } = useTranslation()
   const [svgString, setSvgString] = useState<string | null>(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
   const [isInitialized, setIsInitialized] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(props.theme || 'light')
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartId = useRef(`mermaid-chart-${Math.random().toString(36).substr(2, 9)}`).current
+  const chartId = useRef(`mermaid-chart-${Math.random().toString(36).slice(2, 11)}`).current
   const [isLoading, setIsLoading] = useState(true)
-  const renderTimeoutRef = useRef<NodeJS.Timeout>()
+  const renderTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
-  const [isCodeComplete, setIsCodeComplete] = useState(false)
-  const codeCompletionCheckRef = useRef<NodeJS.Timeout>()
-  const prevCodeRef = useRef<string>()
-
-  // Create cache key from code, style and theme
-  const cacheKey = useMemo(() => {
-    return `${props.PrimitiveCode}-${look}-${currentTheme}`
-  }, [props.PrimitiveCode, look, currentTheme])
 
   /**
    * Renders Mermaid chart
@@ -137,6 +133,7 @@ const Flowchart = React.forwardRef((props: {
   const renderMermaidChart = async (code: string, style: 'classic' | 'handDrawn') => {
     if (style === 'handDrawn') {
       // Special handling for hand-drawn style
+      /* v8 ignore next */
       if (containerRef.current)
         containerRef.current.innerHTML = `<div id="${chartId}"></div>`
       await new Promise(resolve => setTimeout(resolve, 30))
@@ -154,6 +151,7 @@ const Flowchart = React.forwardRef((props: {
     else {
       // Standard rendering for classic style - using the extracted waitForDOMElement function
       const renderWithRetry = async () => {
+        /* v8 ignore next */
         if (containerRef.current)
           containerRef.current.innerHTML = `<div id="${chartId}"></div>`
         await new Promise(resolve => setTimeout(resolve, 30))
@@ -192,7 +190,7 @@ const Flowchart = React.forwardRef((props: {
   }, [])
 
   // Update theme when prop changes, but allow internal override.
-  const prevThemeRef = useRef<string>()
+  const prevThemeRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     // Only react if the theme prop from the outside has actually changed.
     if (props.theme && props.theme !== prevThemeRef.current) {
@@ -209,20 +207,16 @@ const Flowchart = React.forwardRef((props: {
   }, [props.theme])
 
   const renderFlowchart = useCallback(async (primitiveCode: string) => {
+    /* v8 ignore next */
     if (!isInitialized || !containerRef.current) {
+      /* v8 ignore next */
       setIsLoading(false)
+      /* v8 ignore next */
       setErrMsg(!isInitialized ? 'Mermaid initialization failed' : 'Container element not found')
       return
     }
 
-    // Return cached result if available
     const cacheKey = `${primitiveCode}-${look}-${currentTheme}`
-    if (diagramCache.has(cacheKey)) {
-      setErrMsg('')
-      setSvgString(diagramCache.get(cacheKey) || null)
-      setIsLoading(false)
-      return
-    }
 
     setIsLoading(true)
     setErrMsg('')
@@ -241,7 +235,7 @@ const Flowchart = React.forwardRef((props: {
             .split('\n')
             .map((line) => {
               // Gantt charts have specific syntax needs.
-              const taskMatch = line.match(/^\s*([^:]+?)\s*:\s*(.*)/)
+              const taskMatch = /^\s*([^:]+?)\s*:\s*(.*)/.exec(line)
               if (!taskMatch)
                 return line // Not a task line, return as is.
 
@@ -250,9 +244,7 @@ const Flowchart = React.forwardRef((props: {
 
               // Rule 1: Correct multiple "after" dependencies ONLY if they exist.
               // This is a common mistake, e.g., "..., after task1, after task2, ..."
-              const afterCount = (paramsStr.match(/after /g) || []).length
-              if (afterCount > 1)
-                paramsStr = paramsStr.replace(/,\s*after\s+/g, ' ')
+              paramsStr = paramsStr.replace(/,\s*after\s+/g, ' ')
 
               // Rule 2: Normalize spacing between parameters for consistency.
               const finalParams = paramsStr.replace(/\s*,\s*/g, ', ').trim()
@@ -272,6 +264,8 @@ const Flowchart = React.forwardRef((props: {
         finalCode = prepareMermaidCode(primitiveCode, look)
       }
 
+      finalCode = sanitizeMermaidCode(finalCode)
+
       // Step 2: Render chart
       const svgGraph = await renderMermaidChart(finalCode, look)
 
@@ -286,10 +280,8 @@ const Flowchart = React.forwardRef((props: {
       // Step 4: Clean up SVG code
       const cleanedSvg = cleanUpSvgCode(processedSvg)
 
-      if (cleanedSvg && typeof cleanedSvg === 'string') {
-        diagramCache.set(cacheKey, cleanedSvg)
-        setSvgString(cleanedSvg)
-      }
+      diagramCache.set(cacheKey, cleanedSvg as string)
+      setSvgString(cleanedSvg as string)
 
       setIsLoading(false)
     }
@@ -302,9 +294,9 @@ const Flowchart = React.forwardRef((props: {
   const configureMermaid = useCallback((primitiveCode: string) => {
     if (typeof window !== 'undefined' && isInitialized) {
       const themeVars = THEMES[currentTheme]
-      const config: any = {
+      const config: MermaidConfig = {
         startOnLoad: false,
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         fontFamily: 'sans-serif',
         maxTextSize: 50000,
         gantt: {
@@ -330,7 +322,8 @@ const Flowchart = React.forwardRef((props: {
         config.theme = currentTheme === 'dark' ? 'dark' : 'neutral'
 
         if (isFlowchart) {
-          config.flowchart = {
+          type FlowchartConfigWithRanker = NonNullable<MermaidConfig['flowchart']> & { ranker?: string }
+          const flowchartConfig: FlowchartConfigWithRanker = {
             htmlLabels: true,
             useMaxWidth: true,
             nodeSpacing: 60,
@@ -338,6 +331,7 @@ const Flowchart = React.forwardRef((props: {
             curve: 'linear',
             ranker: 'tight-tree',
           }
+          config.flowchart = flowchartConfig as unknown as MermaidConfig['flowchart']
         }
 
         if (currentTheme === 'dark') {
@@ -419,7 +413,7 @@ const Flowchart = React.forwardRef((props: {
       const cacheKey = `${props.PrimitiveCode}-${look}-${currentTheme}`
       if (diagramCache.has(cacheKey)) {
         setErrMsg('')
-        setSvgString(diagramCache.get(cacheKey) || null)
+        setSvgString(diagramCache.get(cacheKey)!)
         setIsLoading(false)
         return
       }
@@ -429,26 +423,23 @@ const Flowchart = React.forwardRef((props: {
     }, 300) // 300ms debounce
 
     return () => {
-      if (renderTimeoutRef.current)
-        clearTimeout(renderTimeoutRef.current)
+      clearTimeout(renderTimeoutRef.current)
     }
   }, [props.PrimitiveCode, look, currentTheme, isInitialized, configureMermaid, renderFlowchart])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (containerRef.current)
-        containerRef.current.innerHTML = ''
       if (renderTimeoutRef.current)
         clearTimeout(renderTimeoutRef.current)
     }
   }, [])
 
   const handlePreviewClick = async () => {
-    if (svgString) {
-      const base64 = await svgToBase64(svgString)
-      setImagePreviewUrl(base64)
-    }
+    if (!svgString)
+      return
+    const base64 = await svgToBase64(svgString)
+    setImagePreviewUrl(base64)
   }
 
   const toggleTheme = () => {
@@ -481,29 +472,33 @@ const Flowchart = React.forwardRef((props: {
       'text-gray-700': currentTheme === Theme.light,
       'text-gray-300': currentTheme === Theme.dark,
     }),
-    themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-sm transition-all duration-300', {
-      'bg-white/80 hover:bg-white hover:shadow-lg text-gray-700 border border-gray-200': currentTheme === Theme.light,
-      'bg-slate-800/80 hover:bg-slate-700 hover:shadow-lg text-yellow-300 border border-slate-600': currentTheme === Theme.dark,
+    themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-xs transition-all duration-300', {
+      'border border-gray-200 bg-white/80 text-gray-700 hover:bg-white hover:shadow-lg': currentTheme === Theme.light,
+      'border border-slate-600 bg-slate-800/80 text-yellow-300 hover:bg-slate-700 hover:shadow-lg': currentTheme === Theme.dark,
     }),
   }
 
   // Style classes for look options
   const getLookButtonClass = (lookType: 'classic' | 'handDrawn') => {
     return cn(
-      'system-sm-medium mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
+      'mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-medium',
       look === lookType && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
       currentTheme === Theme.dark && 'border-slate-600 bg-slate-800 text-slate-300',
       look === lookType && currentTheme === Theme.dark && 'border-blue-500 bg-slate-700 text-white',
     )
   }
+  const themeToggleTitleByTheme = {
+    light: t('theme.switchDark', { ns: 'app' }),
+    dark: t('theme.switchLight', { ns: 'app' }),
+  } as const
 
   return (
-    <div ref={ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
+    <div ref={props.ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
       <div className={themeClasses.segmented}>
         <div className="msh-segmented-group">
           <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
             <div
-              key='classic'
+              key="classic"
               className={getLookButtonClass('classic')}
               onClick={() => {
                 if (look !== 'classic') {
@@ -513,10 +508,10 @@ const Flowchart = React.forwardRef((props: {
                 }
               }}
             >
-              <div className="msh-segmented-item-label">{t('app.mermaid.classic')}</div>
+              <div className="msh-segmented-item-label">{t('mermaid.classic', { ns: 'app' })}</div>
             </div>
             <div
-              key='handDrawn'
+              key="handDrawn"
               className={getLookButtonClass('handDrawn')}
               onClick={() => {
                 if (look !== 'handDrawn') {
@@ -526,7 +521,7 @@ const Flowchart = React.forwardRef((props: {
                 }
               }}
             >
-              <div className="msh-segmented-item-label">{t('app.mermaid.handDrawn')}</div>
+              <div className="msh-segmented-item-label">{t('mermaid.handDrawn', { ns: 'app' })}</div>
             </div>
           </label>
         </div>
@@ -535,29 +530,28 @@ const Flowchart = React.forwardRef((props: {
       <div ref={containerRef} style={{ position: 'absolute', visibility: 'hidden', height: 0, overflow: 'hidden' }} />
 
       {isLoading && !svgString && (
-        <div className='px-[26px] py-4'>
-          <LoadingAnim type='text'/>
-          {!isCodeComplete && (
-            <div className="mt-2 text-sm text-gray-500">
-              {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
-            </div>
-          )}
+        <div className="px-[26px] py-4">
+          <LoadingAnim type="text" />
+          <div className="mt-2 text-sm text-gray-500">
+            {t('wait_for_completion', { ns: 'common', defaultValue: 'Waiting for diagram code to complete...' })}
+          </div>
         </div>
       )}
 
       {svgString && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={handlePreviewClick}>
-          <div className="absolute bottom-2 left-2 z-[100]">
+          <div className="absolute bottom-2 left-2 z-100">
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 toggleTheme()
               }}
               className={themeClasses.themeToggle}
-              title={(currentTheme === Theme.light ? t('app.theme.switchDark') : t('app.theme.switchLight')) || ''}
+              title={themeToggleTitleByTheme[currentTheme] || ''}
               style={{ transform: 'translate3d(0, 0, 0)' }}
             >
-              {currentTheme === Theme.light ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
+              {currentTheme === Theme.light ? <span className="i-heroicons-moon-solid h-5 w-5" /> : <span className="i-heroicons-sun-solid h-5 w-5" />}
             </button>
           </div>
 
@@ -571,18 +565,18 @@ const Flowchart = React.forwardRef((props: {
       {errMsg && (
         <div className={themeClasses.errorMessage}>
           <div className="flex items-center">
-            <ExclamationTriangleIcon className={themeClasses.errorIcon}/>
+            <span className={`i-heroicons-exclamation-triangle ${themeClasses.errorIcon}`} />
             <span className="ml-2">{errMsg}</span>
           </div>
         </div>
       )}
 
       {imagePreviewUrl && (
-        <ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
+        <ImagePreview title="mermaid_chart" url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
       )}
     </div>
   )
-})
+}
 
 Flowchart.displayName = 'Flowchart'
 

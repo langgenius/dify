@@ -1,107 +1,52 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
-import { EditionType, VarType } from '../../types'
-import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
-import { useStore } from '../../store'
+import type { LLMDefaultConfig } from './hooks/use-llm-input-manager'
+import type { LLMNodeType } from './types'
+import { produce } from 'immer'
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
+import {
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { AppModeEnum } from '@/types/app'
 import {
   useIsChatMode,
   useNodesReadOnly,
 } from '../../hooks'
-import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { LLMNodeType, StructuredOutput } from './types'
-import { useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
-  ModelFeatureEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
-import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { useStore } from '../../store'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import useLLMInputManager from './hooks/use-llm-input-manager'
+import useLLMPromptConfig from './hooks/use-llm-prompt-config'
+import useLLMStructuredOutputConfig from './hooks/use-llm-structured-output-config'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type] as LLMDefaultConfig | undefined
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
-  const inputRef = useRef(inputs)
-
-  const setInputs = useCallback((newInputs: LLMNodeType) => {
-    if (newInputs.memory && !newInputs.memory.role_prefix) {
-      const newPayload = produce(newInputs, (draft) => {
-        draft.memory!.role_prefix = defaultRolePrefix
-      })
-      doSetInputs(newPayload)
-      inputRef.current = newPayload
-      return
-    }
-    doSetInputs(newInputs)
-    inputRef.current = newInputs
-  }, [doSetInputs, defaultRolePrefix])
-
-  // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
-
+  const isChatModel = modelMode === AppModeEnum.CHAT
   const isCompletionModel = !isChatModel
 
-  const hasSetBlockStatus = (() => {
-    const promptTemplate = inputs.prompt_template
-    const hasSetContext = isChatModel ? (promptTemplate as PromptItem[]).some(item => checkHasContextBlock(item.text)) : checkHasContextBlock((promptTemplate as PromptItem).text)
-    if (!isChatMode) {
-      return {
-        history: false,
-        query: false,
-        context: hasSetContext,
-      }
-    }
-    if (isChatModel) {
-      return {
-        history: false,
-        query: (promptTemplate as PromptItem[]).some(item => checkHasQueryBlock(item.text)),
-        context: hasSetContext,
-      }
-    }
-    else {
-      return {
-        history: checkHasHistoryBlock((promptTemplate as PromptItem).text),
-        query: checkHasQueryBlock((promptTemplate as PromptItem).text),
-        context: hasSetContext,
-      }
-    }
-  })()
+  const {
+    inputRef,
+    setInputs,
+    appendDefaultPromptConfig,
+  } = useLLMInputManager({
+    inputs,
+    doSetInputs,
+    defaultConfig,
+    isChatModel,
+  })
 
-  const shouldShowContextTip = !hasSetBlockStatus.context && inputs.context.enabled
-
-  const appendDefaultPromptConfig = useCallback((draft: LLMNodeType, defaultConfig: any, passInIsChatMode?: boolean) => {
-    const promptTemplates = defaultConfig.prompt_templates
-    if (passInIsChatMode === undefined ? isChatModel : passInIsChatMode) {
-      draft.prompt_template = promptTemplates.chat_model.prompts
-    }
-    else {
-      draft.prompt_template = promptTemplates.completion_model.prompt
-
-      setDefaultRolePrefix({
-        user: promptTemplates.completion_model.conversation_histories_role.user_prefix,
-        assistant: promptTemplates.completion_model.conversation_histories_role.assistant_prefix,
-      })
-    }
-  }, [isChatModel])
-  useEffect(() => {
-    const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
-
-    if (isReady && !inputs.prompt_template) {
-      const newInputs = produce(inputs, (draft) => {
-        appendDefaultPromptConfig(draft, defaultConfig)
-      })
-      setInputs(newInputs)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultConfig, isChatModel])
+  const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
   const [modelChanged, setModelChanged] = useState(false)
   const {
@@ -117,23 +62,23 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: (newPayload) => {
-      const newInputs = produce(inputs, (draft) => {
+      const newInputs = produce(inputRef.current, (draft) => {
         draft.vision = newPayload
       })
       setInputs(newInputs)
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
-    const newInputs = produce(inputRef.current, (draft) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
+    const nextInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputRef.current.model.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
     })
-    setInputs(newInputs)
+    setInputs(nextInputs)
     setModelChanged(true)
   }, [setInputs, defaultConfig, appendDefaultPromptConfig])
 
@@ -148,11 +93,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.model.completion_params = newParams
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
@@ -160,242 +105,30 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
+  const promptConfig = useLLMPromptConfig({
+    inputs,
+    inputRef,
+    isChatMode,
+    isChatModel,
+    setInputs,
+  })
 
-  // variables
-  const isShowVars = (() => {
-    if (isChatModel)
-      return (inputs.prompt_template as PromptItem[]).some(item => item.edition_type === EditionType.jinja2)
-
-    return (inputs.prompt_template as PromptItem).edition_type === EditionType.jinja2
-  })()
-  const handleAddEmptyVariable = useCallback(() => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      if (!draft.prompt_config) {
-        draft.prompt_config = {
-          jinja2_variables: [],
-        }
-      }
-      if (!draft.prompt_config.jinja2_variables)
-        draft.prompt_config.jinja2_variables = []
-
-      draft.prompt_config.jinja2_variables.push({
-        variable: '',
-        value_selector: [],
-      })
-    })
-    setInputs(newInputs)
-  }, [setInputs])
-
-  const handleAddVariable = useCallback((payload: Variable) => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      if (!draft.prompt_config) {
-        draft.prompt_config = {
-          jinja2_variables: [],
-        }
-      }
-      if (!draft.prompt_config.jinja2_variables)
-        draft.prompt_config.jinja2_variables = []
-
-      draft.prompt_config.jinja2_variables.push(payload)
-    })
-    setInputs(newInputs)
-  }, [setInputs])
-
-  const handleVarListChange = useCallback((newList: Variable[]) => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      if (!draft.prompt_config) {
-        draft.prompt_config = {
-          jinja2_variables: [],
-        }
-      }
-      if (!draft.prompt_config.jinja2_variables)
-        draft.prompt_config.jinja2_variables = []
-
-      draft.prompt_config.jinja2_variables = newList
-    })
-    setInputs(newInputs)
-  }, [setInputs])
-
-  const handleVarNameChange = useCallback((oldName: string, newName: string) => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      if (isChatModel) {
-        const promptTemplate = draft.prompt_template as PromptItem[]
-        promptTemplate.filter(item => item.edition_type === EditionType.jinja2).forEach((item) => {
-          item.jinja2_text = (item.jinja2_text || '').replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
-        })
-      }
-      else {
-        if ((draft.prompt_template as PromptItem).edition_type !== EditionType.jinja2)
-          return
-
-        const promptTemplate = draft.prompt_template as PromptItem
-        promptTemplate.jinja2_text = (promptTemplate.jinja2_text || '').replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
-      }
-    })
-    setInputs(newInputs)
-  }, [isChatModel, setInputs])
-
-  // context
-  const handleContextVarChange = useCallback((newVar: ValueSelector | string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.context.variable_selector = newVar as ValueSelector || []
-      draft.context.enabled = !!(newVar && newVar.length > 0)
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.prompt_template = newPrompt
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleMemoryChange = useCallback((newMemory?: Memory) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.memory = newMemory
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleSyeQueryChange = useCallback((newQuery: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      if (!draft.memory) {
-        draft.memory = {
-          window: {
-            enabled: false,
-            size: 10,
-          },
-          query_prompt_template: newQuery,
-        }
-      }
-      else {
-        draft.memory.query_prompt_template = newQuery
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  // structure output
-  const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
-  const isModelSupportStructuredOutput = modelList
-    ?.find(provideItem => provideItem.provider === model?.provider)
-    ?.models.find(modelItem => modelItem.model === model?.name)
-    ?.features?.includes(ModelFeatureEnum.StructuredOutput)
-
-  const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
-  const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.structured_output_enabled = enabled
-    })
-    setInputs(newInputs)
-    if (enabled)
-      setStructuredOutputCollapsed(false)
-  }, [inputs, setInputs])
-
-  const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.structured_output = newOutput
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
-  }, [])
-
-  const filterJinjia2InputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
-  }, [])
-
-  const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
-  }, [])
+  const structuredOutputConfig = useLLMStructuredOutputConfig({
+    id,
+    model,
+    inputRef,
+    setInputs,
+    deleteNodeInspectorVars,
+  })
 
   const {
     availableVars,
     availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    filterVar: filterMemoryPromptVar,
+    filterVar: promptConfig.filterVar,
   })
-
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    runInputDataRef,
-    setRunInputData,
-    runResult,
-    toVarInputs,
-  } = useOneStepRun<LLMNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      '#context#': [RETRIEVAL_OUTPUT_STRUCT],
-      '#files#': [],
-    },
-  })
-
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .filter(key => !['#context#', '#files#'].includes(key))
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    const newVars = {
-      ...newPayload,
-      '#context#': runInputDataRef.current['#context#'],
-      '#files#': runInputDataRef.current['#files#'],
-    }
-    setRunInputData(newVars)
-  }, [runInputDataRef, setRunInputData])
-
-  const contexts = runInputData['#context#']
-  const setContexts = useCallback((newContexts: string[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#context#': newContexts,
-    })
-  }, [runInputDataRef, setRunInputData])
-
-  const visionFiles = runInputData['#files#']
-  const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#files#': newFiles,
-    })
-  }, [runInputDataRef, setRunInputData])
-
-  const allVarStrArr = (() => {
-    const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).filter(item => item.edition_type !== EditionType.jinja2).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
-    if (isChatMode && isChatModel && !!inputs.memory) {
-      arr.push('{{#sys.query#}}')
-      arr.push(inputs.memory.query_prompt_template)
-    }
-
-    return arr
-  })()
-
-  const varInputs = (() => {
-    const vars = getInputVars(allVarStrArr)
-    if (isShowVars)
-      return [...vars, ...toVarInputs(inputs.prompt_config?.jinja2_variables || [])]
-
-    return vars
-  })()
 
   return {
     readOnly,
@@ -403,45 +136,33 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     inputs,
     isChatModel,
     isCompletionModel,
-    hasSetBlockStatus,
-    shouldShowContextTip,
+    hasSetBlockStatus: promptConfig.hasSetBlockStatus,
+    shouldShowContextTip: promptConfig.shouldShowContextTip,
     isVisionModel,
     handleModelChanged,
     handleCompletionParamsChange,
-    isShowVars,
-    handleVarListChange,
-    handleVarNameChange,
-    handleAddVariable,
-    handleAddEmptyVariable,
-    handleContextVarChange,
-    filterInputVar,
-    filterVar: filterMemoryPromptVar,
+    isShowVars: promptConfig.isShowVars,
+    handleVarListChange: promptConfig.handleVarListChange,
+    handleVarNameChange: promptConfig.handleVarNameChange,
+    handleAddVariable: promptConfig.handleAddVariable,
+    handleAddEmptyVariable: promptConfig.handleAddEmptyVariable,
+    handleContextVarChange: promptConfig.handleContextVarChange,
+    filterInputVar: promptConfig.filterInputVar,
+    filterVar: promptConfig.filterVar,
     availableVars,
     availableNodesWithParent,
-    handlePromptChange,
-    handleMemoryChange,
-    handleSyeQueryChange,
+    handlePromptChange: promptConfig.handlePromptChange,
+    handleMemoryChange: promptConfig.handleMemoryChange,
+    handleSyeQueryChange: promptConfig.handleSyeQueryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
-    varInputs,
-    runningStatus,
-    isModelSupportStructuredOutput,
-    handleStructureOutputChange,
-    structuredOutputCollapsed,
-    setStructuredOutputCollapsed,
-    handleStructureOutputEnableChange,
-    handleRun,
-    handleStop,
-    runResult,
-    filterJinjia2InputVar,
+    isModelSupportStructuredOutput: structuredOutputConfig.isModelSupportStructuredOutput,
+    handleStructureOutputChange: structuredOutputConfig.handleStructureOutputChange,
+    structuredOutputCollapsed: structuredOutputConfig.structuredOutputCollapsed,
+    setStructuredOutputCollapsed: structuredOutputConfig.setStructuredOutputCollapsed,
+    handleStructureOutputEnableChange: structuredOutputConfig.handleStructureOutputEnableChange,
+    filterJinja2InputVar: promptConfig.filterJinja2InputVar,
+    handleReasoningFormatChange: structuredOutputConfig.handleReasoningFormatChange,
   }
 }
 

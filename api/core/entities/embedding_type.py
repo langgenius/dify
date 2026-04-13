@@ -1,10 +1,5 @@
-from enum import Enum
+"""Compatibility wrapper for the runtime embedding input enum."""
 
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType
 
-class EmbeddingInputType(Enum):
-    """
-    Enum for embedding input type.
-    """
-
-    DOCUMENT = "document"
-    QUERY = "query"
+__all__ = ["EmbeddingInputType"]

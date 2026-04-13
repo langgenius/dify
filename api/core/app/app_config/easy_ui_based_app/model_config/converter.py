@@ -1,13 +1,14 @@
 from typing import cast
 
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+
 from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 
 
 class ModelConfigConverter:
@@ -21,7 +22,7 @@ class ModelConfigConverter:
         """
         model_config = app_config.model
 
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=app_config.tenant_id)
         provider_model_bundle = provider_manager.get_provider_model_bundle(
             tenant_id=app_config.tenant_id, provider=model_config.provider, model_type=ModelType.LLM
         )
@@ -68,9 +69,13 @@ class ModelConfigConverter:
         # get model mode
         model_mode = model_config.mode
         if not model_mode:
-            model_mode = LLMMode.CHAT.value
+            model_mode = LLMMode.CHAT
             if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
-                model_mode = LLMMode(model_schema.model_properties[ModelPropertyKey.MODE]).value
+                try:
+                    model_mode = LLMMode(model_schema.model_properties[ModelPropertyKey.MODE])
+                except ValueError:
+                    # Fall back to CHAT mode if the stored value is invalid
+                    model_mode = LLMMode.CHAT
 
         if not model_schema:
             raise ValueError(f"Model {model_name} not exist.")

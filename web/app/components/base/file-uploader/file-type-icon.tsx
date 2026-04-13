@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import type { FileAppearanceType } from './types'
 import {
   RiFile3Fill,
   RiFileCodeFill,
@@ -13,9 +13,9 @@ import {
   RiFileWordFill,
   RiMarkdownFill,
 } from '@remixicon/react'
+import { memo } from 'react'
+import { cn } from '@/utils/classnames'
 import { FileAppearanceTypeEnum } from './types'
-import type { FileAppearanceType } from './types'
-import cn from '@/utils/classnames'
 
 const FILE_TYPE_ICON_MAP = {
   [FileAppearanceTypeEnum.pdf]: {
@@ -69,13 +69,14 @@ const FILE_TYPE_ICON_MAP = {
 }
 type FileTypeIconProps = {
   type: FileAppearanceType
-  size?: 'sm' | 'lg' | 'md'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 const SizeMap = {
-  sm: 'w-4 h-4',
-  md: 'w-5 h-5',
-  lg: 'w-6 h-6',
+  sm: 'size-4',
+  md: 'size-[18px]',
+  lg: 'size-5',
+  xl: 'size-6',
 }
 const FileTypeIcon = ({
   type,

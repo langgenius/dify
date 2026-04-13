@@ -5,7 +5,9 @@ import queue
 import re
 import threading
 from collections.abc import Iterable
-from typing import Optional
+
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -16,8 +18,6 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.message_entities import TextPromptMessageContent
-from core.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:
@@ -26,12 +26,10 @@ class AudioTrunk:
         self.status = status
 
 
-def _invoice_tts(text_content: str, model_instance: ModelInstance, tenant_id: str, voice: str):
+def _invoice_tts(text_content: str, model_instance: ModelInstance, voice: str):
     if not text_content or text_content.isspace():
         return
-    return model_instance.invoke_tts(
-        content_text=text_content.strip(), user="responding_tts", tenant_id=tenant_id, voice=voice
-    )
+    return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
 
 
 def _process_future(
@@ -56,14 +54,14 @@ def _process_future(
 
 
 class AppGeneratorTTSPublisher:
-    def __init__(self, tenant_id: str, voice: str, language: Optional[str] = None):
+    def __init__(self, tenant_id: str, voice: str, language: str | None = None):
         self.logger = logging.getLogger(__name__)
         self.tenant_id = tenant_id
         self.msg_text = ""
         self._audio_queue: queue.Queue[AudioTrunk] = queue.Queue()
         self._msg_queue: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
         self.match = re.compile(r"[。.!?]")
-        self.model_manager = ModelManager()
+        self.model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id, user_id="responding_tts")
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
@@ -72,8 +70,8 @@ class AppGeneratorTTSPublisher:
         self.voice = voice
         if not voice or voice not in values:
             self.voice = self.voices[0].get("value")
-        self.MAX_SENTENCE = 2
-        self._last_audio_event: Optional[AudioTrunk] = None
+        self.max_sentence = 2
+        self._last_audio_event: AudioTrunk | None = None
         # FIXME better way to handle this threading.start
         threading.Thread(target=self._runtime).start()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
@@ -90,7 +88,7 @@ class AppGeneratorTTSPublisher:
                 if message is None:
                     if self.msg_text and len(self.msg_text.strip()) > 0:
                         futures_result = self.executor.submit(
-                            _invoice_tts, self.msg_text, self.model_instance, self.tenant_id, self.voice
+                            _invoice_tts, self.msg_text, self.model_instance, self.voice
                         )
                         future_queue.put(futures_result)
                     break
@@ -110,17 +108,17 @@ class AppGeneratorTTSPublisher:
                 elif isinstance(message.event, QueueNodeSucceededEvent):
                     if message.event.outputs is None:
                         continue
-                    self.msg_text += message.event.outputs.get("output", "")
+                    output = message.event.outputs.get("output", "")
+                    if isinstance(output, str):
+                        self.msg_text += output
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
-                if len(sentence_arr) >= min(self.MAX_SENTENCE, 7):
-                    self.MAX_SENTENCE += 1
+                if len(sentence_arr) >= min(self.max_sentence, 7):
+                    self.max_sentence += 1
                     text_content = "".join(sentence_arr)
-                    futures_result = self.executor.submit(
-                        _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice
-                    )
+                    futures_result = self.executor.submit(_invoice_tts, text_content, self.model_instance, self.voice)
                     future_queue.put(futures_result)
-                    if text_tmp:
+                    if isinstance(text_tmp, str):
                         self.msg_text = text_tmp
                     else:
                         self.msg_text = ""

@@ -1,111 +1,225 @@
+from __future__ import annotations
+
+import sys
+import types
 from collections.abc import Generator
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import ArrayFileSegment
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.errors import ToolInvokeError
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-from core.workflow.nodes.answer import AnswerStreamGenerateRoute
-from core.workflow.nodes.end import EndStreamParam
-from core.workflow.nodes.enums import ErrorStrategy
-from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.tool import ToolNode
-from core.workflow.nodes.tool.entities import ToolNodeData
-from models import UserFrom, WorkflowType
+from core.workflow.system_variables import build_system_variables
+from tests.workflow_test_utils import build_test_graph_init_params
+
+if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
+    from graphon.nodes.tool.tool_node import ToolNode
 
 
-def _create_tool_node():
-    data = ToolNodeData(
-        title="Test Tool",
-        tool_parameters={},
-        provider_id="test_tool",
-        provider_type=ToolProviderType.WORKFLOW,
-        provider_name="test tool",
-        tool_name="test tool",
-        tool_label="test tool",
-        tool_configurations={},
-        plugin_unique_identifier=None,
-        desc="Exception handling test tool",
-        error_strategy=ErrorStrategy.FAIL_BRANCH,
-        version="1",
+class _StubToolRuntime:
+    def get_runtime(self, *, node_id: str, node_data: Any, variable_pool: Any) -> ToolRuntimeHandle:
+        raise NotImplementedError
+
+    def get_runtime_parameters(self, *, tool_runtime: ToolRuntimeHandle) -> list[Any]:
+        return []
+
+    def invoke(
+        self,
+        *,
+        tool_runtime: ToolRuntimeHandle,
+        tool_parameters: dict[str, Any],
+        workflow_call_depth: int,
+        provider_name: str,
+    ) -> Generator[ToolRuntimeMessage, None, None]:
+        yield from ()
+
+    def get_usage(self, *, tool_runtime: ToolRuntimeHandle) -> LLMUsage:
+        return LLMUsage.empty_usage()
+
+    def build_file_reference(self, *, mapping: dict[str, Any]) -> Any:
+        return mapping
+
+    def resolve_provider_icons(
+        self,
+        *,
+        provider_name: str,
+        default_icon: str | None = None,
+    ) -> tuple[str | None, str | None]:
+        return default_icon, None
+
+
+@pytest.fixture
+def tool_node(monkeypatch) -> ToolNode:
+    module_name = "core.ops.ops_trace_manager"
+    if module_name not in sys.modules:
+        ops_stub = types.ModuleType(module_name)
+        ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
+        ops_stub.TraceTask = object  # pragma: no cover - stub attribute
+        monkeypatch.setitem(sys.modules, module_name, ops_stub)
+
+    from graphon.nodes.protocols import ToolFileManagerProtocol
+    from graphon.nodes.tool.tool_node import ToolNode
+
+    graph_config: dict[str, Any] = {
+        "nodes": [
+            {
+                "id": "tool-node",
+                "data": {
+                    "type": "tool",
+                    "title": "Tool",
+                    "desc": "",
+                    "provider_id": "provider",
+                    "provider_type": "builtin",
+                    "provider_name": "provider",
+                    "tool_name": "tool",
+                    "tool_label": "tool",
+                    "tool_configurations": {},
+                    "tool_parameters": {},
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    init_params = build_test_graph_init_params(
+        workflow_id="workflow-id",
+        graph_config=graph_config,
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        user_from="account",
+        invoke_from="debugger",
+        call_depth=0,
     )
-    variable_pool = VariablePool(
-        system_variables={},
-        user_inputs={},
-    )
+
+    variable_pool = VariablePool(system_variables=build_system_variables(user_id="user-id"))
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+
+    config = graph_config["nodes"][0]
+
+    # Provide a stub ToolFileManager to satisfy the updated ToolNode constructor
+    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+    runtime = _StubToolRuntime()
+
     node = ToolNode(
-        id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
+        id="node-instance",
+        config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+        tool_file_manager_factory=tool_file_manager_factory,
+        runtime=runtime,
     )
     return node
 
 
-class MockToolRuntime:
-    def get_merged_runtime_parameters(self):
-        pass
+def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
+    events: list[Any] = []
+    try:
+        while True:
+            events.append(next(generator))
+    except StopIteration as stop:
+        return events, stop.value
 
 
-def mock_message_stream() -> Generator[ToolInvokeMessage, None, None]:
-    yield from []
-    raise ToolInvokeError("oops")
-
-
-def test_tool_node_on_tool_invoke_error(monkeypatch: pytest.MonkeyPatch):
-    """Ensure that ToolNode can handle ToolInvokeError when transforming
-    messages generated by ToolEngine.generic_invoke.
-    """
-    tool_node = _create_tool_node()
-
-    # Need to patch ToolManager and ToolEngine so that we don't
-    # have to set up a database.
-    monkeypatch.setattr(
-        "core.tools.tool_manager.ToolManager.get_workflow_tool_runtime", lambda *args, **kwargs: MockToolRuntime()
+def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[list[Any], LLMUsage]:
+    generator = tool_node._transform_message(
+        messages=iter([message]),
+        tool_info={"provider_type": "builtin", "provider_id": "provider"},
+        parameters_for_log={},
+        node_id=tool_node._node_id,
+        tool_runtime=ToolRuntimeHandle(raw=object()),
     )
-    monkeypatch.setattr(
-        "core.tools.tool_engine.ToolEngine.generic_invoke",
-        lambda *args, **kwargs: mock_message_stream(),
+    return _collect_events(generator)
+
+
+def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
+    file_obj = File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        related_id="file-id",
+        filename="demo.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=123,
+        storage_key="file-key",
+    )
+    message = ToolRuntimeMessage(
+        type=ToolRuntimeMessage.MessageType.LINK,
+        message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+        meta={"file": file_obj},
     )
 
-    streams = list(tool_node._run())
-    assert len(streams) == 1
-    stream = streams[0]
-    assert isinstance(stream, RunCompletedEvent)
-    result = stream.run_result
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert "oops" in result.error
-    assert "Failed to transform tool message:" in result.error
-    assert result.error_type == "ToolInvokeError"
+    events, usage = _run_transform(tool_node, message)
+
+    assert isinstance(usage, LLMUsage)
+
+    chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
+    assert chunk_events
+    assert chunk_events[0].chunk == "File: /files/tools/file-id.pdf\n"
+
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert len(completed_events) == 1
+    outputs = completed_events[0].node_run_result.outputs
+    assert outputs["text"] == "File: /files/tools/file-id.pdf\n"
+
+    files_segment = outputs["files"]
+    assert isinstance(files_segment, ArrayFileSegment)
+    assert files_segment.value == [file_obj]
+
+
+def test_plain_link_messages_remain_links(tool_node: ToolNode):
+    message = ToolRuntimeMessage(
+        type=ToolRuntimeMessage.MessageType.LINK,
+        message=ToolRuntimeMessage.TextMessage(text="https://dify.ai"),
+        meta=None,
+    )
+
+    events, _ = _run_transform(tool_node, message)
+
+    chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
+    assert chunk_events
+    assert chunk_events[0].chunk == "Link: https://dify.ai\n"
+
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert len(completed_events) == 1
+    files_segment = completed_events[0].node_run_result.outputs["files"]
+    assert isinstance(files_segment, ArrayFileSegment)
+    assert files_segment.value == []
+
+
+def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
+    file_obj = File(
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        related_id="file-id",
+        filename="demo.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=123,
+        storage_key="file-key",
+    )
+    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.return_value = (
+        None,
+        SimpleNamespace(mime_type="application/pdf"),
+    )
+    tool_node._runtime.build_file_reference = MagicMock(return_value=file_obj)
+    message = ToolRuntimeMessage(
+        type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
+        message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+        meta={"tool_file_id": "file-id"},
+    )
+
+    events, _ = _run_transform(tool_node, message)
+
+    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert len(completed_events) == 1
+    files_segment = completed_events[0].node_run_result.outputs["files"]
+    assert isinstance(files_segment, ArrayFileSegment)
+    assert files_segment.value == [file_obj]

@@ -19,7 +19,7 @@ const Line = ({
   const svgHeight = processedList[processedListLength - 1] + (processedListLength - 1) * 8
 
   return (
-    <svg className='w-6 shrink-0' style={{ height: svgHeight }}>
+    <svg className="w-6 shrink-0" style={{ height: svgHeight }}>
       {
         processedList.map((item, index) => {
           const prevItem = index > 0 ? processedList[index - 1] : 0
@@ -30,17 +30,17 @@ const Line = ({
                 index === 0 && (
                   <>
                     <path
-                      d='M0,18 L24,18'
+                      d="M0,18 L24,18"
                       strokeWidth={1}
-                      fill='none'
-                      className='stroke-divider-solid'
+                      fill="none"
+                      className="stroke-divider-solid"
                     />
                     <rect
                       x={0}
                       y={16}
                       width={1}
                       height={4}
-                      className='fill-divider-solid-alt'
+                      className="fill-divider-solid-alt"
                     />
                   </>
                 )
@@ -50,8 +50,8 @@ const Line = ({
                   <path
                     d={`M0,18 Q12,18 12,28 L12,${space - 10 + 2} Q12,${space + 2} 24,${space + 2}`}
                     strokeWidth={1}
-                    fill='none'
-                    className='stroke-divider-solid'
+                    fill="none"
+                    className="stroke-divider-solid"
                   />
                 )
               }
@@ -60,7 +60,7 @@ const Line = ({
                 y={space}
                 width={1}
                 height={4}
-                className='fill-divider-solid-alt'
+                className="fill-divider-solid-alt"
               />
             </g>
           )

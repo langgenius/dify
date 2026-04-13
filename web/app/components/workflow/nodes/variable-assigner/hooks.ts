@@ -1,26 +1,27 @@
+import type {
+  Node,
+  ValueSelector,
+  Var,
+} from '../../types'
+import type {
+  VarGroupItem,
+  VariableAssignerNodeType,
+} from './types'
+import { uniqBy } from 'es-toolkit/compat'
+
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useNodes,
   useStoreApi,
 } from 'reactflow'
-import { uniqBy } from 'lodash-es'
-import produce from 'immer'
 import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
   useWorkflowVariables,
 } from '../../hooks'
-import type {
-  Node,
-  ValueSelector,
-  Var,
-} from '../../types'
 import { useWorkflowStore } from '../../store'
-import type {
-  VarGroupItem,
-  VariableAssignerNodeType,
-} from './types'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
@@ -132,7 +133,6 @@ export const useGetAvailableVars = () => {
 
     if (!currentNode)
       return []
-
     const beforeNodes = getBeforeNodesInSameBranchIncludeParent(nodeId)
     availableNodes.push(...beforeNodes)
     const parentNode = nodes.find(node => node.id === currentNode.parentId)
@@ -143,7 +143,7 @@ export const useGetAvailableVars = () => {
         beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
         isChatMode,
         hideEnv,
-        hideChatVar: hideEnv,
+        hideChatVar: false,
         filterVar,
       })
         .map(node => ({

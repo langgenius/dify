@@ -1,14 +1,20 @@
-import RoutePrefixHandle from './routePrefixHandle'
-import type { Viewport } from 'next'
-import I18nServer from './components/i18n-server'
-import BrowserInitor from './components/browser-initor'
-import SentryInitor from './components/sentry-initor'
-import { getLocaleOnServer } from '@/i18n/server'
-import { TanstackQueryIniter } from '@/context/query-client'
+import type { Viewport } from '@/next'
+import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
-import './styles/globals.css'
-import './styles/markdown.scss'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
+import { TanstackQueryInitializer } from '@/context/query-client'
+import { getDatasetMap } from '@/env'
+import { getLocaleOnServer } from '@/i18n-config/server'
+import { ToastHost } from './components/base/ui/toast'
+import { TooltipProvider } from './components/base/ui/tooltip'
+import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
+import { AgentationLoader } from './components/devtools/agentation-loader'
+import { ReactScanLoader } from './components/devtools/react-scan/loader'
+import { I18nServerProvider } from './components/provider/i18n-server'
+import RoutePrefixHandle from './routePrefixHandle'
+import './styles/globals.css'
+import './styles/markdown.css'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -24,56 +30,57 @@ const LocaleLayout = async ({
   children: React.ReactNode
 }) => {
   const locale = await getLocaleOnServer()
+  const datasetMap = getDatasetMap()
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#FFFFFF" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1C64F2" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Dify" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
+        <meta name="msapplication-TileColor" content="#1C64F2" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
+
+        {/* <ReactGrabLoader /> */}
+        <ReactScanLoader />
       </head>
       <body
-        className="color-scheme h-full select-auto"
-        data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
-        data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
-        data-marketplace-api-prefix={process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX}
-        data-marketplace-url-prefix={process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX}
-        data-public-edition={process.env.NEXT_PUBLIC_EDITION}
-        data-public-support-mail-login={process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN}
-        data-public-sentry-dsn={process.env.NEXT_PUBLIC_SENTRY_DSN}
-        data-public-maintenance-notice={process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
-        data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
-        data-public-text-generation-timeout-ms={process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS}
-        data-public-max-tools-num={process.env.NEXT_PUBLIC_MAX_TOOLS_NUM}
-        data-public-max-parallel-limit={process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT}
-        data-public-top-k-max-value={process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE}
-        data-public-indexing-max-segmentation-tokens-length={process.env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH}
-        data-public-loop-node-max-count={process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT}
-        data-public-max-iterations-num={process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM}
-        data-public-enable-website-jinareader={process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER}
-        data-public-enable-website-firecrawl={process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL}
-        data-public-enable-website-watercrawl={process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL}
+        className="h-full select-auto"
+        {...datasetMap}
       >
-        <BrowserInitor>
-          <SentryInitor>
-            <TanstackQueryIniter>
-              <ThemeProvider
-                attribute='data-theme'
-                defaultTheme='system'
-                enableSystem
-                disableTransitionOnChange
-              >
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </ThemeProvider>
-            </TanstackQueryIniter>
-          </SentryInitor>
-        </BrowserInitor>
-        <RoutePrefixHandle />
+        <div className="isolate h-full">
+          <JotaiProvider>
+            <ThemeProvider
+              attribute="data-theme"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              enableColorScheme={false}
+            >
+              <NuqsAdapter>
+                <TanstackQueryInitializer>
+                  <I18nServerProvider>
+                    <ToastHost timeout={5000} limit={3} />
+                    <PartnerStackCookieRecorder />
+                    <GlobalPublicStoreProvider>
+                      <TooltipProvider delay={300} closeDelay={200}>
+                        {children}
+                      </TooltipProvider>
+                    </GlobalPublicStoreProvider>
+                  </I18nServerProvider>
+                </TanstackQueryInitializer>
+              </NuqsAdapter>
+            </ThemeProvider>
+          </JotaiProvider>
+          <RoutePrefixHandle />
+          <AgentationLoader />
+        </div>
       </body>
     </html>
   )

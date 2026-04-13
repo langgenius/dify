@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -20,9 +20,7 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 
 
 class DatasetRetrieverTool(Tool):
-    retrieval_tool: DatasetRetrieverBaseTool
-
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, retrieval_tool: DatasetRetrieverBaseTool) -> None:
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, retrieval_tool: DatasetRetrieverBaseTool):
         super().__init__(entity, runtime)
         self.retrieval_tool = retrieval_tool
 
@@ -89,9 +87,9 @@ class DatasetRetrieverTool(Tool):
 
     def get_runtime_parameters(
         self,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> list[ToolParameter]:
         return [
             ToolParameter(
@@ -114,9 +112,9 @@ class DatasetRetrieverTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke dataset retriever tool
@@ -126,7 +124,7 @@ class DatasetRetrieverTool(Tool):
             yield self.create_text_message(text="please input query")
         else:
             # invoke dataset retriever tool
-            result = self.retrieval_tool._run(query=query)
+            result = self.retrieval_tool.run(query=query)
             yield self.create_text_message(text=result)
 
     def validate_credentials(

@@ -1,17 +1,21 @@
-import {
-  getConnectedEdges,
-} from 'reactflow'
-import {
-  cloneDeep,
-} from 'lodash-es'
+import type { IfElseNodeType } from '../nodes/if-else/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
+import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
+import type { ToolNodeType } from '../nodes/tool/types'
 import type {
   Edge,
   Node,
 } from '../types'
+import { cloneDeep } from 'es-toolkit/object'
 import {
-  BlockEnum,
-  ErrorHandleMode,
-} from '../types'
+  getConnectedEdges,
+} from 'reactflow'
+import { correctModelProvider } from '@/utils'
+import {
+  getIterationStartNode,
+  getLoopStartNode,
+} from '.'
 import {
   CUSTOM_NODE,
   DEFAULT_RETRY_INTERVAL,
@@ -21,18 +25,13 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
+import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
-import type { IfElseNodeType } from '../nodes/if-else/types'
-import { branchNameCorrect } from '../nodes/if-else/utils'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
 import {
-  getIterationStartNode,
-  getLoopStartNode,
-} from '.'
-import { correctModelProvider } from '@/utils'
+  BlockEnum,
+  ErrorHandleMode,
+} from '../types'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -215,7 +214,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         acc[node.parentId] = [{ nodeId: node.id, nodeType: node.data.type }]
     }
     return acc
-  }, {} as Record<string, { nodeId: string; nodeType: BlockEnum }[]>)
+  }, {} as Record<string, { nodeId: string, nodeType: BlockEnum }[]>)
 
   return nodes.map((node) => {
     if (!node.type)
@@ -241,6 +240,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.case_id, name: '' })),
         { id: 'false', name: '' },
       ])
+      // delete conditions and logical_operator if cases is not empty
+      if (nodeData.cases.length > 0 && nodeData.conditions && nodeData.logical_operator) {
+        delete nodeData.conditions
+        delete nodeData.logical_operator
+      }
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {
@@ -276,11 +280,30 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 
     if (node.data.type === BlockEnum.ParameterExtractor)
       (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+
     if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
       node.data.retry_config = {
         retry_enabled: true,
         max_retries: DEFAULT_RETRY_MAX,
         retry_interval: DEFAULT_RETRY_INTERVAL,
+      }
+    }
+
+    if (node.data.type === BlockEnum.Tool && !(node as Node<ToolNodeType>).data.version && !(node as Node<ToolNodeType>).data.tool_node_version) {
+      (node as Node<ToolNodeType>).data.tool_node_version = '2'
+
+      const toolConfigurations = (node as Node<ToolNodeType>).data.tool_configurations
+      if (toolConfigurations && Object.keys(toolConfigurations).length > 0) {
+        const newValues = { ...toolConfigurations }
+        Object.keys(toolConfigurations).forEach((key) => {
+          if (typeof toolConfigurations[key] !== 'object' || toolConfigurations[key] === null) {
+            newValues[key] = {
+              type: 'constant',
+              value: toolConfigurations[key],
+            }
+          }
+        });
+        (node as Node<ToolNodeType>).data.tool_configurations = newValues
       }
     }
 

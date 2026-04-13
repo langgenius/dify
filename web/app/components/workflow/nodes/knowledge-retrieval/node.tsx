@@ -1,9 +1,10 @@
-import { type FC, useEffect, useState } from 'react'
-import React from 'react'
+import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
-import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import AppIcon from '@/app/components/base/app-icon'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
@@ -30,18 +31,31 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
     return null
 
   return (
-    <div className='mb-1 px-3 py-1'>
-      <div className='space-y-0.5'>
-        {selectedDatasets.map(({ id, name }) => (
-          <div key={id} className='flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg  px-1 text-xs font-normal text-gray-700'>
-            <div className='mr-1 shrink-0 rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-1'>
-              <Folder className='h-3 w-3 text-[#444CE7]' />
+    <div className="mb-1 px-3 py-1">
+      <div className="space-y-0.5">
+        {selectedDatasets.map(({ id, name, icon_info }) => {
+          const iconInfo = icon_info || {
+            icon: '📙',
+            icon_type: 'emoji' as const,
+            icon_background: '#FFF4ED',
+            icon_url: '',
+          }
+          return (
+            <div key={id} className="flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1">
+              <AppIcon
+                size="xs"
+                iconType={iconInfo.icon_type}
+                icon={iconInfo.icon}
+                background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
+                imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
+                className="shrink-0"
+              />
+              <div className="system-xs-regular w-0 grow truncate text-text-secondary">
+                {name}
+              </div>
             </div>
-            <div className='system-xs-regular w-0 grow truncate text-text-secondary'>
-              {name}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .option {
   width: 188px;
   height: 128px;
@@ -17,4 +19,14 @@
 }
 .pluginInstallIcon {
   background-image: url(../assets/chromeplugin-install.svg);
+}
+
+:global(html[data-theme="dark"]) .iframeIcon,
+:global(html[data-theme="dark"]) .scriptsIcon,
+:global(html[data-theme="dark"]) .chromePluginIcon {
+  filter: invert(0.86) hue-rotate(180deg) saturate(0.5) brightness(0.95);
+}
+
+:global(html[data-theme="dark"]) .pluginInstallIcon {
+  filter: invert(0.9);
 }

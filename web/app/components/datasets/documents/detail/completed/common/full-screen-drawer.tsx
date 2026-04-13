@@ -1,36 +1,46 @@
-import React, { type FC } from 'react'
-import Drawer from '@/app/components/base/drawer'
-import classNames from '@/utils/classnames'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
+import Drawer from './drawer'
 
 type IFullScreenDrawerProps = {
   isOpen: boolean
   onClose?: () => void
   fullScreen: boolean
-  children: React.ReactNode
+  showOverlay?: boolean
+  needCheckChunks?: boolean
+  modal?: boolean
 }
 
-const FullScreenDrawer: FC<IFullScreenDrawerProps> = ({
+const FullScreenDrawer = ({
   isOpen,
   onClose = noop,
   fullScreen,
   children,
-}) => {
+  showOverlay = true,
+  needCheckChunks = false,
+  modal = false,
+}: React.PropsWithChildren<IFullScreenDrawerProps>) => {
   return (
     <Drawer
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
-      panelClassName={classNames('!p-0 bg-components-panel-bg',
+      panelClassName={cn(
         fullScreen
-          ? '!max-w-full !w-full'
-          : 'mt-16 mr-2 mb-2 !max-w-[560px] !w-[560px] border-[0.5px] border-components-panel-border rounded-xl',
+          ? 'w-full'
+          : 'w-[568px] pb-2 pr-2 pt-16',
       )}
-      mask={false}
-      unmount
-      footer={null}
+      panelContentClassName={cn(
+        'bg-components-panel-bg',
+        !fullScreen && 'rounded-xl border-[0.5px] border-components-panel-border',
+      )}
+      showOverlay={showOverlay}
+      needCheckChunks={needCheckChunks}
+      modal={modal}
     >
       {children}
-    </Drawer>)
+    </Drawer>
+  )
 }
 
 export default FullScreenDrawer

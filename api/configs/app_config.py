@@ -1,11 +1,14 @@
 import logging
+from pathlib import Path
 from typing import Any
 
 from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
+
+from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
-from .enterprise import EnterpriseFeatureConfig
+from .enterprise import EnterpriseFeatureConfig, EnterpriseTelemetryConfig
 from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
 from .middleware import MiddlewareConfig
@@ -38,7 +41,7 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
             case RemoteSettingsSourceName.NACOS:
                 remote_source = NacosSettingsSource(current_state)
             case _:
-                logger.warning(f"Unsupported remote source: {remote_source_name}")
+                logger.warning("Unsupported remote source: %s", remote_source_name)
                 return {}
 
         d: dict[str, Any] = {}
@@ -70,6 +73,8 @@ class DifyConfig(
     # Enterprise feature configs
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
+    # Enterprise telemetry configs
+    EnterpriseTelemetryConfig,
 ):
     model_config = SettingsConfigDict(
         # read from dotenv format config file
@@ -99,4 +104,12 @@ class DifyConfig(
             RemoteSettingsSourceFactory(settings_cls),
             dotenv_settings,
             file_secret_settings,
+            TomlConfigSettingsSource(
+                settings_cls=settings_cls,
+                toml_file=search_file_upwards(
+                    base_dir_path=Path(__file__).parent,
+                    target_file_name="pyproject.toml",
+                    max_search_parent_depth=2,
+                ),
+            ),
         )

@@ -1,14 +1,13 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
-import { useCallback } from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Toast from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { SSOProtocol } from '@/types/feature'
+import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { toast } from '@/app/components/base/ui/toast'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
+import { SSOProtocol } from '@/types/feature'
 
 type SSOAuthProps = {
   protocol: SSOProtocol | ''
@@ -23,7 +22,10 @@ const SSOAuth: FC<SSOAuthProps> = ({
 
   const redirectUrl = searchParams.get('redirect_url')
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    const appCode = redirectUrl?.split('/').pop()
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
     if (!appCode)
       return null
 
@@ -35,10 +37,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
   const handleSSOLogin = () => {
     const appCode = getAppCodeFromRedirectUrl()
     if (!redirectUrl || !appCode) {
-      Toast.notify({
-        type: 'error',
-        message: 'invalid redirect URL or app code',
-      })
+      toast.error(t('error.invalidRedirectUrlOrAppCode', { ns: 'login' }))
       return
     }
     setIsLoading(true)
@@ -64,10 +63,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       })
     }
     else {
-      Toast.notify({
-        type: 'error',
-        message: 'invalid SSO protocol',
-      })
+      toast.error(t('error.invalidSSOProtocol', { ns: 'login' }))
       setIsLoading(false)
     }
   }
@@ -79,8 +75,8 @@ const SSOAuth: FC<SSOAuthProps> = ({
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className='mr-2 h-5 w-5 text-text-accent-light-mode-only' />
-      <span className="truncate">{t('login.withSSO')}</span>
+      <Lock01 className="mr-2 h-5 w-5 text-text-accent-light-mode-only" />
+      <span className="truncate">{t('withSSO', { ns: 'login' })}</span>
     </Button>
   )
 }

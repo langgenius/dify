@@ -1,9 +1,16 @@
+from typing import Any
+
 from flask import request
-from flask_login import current_user
-from flask_restful import marshal, reqparse
+from flask_restx import marshal
+from graphon.model_runtime.entities.model_entities import ModelType
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from controllers.service_api import api
+from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
+from controllers.common.schema import register_schema_models
+from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import (
     DatasetApiResource,
@@ -13,40 +20,103 @@ from controllers.service_api.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from fields.segment_fields import child_chunk_fields, segment_fields
+from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
-from services.errors.chunk import (
-    ChildChunkDeleteIndexError,
-    ChildChunkIndexingError,
-)
-from services.errors.chunk import (
-    ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError,
-)
-from services.errors.chunk import (
-    ChildChunkIndexingError as ChildChunkIndexingServiceError,
+from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
+from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
+from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.summary_index_service import SummaryIndexService
+
+
+def _marshal_segment_with_summary(segment, dataset_id: str) -> dict:
+    """Marshal a single segment and enrich it with summary content."""
+    segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+    summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id)
+    segment_dict["summary"] = summary.summary_content if summary else None
+    return segment_dict
+
+
+def _marshal_segments_with_summary(segments, dataset_id: str) -> list[dict]:
+    """Marshal multiple segments and enrich them with summary content (batch query)."""
+    segment_ids = [segment.id for segment in segments]
+    summaries: dict = {}
+    if segment_ids:
+        summary_records = SummaryIndexService.get_segments_summaries(segment_ids=segment_ids, dataset_id=dataset_id)
+        summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
+
+    result = []
+    for segment in segments:
+        segment_dict = dict(marshal(segment, segment_fields))  # type: ignore[arg-type]
+        segment_dict["summary"] = summaries.get(segment.id)
+        result.append(segment_dict)
+    return result
+
+
+class SegmentCreatePayload(BaseModel):
+    segments: list[dict[str, Any]] | None = None
+
+
+class SegmentListQuery(BaseModel):
+    status: list[str] = Field(default_factory=list)
+    keyword: str | None = None
+
+
+class SegmentUpdatePayload(BaseModel):
+    segment: SegmentUpdateArgs
+
+
+class ChildChunkListQuery(BaseModel):
+    limit: int = Field(default=20, ge=1)
+    keyword: str | None = None
+    page: int = Field(default=1, ge=1)
+
+
+register_schema_models(
+    service_api_ns,
+    SegmentCreatePayload,
+    SegmentListQuery,
+    SegmentUpdateArgs,
+    SegmentUpdatePayload,
+    ChildChunkCreatePayload,
+    ChildChunkListQuery,
+    ChildChunkUpdatePayload,
 )
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
+    @service_api_ns.expect(service_api_ns.models[SegmentCreatePayload.__name__])
+    @service_api_ns.doc("create_segments")
+    @service_api_ns.doc(description="Create segments in a document")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Segments created successfully",
+            400: "Bad request - segments data is missing",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset or document not found",
+        }
+    )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, document_id):
+    def post(self, tenant_id: str, dataset_id: str, document_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         """Create single segment."""
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
@@ -55,11 +125,11 @@ class SegmentApi(DatasetApiResource):
         if not document.enabled:
             raise NotFound("Document is disabled.")
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -71,38 +141,51 @@ class SegmentApi(DatasetApiResource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("segments", type=list, required=False, nullable=True, location="json")
-        args = parser.parse_args()
-        if args["segments"] is not None:
-            for args_item in args["segments"]:
+        payload = SegmentCreatePayload.model_validate(service_api_ns.payload or {})
+        if payload.segments is not None:
+            segments_limit = dify_config.DATASET_MAX_SEGMENTS_PER_REQUEST
+            if segments_limit > 0 and len(payload.segments) > segments_limit:
+                raise ValueError(f"Exceeded maximum segments limit of {segments_limit}.")
+
+            for args_item in payload.segments:
                 SegmentService.segment_create_args_validate(args_item, document)
-            segments = SegmentService.multi_create_segment(args["segments"], document, dataset)
-            return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form}, 200
+            segments = SegmentService.multi_create_segment(payload.segments, document, dataset)
+            return {"data": _marshal_segments_with_summary(segments, dataset_id), "doc_form": document.doc_form}, 200
         else:
             return {"error": "Segments is required"}, 400
 
-    def get(self, tenant_id, dataset_id, document_id):
+    @service_api_ns.expect(service_api_ns.models[SegmentListQuery.__name__])
+    @service_api_ns.doc("list_segments")
+    @service_api_ns.doc(description="List segments in a document")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Segments retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset or document not found",
+        }
+    )
+    def get(self, tenant_id: str, dataset_id: str, document_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         """Get segments."""
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -114,22 +197,24 @@ class SegmentApi(DatasetApiResource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("status", type=str, action="append", default=[], location="args")
-        parser.add_argument("keyword", type=str, default=None, location="args")
-        args = parser.parse_args()
+        args = SegmentListQuery.model_validate(
+            {
+                "status": request.args.getlist("status"),
+                "keyword": request.args.get("keyword"),
+            }
+        )
 
         segments, total = SegmentService.get_segments(
             document_id=document_id,
-            tenant_id=current_user.current_tenant_id,
-            status_list=args["status"],
-            keyword=args["keyword"],
+            tenant_id=current_tenant_id,
+            status_list=args.status,
+            keyword=args.keyword,
             page=page,
             limit=limit,
         )
 
         response = {
-            "data": marshal(segments, segment_fields),
+            "data": _marshal_segments_with_summary(segments, dataset_id),
             "doc_form": document.doc_form,
             "total": total,
             "has_more": len(segments) == limit,
@@ -140,52 +225,77 @@ class SegmentApi(DatasetApiResource):
         return response, 200
 
 
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetSegmentApi(DatasetApiResource):
+    @service_api_ns.doc("delete_segment")
+    @service_api_ns.doc(description="Delete a specific segment")
+    @service_api_ns.doc(
+        params={"dataset_id": "Dataset ID", "document_id": "Document ID", "segment_id": "Segment ID to delete"}
+    )
+    @service_api_ns.doc(
+        responses={
+            204: "Segment deleted successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, or segment not found",
+        }
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id, document_id, segment_id):
+    def delete(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment_id = str(segment_id)
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return 204
+        return "", 204
 
+    @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__])
+    @service_api_ns.doc("update_segment")
+    @service_api_ns.doc(description="Update a specific segment")
+    @service_api_ns.doc(
+        params={"dataset_id": "Dataset ID", "document_id": "Document ID", "segment_id": "Segment ID to update"}
+    )
+    @service_api_ns.doc(
+        responses={
+            200: "Segment updated successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, or segment not found",
+        }
+    )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, document_id, segment_id):
+    def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # check embedding model setting
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -197,77 +307,94 @@ class DatasetSegmentApi(DatasetApiResource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
             # check segment
-        segment_id = str(segment_id)
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
 
-        # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("segment", type=dict, required=False, nullable=True, location="json")
-        args = parser.parse_args()
+        payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
 
-        updated_segment = SegmentService.update_segment(
-            SegmentUpdateArgs(**args["segment"]), segment, document, dataset
-        )
-        return {"data": marshal(updated_segment, segment_fields), "doc_form": document.doc_form}, 200
+        updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset)
+        return {"data": _marshal_segment_with_summary(updated_segment, dataset_id), "doc_form": document.doc_form}, 200
 
-    def get(self, tenant_id, dataset_id, document_id, segment_id):
+    @service_api_ns.doc("get_segment")
+    @service_api_ns.doc(description="Get a specific segment by ID")
+    @service_api_ns.doc(
+        responses={
+            200: "Segment retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, or segment not found",
+        }
+    )
+    def get(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
         # check segment
-        segment_id = str(segment_id)
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
 
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _marshal_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
 
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
+)
 class ChildChunkApi(DatasetApiResource):
     """Resource for child chunks."""
 
+    @service_api_ns.expect(service_api_ns.models[ChildChunkCreatePayload.__name__])
+    @service_api_ns.doc("create_child_chunk")
+    @service_api_ns.doc(description="Create a new child chunk for a segment")
+    @service_api_ns.doc(
+        params={"dataset_id": "Dataset ID", "document_id": "Document ID", "segment_id": "Parent segment ID"}
+    )
+    @service_api_ns.doc(
+        responses={
+            200: "Child chunk created successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, or segment not found",
+        }
+    )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, document_id, segment_id):
+    def post(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
 
         # check segment
-        segment_id = str(segment_id)
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
 
         # check embedding model setting
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             try:
-                model_manager = ModelManager()
+                model_manager = ModelManager.for_tenant(tenant_id=current_tenant_id)
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -280,47 +407,59 @@ class ChildChunkApi(DatasetApiResource):
                 raise ProviderNotInitializeError(ex.description)
 
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        payload = ChildChunkCreatePayload.model_validate(service_api_ns.payload or {})
 
         try:
-            child_chunk = SegmentService.create_child_chunk(args.get("content"), segment, document, dataset)
+            child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
 
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
-    def get(self, tenant_id, dataset_id, document_id, segment_id):
+    @service_api_ns.expect(service_api_ns.models[ChildChunkListQuery.__name__])
+    @service_api_ns.doc("list_child_chunks")
+    @service_api_ns.doc(description="List child chunks for a segment")
+    @service_api_ns.doc(
+        params={"dataset_id": "Dataset ID", "document_id": "Document ID", "segment_id": "Parent segment ID"}
+    )
+    @service_api_ns.doc(
+        responses={
+            200: "Child chunks retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, or segment not found",
+        }
+    )
+    def get(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         """Get child chunks."""
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
 
         # check segment
-        segment_id = str(segment_id)
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("limit", type=int, default=20, location="args")
-        parser.add_argument("keyword", type=str, default=None, location="args")
-        parser.add_argument("page", type=int, default=1, location="args")
-        args = parser.parse_args()
+        args = ChildChunkListQuery.model_validate(
+            {
+                "limit": request.args.get("limit", default=20, type=int),
+                "keyword": request.args.get("keyword"),
+                "page": request.args.get("page", default=1, type=int),
+            }
+        )
 
-        page = args["page"]
-        limit = min(args["limit"], 100)
-        keyword = args["keyword"]
+        page = args.page
+        limit = min(args.limit, 100)
+        keyword = args.keyword
 
         child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id, page, limit, keyword)
 
@@ -333,38 +472,62 @@ class ChildChunkApi(DatasetApiResource):
         }, 200
 
 
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
+)
 class DatasetChildChunkApi(DatasetApiResource):
     """Resource for updating child chunks."""
 
+    @service_api_ns.doc("delete_child_chunk")
+    @service_api_ns.doc(description="Delete a specific child chunk")
+    @service_api_ns.doc(
+        params={
+            "dataset_id": "Dataset ID",
+            "document_id": "Document ID",
+            "segment_id": "Parent segment ID",
+            "child_chunk_id": "Child chunk ID to delete",
+        }
+    )
+    @service_api_ns.doc(
+        responses={
+            204: "Child chunk deleted successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, segment, or child chunk not found",
+        }
+    )
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
+    def delete(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, child_chunk_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         """Delete child chunk."""
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
         # check document
-        document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
             raise NotFound("Document not found.")
 
         # check segment
-        segment_id = str(segment_id)
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
 
+        # validate segment belongs to the specified document
+        if str(segment.document_id) != str(document_id):
+            raise NotFound("Document not found.")
+
         # check child chunk
-        child_chunk_id = str(child_chunk_id)
-        child_chunk = SegmentService.get_child_chunk_by_id(
-            child_chunk_id=child_chunk_id, tenant_id=current_user.current_tenant_id
-        )
+        child_chunk = SegmentService.get_child_chunk_by_id(child_chunk_id=child_chunk_id, tenant_id=current_tenant_id)
         if not child_chunk:
+            raise NotFound("Child chunk not found.")
+
+        # validate child chunk belongs to the specified segment
+        if str(child_chunk.segment_id) != str(segment.id):
             raise NotFound("Child chunk not found.")
 
         try:
@@ -372,17 +535,36 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return 204
+        return "", 204
 
+    @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__])
+    @service_api_ns.doc("update_child_chunk")
+    @service_api_ns.doc(description="Update a specific child chunk")
+    @service_api_ns.doc(
+        params={
+            "dataset_id": "Dataset ID",
+            "document_id": "Document ID",
+            "segment_id": "Parent segment ID",
+            "child_chunk_id": "Child chunk ID to update",
+        }
+    )
+    @service_api_ns.doc(
+        responses={
+            200: "Child chunk updated successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Dataset, document, segment, or child chunk not found",
+        }
+    )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
+    def patch(self, tenant_id: str, dataset_id: str, document_id: str, segment_id: str, child_chunk_id: str):
+        _, current_tenant_id = current_account_with_tenant()
         """Update child chunk."""
         # check dataset
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -392,40 +574,29 @@ class DatasetChildChunkApi(DatasetApiResource):
             raise NotFound("Document not found.")
 
         # get segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_tenant_id)
         if not segment:
             raise NotFound("Segment not found.")
 
+        # validate segment belongs to the specified document
+        if str(segment.document_id) != str(document_id):
+            raise NotFound("Segment not found.")
+
         # get child chunk
-        child_chunk = SegmentService.get_child_chunk_by_id(
-            child_chunk_id=child_chunk_id, tenant_id=current_user.current_tenant_id
-        )
+        child_chunk = SegmentService.get_child_chunk_by_id(child_chunk_id=child_chunk_id, tenant_id=current_tenant_id)
         if not child_chunk:
             raise NotFound("Child chunk not found.")
 
+        # validate child chunk belongs to the specified segment
+        if str(child_chunk.segment_id) != str(segment.id):
+            raise NotFound("Child chunk not found.")
+
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        payload = ChildChunkUpdatePayload.model_validate(service_api_ns.payload or {})
 
         try:
-            child_chunk = SegmentService.update_child_chunk(
-                args.get("content"), child_chunk, segment, document, dataset
-            )
+            child_chunk = SegmentService.update_child_chunk(payload.content, child_chunk, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
 
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
-
-
-api.add_resource(SegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
-api.add_resource(
-    DatasetSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>"
-)
-api.add_resource(
-    ChildChunkApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks"
-)
-api.add_resource(
-    DatasetChildChunkApi,
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
-)

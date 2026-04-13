@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react'
 import type { IPaginationProps, IUsePagination } from './type'
+import * as React from 'react'
+import { useCallback } from 'react'
 
 const usePagination = ({
   currentPage,
@@ -10,9 +11,7 @@ const usePagination = ({
   edgePageCount,
   middlePagesSiblingCount,
 }: IPaginationProps): IUsePagination => {
-  const pages = new Array(totalPages)
-    .fill(0)
-    .map((_, i) => i + 1)
+  const pages = React.useMemo(() => Array.from({ length: totalPages }, (_, i) => i + 1), [totalPages])
 
   const hasPreviousPage = currentPage > 1
   const hasNextPage = currentPage < totalPages

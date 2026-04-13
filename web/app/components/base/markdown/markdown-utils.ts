@@ -3,7 +3,8 @@
  * These functions were extracted from the main markdown renderer for better separation of concerns.
  * Includes preprocessing for LaTeX and custom "think" tags.
  */
-import { flow } from 'lodash-es'
+import { flow } from 'es-toolkit/compat'
+import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
@@ -11,6 +12,7 @@ export const preprocessLaTeX = (content: string) => {
 
   const codeBlockRegex = /```[\s\S]*?```/g
   const codeBlocks = content.match(codeBlockRegex) || []
+  const escapeReplacement = (str: string) => str.replace(/\$/g, '_TMP_REPLACE_DOLLAR_')
   let processedContent = content.replace(codeBlockRegex, 'CODE_BLOCK_PLACEHOLDER')
 
   processedContent = flow([
@@ -21,15 +23,17 @@ export const preprocessLaTeX = (content: string) => {
   ])(processedContent)
 
   codeBlocks.forEach((block) => {
-    processedContent = processedContent.replace('CODE_BLOCK_PLACEHOLDER', block)
+    processedContent = processedContent.replace('CODE_BLOCK_PLACEHOLDER', escapeReplacement(block))
   })
+
+  processedContent = processedContent.replace(/_TMP_REPLACE_DOLLAR_/g, '$')
 
   return processedContent
 }
 
 export const preprocessThinkTag = (content: string) => {
-  const thinkOpenTagRegex = /(<think>\n)+/g
-  const thinkCloseTagRegex = /\n<\/think>/g
+  const thinkOpenTagRegex = /(<think>\s*)+/g
+  const thinkCloseTagRegex = /(\s*<\/think>)+/g
   return flow([
     (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
     (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
@@ -76,11 +80,15 @@ export const customUrlTransform = (uri: string): string | undefined => {
     (slashIndex !== -1 && colonIndex > slashIndex)
     || (questionMarkIndex !== -1 && colonIndex > questionMarkIndex)
     || (hashIndex !== -1 && colonIndex > hashIndex)
-  )
+  ) {
     return uri
+  }
 
   const scheme = uri.substring(0, colonIndex + 1).toLowerCase()
   if (PERMITTED_SCHEME_REGEX.test(scheme))
+    return uri
+
+  if (ALLOW_UNSAFE_DATA_SCHEME && scheme === 'data:')
     return uri
 
   return undefined

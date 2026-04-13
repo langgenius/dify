@@ -1,10 +1,12 @@
-import React, { type FC } from 'react'
-import { useTimeOptions } from '../hooks'
+import type { FC } from 'react'
 import type { TimeOptionsProps } from '../types'
+import * as React from 'react'
 import OptionListItem from '../common/option-list-item'
+import { useTimeOptions } from '../hooks'
 
 const Options: FC<TimeOptionsProps> = ({
   selectedTime,
+  minuteFilter,
   handleSelectHour,
   handleSelectMinute,
   handleSelectPeriod,
@@ -12,9 +14,9 @@ const Options: FC<TimeOptionsProps> = ({
   const { hourOptions, minuteOptions, periodOptions } = useTimeOptions()
 
   return (
-    <div className='grid grid-cols-3 gap-x-1 p-2'>
+    <div className="grid grid-cols-3 gap-x-1 p-2">
       {/* Hour */}
-      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
+      <ul className="no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
         {
           hourOptions.map((hour) => {
             const isSelected = selectedTime?.format('hh') === hour
@@ -31,9 +33,9 @@ const Options: FC<TimeOptionsProps> = ({
         }
       </ul>
       {/* Minute */}
-      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
+      <ul className="no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
         {
-          minuteOptions.map((minute) => {
+          (minuteFilter ? minuteFilter(minuteOptions) : minuteOptions).map((minute) => {
             const isSelected = selectedTime?.format('mm') === minute
             return (
               <OptionListItem
@@ -48,7 +50,7 @@ const Options: FC<TimeOptionsProps> = ({
         }
       </ul>
       {/* Period */}
-      <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
+      <ul className="no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
         {
           periodOptions.map((period) => {
             const isSelected = selectedTime?.format('A') === period
@@ -57,6 +59,7 @@ const Options: FC<TimeOptionsProps> = ({
                 key={period}
                 isSelected={isSelected}
                 onClick={handleSelectPeriod.bind(null, period)}
+                noAutoScroll // if choose PM which would hide(scrolled) AM that may make user confused that there's no am.
               >
                 {period}
               </OptionListItem>

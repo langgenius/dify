@@ -1,115 +1,112 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional
 
 from flask import current_app, request
 from flask_login import user_logged_in
-from flask_restful import reqparse
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
-from libs.login import _get_user
-from models.account import Account, Tenant
-from models.model import EndUser
-from services.account_service import AccountService
+from libs.login import current_user
+from models.account import Tenant
+from models.model import DefaultEndUserSessionID, EndUser
 
 
-def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
+class TenantUserPayload(BaseModel):
+    tenant_id: str
+    user_id: str
+
+
+def get_user(tenant_id: str, user_id: str | None) -> EndUser:
+    """
+    Get current user
+
+    NOTE: user_id is not trusted, it could be maliciously set to any value.
+    As a result, it could only be considered as an end user id.
+    """
+    if not user_id:
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
+    is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
     try:
-        with Session(db.engine) as session:
-            if not user_id:
-                user_id = "DEFAULT-USER"
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            user_model = None
 
-            if user_id == "DEFAULT-USER":
-                user_model = session.query(EndUser).filter(EndUser.session_id == "DEFAULT-USER").first()
-                if not user_model:
-                    user_model = EndUser(
-                        tenant_id=tenant_id,
-                        type="service_api",
-                        is_anonymous=True if user_id == "DEFAULT-USER" else False,
-                        session_id=user_id,
+            if is_anonymous:
+                user_model = session.scalar(
+                    select(EndUser)
+                    .where(
+                        EndUser.session_id == user_id,
+                        EndUser.tenant_id == tenant_id,
                     )
-                    session.add(user_model)
-                    session.commit()
-                    session.refresh(user_model)
+                    .limit(1)
+                )
             else:
-                user_model = AccountService.load_user(user_id)
-                if not user_model:
-                    user_model = session.query(EndUser).filter(EndUser.id == user_id).first()
-                if not user_model:
-                    raise ValueError("user not found")
+                user_model = session.get(EndUser, user_id)
+
+            if not user_model:
+                user_model = EndUser(
+                    tenant_id=tenant_id,
+                    type="service_api",
+                    is_anonymous=is_anonymous,
+                    session_id=user_id,
+                )
+                session.add(user_model)
+                session.flush()
+                session.refresh(user_model)
+
     except Exception:
         raise ValueError("user not found")
 
     return user_model
 
 
-def get_user_tenant(view: Optional[Callable] = None):
-    def decorator(view_func):
+def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view_func)
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
+
+        user_id = payload.user_id
+        tenant_id = payload.tenant_id
+
+        if not tenant_id:
+            raise ValueError("tenant_id is required")
+
+        if not user_id:
+            user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
+
+        tenant_model = db.session.get(Tenant, tenant_id)
+
+        if not tenant_model:
+            raise ValueError("tenant not found")
+
+        kwargs["tenant_model"] = tenant_model
+
+        user = get_user(tenant_id, user_id)
+        kwargs["user_model"] = user
+
+        current_app.login_manager._update_request_context_with_user(user)  # type: ignore
+        user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+
+        return view_func(*args, **kwargs)
+
+    return decorated_view
+
+
+def plugin_data[**P, R](
+    *,
+    payload_type: type[BaseModel],
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
-        def decorated_view(*args, **kwargs):
-            # fetch json body
-            parser = reqparse.RequestParser()
-            parser.add_argument("tenant_id", type=str, required=True, location="json")
-            parser.add_argument("user_id", type=str, required=True, location="json")
-
-            kwargs = parser.parse_args()
-
-            user_id = kwargs.get("user_id")
-            tenant_id = kwargs.get("tenant_id")
-
-            if not tenant_id:
-                raise ValueError("tenant_id is required")
-
-            if not user_id:
-                user_id = "DEFAULT-USER"
-
-            del kwargs["tenant_id"]
-            del kwargs["user_id"]
-
-            try:
-                tenant_model = (
-                    db.session.query(Tenant)
-                    .filter(
-                        Tenant.id == tenant_id,
-                    )
-                    .first()
-                )
-            except Exception:
-                raise ValueError("tenant not found")
-
-            if not tenant_model:
-                raise ValueError("tenant not found")
-
-            kwargs["tenant_model"] = tenant_model
-
-            user = get_user(tenant_id, user_id)
-            kwargs["user_model"] = user
-
-            current_app.login_manager._update_request_context_with_user(user)  # type: ignore
-            user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
-
-            return view_func(*args, **kwargs)
-
-        return decorated_view
-
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
-
-
-def plugin_data(view: Optional[Callable] = None, *, payload_type: type[BaseModel]):
-    def decorator(view_func):
-        def decorated_view(*args, **kwargs):
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 data = request.get_json()
             except Exception:
                 raise ValueError("invalid json")
 
             try:
-                payload = payload_type(**data)
+                payload = payload_type.model_validate(data)
             except Exception as e:
                 raise ValueError(f"invalid payload: {str(e)}")
 
@@ -118,7 +115,4 @@ def plugin_data(view: Optional[Callable] = None, *, payload_type: type[BaseModel
 
         return decorated_view
 
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
+    return decorator

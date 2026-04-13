@@ -4,35 +4,56 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
-
-from core.file import File, FileTransferMethod
-from core.variables import ArrayFileSegment
-from core.variables.variables import StringVariable
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
-from core.workflow.nodes.document_extractor.node import (
+from graphon.entities import GraphInitParams
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod
+from graphon.node_events import NodeRunResult
+from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from graphon.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
+    _normalize_docx_zip,
 )
-from core.workflow.nodes.enums import NodeType
+from graphon.variables import ArrayFileSegment
+from graphon.variables.segments import ArrayStringSegment
+from graphon.variables.variables import StringVariable
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
-def document_extractor_node():
+def graph_init_params() -> GraphInitParams:
+    return build_test_graph_init_params(
+        workflow_id="test_workflow",
+        graph_config={},
+        tenant_id="test_tenant",
+        app_id="test_app",
+        user_id="test_user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+
+
+@pytest.fixture
+def document_extractor_node(graph_init_params):
     node_data = DocumentExtractorNodeData(
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
     )
-    return DocumentExtractorNode(
+    node_config = {"id": "test_node_id", "data": node_data.model_dump()}
+    http_client = Mock()
+    node = DocumentExtractorNode(
         id="test_node_id",
-        config={"id": "test_node_id", "data": node_data.model_dump()},
-        graph_init_params=Mock(),
-        graph=Mock(),
+        config=node_config,
+        graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
+        http_client=http_client,
     )
+    return node
 
 
 @pytest.fixture
@@ -66,10 +87,48 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
     assert "is not an ArrayFileSegment" in result.error
 
 
+def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
+    """Empty file list should return SUCCEEDED with empty documents and ArrayStringSegment([])."""
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+
+    # Provide an actual ArrayFileSegment with an empty list
+    mock_graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(value=[])
+
+    result = document_extractor_node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.process_data.get("documents") == []
+    assert result.outputs["text"] == ArrayStringSegment(value=[])
+
+
+def test_run_none_only_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
+    """A file list containing only None (e.g., [None]) should be filtered to [] and succeed."""
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+
+    # Use a Mock to bypass type validation for None entries in the list
+    afs = Mock(spec=ArrayFileSegment)
+    afs.value = [None]
+    mock_graph_runtime_state.variable_pool.get.return_value = afs
+
+    result = document_extractor_node._run()
+
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+    assert result.process_data.get("documents") == []
+    assert result.outputs["text"] == ArrayStringSegment(value=[])
+
+
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
-        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
+        (
+            "text/plain",
+            b"Hello, world!",
+            ["Hello, world!"],
+            FileTransferMethod.LOCAL_FILE,
+            ".txt",
+        ),
         (
             "application/pdf",
             b"%PDF-1.5\n%Test PDF content",
@@ -84,7 +143,13 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
             FileTransferMethod.REMOTE_URL,
             "",
         ),
-        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL, None),
+        (
+            "text/plain",
+            b"Remote content",
+            ["Remote content"],
+            FileTransferMethod.REMOTE_URL,
+            None,
+        ),
     ],
 )
 def test_run_extract_text(
@@ -112,29 +177,30 @@ def test_run_extract_text(
     mock_graph_runtime_state.variable_pool.get.return_value = mock_array_file_segment
 
     mock_download = Mock(return_value=file_content)
-    mock_ssrf_proxy_get = Mock()
-    mock_ssrf_proxy_get.return_value.content = file_content
-    mock_ssrf_proxy_get.return_value.raise_for_status = Mock()
 
-    monkeypatch.setattr("core.file.file_manager.download", mock_download)
-    monkeypatch.setattr("core.helper.ssrf_proxy.get", mock_ssrf_proxy_get)
+    mock_response = Mock()
+    mock_response.content = file_content
+    mock_response.raise_for_status = Mock()
+    document_extractor_node._http_client.get = Mock(return_value=mock_response)
+
+    monkeypatch.setattr("graphon.file.file_manager.download", mock_download)
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
+        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
 
     result = document_extractor_node._run()
 
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
-    assert result.outputs["text"] == expected_text
+    assert result.outputs["text"] == ArrayStringSegment(value=expected_text)
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
-        mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")
+        document_extractor_node._http_client.get.assert_called_once_with("https://example.com/file.txt")
     elif transfer_method == FileTransferMethod.LOCAL_FILE:
         mock_download.assert_called_once_with(mock_file)
 
@@ -184,7 +250,7 @@ def test_extract_text_from_docx(mock_document):
 
 
 def test_node_type(document_extractor_node):
-    assert document_extractor_node._node_type == NodeType.DOCUMENT_EXTRACTOR
+    assert document_extractor_node.node_type == BuiltinNodeTypes.DOCUMENT_EXTRACTOR
 
 
 @patch("pandas.ExcelFile")
@@ -329,3 +395,81 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     assert result == ""
 
     assert mock_excel_instance.parse.call_count == 2
+
+
+@patch("pandas.ExcelFile")
+def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
+    """Test extracting text from Excel file with numeric column names."""
+
+    # Test numeric type column
+    data = {1: ["Test"], 1.1: ["Test"]}
+
+    df = pd.DataFrame(data)
+
+    # Mock ExcelFile
+    mock_excel_instance = Mock()
+    mock_excel_instance.sheet_names = ["Sheet1"]
+    mock_excel_instance.parse.return_value = df
+    mock_excel_file.return_value = mock_excel_instance
+
+    file_content = b"fake_excel_content"
+    result = _extract_text_from_excel(file_content)
+
+    expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
+
+    assert expected_manual == result
+
+
+def _make_docx_zip(use_backslash: bool) -> bytes:
+    """Helper to build a minimal in-memory DOCX zip.
+
+    When use_backslash=True the ZIP entry names use backslash separators
+    (as produced by Evernote on Windows), otherwise forward slashes are used.
+    """
+    import zipfile
+
+    sep = "\\" if use_backslash else "/"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", b"<Types/>")
+        zf.writestr(f"_rels{sep}.rels", b"<Relationships/>")
+        zf.writestr(f"word{sep}document.xml", b"<w:document/>")
+        zf.writestr(f"word{sep}_rels{sep}document.xml.rels", b"<Relationships/>")
+    return buf.getvalue()
+
+
+def test_normalize_docx_zip_replaces_backslashes():
+    """ZIP entries with backslash separators must be rewritten to forward slashes."""
+    import zipfile
+
+    malformed = _make_docx_zip(use_backslash=True)
+    fixed = _normalize_docx_zip(malformed)
+
+    with zipfile.ZipFile(io.BytesIO(fixed)) as zf:
+        names = zf.namelist()
+
+    assert "word/document.xml" in names
+    assert "word/_rels/document.xml.rels" in names
+    # No entry should contain a backslash after normalization
+    assert all("\\" not in name for name in names)
+
+
+def test_normalize_docx_zip_leaves_forward_slash_unchanged():
+    """ZIP entries that already use forward slashes must not be modified."""
+    import zipfile
+
+    normal = _make_docx_zip(use_backslash=False)
+    fixed = _normalize_docx_zip(normal)
+
+    with zipfile.ZipFile(io.BytesIO(fixed)) as zf:
+        names = zf.namelist()
+
+    assert "word/document.xml" in names
+    assert "word/_rels/document.xml.rels" in names
+
+
+def test_normalize_docx_zip_returns_original_on_bad_zip():
+    """Non-zip bytes must be returned as-is without raising."""
+    garbage = b"not a zip file at all"
+    result = _normalize_docx_zip(garbage)
+    assert result == garbage

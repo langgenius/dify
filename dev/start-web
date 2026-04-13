@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -x
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+pnpm --dir "$ROOT_DIR" install && pnpm --dir "$ROOT_DIR/web" dev:inspect

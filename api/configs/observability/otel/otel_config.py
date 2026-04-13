@@ -12,6 +12,16 @@ class OTelConfig(BaseSettings):
         default=False,
     )
 
+    OTLP_TRACE_ENDPOINT: str = Field(
+        description="OTLP trace endpoint",
+        default="",
+    )
+
+    OTLP_METRIC_ENDPOINT: str = Field(
+        description="OTLP metric endpoint",
+        default="",
+    )
+
     OTLP_BASE_ENDPOINT: str = Field(
         description="OTLP base endpoint",
         default="http://localhost:4318",

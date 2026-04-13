@@ -1,15 +1,17 @@
 from collections.abc import Generator, Sequence
-from typing import Union, cast
+from typing import Union
+
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from core.app.llm import deduct_llm_quota
+from core.model_manager import ModelInstance, ModelManager
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.rag.retrieval.output_parser.react_output import ReactAction
 from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
-from core.workflow.nodes.llm import llm_utils
 
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 
@@ -58,15 +60,15 @@ class ReactMultiDatasetRouter:
         model_instance: ModelInstance,
         user_id: str,
         tenant_id: str,
-    ) -> Union[str, None]:
+    ) -> tuple[Union[str, None], LLMUsage]:
         """Given input, decided what to do.
         Returns:
             Action specifying what tool to use.
         """
         if len(dataset_tools) == 0:
-            return None
+            return None, LLMUsage.empty_usage()
         elif len(dataset_tools) == 1:
-            return dataset_tools[0].name
+            return dataset_tools[0].name, LLMUsage.empty_usage()
 
         try:
             return self._react_invoke(
@@ -77,8 +79,8 @@ class ReactMultiDatasetRouter:
                 user_id=user_id,
                 tenant_id=tenant_id,
             )
-        except Exception as e:
-            return None
+        except Exception:
+            return None, LLMUsage.empty_usage()
 
     def _react_invoke(
         self,
@@ -91,7 +93,7 @@ class ReactMultiDatasetRouter:
         prefix: str = PREFIX,
         suffix: str = SUFFIX,
         format_instructions: str = FORMAT_INSTRUCTIONS,
-    ) -> Union[str, None]:
+    ) -> tuple[Union[str, None], LLMUsage]:
         prompt: Union[list[ChatModelMessage], CompletionModelPromptTemplate]
         if model_config.mode == "chat":
             prompt = self.create_chat_prompt(
@@ -119,6 +121,7 @@ class ReactMultiDatasetRouter:
             memory_config=None,
             memory=None,
             model_config=model_config,
+            model_instance=model_instance,
         )
         result_text, usage = self._invoke_llm(
             completion_param=model_config.parameters,
@@ -131,8 +134,8 @@ class ReactMultiDatasetRouter:
         output_parser = StructuredChatOutputParser()
         react_decision = output_parser.parse(result_text)
         if isinstance(react_decision, ReactAction):
-            return react_decision.tool
-        return None
+            return react_decision.tool, usage
+        return None, usage
 
     def _invoke_llm(
         self,
@@ -150,22 +153,24 @@ class ReactMultiDatasetRouter:
         :param stop: stop
         :return:
         """
-        invoke_result = cast(
-            Generator[LLMResult, None, None],
-            model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters=completion_param,
-                stop=stop,
-                stream=True,
-                user=user_id,
-            ),
+        bound_model_instance = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
+            tenant_id=tenant_id,
+            provider=model_instance.provider,
+            model_type=ModelType.LLM,
+            model=model_instance.model_name,
+        )
+        invoke_result: Generator[LLMResult, None, None] = bound_model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            model_parameters=completion_param,
+            stop=stop,
+            stream=True,
         )
 
         # handle invoke result
         text, usage = self._handle_invoke_result(invoke_result=invoke_result)
 
         # deduct quota
-        llm_utils.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
+        deduct_llm_quota(tenant_id=tenant_id, model_instance=bound_model_instance, usage=usage)
 
         return text, usage
 

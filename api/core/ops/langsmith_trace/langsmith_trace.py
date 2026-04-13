@@ -2,8 +2,9 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import cast
 
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from langsmith import Client
 from langsmith.schemas import RunBase
 from sqlalchemy.orm import sessionmaker
@@ -27,9 +28,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -65,7 +64,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.message_id or trace_info.workflow_run_id
+        trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
         message_dotted_order = (
@@ -82,7 +81,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if trace_info.message_id:
             message_run = LangSmithRunModel(
                 id=trace_info.message_id,
-                name=TraceTaskName.MESSAGE_TRACE.value,
+                name=TraceTaskName.MESSAGE_TRACE,
                 inputs=dict(trace_info.workflow_run_inputs),
                 outputs=dict(trace_info.workflow_run_outputs),
                 run_type=LangSmithRunType.chain,
@@ -111,7 +110,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
             id=trace_info.workflow_run_id,
-            name=TraceTaskName.WORKFLOW_TRACE.value,
+            name=TraceTaskName.WORKFLOW_TRACE,
             inputs=dict(trace_info.workflow_run_inputs),
             run_type=LangSmithRunType.tool,
             start_time=trace_info.workflow_data.created_at,
@@ -145,16 +144,16 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=service_account,
-            app_id=trace_info.metadata.get("app_id"),
+            app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
         # Get all executions for this workflow run
-        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
-            workflow_run_id=trace_info.workflow_run_id
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
+            workflow_execution_id=trace_info.workflow_run_id
         )
 
         for node_execution in workflow_node_executions:
@@ -164,16 +163,16 @@ class LangSmithDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == NodeType.LLM:
+            if node_type == BuiltinNodeTypes.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             node_total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
             metadata = {str(key): value for key, value in execution_metadata.items()}
             metadata.update(
@@ -188,7 +187,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
 
             if process_data and process_data.get("model_mode") == "chat":
                 run_type = LangSmithRunType.llm
@@ -198,7 +197,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                         "ls_model_name": process_data.get("model_name", ""),
                     }
                 )
-            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 run_type = LangSmithRunType.retriever
             else:
                 run_type = LangSmithRunType.tool
@@ -206,12 +205,9 @@ class LangSmithDataTrace(BaseTraceInstance):
             prompt_tokens = 0
             completion_tokens = 0
             try:
-                if outputs.get("usage"):
-                    prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
-                    completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
-                else:
-                    prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
-                    completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+                usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                prompt_tokens = usage_data.get("prompt_tokens", 0)
+                completion_tokens = usage_data.get("completion_tokens", 0)
             except Exception:
                 logger.error("Failed to extract usage", exc_info=True)
 
@@ -250,7 +246,7 @@ class LangSmithDataTrace(BaseTraceInstance):
     def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
         file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
         file_list.append(file_url)
         metadata = trace_info.metadata
@@ -263,9 +259,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         metadata["user_id"] = user_id
 
         if message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id
@@ -275,7 +269,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             output_tokens=trace_info.answer_tokens,
             total_tokens=trace_info.total_tokens,
             id=message_id,
-            name=TraceTaskName.MESSAGE_TRACE.value,
+            name=TraceTaskName.MESSAGE_TRACE,
             inputs=trace_info.inputs,
             run_type=LangSmithRunType.chain,
             start_time=trace_info.start_time,
@@ -292,7 +286,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             parent_run_id=None,
         )
@@ -321,7 +315,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             id=str(uuid.uuid4()),
         )
@@ -331,7 +325,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
         langsmith_run = LangSmithRunModel(
-            name=TraceTaskName.MODERATION_TRACE.value,
+            name=TraceTaskName.MODERATION_TRACE,
             inputs=trace_info.inputs,
             outputs={
                 "action": trace_info.action,
@@ -353,7 +347,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -366,7 +360,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if message_data is None:
             return
         suggested_question_run = LangSmithRunModel(
-            name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
+            name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
             inputs=trace_info.inputs,
             outputs=trace_info.suggested_question,
             run_type=LangSmithRunType.tool,
@@ -383,7 +377,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -395,7 +389,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
         dataset_retrieval_run = LangSmithRunModel(
-            name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
+            name=TraceTaskName.DATASET_RETRIEVAL_TRACE,
             inputs=trace_info.inputs,
             outputs={"documents": trace_info.documents},
             run_type=LangSmithRunType.retriever,
@@ -412,7 +406,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -442,7 +436,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error=trace_info.error or "",
         )
@@ -451,7 +445,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         name_run = LangSmithRunModel(
-            name=TraceTaskName.GENERATE_NAME_TRACE.value,
+            name=TraceTaskName.GENERATE_NAME_TRACE,
             inputs=trace_info.inputs,
             outputs=trace_info.outputs,
             run_type=LangSmithRunType.tool,
@@ -467,7 +461,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             reference_example_id=None,
             input_attachments={},
             output_attachments={},
-            trace_id=None,
+            trace_id=trace_info.trace_id,
             dotted_order=None,
             error="",
             file_list=[],
@@ -506,7 +500,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.delete_project(project_name=random_project_name)
             return True
         except Exception as e:
-            logger.debug(f"LangSmith API check failed: {str(e)}")
+            logger.debug("LangSmith API check failed: %s", str(e))
             raise ValueError(f"LangSmith API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -525,5 +519,5 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
             return project_url.split("/r/")[0]
         except Exception as e:
-            logger.debug(f"LangSmith get run url failed: {str(e)}")
+            logger.debug("LangSmith get run url failed: %s", str(e))
             raise ValueError(f"LangSmith get run url failed: {str(e)}")

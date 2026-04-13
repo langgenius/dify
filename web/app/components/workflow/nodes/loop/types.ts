@@ -44,7 +44,7 @@ export type Condition = {
   variable_selector?: ValueSelector
   key?: string // sub variable key
   comparison_operator?: ComparisonOperator
-  value: string | string[]
+  value: string | string[] | boolean
   numberVarType?: NumberVarType
   sub_variable_condition?: CaseItem
 }
@@ -57,7 +57,6 @@ export type CaseItem = {
 export type HandleAddCondition = (valueSelector: ValueSelector, varItem: Var) => void
 export type HandleRemoveCondition = (conditionId: string) => void
 export type HandleUpdateCondition = (conditionId: string, newCondition: Condition) => void
-export type HandleUpdateConditionLogicalOperator = (value: LogicalOperator) => void
 
 export type HandleToggleConditionLogicalOperator = () => void
 

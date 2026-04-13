@@ -1,0 +1,316 @@
+app:
+  description: 'This chatflow receives a sys.query, writes it into the `answer` variable,
+    and then outputs the `answer` variable.
+
+
+    `answer` is a conversation variable with a blank default value; it will be updated
+    in an iteration node.
+
+
+    if this chatflow works correctly, it will output the `sys.query` as the same.'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: update-conversation-variable-in-iteration
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.4.0
+workflow:
+  conversation_variables:
+  - description: ''
+    id: c30af82d-b2ec-417d-a861-4dd78584faa4
+    name: answer
+    selector:
+    - conversation
+    - answer
+    value: ''
+    value_type: string
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 1759032354471-source-1759032363865-target
+      source: '1759032354471'
+      sourceHandle: source
+      target: '1759032363865'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: 1759032363865-source-1759032379989-target
+      source: '1759032363865'
+      sourceHandle: source
+      target: '1759032379989'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1759032379989'
+        sourceType: iteration-start
+        targetType: assigner
+      id: 1759032379989start-source-1759032394460-target
+      source: 1759032379989start
+      sourceHandle: source
+      target: '1759032394460'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: answer
+      id: 1759032379989-source-1759032410331-target
+      source: '1759032379989'
+      sourceHandle: source
+      target: '1759032410331'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1759032379989'
+        sourceType: assigner
+        targetType: code
+      id: 1759032394460-source-1759032476318-target
+      source: '1759032394460'
+      sourceHandle: source
+      target: '1759032476318'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    nodes:
+    - data:
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 52
+      id: '1759032354471'
+      position:
+        x: 30
+        y: 302
+      positionAbsolute:
+        x: 30
+        y: 302
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "\ndef main():\n    return {\n        \"result\": [1],\n    }\n"
+        code_language: python3
+        outputs:
+          result:
+            children: null
+            type: array[number]
+        selected: false
+        title: Code
+        type: code
+        variables: []
+      height: 52
+      id: '1759032363865'
+      position:
+        x: 332
+        y: 302
+      positionAbsolute:
+        x: 332
+        y: 302
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        error_handle_mode: terminated
+        height: 204
+        is_parallel: false
+        iterator_input_type: array[number]
+        iterator_selector:
+        - '1759032363865'
+        - result
+        output_selector:
+        - '1759032476318'
+        - result
+        output_type: array[string]
+        parallel_nums: 10
+        selected: false
+        start_node_id: 1759032379989start
+        title: Iteration
+        type: iteration
+        width: 808
+      height: 204
+      id: '1759032379989'
+      position:
+        x: 634
+        y: 302
+      positionAbsolute:
+        x: 634
+        y: 302
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 808
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: 1759032379989start
+      parentId: '1759032379989'
+      position:
+        x: 60
+        y: 78
+      positionAbsolute:
+        x: 694
+        y: 380
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        isInLoop: false
+        items:
+        - input_type: variable
+          operation: over-write
+          value:
+          - sys
+          - query
+          variable_selector:
+          - conversation
+          - answer
+          write_mode: over-write
+        iteration_id: '1759032379989'
+        selected: false
+        title: Variable Assigner
+        type: assigner
+        version: '2'
+      height: 84
+      id: '1759032394460'
+      parentId: '1759032379989'
+      position:
+        x: 204
+        y: 60
+      positionAbsolute:
+        x: 838
+        y: 362
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    - data:
+        answer: '{{#conversation.answer#}}'
+        selected: false
+        title: Answer
+        type: answer
+        variables: []
+      height: 104
+      id: '1759032410331'
+      position:
+        x: 1502
+        y: 302
+      positionAbsolute:
+        x: 1502
+        y: 302
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "\ndef main():\n    return {\n        \"result\": '',\n    }\n"
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1759032379989'
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: Code 2
+        type: code
+        variables: []
+      height: 52
+      id: '1759032476318'
+      parentId: '1759032379989'
+      position:
+        x: 506
+        y: 76
+      positionAbsolute:
+        x: 1140
+        y: 378
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 1002
+    viewport:
+      x: 120.39999999999998
+      y: 85.20000000000005
+      zoom: 0.7
+  rag_pipeline_variables: []

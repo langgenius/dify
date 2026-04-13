@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
-import produce from 'immer'
 import type { InputVar } from '../../../../types'
-import FormItem from './form-item'
-import cn from '@/utils/classnames'
-import { InputVarType } from '@/app/components/workflow/types'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import AddButton from '@/app/components/base/button/add-button'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
+import { InputVarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import FormItem from './form-item'
 
 export type Props = {
   className?: string
@@ -61,10 +62,14 @@ const Form: FC<Props> = ({
     }
   }, [valuesRef, onChange, mapKeysWithSameValueSelector])
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
+  const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
+
   const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
       const key = inputs[0].variable
+      if (!draft[key])
+        draft[key] = []
       draft[key].push(isContext ? RETRIEVAL_OUTPUT_STRUCT : '')
     })
     onChange(newValues)
@@ -73,9 +78,9 @@ const Form: FC<Props> = ({
   return (
     <div className={cn(className, 'space-y-2')}>
       {label && (
-        <div className='mb-1 flex items-center justify-between'>
-          <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>{label}</div>
-          {isArrayLikeType && (
+        <div className="mb-1 flex items-center justify-between">
+          <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">{label}</div>
+          {isArrayLikeType && !isIteratorItemFile && (
             <AddButton onClick={handleAddContext} />
           )}
         </div>

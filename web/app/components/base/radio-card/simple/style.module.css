@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .item {
   @apply relative rounded-xl border border-gray-100 cursor-pointer;
   background-color: #fcfcfd;

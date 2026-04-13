@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any, cast
 
 from core.agent.entities import AgentEntity
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
@@ -20,7 +20,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.entities.agent_entities import PlanningStrategy
-from models.model import App, AppMode, AppModelConfig, Conversation
+from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
 OLD_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
 
@@ -30,7 +30,7 @@ class AgentChatAppConfig(EasyUIBasedAppConfig):
     Agent Chatbot App Config Entity.
     """
 
-    agent: Optional[AgentEntity] = None
+    agent: AgentEntity | None = None
 
 
 class AgentChatAppConfigManager(BaseAppConfigManager):
@@ -39,8 +39,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         cls,
         app_model: App,
         app_model_config: AppModelConfig,
-        conversation: Optional[Conversation] = None,
-        override_config_dict: Optional[dict] = None,
+        conversation: Conversation | None = None,
+        override_config_dict: AppModelConfigDict | None = None,
     ) -> AgentChatAppConfig:
         """
         Convert app model config to agent chat app config
@@ -61,7 +61,9 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             app_model_config_dict = app_model_config.to_dict()
             config_dict = app_model_config_dict.copy()
         else:
-            config_dict = override_config_dict or {}
+            if not override_config_dict:
+                raise Exception("override_config_dict is required when config_from is ARGS")
+            config_dict = override_config_dict
 
         app_mode = AppMode.value_of(app_model.mode)
         app_config = AgentChatAppConfig(
@@ -70,7 +72,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             app_mode=app_mode,
             app_model_config_from=config_from,
             app_model_config_id=app_model_config.id,
-            app_model_config_dict=config_dict,
+            app_model_config_dict=cast(dict[str, Any], config_dict),
             model=ModelConfigManager.convert(config=config_dict),
             prompt_template=PromptTemplateConfigManager.convert(config=config_dict),
             sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(config=config_dict),
@@ -86,7 +88,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]) -> dict:
+    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]) -> AppModelConfigDict:
         """
         Validate for agent chat app model config
 
@@ -157,10 +159,12 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         # Filter out extra parameters
         filtered_config = {key: config.get(key) for key in related_config_keys}
 
-        return filtered_config
+        return cast(AppModelConfigDict, filtered_config)
 
     @classmethod
-    def validate_agent_mode_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_agent_mode_and_set_defaults(
+        cls, tenant_id: str, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate agent_mode and set defaults for agent feature
 
@@ -170,30 +174,32 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         if not config.get("agent_mode"):
             config["agent_mode"] = {"enabled": False, "tools": []}
 
-        if not isinstance(config["agent_mode"], dict):
+        agent_mode = config["agent_mode"]
+        if not isinstance(agent_mode, dict):
             raise ValueError("agent_mode must be of object type")
 
-        if "enabled" not in config["agent_mode"] or not config["agent_mode"]["enabled"]:
-            config["agent_mode"]["enabled"] = False
+        # FIXME(-LAN-): Cast needed due to basedpyright limitation with dict type narrowing
+        agent_mode = cast(dict[str, Any], agent_mode)
 
-        if not isinstance(config["agent_mode"]["enabled"], bool):
+        if "enabled" not in agent_mode or not agent_mode["enabled"]:
+            agent_mode["enabled"] = False
+
+        if not isinstance(agent_mode["enabled"], bool):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
-        if not config["agent_mode"].get("strategy"):
-            config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
+        if not agent_mode.get("strategy"):
+            agent_mode["strategy"] = PlanningStrategy.ROUTER
 
-        if config["agent_mode"]["strategy"] not in [
-            member.value for member in list(PlanningStrategy.__members__.values())
-        ]:
+        if agent_mode["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
             raise ValueError("strategy in agent_mode must be in the specified strategy list")
 
-        if not config["agent_mode"].get("tools"):
-            config["agent_mode"]["tools"] = []
+        if not agent_mode.get("tools"):
+            agent_mode["tools"] = []
 
-        if not isinstance(config["agent_mode"]["tools"], list):
+        if not isinstance(agent_mode["tools"], list):
             raise ValueError("tools in agent_mode must be a list of objects")
 
-        for tool in config["agent_mode"]["tools"]:
+        for tool in agent_mode["tools"]:
             key = list(tool.keys())[0]
             if key in OLD_TOOLS:
                 # old style, use tool name as key

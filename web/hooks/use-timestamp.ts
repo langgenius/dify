@@ -1,8 +1,8 @@
 'use client'
-import { useCallback } from 'react'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import { useCallback } from 'react'
 import { useAppContext } from '@/context/app-context'
 
 dayjs.extend(utc)

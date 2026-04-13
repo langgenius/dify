@@ -22,7 +22,7 @@ export const PromptMenuItem = memo(({
     <div
       className={`
         flex h-6 cursor-pointer items-center rounded-md px-3 hover:bg-state-base-hover
-        ${isSelected && !disabled && '!bg-state-base-hover'}
+        ${isSelected && !disabled && 'bg-state-base-hover!'}
         ${disabled ? 'cursor-not-allowed opacity-30' : 'cursor-pointer hover:bg-state-base-hover'}
       `}
       tabIndex={-1}
@@ -32,13 +32,18 @@ export const PromptMenuItem = memo(({
           return
         onMouseEnter()
       }}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       onClick={() => {
         if (disabled)
           return
         onClick()
-      }}>
+      }}
+    >
       {icon}
-      <div className='ml-1 text-[13px] text-text-secondary'>{title}</div>
+      <div className="ml-1 text-[13px] text-text-secondary">{title}</div>
     </div>
   )
 })

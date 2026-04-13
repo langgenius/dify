@@ -15,6 +15,21 @@ export type PanelSliceShape = {
     left: number
   }
   setPanelMenu: (panelMenu: PanelSliceShape['panelMenu']) => void
+  selectionMenu?: {
+    clientX: number
+    clientY: number
+  }
+  setSelectionMenu: (selectionMenu: PanelSliceShape['selectionMenu']) => void
+  edgeMenu?: {
+    clientX: number
+    clientY: number
+    edgeId: string
+  }
+  setEdgeMenu: (edgeMenu: PanelSliceShape['edgeMenu']) => void
+  showVariableInspectPanel: boolean
+  setShowVariableInspectPanel: (showVariableInspectPanel: boolean) => void
+  initShowLastRunTab: boolean
+  setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
@@ -29,4 +44,12 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
   panelMenu: undefined,
   setPanelMenu: panelMenu => set(() => ({ panelMenu })),
+  selectionMenu: undefined,
+  setSelectionMenu: selectionMenu => set(() => ({ selectionMenu })),
+  edgeMenu: undefined,
+  setEdgeMenu: edgeMenu => set(() => ({ edgeMenu })),
+  showVariableInspectPanel: false,
+  setShowVariableInspectPanel: showVariableInspectPanel => set(() => ({ showVariableInspectPanel })),
+  initShowLastRunTab: false,
+  setInitShowLastRunTab: initShowLastRunTab => set(() => ({ initShowLastRunTab })),
 })

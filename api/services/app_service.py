@@ -1,29 +1,34 @@
 import json
 import logging
-from datetime import UTC, datetime
-from typing import Optional, cast
+from typing import Any, TypedDict, cast
 
-from flask_login import current_user
+import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from sqlalchemy import select
 
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_was_created
+from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
-from models.account import Account
-from models.model import App, AppMode, AppModelConfig, Site
+from libs.datetime_utils import naive_utc_now
+from libs.login import current_user
+from models import Account
+from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
+
+logger = logging.getLogger(__name__)
 
 
 class AppService:
@@ -38,32 +43,34 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if args["mode"] == "workflow":
-            filters.append(App.mode == AppMode.WORKFLOW.value)
+            filters.append(App.mode == AppMode.WORKFLOW)
         elif args["mode"] == "completion":
-            filters.append(App.mode == AppMode.COMPLETION.value)
+            filters.append(App.mode == AppMode.COMPLETION)
         elif args["mode"] == "chat":
-            filters.append(App.mode == AppMode.CHAT.value)
+            filters.append(App.mode == AppMode.CHAT)
         elif args["mode"] == "advanced-chat":
-            filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
+            filters.append(App.mode == AppMode.ADVANCED_CHAT)
         elif args["mode"] == "agent-chat":
-            filters.append(App.mode == AppMode.AGENT_CHAT.value)
-        elif args["mode"] == "channel":
-            filters.append(App.mode == AppMode.CHANNEL.value)
+            filters.append(App.mode == AppMode.AGENT_CHAT)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
+            from libs.helper import escape_like_pattern
+
             name = args["name"][:30]
-            filters.append(App.name.ilike(f"%{name}%"))
-        if args.get("tag_ids"):
+            escaped_name = escape_like_pattern(name)
+            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if args.get("tag_ids") and len(args["tag_ids"]) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
-            if target_ids:
+            if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
 
         app_models = db.paginate(
-            db.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(App.created_at.desc()),
             page=args["page"],
             per_page=args["limit"],
             error_out=False,
@@ -86,7 +93,7 @@ class AppService:
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
             # get model provider
-            model_manager = ModelManager()
+            model_manager = ModelManager.for_tenant(tenant_id=account.current_tenant_id or "")
 
             # get default model instance
             try:
@@ -95,34 +102,42 @@ class AppService:
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
-            except Exception as e:
-                logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
+            except Exception:
+                logger.exception("Get default model instance failed, tenant_id: %s", tenant_id)
                 model_instance = None
 
             if model_instance:
                 if (
-                    model_instance.model == default_model_config["model"]["name"]
+                    model_instance.model_name == default_model_config["model"]["name"]
                     and model_instance.provider == default_model_config["model"]["provider"]
                 ):
                     default_model_dict = default_model_config["model"]
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
                     if model_schema is None:
-                        raise ValueError(f"model schema not found for model {model_instance.model}")
+                        raise ValueError(f"model schema not found for model {model_instance.model_name}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
-                        "name": model_instance.model,
+                        "name": model_instance.model_name,
                         "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
                         "completion_params": {},
                     }
             else:
-                provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
-                )
-                default_model_config["model"]["provider"] = provider
-                default_model_config["model"]["name"] = model
+                try:
+                    provider, model = model_manager.get_default_provider_model_name(
+                        tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
+                    )
+                except Exception:
+                    logger.exception("Get default provider model failed, tenant_id: %s", tenant_id)
+                    provider = default_model_config["model"].get("provider")
+                    model = default_model_config["model"].get("name")
+
+                if provider:
+                    default_model_config["model"]["provider"] = provider
+                if model:
+                    default_model_config["model"]["name"] = model
                 default_model_dict = default_model_config["model"]
 
             default_model_config["model"] = json.dumps(default_model_dict)
@@ -144,10 +159,9 @@ class AppService:
         db.session.flush()
 
         if default_model_config:
-            app_model_config = AppModelConfig(**default_model_config)
-            app_model_config.app_id = app.id
-            app_model_config.created_by = account.id
-            app_model_config.updated_by = account.id
+            app_model_config = AppModelConfig(
+                **default_model_config, app_id=app.id, created_by=account.id, updated_by=account.id
+            )
             db.session.add(app_model_config)
             db.session.flush()
 
@@ -161,27 +175,38 @@ class AppService:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
+        if dify_config.BILLING_ENABLED:
+            BillingService.clean_billing_info_cache(app.tenant_id)
+
         return app
 
     def get_app(self, app: App) -> App:
         """
         Get App
         """
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
         # get original app model config
-        if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
+        if app.mode == AppMode.AGENT_CHAT or app.is_agent:
             model_config = app.app_model_config
+            if not model_config:
+                return app
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
-                agent_tool_entity = AgentToolEntity(**tool)
+                typed_tool = {key: value for key, value in tool.items() if isinstance(key, str)}
+                if len(typed_tool) != len(tool):
+                    continue
+                agent_tool_entity = AgentToolEntity.model_validate(typed_tool)
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
                         tenant_id=current_user.current_tenant_id,
                         app_id=app.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_user.current_tenant_id,
@@ -200,11 +225,12 @@ class AppService:
 
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
-                except Exception as e:
-                    pass
+                except Exception:
+                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
 
             # override agent mode
-            model_config.agent_mode = json.dumps(agent_mode)
+            if model_config:
+                model_config.agent_mode = json.dumps(agent_mode)
 
             class ModifiedApp(App):
                 """
@@ -222,22 +248,41 @@ class AppService:
 
         return app
 
-    def update_app(self, app: App, args: dict) -> App:
+    class ArgsDict(TypedDict):
+        name: str
+        description: str
+        icon_type: IconType | str | None
+        icon: str
+        icon_background: str
+        use_icon_as_answer_icon: bool
+        max_active_requests: int
+
+    def update_app(self, app: App, args: ArgsDict) -> App:
         """
         Update app
         :param app: App instance
         :param args: request args
         :return: App instance
         """
-        app.name = args.get("name")
-        app.description = args.get("description", "")
-        app.icon_type = args.get("icon_type", "emoji")
-        app.icon = args.get("icon")
-        app.icon_background = args.get("icon_background")
+        assert current_user is not None
+        app.name = args["name"]
+        app.description = args["description"]
+        icon_type = args.get("icon_type")
+        if icon_type is None:
+            resolved_icon_type = app.icon_type
+        else:
+            resolved_icon_type = IconType(icon_type)
+
+        app.icon_type = resolved_icon_type
+        app.icon = args["icon"]
+        app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
+        app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -248,10 +293,13 @@ class AppService:
         :param name: new name
         :return: App instance
         """
+        assert current_user is not None
         app.name = name
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -263,11 +311,14 @@ class AppService:
         :param icon_background: new icon_background
         :return: App instance
         """
+        assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -280,11 +331,13 @@ class AppService:
         """
         if enable_site == app.enable_site:
             return app
-
+        assert current_user is not None
         app.enable_site = enable_site
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
@@ -297,19 +350,24 @@ class AppService:
         """
         if enable_api == app.enable_api:
             return app
+        assert current_user is not None
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
+
+        app_was_updated.send(app)
 
         return app
 
-    def delete_app(self, app: App) -> None:
+    def delete_app(self, app: App):
         """
         Delete app
         :param app: App instance
         """
+        app_was_deleted.send(app)
+
         db.session.delete(app)
         db.session.commit()
 
@@ -317,10 +375,13 @@ class AppService:
         if FeatureService.get_system_features().webapp_auth.enabled:
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
+        if dify_config.BILLING_ENABLED:
+            BillingService.clean_billing_info_cache(app.tenant_id)
+
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
-    def get_app_meta(self, app_model: App) -> dict:
+    def get_app_meta(self, app_model: App):
         """
         Get app meta info
         :param app_model: app model
@@ -350,7 +411,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
+            app_model_config: AppModelConfig | None = app_model.app_model_config
 
             if not app_model_config:
                 return meta
@@ -358,7 +419,7 @@ class AppService:
             agent_config = app_model_config.agent_mode_dict
 
             # get all tools
-            tools = agent_config.get("tools", [])
+            tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -373,9 +434,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: Optional[ApiToolProvider] = (
-                            db.session.query(ApiToolProvider).filter(ApiToolProvider.id == provider_id).first()
-                        )
+                        provider: ApiToolProvider | None = db.session.get(ApiToolProvider, provider_id)
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
@@ -391,7 +450,7 @@ class AppService:
         :param app_id: app id
         :return: app code
         """
-        site = db.session.query(Site).filter(Site.app_id == app_id).first()
+        site = db.session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
@@ -403,7 +462,7 @@ class AppService:
         :param app_code: app code
         :return: app id
         """
-        site = db.session.query(Site).filter(Site.code == app_code).first()
+        site = db.session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

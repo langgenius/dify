@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 16pt;
+      color: #101828;
+      background-color: #e9ebf0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 504px;
+      height: 454px;
+      margin: 40px auto;
+      padding: 0 48px;
+      background-color: #fcfcfd;
+      border-radius: 16px;
+      border: 1px solid #ffffff;
+      box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
+    }
+
+    .header {
+      padding-top: 36px;
+      padding-bottom: 24px;
+    }
+
+    .header img {
+      max-width: 63px;
+      height: auto;
+    }
+
+    .title {
+      margin: 0;
+      padding-top: 8px;
+      padding-bottom: 16px;
+      color: #101828;
+      font-size: 24px;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 120%; /* 28.8px */
+    }
+
+    .description {
+      color: #354052;
+      font-size: 14px;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 20px; /* 142.857% */
+      letter-spacing: -0.07px;
+    }
+
+    .content1 {
+      margin: 0;
+      padding-top: 16px;
+      padding-bottom: 12px;
+    }
+
+    .content2 {
+      margin: 0;
+    }
+
+    .content3 {
+      margin: 0;
+      padding-bottom: 12px;
+    }
+
+    .code-content {
+      margin-bottom: 8px;
+      padding: 16px 32px;
+      text-align: center;
+      border-radius: 16px;
+      background-color: #f2f4f7;
+    }
+
+    .code {
+      color: #101828;
+      font-family: Inter;
+      font-size: 30px;
+      font-style: normal;
+      font-weight: 700;
+      line-height: 36px;
+    }
+
+    .tips {
+      margin: 0;
+      padding-top: 12px;
+      padding-bottom: 16px;
+      color: #354052;
+      font-size: 14px;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 20px; /* 142.857% */
+      letter-spacing: -0.07px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <!-- Optional: Add a logo or a header image here -->
+      <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
+    </div>
+    <p class="title">确认您的邮箱地址变更</p>
+    <div class="description">
+      <p class="content1">您正在更新与您的 Dify 账户关联的邮箱地址。</p>
+      <p class="content2">为了确认此操作，请使用以下验证码。</p>
+      <p class="content3">此验证码仅在接下来的5分钟内有效：</p>
+    </div>
+    <div class="code-content">
+      <span class="code">{{code}}</span>
+    </div>
+    <p class="tips">如果您没有请求变更邮箱地址，请忽略此邮件或立即联系支持。</p>
+  </div>
+</body>
+
+</html>
+

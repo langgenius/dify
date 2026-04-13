@@ -1,31 +1,32 @@
+import contextvars
 import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import ValidationError
 
 from configs import dify_config
 from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
-from models.account import Account
+from models import Account
 from models.model import App, EndUser
 from services.conversation_service import ConversationService
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -45,7 +46,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -55,20 +56,20 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         """
         Generate App response.
 
@@ -115,87 +116,101 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
         # parse files
-        files = args["files"] if args.get("files") else []
-        file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
-        if file_extra_config:
-            file_objs = file_factory.build_from_mappings(
-                mappings=files,
-                tenant_id=app_model.tenant_id,
-                config=file_extra_config,
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+            files = args["files"] if args.get("files") else []
+            file_extra_config = FileUploadConfigManager.convert(
+                override_model_config_dict or app_model_config.to_dict()
             )
-        else:
-            file_objs = []
+            if file_extra_config:
+                file_objs = file_factory.build_from_mappings(
+                    mappings=files,
+                    tenant_id=app_model.tenant_id,
+                    config=file_extra_config,
+                    access_controller=self._file_access_controller,
+                )
+            else:
+                file_objs = []
 
-        # convert to app config
-        app_config = ChatAppConfigManager.get_app_config(
-            app_model=app_model,
-            app_model_config=app_model_config,
-            conversation=conversation,
-            override_config_dict=override_model_config_dict,
-        )
+            # convert to app config
+            app_config = ChatAppConfigManager.get_app_config(
+                app_model=app_model,
+                app_model_config=app_model_config,
+                conversation=conversation,
+                override_config_dict=override_model_config_dict,
+            )
 
-        # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
+            # get tracing instance
+            trace_manager = TraceQueueManager(
+                app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+            )
 
-        # init application generate entity
-        application_generate_entity = ChatAppGenerateEntity(
-            task_id=str(uuid.uuid4()),
-            app_config=app_config,
-            model_conf=ModelConfigConverter.convert(app_config),
-            file_upload_config=file_extra_config,
-            conversation_id=conversation.id if conversation else None,
-            inputs=self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
-            ),
-            query=query,
-            files=list(file_objs),
-            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
-            user_id=user.id,
-            invoke_from=invoke_from,
-            extras=extras,
-            trace_manager=trace_manager,
-            stream=streaming,
-        )
+            # init application generate entity
+            application_generate_entity = ChatAppGenerateEntity(
+                task_id=str(uuid.uuid4()),
+                app_config=app_config,
+                model_conf=ModelConfigConverter.convert(app_config),
+                file_upload_config=file_extra_config,
+                conversation_id=conversation.id if conversation else None,
+                inputs=self._prepare_user_inputs(
+                    user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                ),
+                query=query,
+                files=list(file_objs),
+                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                user_id=user.id,
+                invoke_from=invoke_from,
+                extras=extras,
+                trace_manager=trace_manager,
+                stream=streaming,
+            )
 
-        # init generate records
-        (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
+            # init generate records
+            (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
 
-        # init queue manager
-        queue_manager = MessageBasedAppQueueManager(
-            task_id=application_generate_entity.task_id,
-            user_id=application_generate_entity.user_id,
-            invoke_from=application_generate_entity.invoke_from,
-            conversation_id=conversation.id,
-            app_mode=conversation.mode,
-            message_id=message.id,
-        )
-
-        # new thread with request context
-        @copy_current_request_context
-        def worker_with_context():
-            return self._generate_worker(
-                flask_app=current_app._get_current_object(),  # type: ignore
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
+            # init queue manager
+            queue_manager = MessageBasedAppQueueManager(
+                task_id=application_generate_entity.task_id,
+                user_id=application_generate_entity.user_id,
+                invoke_from=application_generate_entity.invoke_from,
                 conversation_id=conversation.id,
+                app_mode=conversation.mode,
                 message_id=message.id,
             )
 
-        worker_thread = threading.Thread(target=worker_with_context)
+            context = contextvars.copy_context()
 
-        worker_thread.start()
+            # new thread with request context
+            @copy_current_request_context
+            def worker_with_context():
+                return context.run(
+                    self._generate_worker,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    conversation_id=conversation.id,
+                    message_id=message.id,
+                )
 
-        # return response or stream generator
-        response = self._handle_response(
-            application_generate_entity=application_generate_entity,
-            queue_manager=queue_manager,
-            conversation=conversation,
-            message=message,
-            user=user,
-            stream=streaming,
-        )
+            worker_thread = threading.Thread(target=worker_with_context)
 
-        return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            worker_thread.start()
+
+            # return response or stream generator
+            response = self._handle_response(
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                conversation=conversation,
+                message=message,
+                user=user,
+                stream=streaming,
+            )
+
+            return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def _generate_worker(
         self,
@@ -204,7 +219,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         queue_manager: AppQueueManager,
         conversation_id: str,
         message_id: str,
-    ) -> None:
+    ):
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -219,8 +234,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
-                if message is None:
-                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = ChatAppRunner()

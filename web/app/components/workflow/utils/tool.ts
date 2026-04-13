@@ -1,10 +1,13 @@
+import type { ToolNodeType } from '../nodes/tool/types'
 import type {
   InputVar,
   ToolWithProvider,
 } from '../types'
-import type { ToolNodeType } from '../nodes/tool/types'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { isToolAuthorizationRequired } from '@/app/components/workflow/nodes/tool/auth'
 import { canFindTool } from '@/utils'
 
 export const getToolCheckParams = (
@@ -15,7 +18,6 @@ export const getToolCheckParams = (
   language: string,
 ) => {
   const { provider_id, provider_type, tool_name } = toolData
-  const isBuiltIn = provider_type === CollectionType.builtIn
   const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
   const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
@@ -36,8 +38,30 @@ export const getToolCheckParams = (
       })
       return formInputs
     })(),
-    notAuthed: isBuiltIn && !!currCollection?.allow_delete && !currCollection?.is_team_authorization,
+    notAuthed: isToolAuthorizationRequired(provider_type, currCollection),
     toolSettingSchema,
     language,
+  }
+}
+
+export const CHUNK_TYPE_MAP = {
+  general_chunks: 'GeneralStructureChunk',
+  parent_child_chunks: 'ParentChildStructureChunk',
+  qa_chunks: 'QAStructureChunk',
+}
+
+export const wrapStructuredVarItem = (outputItem: any, matchedSchemaType: string): StructuredOutput => {
+  const dataType = Type.object
+  return {
+    schema: {
+      type: dataType,
+      properties: {
+        [outputItem.name]: {
+          ...outputItem.value,
+          schemaType: matchedSchemaType,
+        },
+      },
+      additionalProperties: false,
+    },
   }
 }

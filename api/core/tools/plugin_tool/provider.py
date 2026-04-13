@@ -16,7 +16,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
 
     def __init__(
         self, entity: ToolProviderEntityWithPlugin, plugin_id: str, plugin_unique_identifier: str, tenant_id: str
-    ) -> None:
+    ):
         self.entity = entity
         self.tenant_id = tenant_id
         self.plugin_id = plugin_id
@@ -31,7 +31,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         """
         return ToolProviderType.PLUGIN
 
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
         """
