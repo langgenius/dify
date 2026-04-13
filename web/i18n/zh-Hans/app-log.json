@@ -54,6 +54,7 @@
   "table.empty.noOutput": "无输出",
   "table.header.adminRate": "管理员反馈",
   "table.header.endUser": "用户或账户",
+  "table.header.evaluation": "评测",
   "table.header.input": "输入",
   "table.header.messageCount": "消息数",
   "table.header.output": "输出",
