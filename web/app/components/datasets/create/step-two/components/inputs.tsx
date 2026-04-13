@@ -1,6 +1,7 @@
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
 import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@/app/components/base/ui/number-field'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
@@ -28,8 +29,20 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   )
 }
 
-export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => {
+export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({
+  onChange,
+  onCompositionStart,
+  onCompositionEnd,
+  tooltip,
+  ...props
+}) => {
   const { t } = useTranslation()
+  // Track IME composition state so that individual keystrokes during
+  // composition (e.g. typing pinyin "wuliu" to produce "物流") don't leak
+  // into the field value. Without this guard, CJK IME users see garbage
+  // prefixed to the committed text. See #34364.
+  const isComposingRef = useRef(false)
+
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
@@ -37,7 +50,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
-              {props.tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+              {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
             </div>
           )}
         />
@@ -49,6 +62,23 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
         className="h-9"
         placeholder={t('stepTwo.separatorPlaceholder', { ns: 'datasetCreation' })!}
         {...props}
+        onChange={(e) => {
+          if (!isComposingRef.current)
+            onChange?.(e)
+        }}
+        onCompositionStart={(e) => {
+          isComposingRef.current = true
+          onCompositionStart?.(e)
+        }}
+        onCompositionEnd={(e) => {
+          isComposingRef.current = false
+          // Fire onChange with the committed value. Needed because
+          // Firefox/Safari fire compositionEnd AFTER the final onChange,
+          // meaning onChange was suppressed while composing and we must
+          // emit it now with the committed text.
+          onChange?.({ target: e.target } as unknown as React.ChangeEvent<HTMLInputElement>)
+          onCompositionEnd?.(e)
+        }}
       />
     </FormField>
   )
