@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
+from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -73,7 +74,7 @@ class ConversationVariableResponse(ResponseModel):
     id: str
     name: str
     value_type: str
-    value: Any
+    value: str | None = None
     description: str | None = None
     created_at: int | None = None
     updated_at: int | None = None
@@ -85,17 +86,31 @@ class ConversationVariableResponse(ResponseModel):
         if callable(exposed_type):
             return str(exposed_type().value)
         if isinstance(value, str):
-            return value
+            try:
+                return str(SegmentType(value).exposed_type().value)
+            except ValueError:
+                return value
         try:
             return serialize_value_type(value)
-        except Exception:
-            try:
-                return serialize_value_type({"value_type": value})
-            except Exception:
-                value_attr = getattr(value, "value", None)
-                if value_attr is not None:
-                    return str(value_attr)
-                return str(value)
+        except (AttributeError, TypeError, ValueError):
+            pass
+
+        try:
+            return serialize_value_type({"value_type": value})
+        except (AttributeError, TypeError, ValueError):
+            value_attr = getattr(value, "value", None)
+            if value_attr is not None:
+                return str(value_attr)
+            return str(value)
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def normalize_value(cls, value: Any | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(value)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

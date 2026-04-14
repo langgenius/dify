@@ -280,6 +280,7 @@ class TestConversationVariableResponseModels:
             }
         )
         assert response.value_type == "number"
+        assert response.value == "1"
         assert response.created_at == int(created_at.timestamp())
         assert response.updated_at == int(created_at.timestamp())
 
@@ -627,6 +628,7 @@ class TestConversationVariablesApiController:
         assert result["limit"] == 1
         assert result["has_more"] is False
         assert result["data"][0]["value_type"] == "number"
+        assert result["data"][0]["value"] == "1"
         assert result["data"][0]["created_at"] == int(created_at.timestamp())
 
 
@@ -718,4 +720,5 @@ class TestConversationVariableDetailApiController:
 
         assert result["id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert result["value_type"] == "number"
+        assert result["value"] == "1"
         assert result["created_at"] == int(created_at.timestamp())
