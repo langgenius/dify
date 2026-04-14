@@ -204,6 +204,7 @@ where sites.id is null limit 1000"""
 
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
 
+
 def _do_import_custom_data(input_file):
     """
     Import custom tools, workflows, and workflow tools from a JSON file.
@@ -215,25 +216,26 @@ def _do_import_custom_data(input_file):
         "workflow_tools": [...]
     }
     """
-    import traceback
     import json
+    import traceback
+
     from sqlalchemy import or_
     from sqlalchemy.orm import Session
 
+    from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
     from models import Account, ApiToken, Tenant
     from models.account import TenantAccountJoin
     from models.model import App
     from models.tools import ApiToolProvider, WorkflowToolProvider
-    from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
     from services.app_dsl_service import AppDslService
     from services.tools.api_tools_manage_service import ApiToolManageService
     from services.tools.workflow_tools_manage_service import WorkflowToolManageService
     from services.workflow_service import WorkflowService
 
-    click.echo(click.style(f"=== import-custom-data ===", fg="cyan", bold=True))
+    click.echo(click.style("=== import-custom-data ===", fg="cyan", bold=True))
     click.echo(f"Input file: {input_file}")
 
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, encoding="utf-8") as f:
         data = json.load(f)
 
     if not isinstance(data, dict):
@@ -243,7 +245,9 @@ def _do_import_custom_data(input_file):
     tools_data = data.get("tools", [])
     workflows_data = data.get("workflows", [])
     workflow_tools_data = data.get("workflow_tools", [])
-    click.echo(f"Plan: {len(tools_data)} tools, {len(workflows_data)} workflows, {len(workflow_tools_data)} workflow_tools")
+    click.echo(
+        f"Plan: {len(tools_data)} tools, {len(workflows_data)} workflows, {len(workflow_tools_data)} workflow_tools"
+    )
 
     tool_success_list, tool_error_list = [], []
     workflow_success_list, workflow_error_list = [], []
@@ -372,7 +376,7 @@ def _do_import_custom_data(input_file):
                 try:
                     db.session.flush()
                     app_model = db.session.query(App).filter(App.id == app_id).first()
-                    click.echo(f"    publishing workflow...")
+                    click.echo("    publishing workflow...")
                     workflow = WorkflowService().publish_workflow(
                         session=session,
                         app_model=app_model,
@@ -451,20 +455,20 @@ def _do_import_custom_data(input_file):
                 ),
             ).first()
             click.echo(f"    existing workflow_tool: {existing.id if existing else 'none'}")
-            kwargs = dict(
-                user_id=tenant_account.id,
-                tenant_id=tenant.id,
-                name=tool_name,
-                label=workflow_tool_data.get("name"),
-                icon=workflow_tool_data.get("icon", {"content": "🤖", "background": "#FFEAD5"}),
-                description=workflow_tool_data.get("description", ""),
-                parameters=[
+            kwargs = {
+                "user_id": tenant_account.id,
+                "tenant_id": tenant.id,
+                "name": tool_name,
+                "label": workflow_tool_data.get("name"),
+                "icon": workflow_tool_data.get("icon", {"content": "🤖", "background": "#FFEAD5"}),
+                "description": workflow_tool_data.get("description", ""),
+                "parameters": [
                     p if isinstance(p, WorkflowToolParameterConfiguration) else WorkflowToolParameterConfiguration(**p)
                     for p in workflow_tool_data["parameters"]
                 ],
-                privacy_policy=workflow_tool_data.get("privacy_policy", ""),
-                labels=workflow_tool_data.get("labels", []),
-            )
+                "privacy_policy": workflow_tool_data.get("privacy_policy", ""),
+                "labels": workflow_tool_data.get("labels", []),
+            }
             if existing:
                 WorkflowToolManageService.update_workflow_tool(workflow_tool_id=existing.id, **kwargs)
                 click.echo(click.style(f"    ✓ Updated workflow tool: {tool_name}", fg="green"))
@@ -486,11 +490,12 @@ def _do_import_custom_data(input_file):
     mcp_error_list = []
     if mcp_tools_data:
         click.echo(click.style(f"\n[mcp Tools] importing {len(mcp_tools_data)} item(s)...", fg="cyan"))
+
+        from sqlalchemy import or_
+
+        from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
         from models.tools import MCPToolProvider
         from services.tools.mcp_tools_manage_service import MCPToolManageService
-        from core.entities.mcp_provider import MCPConfiguration, MCPAuthentication
-        from sqlalchemy import or_
-        import os
         for mcp_data in mcp_tools_data:
             try:
                 # Validate required fields
@@ -611,10 +616,12 @@ def _do_export_custom_data(input_file, output_file):
         "workflow_publish_api": false
     }
     """
+    import json
     import os
     import traceback
-    import json
+
     from graphon.model_runtime.utils.encoders import jsonable_encoder
+
     from core.tools.tool_manager import ToolManager
     from models import Account, Tenant
     from models.account import TenantAccountJoin
@@ -625,7 +632,7 @@ def _do_export_custom_data(input_file, output_file):
     click.echo(f"Input file : {input_file}")
     click.echo(f"Output file: {output_file}")
 
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, encoding="utf-8") as f:
         data = json.load(f)
 
     if not isinstance(data, dict):
@@ -659,17 +666,19 @@ def _do_export_custom_data(input_file, output_file):
             click.echo(f"  [{idx}/{len(apps)}] {app.id}  name={app.name}  mode={app.mode}")
             try:
                 dsl_content = AppDslService.export_dsl(app_model=app, include_secret=True)
-                workflow_list.append({"id": app.id, "name": app.name, "dsl": dsl_content, "tenant_name": tenant_name, "publish_api": workflow_publish_api})
-                click.echo(click.style(f"    ✓ Exported", fg="green"))
+                workflow_list.append({
+                    "id": app.id, "name": app.name, "dsl": dsl_content,
+                    "tenant_name": tenant_name, "publish_api": workflow_publish_api,
+                })
+                click.echo(click.style("    ✓ Exported", fg="green"))
             except Exception as e:
                 click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
                 traceback.print_exc()
         result = {"workflows": workflow_list}
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
-        click.echo(click.style(
-            f"\n=== Summary ===\nExported {len(workflow_list)}/{len(apps)} workflows → {output_file}", fg="cyan", bold=True
-        ))
+        summary = f"\n=== Summary ===\nExported {len(workflow_list)}/{len(apps)} workflows → {output_file}"
+        click.echo(click.style(summary, fg="cyan", bold=True))
         return
 
     # ── Export tools ────────────────────────────────────────────────────────────────
@@ -704,7 +713,10 @@ def _do_export_custom_data(input_file, output_file):
                     raise ValueError(f"App not found: {workflow_id}")
                 click.echo(f"    name={app.name}  mode={app.mode}")
                 dsl_content = AppDslService.export_dsl(app_model=app, include_secret=True)
-                workflow_list.append({"id": workflow_id, "name": app.name, "dsl": dsl_content, "tenant_name": tenant_name, "publish_api": workflow_publish_api})
+                workflow_list.append({
+                    "id": workflow_id, "name": app.name, "dsl": dsl_content,
+                    "tenant_name": tenant_name, "publish_api": workflow_publish_api,
+                })
                 click.echo(click.style(f"    ✓ Exported workflow: {app.name}", fg="green"))
             except Exception as e:
                 click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
@@ -724,7 +736,9 @@ def _do_export_custom_data(input_file, output_file):
                 .first()
             )
             if tenant_account is None:
-                click.echo(click.style(f"[Workflow Tools] skipped — no owner account for tenant: {tenant_name}", fg="red"))
+                click.echo(click.style(
+                    f"[Workflow Tools] skipped — no owner account for tenant: {tenant_name}", fg="red"
+                ))
             else:
                 click.echo(f"    account: {tenant_account.email} (id={tenant_account.id})")
             for idx, _id in enumerate(workflow_tools_data, 1):
@@ -750,59 +764,63 @@ def _do_export_custom_data(input_file, output_file):
                     traceback.print_exc()
     # Export MCP tools
     if mcp_tools_data:
-        click.echo(
-            click.style(f"\n[mcp Tools] exporting {len(mcp_tools_data)} item(s)...", fg="cyan"))
-        from models.tools import MCPToolProvider
-        from services.tools.mcp_tools_manage_service import MCPToolManageService
-        for mcp_id in mcp_tools_data:
-            try:
-                # Query MCP tool
-                mcp_provider = db.session.query(MCPToolProvider).filter(
-                    MCPToolProvider.id == mcp_id,
-                    MCPToolProvider.tenant_id == tenant.id
-                ).first()
-                if mcp_provider is None:
-                    raise ValueError(f"MCP tool not found: {mcp_id}")
-                mcp_provider_entity = mcp_provider.to_entity()
-                # Process icon field
-                provider_icon = mcp_provider_entity.provider_icon
-                icon_background = None
-                if isinstance(provider_icon, dict):
-                    icon_type = "emoji"  # emoji-type icon is stored as a dict
-                    icon_background = provider_icon.get("background")
-                    icon_content = provider_icon.get("content")
-                else:
-                    icon_type = "url"  # other types are URLs
-                    icon_content = provider_icon
-                    # Build configuration
-                configuration = {
-                    "timeout": mcp_provider.timeout,
-                    "sse_read_timeout": mcp_provider.sse_read_timeout
-                }
-                # Build authentication (extracted from credentials)
-                authentication = None
-                credentials = mcp_provider.credentials
-                # Build export data
-                mcp_dict = {
-                    'id': mcp_provider.id,
-                    'name': mcp_provider.name,
-                    'server_url': mcp_provider_entity.decrypt_server_url(),
-                    'server_identifier': mcp_provider.server_identifier,
-                    'icon': icon_content,
-                    'icon_type': icon_type,
-                    'icon_background': icon_background,
-                    'headers': mcp_provider_entity.decrypt_headers(),
-                    'configuration': configuration,
-                    'authentication': authentication,
-                    'tenant_name': tenant_name
-                }
-                mcp_tools_list.append(mcp_dict)
-                click.echo(
-                click.style(f"    ✓ Exported mcp tool: {mcp_provider.name}", fg="green"))
-            except Exception as e:
-                click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
-                traceback.print_exc()
-    result = {"workflows": workflow_list, "tools": tool_list, "workflow_tools": workflow_tools_list, 'mcp_tools': mcp_tools_list}
+        if tenant is None:
+            click.echo(click.style(f"\n[mcp Tools] skipped — tenant not found: {tenant_name}", fg="red"))
+        else:
+            click.echo(
+                click.style(f"\n[mcp Tools] exporting {len(mcp_tools_data)} item(s)...", fg="cyan"))
+            from models.tools import MCPToolProvider
+            for mcp_id in mcp_tools_data:
+                try:
+                    # Query MCP tool
+                    mcp_provider = db.session.query(MCPToolProvider).filter(
+                        MCPToolProvider.id == mcp_id,
+                        MCPToolProvider.tenant_id == tenant.id
+                    ).first()
+                    if mcp_provider is None:
+                        raise ValueError(f"MCP tool not found: {mcp_id}")
+                    mcp_provider_entity = mcp_provider.to_entity()
+                    # Process icon field
+                    provider_icon = mcp_provider_entity.provider_icon
+                    icon_background = None
+                    if isinstance(provider_icon, dict):
+                        icon_type = "emoji"  # emoji-type icon is stored as a dict
+                        icon_background = provider_icon.get("background")
+                        icon_content = provider_icon.get("content")
+                    else:
+                        icon_type = "url"  # other types are URLs
+                        icon_content = provider_icon
+                        # Build configuration
+                    configuration = {
+                        "timeout": mcp_provider.timeout,
+                        "sse_read_timeout": mcp_provider.sse_read_timeout
+                    }
+                    # Build export data
+                    mcp_dict = {
+                        'id': mcp_provider.id,
+                        'name': mcp_provider.name,
+                        'server_url': mcp_provider_entity.decrypt_server_url(),
+                        'server_identifier': mcp_provider.server_identifier,
+                        'icon': icon_content,
+                        'icon_type': icon_type,
+                        'icon_background': icon_background,
+                        'headers': mcp_provider_entity.decrypt_headers(),
+                        'configuration': configuration,
+                        'authentication': None,
+                        'tenant_name': tenant_name
+                    }
+                    mcp_tools_list.append(mcp_dict)
+                    click.echo(
+                    click.style(f"    ✓ Exported mcp tool: {mcp_provider.name}", fg="green"))
+                except Exception as e:
+                    click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
+                    traceback.print_exc()
+    result = {
+        "workflows": workflow_list,
+        "tools": tool_list,
+        "workflow_tools": workflow_tools_list,
+        "mcp_tools": mcp_tools_list,
+    }
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
@@ -812,6 +830,7 @@ def _do_export_custom_data(input_file, output_file):
     click.echo(f"WorkflowTools: {len(workflow_tools_list)} exported")
     click.echo(f"McpTools     : {len(mcp_tools_list)} exported")
     click.echo(click.style(f"Output written to {output_file}", fg="green"))
+
 
 @click.command("import-custom-data", help="Import custom tools/workflows/workflow_tools from a JSON file.")
 @click.option("--input", "input_file", required=True, help="Path to input JSON file")
@@ -826,14 +845,13 @@ def export_custom_data(input_file, output_file):
     _do_export_custom_data(input_file, output_file)
 
 
-@click.command("migration-custom-datas", help="Interactive menu: export/import custom data or migrate API data 1.6→1.13.")
+@click.command("migration-custom-datas", help="Interactive menu: export/import custom data or migrate API data.")
 def migration_custom_datas():
     """
     Interactive menu:
       1. export-custom-data
       2. import-custom-data
     """
-    import os
     click.echo(click.style("\n=== migration-custom-datas ===", fg="cyan", bold=True))
     click.echo("1. Export custom data")
     click.echo("2. Import custom data")
