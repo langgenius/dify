@@ -73,7 +73,7 @@ class TestCreateGraphRuntimeState:
         assert runtime_state.node_run_steps == 4
 
     def test_rejects_blank_workflow_id(self) -> None:
-        with pytest.raises(ValueError, match="workflow_id must be a non-empty string"):
+        with pytest.raises(AssertionError, match="workflow_id must be a non-empty string"):
             create_graph_runtime_state(
                 variable_pool=_build_variable_pool(),
                 start_at=0.0,
@@ -138,7 +138,7 @@ class TestEnsureGraphRuntimeStateInitialized:
             graph_execution=GraphExecution(workflow_id="other-workflow"),
         )
 
-        with pytest.raises(ValueError, match="workflow_id does not match graph execution workflow_id"):
+        with pytest.raises(AssertionError, match="workflow_id does not match graph execution workflow_id"):
             ensure_graph_runtime_state_initialized(
                 runtime_state,
                 workflow_id="workflow-id",
@@ -208,7 +208,7 @@ class TestBindGraphRuntimeStateToGraph:
             workflow_id="workflow-id",
         )
 
-        with pytest.raises(ValueError, match="already attached to a different graph instance"):
+        with pytest.raises(AssertionError, match="already attached to a different graph instance"):
             bind_graph_runtime_state_to_graph(
                 runtime_state,
                 second_graph,

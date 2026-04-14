@@ -23,7 +23,7 @@ def _require_workflow_id(workflow_id: str) -> str:
     """Validate that workflow-scoped runtime collaborators receive a real id."""
 
     if not workflow_id:
-        raise ValueError("workflow_id must be a non-empty string")
+        raise AssertionError("workflow_id must be a non-empty string")
     return workflow_id
 
 
@@ -78,7 +78,7 @@ def ensure_graph_runtime_state_initialized(
     elif not graph_execution.workflow_id:
         graph_execution.workflow_id = workflow_id
     elif graph_execution.workflow_id != workflow_id:
-        raise ValueError("GraphRuntimeState workflow_id does not match graph execution workflow_id")
+        raise AssertionError("GraphRuntimeState workflow_id does not match graph execution workflow_id")
 
     return graph_runtime_state
 
@@ -100,7 +100,7 @@ def bind_graph_runtime_state_to_graph(
 
     attached_graph = state._graph
     if attached_graph is not None and attached_graph is not graph:
-        raise ValueError("GraphRuntimeState already attached to a different graph instance")
+        raise AssertionError("GraphRuntimeState already attached to a different graph instance")
 
     if state._response_coordinator is None:
         response_coordinator = ResponseStreamCoordinator(

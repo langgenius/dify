@@ -186,10 +186,10 @@ class WorkflowBasedAppRunner:
             A tuple containing (graph, variable_pool, graph_runtime_state)
 
         Raises:
-            ValueError: If neither single_iteration_run nor single_loop_run is specified
+            AssertionError: If neither single_iteration_run nor single_loop_run is specified
         """
         if single_iteration_run is None and single_loop_run is None:
-            raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
+            raise AssertionError("Neither single_iteration_run nor single_loop_run is specified")
 
         # Create initial runtime state with variable pool containing environment variables
         variable_pool = VariablePool()
