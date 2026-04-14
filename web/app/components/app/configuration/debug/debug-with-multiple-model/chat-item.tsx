@@ -87,6 +87,7 @@ const ChatItem: FC<ChatItemProps> = ({
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
+    const supportDocument = currentModel?.features?.includes(ModelFeatureEnum.document)
 
     const configData = {
       ...config,
@@ -105,7 +106,7 @@ const ChatItem: FC<ChatItemProps> = ({
       parent_message_id: getLastAnswer(chatList)?.id || null,
     }
 
-    if ((config.file_upload as any).enabled && files?.length && supportVision)
+    if ((config.file_upload as any).enabled && files?.length && (supportVision || supportDocument))
       data.files = files
 
     handleSend(

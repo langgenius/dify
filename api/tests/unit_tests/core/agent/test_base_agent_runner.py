@@ -660,6 +660,82 @@ class TestBaseAgentRunnerInit:
         assert runner.dataset_tools == ["ds_tool"]
         assert runner.agent_thought_count == 2
 
+    def test_init_keeps_files_for_document_models(self, mocker):
+        session = mocker.MagicMock()
+        session.scalar.return_value = 0
+        mocker.patch.object(module.db, "session", session)
+
+        mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
+        mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=[])
+
+        llm = mocker.MagicMock()
+        llm.get_model_schema.return_value = mocker.MagicMock(
+            features=[module.ModelFeature.DOCUMENT]
+        )
+        model_instance = mocker.MagicMock(model_type_instance=llm, model="m", credentials="c")
+
+        app_config = mocker.MagicMock()
+        app_config.app_id = "app1"
+        app_config.agent = None
+        app_config.dataset = None
+        app_config.additional_features = None
+
+        app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=["doc-file"])
+        message = mocker.MagicMock(id="msg1", conversation_id="conv1")
+
+        runner = BaseAgentRunner(
+            tenant_id="tenant",
+            application_generate_entity=app_generate,
+            conversation=mocker.MagicMock(),
+            app_config=app_config,
+            model_config=mocker.MagicMock(),
+            config=mocker.MagicMock(),
+            queue_manager=mocker.MagicMock(),
+            message=message,
+            user_id="user",
+            model_instance=model_instance,
+        )
+
+        assert runner.files == ["doc-file"]
+
+    def test_init_drops_files_when_model_has_no_file_features(self, mocker):
+        session = mocker.MagicMock()
+        session.scalar.return_value = 0
+        mocker.patch.object(module.db, "session", session)
+
+        mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
+        mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=[])
+
+        llm = mocker.MagicMock()
+        llm.get_model_schema.return_value = mocker.MagicMock(
+            features=[module.ModelFeature.STREAM_TOOL_CALL]
+        )
+        model_instance = mocker.MagicMock(model_type_instance=llm, model="m", credentials="c")
+
+        app_config = mocker.MagicMock()
+        app_config.app_id = "app1"
+        app_config.agent = None
+        app_config.dataset = None
+        app_config.additional_features = None
+
+        app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=["file1"])
+        message = mocker.MagicMock(id="msg1", conversation_id="conv1")
+
+        runner = BaseAgentRunner(
+            tenant_id="tenant",
+            application_generate_entity=app_generate,
+            conversation=mocker.MagicMock(),
+            app_config=app_config,
+            model_config=mocker.MagicMock(),
+            config=mocker.MagicMock(),
+            queue_manager=mocker.MagicMock(),
+            message=message,
+            user_id="user",
+            model_instance=model_instance,
+        )
+
+        assert runner.files == []
+
 
 class TestBaseAgentRunnerCoverage:
     def test_convert_tool_skips_non_llm_param(self, runner, mocker):
