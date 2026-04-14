@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent V2",
   "blocks.answer": "直接回复",
   "blocks.assigner": "变量赋值",
   "blocks.code": "代码执行",
@@ -31,6 +32,7 @@
   "blocks.variable-aggregator": "变量聚合器",
   "blocks.variable-assigner": "变量赋值器",
   "blocksAbout.agent": "调用大型语言模型回答问题或处理自然语言",
+  "blocksAbout.agent-v2": "新一代 Agent，支持 LLM、工具调用、沙箱执行和可配置策略",
   "blocksAbout.answer": "定义一个聊天对话的回复内容",
   "blocksAbout.assigner": "变量赋值节点用于向可写入变量（例如会话变量）进行变量赋值。",
   "blocksAbout.code": "执行一段 Python 或 NodeJS 代码实现自定义逻辑",

@@ -53,6 +53,9 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyResolver,
 )
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
+from core.workflow.nodes.agent_v2.entities import AGENT_V2_NODE_TYPE
+from core.workflow.nodes.agent_v2.event_adapter import AgentV2EventAdapter
+from core.workflow.nodes.agent_v2.tool_manager import AgentV2ToolManager
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.ext_database import db
@@ -367,6 +370,11 @@ class DifyNodeFactory(NodeFactory):
         typed_node_config = NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
+
+        if node_data.type == BuiltinNodeTypes.LLM and dify_config.AGENT_V2_REPLACES_LLM:
+            node_data = self._remap_llm_to_agent_v2(node_data)
+            typed_node_config["data"] = node_data
+
         node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
@@ -433,6 +441,7 @@ class DifyNodeFactory(NodeFactory):
                 "runtime_support": self._agent_runtime_support,
                 "message_transformer": self._agent_message_transformer,
             },
+            AGENT_V2_NODE_TYPE: lambda: self._build_agent_v2_kwargs(node_data),
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         return node_class(
@@ -442,6 +451,71 @@ class DifyNodeFactory(NodeFactory):
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
         )
+
+    def _build_agent_v2_kwargs(self, node_data: BaseNodeData) -> dict[str, object]:
+        """Build initialization kwargs for Agent V2 node.
+
+        Injects memory (same mechanism as LLM Node) plus tool_manager
+        and event_adapter.
+        """
+        from core.workflow.nodes.agent_v2.entities import AgentV2NodeData
+
+        validated = AgentV2NodeData.model_validate(node_data.model_dump())
+
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+
+        memory = None
+        if validated.memory is not None:
+            conversation_id = get_system_text(
+                self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID
+            )
+            _log.info("[AGENT_V2_MEMORY] memory_config=%s, conversation_id=%s", validated.memory, conversation_id)
+            if conversation_id:
+                from graphon.model_runtime.entities.model_entities import ModelType as _ModelType
+
+                from core.model_manager import ModelManager as _ModelManager
+
+                model_instance = _ModelManager.for_tenant(
+                    tenant_id=self._dify_context.tenant_id
+                ).get_model_instance(
+                    tenant_id=self._dify_context.tenant_id,
+                    provider=validated.model.provider,
+                    model_type=_ModelType.LLM,
+                    model=validated.model.name,
+                )
+                memory = fetch_memory(
+                    conversation_id=conversation_id,
+                    app_id=self._dify_context.app_id,
+                    node_data_memory=validated.memory,
+                    model_instance=model_instance,
+                )
+
+        return {
+            "tool_manager": AgentV2ToolManager(
+                tenant_id=self._dify_context.tenant_id,
+                app_id=self._dify_context.app_id,
+            ),
+            "event_adapter": AgentV2EventAdapter(),
+            "memory": memory,
+        }
+
+    @staticmethod
+    def _remap_llm_to_agent_v2(node_data: BaseNodeData) -> BaseNodeData:
+        """Transparently remap LLMNodeData to AgentV2NodeData.
+
+        Since AgentV2NodeData is a strict superset of LLMNodeData
+        (same LLM fields + tools/iterations/strategy), the mapping is lossless.
+        With tools=[], Agent V2 behaves identically to LLM Node.
+        """
+        from core.workflow.nodes.agent_v2.entities import AGENT_V2_NODE_TYPE, AgentV2NodeData
+
+        data_dict = node_data.model_dump()
+        data_dict["type"] = AGENT_V2_NODE_TYPE
+        data_dict.setdefault("tools", [])
+        data_dict.setdefault("max_iterations", 10)
+        data_dict.setdefault("agent_strategy", "auto")
+        return AgentV2NodeData.model_validate(data_dict)
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:

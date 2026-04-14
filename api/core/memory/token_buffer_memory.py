@@ -64,7 +64,7 @@ class TokenBufferMemory:
         match self.conversation.mode:
             case AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.CHAT:
                 file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
-            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW | AppMode.AGENT:
                 app = self.conversation.app
                 if not app:
                     raise ValueError("App not found for conversation")

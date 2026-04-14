@@ -8,7 +8,7 @@ export const getRedirectionPath = (
     return `/app/${app.id}/overview`
   }
   else {
-    if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+    if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT || app.mode === AppModeEnum.AGENT)
       return `/app/${app.id}/workflow`
     else
       return `/app/${app.id}/configuration`

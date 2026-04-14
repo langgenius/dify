@@ -56,7 +56,6 @@ class AppGenerateService:
                 try:
                     start_task()
                 except Exception:
-                    logger.exception("Failed to enqueue streaming task")
                     return False
                 started = True
                 return True
@@ -117,8 +116,84 @@ class AppGenerateService:
         try:
             request_id = rate_limit.enter(request_id)
             effective_mode = (
-                AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
+                AppMode.AGENT_CHAT
+                if app_model.is_agent and app_model.mode not in {AppMode.AGENT_CHAT, AppMode.AGENT}
+                else app_model.mode
             )
+
+            if (
+                effective_mode in {AppMode.COMPLETION, AppMode.CHAT, AppMode.AGENT_CHAT}
+                and dify_config.AGENT_V2_TRANSPARENT_UPGRADE
+            ):
+                from services.workflow.virtual_workflow import VirtualWorkflowSynthesizer
+
+                try:
+                    workflow = VirtualWorkflowSynthesizer.ensure_workflow(app_model)
+                    logger.info(
+                        "[AGENT_V2_UPGRADE] Transparent upgrade for app %s (mode=%s), wf=%s",
+                        app_model.id,
+                        effective_mode,
+                        workflow.id,
+                    )
+
+                    upgraded_args = dict(args)
+                    if "query" not in upgraded_args or not upgraded_args.get("query"):
+                        inputs = upgraded_args.get("inputs", {})
+                        upgraded_args["query"] = inputs.get("query", "") or inputs.get("input", "") or str(inputs)
+                    args = upgraded_args
+
+                    if streaming:
+                        with rate_limit_context(rate_limit, request_id):
+                            payload = AppExecutionParams.new(
+                                app_model=app_model,
+                                workflow=workflow,
+                                user=user,
+                                args=args,
+                                invoke_from=invoke_from,
+                                streaming=True,
+                                call_depth=0,
+                            )
+                            payload_json = payload.model_dump_json()
+
+                        def on_subscribe():
+                            workflow_based_app_execution_task.delay(payload_json)
+
+                        on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                        generator = AdvancedChatAppGenerator()
+                        subscribe_mode = AppMode.value_of(app_model.mode)
+                        return rate_limit.generate(
+                            generator.convert_to_event_stream(
+                                generator.retrieve_events(
+                                    subscribe_mode,
+                                    payload.workflow_run_id,
+                                    on_subscribe=on_subscribe,
+                                ),
+                            ),
+                            request_id=request_id,
+                        )
+                    else:
+                        advanced_generator = AdvancedChatAppGenerator()
+                        return rate_limit.generate(
+                            advanced_generator.convert_to_event_stream(
+                                advanced_generator.generate(
+                                    app_model=app_model,
+                                    workflow=workflow,
+                                    user=user,
+                                    args=args,
+                                    invoke_from=invoke_from,
+                                    workflow_run_id=str(uuid.uuid4()),
+                                    streaming=False,
+                                )
+                            ),
+                            request_id=request_id,
+                        )
+                except Exception:
+                    logger.warning(
+                        "[AGENT_V2_UPGRADE] Transparent upgrade failed for app %s, falling back to legacy",
+                        app_model.id,
+                        exc_info=True,
+                    )
+
             match effective_mode:
                 case AppMode.COMPLETION:
                     return rate_limit.generate(
@@ -147,6 +222,54 @@ class AppGenerateService:
                         ),
                         request_id=request_id,
                     )
+                case AppMode.AGENT:
+                    workflow_id = args.get("workflow_id")
+                    workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+
+                    if streaming:
+                        with rate_limit_context(rate_limit, request_id):
+                            payload = AppExecutionParams.new(
+                                app_model=app_model,
+                                workflow=workflow,
+                                user=user,
+                                args=args,
+                                invoke_from=invoke_from,
+                                streaming=True,
+                                call_depth=0,
+                            )
+                            payload_json = payload.model_dump_json()
+
+                        def on_subscribe():
+                            workflow_based_app_execution_task.delay(payload_json)
+
+                        on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                        generator = AdvancedChatAppGenerator()
+                        return rate_limit.generate(
+                            generator.convert_to_event_stream(
+                                generator.retrieve_events(
+                                    AppMode.AGENT,
+                                    payload.workflow_run_id,
+                                    on_subscribe=on_subscribe,
+                                ),
+                            ),
+                            request_id=request_id,
+                        )
+                    else:
+                        advanced_generator = AdvancedChatAppGenerator()
+                        return rate_limit.generate(
+                            advanced_generator.convert_to_event_stream(
+                                advanced_generator.generate(
+                                    app_model=app_model,
+                                    workflow=workflow,
+                                    user=user,
+                                    args=args,
+                                    invoke_from=invoke_from,
+                                    workflow_run_id=str(uuid.uuid4()),
+                                    streaming=False,
+                                )
+                            ),
+                            request_id=request_id,
+                        )
                 case AppMode.ADVANCED_CHAT:
                     workflow_id = args.get("workflow_id")
                     workflow = cls._get_workflow(app_model, invoke_from, workflow_id)

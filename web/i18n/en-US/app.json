@@ -136,6 +136,7 @@
   "newApp.advancedUserDescription": "Workflow with additional memory features and a chatbot interface.",
   "newApp.agentAssistant": "New Agent Assistant",
   "newApp.agentShortDescription": "Intelligent agent with reasoning and autonomous tool use",
+  "newApp.agentV2ShortDescription": "Next-gen agent with tools, sandbox, and workflow integration",
   "newApp.agentUserDescription": "An intelligent agent capable of iterative reasoning and autonomous tool use to achieve task goals.",
   "newApp.appCreateDSLErrorPart1": "A significant difference in DSL versions has been detected. Forcing the import may cause the application to malfunction.",
   "newApp.appCreateDSLErrorPart2": "Do you want to continue?",

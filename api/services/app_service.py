@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from configs import dify_config
 from constants.model_template import default_app_templates
+from services.workflow.graph_factory import WorkflowGraphFactory
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -52,6 +53,8 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT)
+        elif args["mode"] == "agent":
+            filters.append(App.mode == AppMode.AGENT)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
@@ -169,6 +172,10 @@ class AppService:
 
         db.session.commit()
 
+        if app_mode == AppMode.AGENT:
+            model_dict = default_model_config.get("model") if default_model_config else None
+            self._init_agent_workflow(app, account, model_dict)
+
         app_was_created.send(app, account=account)
 
         if FeatureService.get_system_features().webapp_auth.enabled:
@@ -179,6 +186,34 @@ class AppService:
             BillingService.clean_billing_info_cache(app.tenant_id)
 
         return app
+
+    @staticmethod
+    def _init_agent_workflow(app: App, account: Any, model_dict: dict | None) -> None:
+        """Create the default single-agent-node workflow for a new Agent app."""
+        from services.workflow_service import WorkflowService
+
+        model_config = model_dict or {
+            "provider": "openai",
+            "name": "gpt-4o",
+            "mode": "chat",
+            "completion_params": {},
+        }
+
+        graph = WorkflowGraphFactory.create_single_agent_graph(
+            model_config=model_config,
+            is_chat=True,
+        )
+
+        workflow_service = WorkflowService()
+        workflow_service.sync_draft_workflow(
+            app_model=app,
+            graph=graph,
+            features={},
+            unique_hash=None,
+            account=account,
+            environment_variables=[],
+            conversation_variables=[],
+        )
 
     def get_app(self, app: App) -> App:
         """

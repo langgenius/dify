@@ -287,6 +287,27 @@ class MarketplaceConfig(BaseSettings):
     )
 
 
+class CreatorsPlatformConfig(BaseSettings):
+    """
+    Configuration for creators platform
+    """
+
+    CREATORS_PLATFORM_FEATURES_ENABLED: bool = Field(
+        description="Enable or disable creators platform features",
+        default=True,
+    )
+
+    CREATORS_PLATFORM_API_URL: HttpUrl = Field(
+        description="Creators Platform API URL",
+        default=HttpUrl("https://creators.dify.ai"),
+    )
+
+    CREATORS_PLATFORM_OAUTH_CLIENT_ID: str = Field(
+        description="OAuth client_id for the Creators Platform app registered in Dify",
+        default="",
+    )
+
+
 class EndpointConfig(BaseSettings):
     """
     Configuration for various application endpoints and URLs
@@ -338,6 +359,15 @@ class FileAccessConfig(BaseSettings):
         description="Internal base URL for file access within Docker network,"
         " used for plugin daemon and internal service communication."
         " Falls back to FILES_URL if not specified.",
+        default="",
+    )
+
+    FILES_API_URL: str = Field(
+        description="Base URL for storage file ticket API endpoints."
+        " Used by sandbox containers (internal or external like e2b) that need"
+        " an absolute, routable address to upload/download files via the API."
+        " For all-in-one Docker deployments, set to http://localhost."
+        " For public sandbox environments, set to a public domain or IP.",
         default="",
     )
 
@@ -1274,6 +1304,52 @@ class PositionConfig(BaseSettings):
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
 
+class CollaborationConfig(BaseSettings):
+    ENABLE_COLLABORATION_MODE: bool = Field(
+        description="Whether to enable collaboration mode features across the workspace",
+        default=False,
+    )
+
+
+class SandboxExpiredRecordsCleanConfig(BaseSettings):
+    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
+        description="Graceful period in days for sandbox records clean after subscription expiration",
+        default=21,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to process in each batch",
+        default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
+        description="Maximum interval in milliseconds between batches",
+        default=200,
+    )
+    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for sandbox expired workflow_run records and message records",
+        default=30,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
+        description="Lock TTL for sandbox expired records clean task in seconds",
+        default=90000,
+    )
+
+
+class AgentV2UpgradeConfig(BaseSettings):
+    """Feature flags for transparent Agent V2 upgrade."""
+
+    AGENT_V2_TRANSPARENT_UPGRADE: bool = Field(
+        description="Transparently run old apps (chat/completion/agent-chat) through the Agent V2 workflow engine. "
+        "When enabled, old apps synthesize a virtual workflow at runtime instead of using legacy runners.",
+        default=False,
+    )
+
+    AGENT_V2_REPLACES_LLM: bool = Field(
+        description="Transparently replace LLM nodes in workflows with Agent V2 nodes at runtime. "
+        "LLMNodeData is remapped to AgentV2NodeData with tools=[] (identical behavior).",
+        default=False,
+    )
+
+
 class LoginConfig(BaseSettings):
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
@@ -1343,29 +1419,6 @@ class TenantIsolatedTaskQueueConfig(BaseSettings):
     )
 
 
-class SandboxExpiredRecordsCleanConfig(BaseSettings):
-    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
-        description="Graceful period in days for sandbox records clean after subscription expiration",
-        default=21,
-    )
-    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
-        description="Maximum number of records to process in each batch",
-        default=1000,
-    )
-    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
-        description="Maximum interval in milliseconds between batches",
-        default=200,
-    )
-    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
-        description="Retention days for sandbox expired workflow_run records and message records",
-        default=30,
-    )
-    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
-        description="Lock TTL for sandbox expired records clean task in seconds",
-        default=90000,
-    )
-
-
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1376,6 +1429,7 @@ class FeatureConfig(
     AsyncWorkflowConfig,
     PluginConfig,
     MarketplaceConfig,
+    CreatorsPlatformConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,
@@ -1391,7 +1445,6 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
-    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
@@ -1399,6 +1452,9 @@ class FeatureConfig(
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
+    CollaborationConfig,
+    AgentV2UpgradeConfig,
+    SandboxExpiredRecordsCleanConfig,
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,

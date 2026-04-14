@@ -46,6 +46,7 @@ export enum BlockEnum {
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
   Agent = 'agent',
+  AgentV2 = 'agent-v2',
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',

@@ -44,8 +44,9 @@ export enum AppModeEnum {
   CHAT = 'chat',
   ADVANCED_CHAT = 'advanced-chat',
   AGENT_CHAT = 'agent-chat',
+  AGENT = 'agent',
 }
-export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
+export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.AGENT] as const
 
 /**
  * Variable type

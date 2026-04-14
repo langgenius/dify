@@ -177,6 +177,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 # always enable retriever resource in debugger mode
                 app_config.additional_features.show_retrieve_source = True  # type: ignore
 
+            # Resolve parent_message_id for thread continuity
+            if invoke_from == InvokeFrom.SERVICE_API:
+                parent_message_id: str | None = UUID_NIL
+            else:
+                parent_message_id = args.get("parent_message_id")
+                if not parent_message_id and conversation:
+                    parent_message_id = self._resolve_latest_message_id(conversation.id)
+
             # init application generate entity
             application_generate_entity = AdvancedChatAppGenerateEntity(
                 task_id=str(uuid.uuid4()),
@@ -188,7 +196,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=parent_message_id,
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
@@ -689,3 +697,17 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             else:
                 logger.exception("Failed to process generate task pipeline, conversation_id: %s", conversation.id)
                 raise e
+
+    @staticmethod
+    def _resolve_latest_message_id(conversation_id: str) -> str | None:
+        """Auto-resolve parent_message_id to the latest message when client doesn't provide one."""
+        from sqlalchemy import select
+
+        stmt = (
+            select(Message.id)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        latest_id = db.session.scalar(stmt)
+        return str(latest_id) if latest_id else None

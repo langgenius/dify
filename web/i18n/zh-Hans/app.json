@@ -136,6 +136,7 @@
   "newApp.advancedUserDescription": "基于工作流编排，适用于定义等复杂流程的多轮对话场景，具有记忆功能。",
   "newApp.agentAssistant": "新的智能助手",
   "newApp.agentShortDescription": "具备推理与自主工具调用的智能助手",
+  "newApp.agentV2ShortDescription": "新一代 Agent，支持工具调用、沙箱执行和 Workflow 集成",
   "newApp.agentUserDescription": "能够迭代式的规划推理、自主工具调用，直至完成任务目标的智能助手。",
   "newApp.appCreateDSLErrorPart1": "检测到 DSL 版本差异较大，强制导入应用可能无法正常运行。",
   "newApp.appCreateDSLErrorPart2": "是否继续？",

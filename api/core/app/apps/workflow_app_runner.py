@@ -146,8 +146,6 @@ class WorkflowBasedAppRunner:
             call_depth=0,
         )
 
-        # Use the provided graph_runtime_state for consistent state management
-
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,

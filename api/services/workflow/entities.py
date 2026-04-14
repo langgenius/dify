@@ -152,6 +152,29 @@ class TriggerLogResponse(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
 
+class NestedNodeParameterSchema(BaseModel):
+    """Schema for a single parameter in a nested node."""
+
+    name: str
+    type: str = "string"
+    description: str = ""
+
+
+class NestedNodeGraphRequest(BaseModel):
+    """Request for generating a nested node graph."""
+
+    parent_node_id: str
+    parameter_key: str
+    context_source: list[str] = Field(default_factory=list)
+    parameter_schema: NestedNodeParameterSchema
+
+
+class NestedNodeGraphResponse(BaseModel):
+    """Response containing the generated nested node graph."""
+
+    graph: dict[str, Any]
+
+
 class WorkflowScheduleCFSPlanEntity(BaseModel):
     """
     CFS plan entity.

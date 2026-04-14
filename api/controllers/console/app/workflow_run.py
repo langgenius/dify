@@ -207,7 +207,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @marshal_with(advanced_chat_workflow_run_pagination_model)
     def get(self, app_model: App):
         """
@@ -309,7 +309,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @marshal_with(workflow_run_count_model)
     def get(self, app_model: App):
         """
@@ -353,7 +353,7 @@ class WorkflowRunListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT])
     @marshal_with(workflow_run_pagination_model)
     def get(self, app_model: App):
         """
@@ -405,7 +405,7 @@ class WorkflowRunCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT])
     @marshal_with(workflow_run_count_model)
     def get(self, app_model: App):
         """
@@ -442,7 +442,7 @@ class WorkflowRunDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT])
     @marshal_with(workflow_run_detail_model)
     def get(self, app_model: App, run_id):
         """
@@ -466,7 +466,7 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT])
     @marshal_with(workflow_run_node_execution_list_model)
     def get(self, app_model: App, run_id):
         """

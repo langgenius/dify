@@ -455,7 +455,7 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
+            self._session.flush()
             app_was_created.send(app, account=account)
 
         # save dependencies
@@ -468,7 +468,7 @@ class AppDslService:
 
         # Initialize app based on mode
         match app_mode:
-            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW | AppMode.AGENT:
                 workflow_data = data.get("workflow")
                 if not workflow_data or not isinstance(workflow_data, dict):
                     raise ValueError("Missing workflow data for workflow/advanced chat app")
@@ -556,7 +556,7 @@ class AppDslService:
             },
         }
 
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT}:
             cls._append_workflow_export_data(
                 export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
             )

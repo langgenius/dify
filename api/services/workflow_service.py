@@ -1423,7 +1423,7 @@ class WorkflowService:
 
     def validate_features_structure(self, app_model: App, features: dict):
         match app_model.mode:
-            case AppMode.ADVANCED_CHAT:
+            case AppMode.ADVANCED_CHAT | AppMode.AGENT:
                 return AdvancedChatAppConfigManager.config_validate(
                     tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
                 )

@@ -146,7 +146,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.sessionmaker", lambda **kwargs: SimpleNamespace()
@@ -576,7 +576,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
 
         with pytest.raises(ValueError, match="Workflow not found"):
@@ -640,7 +640,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
 
         with pytest.raises(ValueError, match="App not found"):
@@ -713,7 +713,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
 
         generator._generate_worker(
@@ -797,7 +797,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
 
         generator._generate_worker(
@@ -878,7 +878,7 @@ class TestAdvancedChatAppGeneratorInternals:
             monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.dify_config", SimpleNamespace(DEBUG=True))
             monkeypatch.setattr(
                 "core.app.apps.advanced_chat.app_generator.db",
-                SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+                SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
             )
 
             generator._generate_worker(
@@ -1069,7 +1069,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.Session", _Session)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
 
         generator._generate_worker(
@@ -1131,7 +1131,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.sessionmaker",
@@ -1210,7 +1210,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None, scalar=lambda *a, **kw: None)),
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.sessionmaker",
