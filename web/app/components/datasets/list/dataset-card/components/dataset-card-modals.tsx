@@ -1,7 +1,15 @@
 import type { DataSet } from '@/models/datasets'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import RenameDatasetModal from '../../../rename-modal'
 
 type ModalState = {
@@ -39,15 +47,26 @@ const DatasetCardModals = ({
           onSuccess={onSuccess}
         />
       )}
-      {modalState.showConfirmDelete && (
-        <Confirm
-          title={t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
-          content={modalState.confirmMessage}
-          isShow={modalState.showConfirmDelete}
-          onConfirm={onConfirmDelete}
-          onCancel={onCloseConfirm}
-        />
-      )}
+      <AlertDialog open={modalState.showConfirmDelete} onOpenChange={open => !open && onCloseConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {modalState.confirmMessage}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

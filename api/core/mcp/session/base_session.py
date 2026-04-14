@@ -55,7 +55,7 @@ class RequestResponder[ReceiveRequestT: ClientRequest | ServerRequest, SendResul
 
     request: ReceiveRequestT
     _session: "BaseSession[Any, Any, SendResultT, ReceiveRequestT, Any]"
-    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any]
+    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], object]
 
     def __init__(
         self,
@@ -63,7 +63,7 @@ class RequestResponder[ReceiveRequestT: ClientRequest | ServerRequest, SendResul
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
         session: "BaseSession[Any, Any, SendResultT, ReceiveRequestT, Any]",
-        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
+        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], object],
     ):
         self.request_id = request_id
         self.request_meta = request_meta

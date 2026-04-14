@@ -1,10 +1,15 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 
 from core.rag.entities import Rule
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
+
+class RerankingModel(BaseModel):
+    reranking_provider_name: str | None = None
+    reranking_model_name: str | None = None
 
 
 class NotionIcon(BaseModel):
@@ -53,11 +58,6 @@ class ProcessRule(BaseModel):
     rules: Rule | None = None
 
 
-class RerankingModel(BaseModel):
-    reranking_provider_name: str | None = None
-    reranking_model_name: str | None = None
-
-
 class WeightVectorSetting(BaseModel):
     vector_weight: float
     embedding_provider_name: str
@@ -87,7 +87,7 @@ class RetrievalModel(BaseModel):
 
 class MetaDataConfig(BaseModel):
     doc_type: str
-    doc_metadata: dict
+    doc_metadata: dict[str, Any]
 
 
 class KnowledgeConfig(BaseModel):
@@ -97,7 +97,7 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
-    summary_index_setting: dict | None = None
+    summary_index_setting: dict[str, Any] | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None

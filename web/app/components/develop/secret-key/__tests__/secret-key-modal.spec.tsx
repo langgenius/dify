@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
 import SecretKeyModal from '../secret-key-modal'
@@ -476,6 +476,32 @@ describe('SecretKeyModal', () => {
       })
 
       expect(mockDelAppApikey).not.toHaveBeenCalled()
+    })
+
+    it('should close confirm dialog when Escape is pressed', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
+
+      const actionButtons = document.body.querySelectorAll('button.action-btn')
+      const deleteButton = actionButtons[1]
+      await act(async () => {
+        await user.click(deleteButton!)
+        vi.runAllTimers()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('appApi.actionMsg.deleteConfirmTitle')).toBeInTheDocument()
+      })
+      await flushTransitions()
+
+      await act(async () => {
+        fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+        vi.runAllTimers()
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByText('appApi.actionMsg.deleteConfirmTitle')).not.toBeInTheDocument()
+      })
     })
   })
 

@@ -862,6 +862,15 @@ class TestAuthOrchestration:
         result = discover_protected_resource_metadata(None, "https://api.example.com")
         assert result is None
 
+        # JSONDecodeError (non-JSON 200 response)
+        mock_get.side_effect = None
+        bad_json_response = Mock()
+        bad_json_response.status_code = 200
+        bad_json_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = bad_json_response
+        result = discover_protected_resource_metadata(None, "https://api.example.com")
+        assert result is None
+
     @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_authorization_server_metadata(self, mock_get):
         # Success
@@ -889,6 +898,14 @@ class TestAuthOrchestration:
         mock_response.json.return_value = {"invalid": "data"}
         mock_get.side_effect = None
         mock_get.return_value = mock_response
+        result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
+        assert result is None
+
+        # JSONDecodeError (non-JSON 200 response)
+        bad_json_response = Mock()
+        bad_json_response.status_code = 200
+        bad_json_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = bad_json_response
         result = discover_oauth_authorization_server_metadata(None, "https://api.example.com")
         assert result is None
 
@@ -994,6 +1011,24 @@ class TestAuthOrchestration:
 
         # Case 5: RequestError
         mock_get.side_effect = httpx.RequestError("Error")
+        supported, url = check_support_resource_discovery("https://api")
+        assert supported is False
+
+        # Case 6: JSONDecodeError (non-JSON 200 response)
+        mock_get.side_effect = None
+        bad_json_res = Mock()
+        bad_json_res.status_code = 200
+        bad_json_res.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = bad_json_res
+        supported, url = check_support_resource_discovery("https://api")
+        assert supported is False
+        assert url == ""
+
+        # Case 7: Empty authorization_servers array (IndexError)
+        empty_res = Mock()
+        empty_res.status_code = 200
+        empty_res.json.return_value = {"authorization_servers": []}
+        mock_get.return_value = empty_res
         supported, url = check_support_resource_discovery("https://api")
         assert supported is False
 

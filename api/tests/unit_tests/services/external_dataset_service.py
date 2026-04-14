@@ -51,7 +51,7 @@ class ExternalDatasetTestDataFactory:
         tenant_id: str = "tenant-1",
         name: str = "Test API",
         description: str = "Description",
-        settings: dict | None = None,
+        settings: dict[str, Any] | None = None,
     ) -> ExternalKnowledgeApis:
         """
         Create a concrete ``ExternalKnowledgeApis`` instance with minimal fields.
@@ -220,7 +220,7 @@ class TestExternalDatasetServiceValidateApiList:
             ({"endpoint": "https://example.com"}, "api_key is required"),
         ],
     )
-    def test_validate_api_list_failures(self, config: dict, expected_message: str):
+    def test_validate_api_list_failures(self, config: dict[str, Any], expected_message: str):
         """
         Invalid configs should raise ``ValueError`` with a clear message.
         """
@@ -396,10 +396,11 @@ class TestExternalDatasetServiceUsageAndBindings:
 
         mock_db_session.scalar.return_value = 3
 
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1")
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1", "tenant-1")
 
         assert in_use is True
         assert count == 3
+        assert "tenant_id" in str(mock_db_session.scalar.call_args.args[0])
 
     def test_external_knowledge_api_use_check_not_in_use(self, mock_db_session: MagicMock):
         """
@@ -408,7 +409,7 @@ class TestExternalDatasetServiceUsageAndBindings:
 
         mock_db_session.scalar.return_value = 0
 
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1")
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1", "tenant-1")
 
         assert in_use is False
         assert count == 0

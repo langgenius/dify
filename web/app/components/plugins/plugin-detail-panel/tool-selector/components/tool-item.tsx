@@ -9,11 +9,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -95,8 +95,8 @@ const ToolItem = ({
         </div>
       )}
       <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
-        <div className="text-text-tertiary system-2xs-medium-uppercase">{providerNameText}</div>
-        <div className="text-text-secondary system-xs-medium">{toolLabel}</div>
+        <div className="system-2xs-medium-uppercase text-text-tertiary">{providerNameText}</div>
+        <div className="system-xs-medium text-text-secondary">{toolLabel}</div>
       </div>
       <div className="hidden items-center gap-1 group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (

@@ -13,8 +13,8 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import { AppModeEnum } from '@/types/app'
 import AppIcon from '../../base/app-icon'
 import { getAppModeLabel } from './app-mode-labels'
@@ -97,7 +97,7 @@ const AppInfoDetailPanel = ({
     <ContentDialog
       show={show}
       onClose={onClose}
-      className="absolute bottom-2 left-2 top-2 flex w-[420px] flex-col rounded-2xl p-0!"
+      className="absolute top-2 bottom-2 left-2 flex w-[420px] flex-col rounded-2xl p-0!"
     >
       <div className="flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4">
         <div className="flex items-center gap-3 self-stretch">
@@ -109,14 +109,14 @@ const AppInfoDetailPanel = ({
             imageUrl={appDetail.icon_url}
           />
           <div className="flex flex-1 flex-col items-start justify-center overflow-hidden">
-            <div className="w-full truncate text-text-secondary system-md-semibold">{appDetail.name}</div>
-            <div className="text-text-tertiary system-2xs-medium-uppercase">
+            <div className="w-full truncate system-md-semibold text-text-secondary">{appDetail.name}</div>
+            <div className="system-2xs-medium-uppercase text-text-tertiary">
               {getAppModeLabel(appDetail.mode, t)}
             </div>
           </div>
         </div>
         {appDetail.description && (
-          <div className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal wrap-break-word text-text-tertiary system-xs-regular">
+          <div className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
             {appDetail.description}
           </div>
         )}
@@ -140,7 +140,7 @@ const AppInfoDetailPanel = ({
             onClick={switchOperation.onClick}
           >
             {switchOperation.icon}
-            <span className="text-text-tertiary system-sm-medium">{switchOperation.title}</span>
+            <span className="system-sm-medium text-text-tertiary">{switchOperation.title}</span>
           </Button>
         </div>
       )}

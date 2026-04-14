@@ -9,9 +9,9 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
@@ -181,7 +181,7 @@ const Apps = ({
           )}
           >
             <div className="flex items-center">
-              <div className="grow truncate text-text-primary system-xl-semibold">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+              <div className="grow truncate system-xl-semibold text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
               {hasFilterCondition && (
                 <>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
@@ -199,7 +199,7 @@ const Apps = ({
             />
           </div>
 
-          <div className="px-12 pb-4 pt-2">
+          <div className="px-12 pt-2 pb-4">
             <Category
               list={categories}
               value={currCategory}
