@@ -460,9 +460,10 @@ describe('MCPServiceCard', () => {
         return mockUnsubscribeMcpServerUpdate
       })
 
-      const { rerender } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      const wrapper = createWrapper()
+      const { rerender } = render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper })
 
-      rerender(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+      rerender(<MCPServiceCard appInfo={createMockAppInfo()} />)
 
       expect(mockOnMcpServerUpdate).toHaveBeenCalledTimes(1)
       expect(invalidateMCPServerDetailFns).toHaveLength(2)

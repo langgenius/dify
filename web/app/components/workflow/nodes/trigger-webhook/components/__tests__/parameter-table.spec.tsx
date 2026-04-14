@@ -1,5 +1,5 @@
 import type { WebhookParameter } from '../../types'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import ParameterTable from '../parameter-table'
@@ -14,7 +14,7 @@ const selectOption = async ({
   const user = userEvent.setup()
   const rowInput = screen.getByDisplayValue(rowKey)
   const row = rowInput.closest('[style*="min-height"]')
-  if (!row)
+  if (!(row instanceof HTMLElement))
     throw new Error('Failed to locate parameter table row')
 
   const selectButton = within(row).getByRole('button', { name: triggerName })
