@@ -35,6 +35,7 @@ type CommentThreadProps = {
   onNext?: () => void
   canGoPrev?: boolean
   canGoNext?: boolean
+  onCommentEdit?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReply?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyEdit?: (replyId: string, content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyDelete?: (replyId: string) => void
@@ -164,6 +165,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   onNext,
   canGoPrev,
   canGoNext,
+  onCommentEdit,
   onReply,
   onReplyEdit,
   onReplyDelete,
@@ -176,9 +178,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const { userProfile } = useAppContext()
   const { t } = useTranslation()
   const [replyContent, setReplyContent] = useState('')
+  const [editingCommentContent, setEditingCommentContent] = useState('')
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
   const [editingReply, setEditingReply] = useState<{ id: string, content: string }>({ id: '', content: '' })
   const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
+  const [isCommentEditing, setIsCommentEditing] = useState(false)
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
 
   // Focus management refs
@@ -203,6 +207,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   useEffect(() => {
     Promise.resolve().then(() => {
       setReplyContent('')
+      setEditingCommentContent('')
+      setIsCommentEditing(false)
+      setEditingReply({ id: '', content: '' })
+      setActiveReplyMenuId(null)
+      setDeletingReplyId(null)
     })
   }, [comment.id])
 
@@ -213,18 +222,18 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   // P0: Auto-focus reply input when thread opens or comment changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (replyInputRef.current && !editingReply.id && onReply)
+      if (replyInputRef.current && !editingReply.id && !isCommentEditing && onReply)
         replyInputRef.current.focus()
     }, 100)
 
     return () => clearTimeout(timer)
-  }, [comment.id, editingReply.id, onReply])
+  }, [comment.id, editingReply.id, isCommentEditing, onReply])
 
   // P2: Handle Esc key to close thread
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't intercept if actively editing a reply
-      if (editingReply.id)
+      if (editingReply.id || isCommentEditing)
         return
 
       // Don't intercept if mention dropdown is open (let MentionInput handle it)
@@ -240,7 +249,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
     document.addEventListener('keydown', handleKeyDown, true)
     return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [onClose, editingReply.id])
+  }, [onClose, editingReply.id, isCommentEditing])
 
   const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
     if (!onReply || replySubmitting)
@@ -280,8 +289,16 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
   const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
     setEditingReply({ id: reply.id, content: reply.content })
+    setIsCommentEditing(false)
     setActiveReplyMenuId(null)
   }, [])
+
+  const handleStartCommentEdit = useCallback(() => {
+    setEditingCommentContent(comment.content)
+    setEditingReply({ id: '', content: '' })
+    setIsCommentEditing(true)
+    setActiveReplyMenuId(null)
+  }, [comment.content])
 
   const handleCancelEdit = useCallback(() => {
     setEditingReply({ id: '', content: '' })
@@ -291,6 +308,40 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
       replyInputRef.current?.focus()
     }, 0)
   }, [])
+
+  const handleCancelCommentEdit = useCallback(() => {
+    setEditingCommentContent('')
+    setIsCommentEditing(false)
+
+    setTimeout(() => {
+      replyInputRef.current?.focus()
+    }, 0)
+  }, [])
+
+  const handleCommentEditSubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
+    if (!onCommentEdit)
+      return
+    const trimmed = content.trim()
+    if (!trimmed)
+      return
+
+    setIsSubmittingEdit(true)
+    try {
+      await onCommentEdit(trimmed, mentionedUserIds)
+      setEditingCommentContent('')
+      setIsCommentEditing(false)
+
+      setTimeout(() => {
+        replyInputRef.current?.focus()
+      }, 0)
+    }
+    catch (error) {
+      console.error('Failed to edit comment', error)
+    }
+    finally {
+      setIsSubmittingEdit(false)
+    }
+  }, [onCommentEdit])
 
   const handleEditSubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
     if (!onReplyEdit || !editingReply)
@@ -318,6 +369,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
+  const isOwnComment = comment.created_by_account?.id === userProfile?.id
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   const previousCommentIdRef = useRef<string | undefined>(undefined)
@@ -472,15 +524,81 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           ref={messageListRef}
           className="relative mt-2 flex-1 overflow-y-auto px-4 pb-4"
         >
-          <div className="-mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
-            <ThreadMessage
-              authorId={comment.created_by_account?.id || ''}
-              authorName={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
-              avatarUrl={comment.created_by_account?.avatar_url || null}
-              createdAt={comment.created_at}
-              content={comment.content}
-              mentionableNames={mentionableNames}
-            />
+          <div className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
+            {isOwnComment && !isCommentEditing && (
+              <div
+                className={cn(
+                  'absolute top-1 right-1 gap-1',
+                  activeReplyMenuId === comment.id ? 'flex' : 'hidden group-hover:flex',
+                )}
+              >
+                <DropdownMenu
+                  open={activeReplyMenuId === comment.id}
+                  onOpenChange={open => setActiveReplyMenuId(open ? comment.id : null)}
+                >
+                  <DropdownMenuTrigger
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                    aria-label={t('comments.aria.commentActions', { ns: 'workflow' })}
+                  >
+                    <RiMoreFill className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    placement="bottom-end"
+                    sideOffset={4}
+                    popupClassName="z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                  >
+                    <button
+                      className="flex w-full items-center justify-start rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStartCommentEdit()
+                      }}
+                    >
+                      {t('comments.actions.editComment', { ns: 'workflow' })}
+                    </button>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+            {isCommentEditing
+              ? (
+                  <div className="flex gap-3 pt-1">
+                    <div className="shrink-0">
+                      <Avatar
+                        name={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                        avatar={comment.created_by_account?.avatar_url || null}
+                        size="sm"
+                        className="h-8 w-8 rounded-full"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]">
+                        <MentionInput
+                          value={editingCommentContent}
+                          onChange={setEditingCommentContent}
+                          onSubmit={handleCommentEditSubmit}
+                          onCancel={handleCancelCommentEdit}
+                          placeholder={t('comments.placeholder.editComment', { ns: 'workflow' })}
+                          disabled={loading}
+                          loading={isSubmittingEdit}
+                          isEditing={true}
+                          className="system-sm-regular"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              : (
+                  <ThreadMessage
+                    authorId={comment.created_by_account?.id || ''}
+                    authorName={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                    avatarUrl={comment.created_by_account?.avatar_url || null}
+                    createdAt={comment.created_at}
+                    content={comment.content}
+                    mentionableNames={mentionableNames}
+                  />
+                )}
           </div>
           {replies.length > 0 && (
             <div className="mt-2 space-y-3 pt-3">

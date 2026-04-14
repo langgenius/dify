@@ -422,6 +422,40 @@ export const useWorkflowComment = () => {
     }
   }, [activeComment, appId, comments, setComments, setCommentDetailCache, setActiveComment])
 
+  const handleCommentUpdate = useCallback(async (commentId: string, content: string, mentionedUserIds: string[] = []) => {
+    if (!appId)
+      return
+    const trimmed = content.trim()
+    if (!trimmed)
+      return
+
+    const targetComment = comments.find(c => c.id === commentId)
+    const targetDetail = commentDetailCacheRef.current[commentId]
+      ?? (activeCommentIdRef.current === commentId ? activeComment : null)
+    const positionX = targetDetail?.position_x ?? targetComment?.position_x
+    const positionY = targetDetail?.position_y ?? targetComment?.position_y
+
+    if (positionX === undefined || positionY === undefined)
+      return
+
+    try {
+      await updateWorkflowComment(appId, commentId, {
+        content: trimmed,
+        position_x: positionX,
+        position_y: positionY,
+        mentioned_user_ids: mentionedUserIds,
+      })
+
+      collaborationManager.emitCommentsUpdate(appId)
+
+      await refreshActiveComment(commentId)
+      await loadComments()
+    }
+    catch (error) {
+      console.error('Failed to update comment:', error)
+    }
+  }, [activeComment, appId, comments, loadComments, refreshActiveComment])
+
   const handleCommentReply = useCallback(async (commentId: string, content: string, mentionedUserIds: string[] = []) => {
     if (!appId)
       return
@@ -535,6 +569,7 @@ export const useWorkflowComment = () => {
     handleCommentResolve,
     handleCommentDelete,
     handleCommentNavigate,
+    handleCommentUpdate,
     handleCommentReply,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,

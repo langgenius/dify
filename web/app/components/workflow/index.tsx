@@ -294,6 +294,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleActiveCommentClose,
     handleCommentResolve,
     handleCommentDelete,
+    handleCommentUpdate,
     handleCommentReply,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
@@ -657,6 +658,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 onClose={handleActiveCommentClose}
                 onResolve={() => handleCommentResolve(comment.id)}
                 onDelete={() => handleCommentDeleteClick(comment.id)}
+                onCommentEdit={(content, ids) => handleCommentUpdate(comment.id, content, ids ?? [])}
                 onPrev={canGoPrev ? () => handleVisibleCommentNavigate('prev') : undefined}
                 onNext={canGoNext ? () => handleVisibleCommentNavigate('next') : undefined}
                 onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}

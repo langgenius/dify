@@ -70,6 +70,9 @@ vi.mock('@/app/components/base/inline-delete-confirm', () => ({
 
 vi.mock('@/app/components/base/ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
+  AvatarRoot: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-root">{children}</div>,
+  AvatarImage: ({ alt }: { alt: string }) => <div data-testid="avatar-image">{alt}</div>,
+  AvatarFallback: ({ children }: { children: React.ReactNode }) => <div data-testid="avatar-fallback">{children}</div>,
 }))
 
 vi.mock('@/app/components/base/ui/dropdown-menu', () => ({
@@ -212,6 +215,26 @@ describe('CommentThread', () => {
     )
 
     expect(container.querySelector('button button')).toBeNull()
+  })
+
+  it('supports editing the root comment when the current user owns the thread', async () => {
+    const onCommentEdit = vi.fn()
+
+    render(
+      <CommentThread
+        comment={createComment()}
+        onClose={vi.fn()}
+        onCommentEdit={onCommentEdit}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('workflow.comments.aria.commentActions'))
+    fireEvent.click(screen.getByText('workflow.comments.actions.editComment'))
+    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.editComment'))
+
+    await waitFor(() => {
+      expect(onCommentEdit).toHaveBeenCalledWith('@Alice original comment', ['user-2'])
+    })
   })
 
   it('submits reply and updates preview hovering state on mouse enter/leave', async () => {
