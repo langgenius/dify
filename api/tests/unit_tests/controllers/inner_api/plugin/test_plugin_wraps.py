@@ -2,6 +2,7 @@
 Unit tests for inner_api plugin decorators
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -232,11 +233,11 @@ class TestGetUserTenant:
 class PluginTestPayload:
     """Simple test payload class"""
 
-    def __init__(self, data: dict):
+    def __init__(self, data: dict[str, Any]):
         self.value = data.get("value")
 
     @classmethod
-    def model_validate(cls, data: dict):
+    def model_validate(cls, data: dict[str, Any]):
         return cls(data)
 
 
@@ -277,7 +278,7 @@ class TestPluginData:
         # Arrange
         class InvalidPayload:
             @classmethod
-            def model_validate(cls, data: dict):
+            def model_validate(cls, data: dict[str, Any]):
                 raise Exception("Validation failed")
 
         @plugin_data(payload_type=InvalidPayload)
