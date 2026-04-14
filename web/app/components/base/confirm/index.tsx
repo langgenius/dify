@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Button } from '../button'
+import { Button } from '@/app/components/base/ui/button'
 import Tooltip from '../tooltip'
 
 /** @deprecated Use `@/app/components/base/ui/alert-dialog` instead. */

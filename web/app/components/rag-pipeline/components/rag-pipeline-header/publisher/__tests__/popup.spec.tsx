@@ -74,7 +74,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
+vi.mock('@/app/components/base/ui/button', () => ({
   default: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
     <button
       onClick={onClick as () => void}

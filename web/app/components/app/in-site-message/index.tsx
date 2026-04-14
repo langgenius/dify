@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { Button } from '@/app/components/base/button'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 type InSiteMessageAction = 'link' | 'close'

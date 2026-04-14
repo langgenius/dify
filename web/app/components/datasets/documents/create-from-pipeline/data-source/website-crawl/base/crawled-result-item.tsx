@@ -3,9 +3,9 @@ import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 type CrawledResultItemProps = {

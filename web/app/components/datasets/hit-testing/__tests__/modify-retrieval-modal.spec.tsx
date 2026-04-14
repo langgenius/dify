@@ -21,7 +21,7 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
+vi.mock('@/app/components/base/ui/button', () => ({
   default: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
     <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
       {children}

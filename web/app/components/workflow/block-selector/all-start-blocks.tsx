@@ -14,9 +14,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { Button } from '@/app/components/base/ui/button'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'

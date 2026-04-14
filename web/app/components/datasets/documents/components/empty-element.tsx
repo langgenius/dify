@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import s from '../style.module.css'
 import { FolderPlusIcon, NotionIcon, ThreeDotsIcon } from './icons'
 

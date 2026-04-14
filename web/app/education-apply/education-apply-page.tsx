@@ -6,8 +6,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'

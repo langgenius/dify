@@ -5,9 +5,9 @@ import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type ModelInfo = {

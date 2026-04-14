@@ -6,11 +6,11 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
+import { Button } from '@/app/components/base/ui/button'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {

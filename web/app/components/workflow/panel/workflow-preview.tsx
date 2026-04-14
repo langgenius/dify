@@ -6,8 +6,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { submitHumanInputForm } from '@/service/workflow'
 import { cn } from '@/utils/classnames'

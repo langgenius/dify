@@ -3,8 +3,8 @@ import type { DatePickerFooterProps } from '../types'
 import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
-import { Button } from '../../button'
 import { ViewType } from '../types'
 
 const Footer: FC<DatePickerFooterProps> = ({

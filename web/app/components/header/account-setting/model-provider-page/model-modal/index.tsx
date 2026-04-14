@@ -18,7 +18,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Button } from '@/app/components/base/button'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
@@ -31,6 +30,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Dialog,
   DialogCloseButton,

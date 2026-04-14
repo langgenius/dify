@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Switch from '@/app/components/base/switch'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'

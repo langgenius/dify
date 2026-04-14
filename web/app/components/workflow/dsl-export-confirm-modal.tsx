@@ -5,10 +5,10 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 export type DSLExportConfirmModalProps = {

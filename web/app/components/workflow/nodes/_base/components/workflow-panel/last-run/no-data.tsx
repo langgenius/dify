@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import { RiPlayLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
+import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   canSingleRun: boolean

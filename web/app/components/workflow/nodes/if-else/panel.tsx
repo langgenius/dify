@@ -8,7 +8,7 @@ import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ConditionWrap from './components/condition-wrap'
 import useConfig from './use-config'

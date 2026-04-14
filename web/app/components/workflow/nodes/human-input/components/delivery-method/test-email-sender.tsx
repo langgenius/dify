@@ -9,10 +9,10 @@ import { noop, unionBy } from 'es-toolkit/compat'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import { Button } from '@/app/components/base/ui/button'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import {
   getNodeInfoById,

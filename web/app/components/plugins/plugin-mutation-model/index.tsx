@@ -3,8 +3,8 @@ import type { FC, ReactNode } from 'react'
 import type { Plugin } from '../types'
 import * as React from 'react'
 import { memo } from 'react'
-import { Button } from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import Card from '@/app/components/plugins/card'
 
 type Props = {

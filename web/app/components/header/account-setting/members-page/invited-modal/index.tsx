@@ -1,7 +1,7 @@
 import type { InvitationResult } from '@/models/common'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { IS_CE_EDITION } from '@/config'

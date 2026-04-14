@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { TransferMethod } from '@/types/app'
 
 type ImageLinkInputProps = {

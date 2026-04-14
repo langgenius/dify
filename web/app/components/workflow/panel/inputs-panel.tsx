@@ -6,11 +6,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { Button } from '@/app/components/base/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
+import { Button } from '@/app/components/base/ui/button'
 import { TransferMethod } from '../../base/text-generation/types'
 import { useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'

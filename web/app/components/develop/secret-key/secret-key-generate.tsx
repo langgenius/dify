@@ -2,8 +2,8 @@
 import type { CreateApiKeyResponse } from '@/models/app'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import InputCopy from './input-copy'
 import s from './style.module.css'
 

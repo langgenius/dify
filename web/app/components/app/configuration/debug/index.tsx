@@ -25,10 +25,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
-import { Button } from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import {
   Tooltip,

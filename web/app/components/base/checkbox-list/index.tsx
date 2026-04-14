@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Checkbox from '@/app/components/base/checkbox'
 import SearchInput from '@/app/components/base/search-input'
+import { Button } from '@/app/components/base/ui/button'
 import SearchMenu from '@/assets/search-menu.svg'
 import { cn } from '@/utils/classnames'
-import { Button } from '../button'
 
 type CheckboxListOption = {
   label: string

@@ -35,7 +35,7 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
   MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
+vi.mock('@/app/components/base/ui/button', () => ({
   default: ({ children }: { children: React.ReactNode }) => <span data-testid="button-content">{children}</span>,
 }))
 

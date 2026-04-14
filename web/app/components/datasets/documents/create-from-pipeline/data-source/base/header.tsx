@@ -2,9 +2,9 @@ import type { CredentialSelectorProps } from './credential-selector'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import CredentialSelector from './credential-selector'
 
 type HeaderProps = {

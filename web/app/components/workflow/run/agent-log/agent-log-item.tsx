@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'

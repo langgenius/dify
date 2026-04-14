@@ -11,13 +11,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'

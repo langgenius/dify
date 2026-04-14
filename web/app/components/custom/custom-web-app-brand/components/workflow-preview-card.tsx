@@ -1,4 +1,4 @@
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import PoweredByBrand from './powered-by-brand'
 

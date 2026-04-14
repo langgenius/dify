@@ -3,7 +3,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'

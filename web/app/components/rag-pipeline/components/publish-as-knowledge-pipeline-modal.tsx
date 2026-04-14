@@ -7,10 +7,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { Button } from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
+import { Button } from '@/app/components/base/ui/button'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {

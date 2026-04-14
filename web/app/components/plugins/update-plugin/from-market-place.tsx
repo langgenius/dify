@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Dialog,
   DialogCloseButton,

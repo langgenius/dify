@@ -1,6 +1,6 @@
 import type { PluginPayload } from '../types'
-import type { ButtonProps } from '@/app/components/base/button'
 import type { FormSchema } from '@/app/components/base/form/types'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import {
   RiClipboardLine,
   RiEqualizer2Line,
@@ -15,8 +15,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import { Button } from '@/app/components/base/button'
 import { FormTypeEnum } from '@/app/components/base/form/types'
+import { Button } from '@/app/components/base/ui/button'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { cn } from '@/utils/classnames'

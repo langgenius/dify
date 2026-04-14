@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import Divider from '@/app/components/base/divider'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import { useChatWithHistoryContext } from '../context'
 

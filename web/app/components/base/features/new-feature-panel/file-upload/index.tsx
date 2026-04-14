@@ -4,12 +4,12 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { FolderUpload } from '@/app/components/base/icons/src/vender/features'
+import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   disabled: boolean

@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { Button } from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import useGetRequirements from './use-get-requirements'
 

@@ -2,8 +2,8 @@ import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 
 type DeleteConfirmModalProps = {
   isOpen: boolean

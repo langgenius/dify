@@ -37,7 +37,7 @@ vi.mock('@/app/components/base/badge/index', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
+vi.mock('@/app/components/base/ui/button', () => ({
   default: ({
     children,
     onClick,

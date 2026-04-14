@@ -3,10 +3,10 @@ import {
 } from '@remixicon/react'
 import { noop } from 'es-toolkit/compat'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { Button } from '@/app/components/base/ui/button'
 import { useModalContextSelector } from '@/context/modal-context'
 import { cn } from '@/utils/classnames'
 

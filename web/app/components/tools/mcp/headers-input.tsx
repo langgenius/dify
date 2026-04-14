@@ -4,8 +4,8 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
-import { Button } from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 export type HeaderItem = {
