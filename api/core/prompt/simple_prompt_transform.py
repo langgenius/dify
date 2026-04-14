@@ -313,7 +313,7 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_message
 
-    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str):
+    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str) -> dict[str, Any]:
         """
         Get simple prompt rule.
         :param app_mode: app mode
@@ -325,7 +325,7 @@ class SimplePromptTransform(PromptTransform):
 
         # Check if the prompt file is already loaded
         if prompt_file_name in prompt_file_contents:
-            return cast(dict, prompt_file_contents[prompt_file_name])
+            return cast(dict[str, Any], prompt_file_contents[prompt_file_name])
 
         # Get the absolute path of the subdirectory
         prompt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "prompt_templates")
@@ -338,7 +338,7 @@ class SimplePromptTransform(PromptTransform):
             # Store the content of the prompt file
             prompt_file_contents[prompt_file_name] = content
 
-            return cast(dict, content)
+            return cast(dict[str, Any], content)
 
     def _prompt_file_name(self, app_mode: AppMode, provider: str, model: str) -> str:
         # baichuan
