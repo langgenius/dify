@@ -127,16 +127,37 @@ class TestWorkspacePermissionHelper:
     @patch("libs.workspace_permission.logger")
     @patch("libs.workspace_permission.EnterpriseService")
     @patch("libs.workspace_permission.dify_config")
-    def test_enterprise_service_error_fails_open(self, mock_config, mock_enterprise_service, mock_logger):
-        """On enterprise service error, should fail-open (allow) and log error."""
+    def test_enterprise_service_error_fails_closed_for_invite(self, mock_config, mock_enterprise_service, mock_logger):
+        """On enterprise service error, invite check should fail-closed and log error."""
         mock_config.ENTERPRISE_ENABLED = True
 
         # Simulate enterprise service error
         mock_enterprise_service.WorkspacePermissionService.get_permission.side_effect = Exception("Service unavailable")
 
-        # Should not raise (fail-open)
-        check_workspace_member_invite_permission("test-workspace-id")
+        with pytest.raises(Forbidden, match="Unable to verify workspace invitation permission"):
+            check_workspace_member_invite_permission("test-workspace-id")
 
         # Should log the error
         mock_logger.exception.assert_called_once()
         assert "Failed to check workspace invite permission" in str(mock_logger.exception.call_args)
+
+    @patch("libs.workspace_permission.logger")
+    @patch("libs.workspace_permission.EnterpriseService")
+    @patch("libs.workspace_permission.dify_config")
+    @patch("libs.workspace_permission.FeatureService")
+    def test_enterprise_service_error_fails_closed_for_transfer(
+        self, mock_feature_service, mock_config, mock_enterprise_service, mock_logger
+    ):
+        """On enterprise service error, transfer check should fail-closed and log error."""
+        mock_config.ENTERPRISE_ENABLED = True
+        mock_features = Mock()
+        mock_features.is_allow_transfer_workspace = True
+        mock_feature_service.get_features.return_value = mock_features
+
+        mock_enterprise_service.WorkspacePermissionService.get_permission.side_effect = Exception("Service unavailable")
+
+        with pytest.raises(Forbidden, match="Unable to verify workspace ownership transfer permission"):
+            check_workspace_owner_transfer_permission("test-workspace-id")
+
+        mock_logger.exception.assert_called_once()
+        assert "Failed to check workspace transfer permission" in str(mock_logger.exception.call_args)
