@@ -439,6 +439,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         idle_tidb_auth_binding.active = True
                         idle_tidb_auth_binding.tenant_id = dataset.tenant_id
                         db.session.commit()
+                        tidb_auth_binding = idle_tidb_auth_binding
                         TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
                     else:
                         new_cluster = TidbService.create_tidb_serverless_cluster(
@@ -454,15 +455,19 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                             cluster_name=new_cluster["cluster_name"],
                             account=new_cluster["account"],
                             password=new_cluster["password"],
+                            qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
                             tenant_id=dataset.tenant_id,
                             active=True,
                             status=TidbAuthBindingStatus.ACTIVE,
                         )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
+                        tidb_auth_binding = new_tidb_auth_binding
                         TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
         else:
             TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+
+        qdrant_url = (tidb_auth_binding.qdrant_endpoint if tidb_auth_binding else None) or dify_config.TIDB_ON_QDRANT_URL or ""
 
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -478,7 +483,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
-                endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
+                endpoint=qdrant_url,
                 api_key=TIDB_ON_QDRANT_API_KEY,
                 root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
