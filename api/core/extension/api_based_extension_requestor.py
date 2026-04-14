@@ -14,7 +14,7 @@ class APIBasedExtensionRequestor:
         self.api_endpoint = api_endpoint
         self.api_key = api_key
 
-    def request(self, point: APIBasedExtensionPoint, params: dict[str, Any]):
+    def request(self, point: APIBasedExtensionPoint, params: dict[str, Any]) -> dict[str, Any]:
         """
         Request the api.
 
@@ -49,4 +49,4 @@ class APIBasedExtensionRequestor:
         if response.status_code != 200:
             raise ValueError(f"request error, status_code: {response.status_code}, content: {response.text[:100]}")
 
-        return cast(dict, response.json())
+        return cast(dict[str, Any], response.json())

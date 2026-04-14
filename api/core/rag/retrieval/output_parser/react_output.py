@@ -10,7 +10,7 @@ class ReactAction:
 
     tool: str
     """The name of the Tool to execute."""
-    tool_input: Union[str, dict]
+    tool_input: Union[str, dict[str, Any]]
     """The input to pass in to the Tool."""
     log: str
     """Additional information to log about the action."""
