@@ -1,10 +1,10 @@
 import type { Credential, CustomConfigurationModelFixedFields, ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
@@ -188,7 +188,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
             {Boolean(model) && (
               <div className="flex h-5 items-center">
                 <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model!.model} />
-                <ModelName className="grow text-text-secondary system-md-regular" modelItem={model!} showModelType showMode showContextSize />
+                <ModelName className="grow system-md-regular text-text-secondary" modelItem={model!} showModelType showMode showContextSize />
               </div>
             )}
           </div>
@@ -200,7 +200,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
               <>
                 <div className="py-2">
                   <div className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')} onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}>
-                    <div className="flex select-none items-center gap-2 px-[15px] py-3">
+                    <div className="flex items-center gap-2 px-[15px] py-3 select-none">
                       <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
                         {Boolean(model) && (<ModelIcon className="shrink-0" provider={provider} modelName={model!.model} />)}
                       </div>

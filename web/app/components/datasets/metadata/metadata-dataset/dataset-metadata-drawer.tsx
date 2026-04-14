@@ -6,13 +6,13 @@ import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { cn } from '@/utils/classnames'
@@ -75,17 +75,17 @@ const Item: FC<ItemProps> = ({
     >
       <div
         className={cn(
-          'flex h-8 items-center justify-between  px-2',
+          'flex h-8 items-center justify-between px-2',
           disabled && 'opacity-30', // not include border and bg
         )}
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <Icon className="size-4 shrink-0" />
-          <div className="system-sm-medium max-w-[250px] truncate text-text-primary">{payload.name}</div>
-          <div className="system-xs-regular shrink-0">{payload.type}</div>
+          <div className="max-w-[250px] truncate system-sm-medium text-text-primary">{payload.name}</div>
+          <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary group-hover/item:hidden">
+          <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary group-hover/item:hidden">
             {disabled ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' }) : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
@@ -198,7 +198,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
             value={isBuiltInEnabled}
             onChange={onIsBuiltInEnabledChange}
           />
-          <div className="system-sm-semibold ml-2 mr-0.5 text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
+          <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
         </div>
 
