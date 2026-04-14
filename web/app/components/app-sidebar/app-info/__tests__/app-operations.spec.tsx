@@ -5,7 +5,7 @@ import * as React from 'react'
 import AppOperations from '../app-operations'
 
 vi.mock('../../../base/ui/button', () => ({
-  default: ({ children, onClick, className, size, variant, id, tabIndex, ...rest }: {
+  Button: ({ children, onClick, className, size, variant, id, tabIndex, ...rest }: {
     'children': React.ReactNode
     'onClick'?: () => void
     'className'?: string

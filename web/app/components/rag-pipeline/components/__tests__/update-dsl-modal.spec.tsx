@@ -101,7 +101,7 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({ children, onClick, disabled, className, variant, loading }: {
+  Button: ({ children, onClick, disabled, className, variant, loading }: {
     children: React.ReactNode
     onClick?: () => void
     disabled?: boolean

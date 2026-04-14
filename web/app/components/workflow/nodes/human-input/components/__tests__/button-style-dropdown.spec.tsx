@@ -11,8 +11,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  __esModule: true,
-  default: (props: {
+  Button: (props: {
     variant?: string
     children?: React.ReactNode
     className?: string

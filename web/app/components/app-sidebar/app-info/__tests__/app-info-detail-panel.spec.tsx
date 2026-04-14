@@ -36,7 +36,7 @@ vi.mock('@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view',
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({ children, onClick, className, size, variant }: {
+  Button: ({ children, onClick, className, size, variant }: {
     children: React.ReactNode
     onClick?: () => void
     className?: string

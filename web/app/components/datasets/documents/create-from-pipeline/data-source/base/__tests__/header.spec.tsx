@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import Header from '../header'
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+  Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }))
 
 vi.mock('@/app/components/base/divider', () => ({

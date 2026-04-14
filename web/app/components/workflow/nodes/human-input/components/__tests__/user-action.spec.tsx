@@ -28,8 +28,7 @@ vi.mock('@/app/components/base/input', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  __esModule: true,
-  default: (props: {
+  Button: (props: {
     children?: ReactNode
     onClick?: () => void
   }) => (

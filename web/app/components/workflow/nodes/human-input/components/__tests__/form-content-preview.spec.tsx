@@ -36,8 +36,7 @@ vi.mock('@/app/components/base/badge', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  __esModule: true,
-  default: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
+  Button: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
     <button type="button" data-testid={`action-${variant}`}>{children}</button>
   ),
 }))

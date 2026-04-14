@@ -36,7 +36,7 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span data-testid="button-content">{children}</span>,
+  Button: ({ children }: { children: React.ReactNode }) => <span data-testid="button-content">{children}</span>,
 }))
 
 vi.mock('@/app/components/base/portal-to-follow-elem', async () => {

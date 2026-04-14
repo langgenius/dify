@@ -38,7 +38,7 @@ vi.mock('@/app/components/base/badge/index', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({
+  Button: ({
     children,
     onClick,
     disabled,

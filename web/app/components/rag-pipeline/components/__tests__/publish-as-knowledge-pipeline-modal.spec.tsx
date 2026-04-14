@@ -23,7 +23,7 @@ vi.mock('@/app/components/base/modal', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
+  Button: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} disabled={disabled as boolean} {...props}>
       {children as string}
     </button>

@@ -16,7 +16,7 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('@/app/components/base/ui/button', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <button data-testid="debug-button">{children}</button>,
+  Button: ({ children }: { children: React.ReactNode }) => <button data-testid="debug-button">{children}</button>,
 }))
 
 vi.mock('@/app/components/base/tooltip', () => ({
