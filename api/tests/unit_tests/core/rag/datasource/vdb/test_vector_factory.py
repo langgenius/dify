@@ -21,6 +21,9 @@ def _register_fake_factory_module(monkeypatch, module_path: str, class_name: str
 def vector_factory_module():
     import importlib
 
+    from core.rag.datasource.vdb import vector_backend_registry as reg
+
+    reg.clear_vector_factory_cache()
     import core.rag.datasource.vdb.vector_factory as module
 
     return importlib.reload(module)
@@ -41,61 +44,62 @@ def test_gen_index_struct_dict(vector_factory_module):
 @pytest.mark.parametrize(
     ("vector_type", "module_path", "class_name"),
     [
-        ("CHROMA", "core.rag.datasource.vdb.chroma.chroma_vector", "ChromaVectorFactory"),
-        ("MILVUS", "core.rag.datasource.vdb.milvus.milvus_vector", "MilvusVectorFactory"),
+        ("CHROMA", "dify_vdb_chroma.chroma_vector", "ChromaVectorFactory"),
+        ("MILVUS", "dify_vdb_milvus.milvus_vector", "MilvusVectorFactory"),
         (
             "ALIBABACLOUD_MYSQL",
-            "core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector",
+            "dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector",
             "AlibabaCloudMySQLVectorFactory",
         ),
-        ("MYSCALE", "core.rag.datasource.vdb.myscale.myscale_vector", "MyScaleVectorFactory"),
-        ("PGVECTOR", "core.rag.datasource.vdb.pgvector.pgvector", "PGVectorFactory"),
-        ("VASTBASE", "core.rag.datasource.vdb.pyvastbase.vastbase_vector", "VastbaseVectorFactory"),
-        ("PGVECTO_RS", "core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs", "PGVectoRSFactory"),
-        ("QDRANT", "core.rag.datasource.vdb.qdrant.qdrant_vector", "QdrantVectorFactory"),
-        ("RELYT", "core.rag.datasource.vdb.relyt.relyt_vector", "RelytVectorFactory"),
+        ("MYSCALE", "dify_vdb_myscale.myscale_vector", "MyScaleVectorFactory"),
+        ("PGVECTOR", "dify_vdb_pgvector.pgvector", "PGVectorFactory"),
+        ("VASTBASE", "dify_vdb_vastbase.vastbase_vector", "VastbaseVectorFactory"),
+        ("PGVECTO_RS", "dify_vdb_pgvecto_rs.pgvecto_rs", "PGVectoRSFactory"),
+        ("QDRANT", "dify_vdb_qdrant.qdrant_vector", "QdrantVectorFactory"),
+        ("RELYT", "dify_vdb_relyt.relyt_vector", "RelytVectorFactory"),
         (
             "ELASTICSEARCH",
-            "core.rag.datasource.vdb.elasticsearch.elasticsearch_vector",
+            "dify_vdb_elasticsearch.elasticsearch_vector",
             "ElasticSearchVectorFactory",
         ),
         (
             "ELASTICSEARCH_JA",
-            "core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector",
+            "dify_vdb_elasticsearch.elasticsearch_ja_vector",
             "ElasticSearchJaVectorFactory",
         ),
-        ("TIDB_VECTOR", "core.rag.datasource.vdb.tidb_vector.tidb_vector", "TiDBVectorFactory"),
-        ("WEAVIATE", "core.rag.datasource.vdb.weaviate.weaviate_vector", "WeaviateVectorFactory"),
-        ("TENCENT", "core.rag.datasource.vdb.tencent.tencent_vector", "TencentVectorFactory"),
-        ("ORACLE", "core.rag.datasource.vdb.oracle.oraclevector", "OracleVectorFactory"),
+        ("TIDB_VECTOR", "dify_vdb_tidb_vector.tidb_vector", "TiDBVectorFactory"),
+        ("WEAVIATE", "dify_vdb_weaviate.weaviate_vector", "WeaviateVectorFactory"),
+        ("TENCENT", "dify_vdb_tencent.tencent_vector", "TencentVectorFactory"),
+        ("ORACLE", "dify_vdb_oracle.oraclevector", "OracleVectorFactory"),
         (
             "OPENSEARCH",
-            "core.rag.datasource.vdb.opensearch.opensearch_vector",
+            "dify_vdb_opensearch.opensearch_vector",
             "OpenSearchVectorFactory",
         ),
-        ("ANALYTICDB", "core.rag.datasource.vdb.analyticdb.analyticdb_vector", "AnalyticdbVectorFactory"),
-        ("COUCHBASE", "core.rag.datasource.vdb.couchbase.couchbase_vector", "CouchbaseVectorFactory"),
-        ("BAIDU", "core.rag.datasource.vdb.baidu.baidu_vector", "BaiduVectorFactory"),
-        ("VIKINGDB", "core.rag.datasource.vdb.vikingdb.vikingdb_vector", "VikingDBVectorFactory"),
-        ("UPSTASH", "core.rag.datasource.vdb.upstash.upstash_vector", "UpstashVectorFactory"),
+        ("ANALYTICDB", "dify_vdb_analyticdb.analyticdb_vector", "AnalyticdbVectorFactory"),
+        ("COUCHBASE", "dify_vdb_couchbase.couchbase_vector", "CouchbaseVectorFactory"),
+        ("BAIDU", "dify_vdb_baidu.baidu_vector", "BaiduVectorFactory"),
+        ("VIKINGDB", "dify_vdb_vikingdb.vikingdb_vector", "VikingDBVectorFactory"),
+        ("UPSTASH", "dify_vdb_upstash.upstash_vector", "UpstashVectorFactory"),
         (
             "TIDB_ON_QDRANT",
-            "core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector",
+            "dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector",
             "TidbOnQdrantVectorFactory",
         ),
-        ("LINDORM", "core.rag.datasource.vdb.lindorm.lindorm_vector", "LindormVectorStoreFactory"),
-        ("OCEANBASE", "core.rag.datasource.vdb.oceanbase.oceanbase_vector", "OceanBaseVectorFactory"),
-        ("SEEKDB", "core.rag.datasource.vdb.oceanbase.oceanbase_vector", "OceanBaseVectorFactory"),
-        ("OPENGAUSS", "core.rag.datasource.vdb.opengauss.opengauss", "OpenGaussFactory"),
-        ("TABLESTORE", "core.rag.datasource.vdb.tablestore.tablestore_vector", "TableStoreVectorFactory"),
+        ("LINDORM", "dify_vdb_lindorm.lindorm_vector", "LindormVectorStoreFactory"),
+        ("OCEANBASE", "dify_vdb_oceanbase.oceanbase_vector", "OceanBaseVectorFactory"),
+        ("SEEKDB", "dify_vdb_oceanbase.oceanbase_vector", "OceanBaseVectorFactory"),
+        ("OPENGAUSS", "dify_vdb_opengauss.opengauss", "OpenGaussFactory"),
+        ("TABLESTORE", "dify_vdb_tablestore.tablestore_vector", "TableStoreVectorFactory"),
         (
             "HUAWEI_CLOUD",
-            "core.rag.datasource.vdb.huawei.huawei_cloud_vector",
+            "dify_vdb_huawei_cloud.huawei_cloud_vector",
             "HuaweiCloudVectorFactory",
         ),
-        ("MATRIXONE", "core.rag.datasource.vdb.matrixone.matrixone_vector", "MatrixoneVectorFactory"),
-        ("CLICKZETTA", "core.rag.datasource.vdb.clickzetta.clickzetta_vector", "ClickzettaVectorFactory"),
-        ("IRIS", "core.rag.datasource.vdb.iris.iris_vector", "IrisVectorFactory"),
+        ("MATRIXONE", "dify_vdb_matrixone.matrixone_vector", "MatrixoneVectorFactory"),
+        ("CLICKZETTA", "dify_vdb_clickzetta.clickzetta_vector", "ClickzettaVectorFactory"),
+        ("IRIS", "dify_vdb_iris.iris_vector", "IrisVectorFactory"),
+        ("HOLOGRES", "dify_vdb_hologres.hologres_vector", "HologresVectorFactory"),
     ],
 )
 def test_get_vector_factory_supported(vector_factory_module, monkeypatch, vector_type, module_path, class_name):
@@ -111,6 +115,34 @@ def test_get_vector_factory_unsupported(vector_factory_module):
         vector_factory_module.Vector.get_vector_factory("unknown")
 
 
+class _PluginChromaFactory:
+    """Stub used only for entry-point override test."""
+
+
+def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module, monkeypatch):
+    from importlib.metadata import EntryPoint
+
+    from core.rag.datasource.vdb import vector_backend_registry as reg
+
+    reg.clear_vector_factory_cache()
+    ep = EntryPoint(
+        name="chroma",
+        value=f"{__name__}:_PluginChromaFactory",
+        group="dify.vector_backends",
+    )
+
+    class _FakeGroups:
+        def select(self, *, group: str):
+            if group == "dify.vector_backends":
+                return (ep,)
+            return ()
+
+    monkeypatch.setattr(reg, "entry_points", lambda: _FakeGroups())
+
+    result_cls = vector_factory_module.Vector.get_vector_factory(vector_factory_module.VectorType.CHROMA)
+    assert result_cls is _PluginChromaFactory
+
+
 def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
     dataset = SimpleNamespace(id="dataset-1")
 
@@ -121,7 +153,18 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
         default_vector = vector_factory_module.Vector(dataset)
         custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"])
 
-    assert default_vector._attributes == ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
+    # `is_summary` and `original_chunk_id` must be in the default return-properties
+    # projection so summary index retrieval works on backends that honor the list
+    # as an explicit projection (e.g. Weaviate). See #34884.
+    assert default_vector._attributes == [
+        "doc_id",
+        "dataset_id",
+        "document_id",
+        "doc_hash",
+        "doc_type",
+        "is_summary",
+        "original_chunk_id",
+    ]
     assert custom_vector._attributes == ["doc_id"]
     assert default_vector._embeddings == "embeddings"
     assert default_vector._vector_processor == "processor"

@@ -782,7 +782,7 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
     ):
         """
         Get files in a folder.

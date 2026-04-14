@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import select
 
 from configs import dify_config
@@ -37,7 +39,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def get_recommend_app_detail(cls, app_id: str) -> dict | None:
+    def get_recommend_app_detail(cls, app_id: str) -> dict[str, Any] | None:
         """
         Get recommend app detail.
         :param app_id: app id
@@ -45,7 +47,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result: dict = retrieval_instance.get_recommend_app_detail(app_id)
+        result: dict[str, Any] = retrieval_instance.get_recommend_app_detail(app_id)
         if FeatureService.get_system_features().enable_trial_app:
             app_id = result["id"]
             trial_app_model = db.session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
