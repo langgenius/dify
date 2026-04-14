@@ -193,11 +193,57 @@ function ensureTrailingNonNullAssertion(expression: string): string {
     : `${trimmedExpression}!`
 }
 
+function hasOptionalChainDescendant(node: ts.Node): boolean {
+  let found = false
+
+  const visit = (current: ts.Node) => {
+    if (found)
+      return
+
+    if (ts.isOptionalChain(current)) {
+      found = true
+      return
+    }
+
+    current.forEachChild(visit)
+  }
+
+  visit(node)
+  return found
+}
+
+function shouldPrintInlineNonNullAssertion(expression: ts.Expression): boolean {
+  return ts.isOptionalChain(expression)
+    || (ts.isParenthesizedExpression(expression) && hasOptionalChainDescendant(expression.expression))
+}
+
 function normalizeOptionalChainNonNullContinuations(text: string): string {
-  // Keep `(expr)!.prop` and `(expr)![index]` intact.
-  // Rewriting them into optional-chain continuations changes runtime behavior by
-  // turning existing dereference failures into short-circuiting `undefined`.
-  return text
+  const sourceFile = ts.createSourceFile('normalize.tsx', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const edits: TextEdit[] = []
+
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isNonNullExpression(node)
+      && ts.isParenthesizedExpression(node.expression)
+      && hasOptionalChainDescendant(node.expression.expression)
+    ) {
+      edits.push({
+        end: node.getEnd(),
+        replacement: `${node.expression.expression.getText(sourceFile)}!`,
+        start: node.getStart(sourceFile),
+      })
+      return
+    }
+
+    node.forEachChild(visit)
+  }
+
+  visit(sourceFile)
+
+  if (edits.length === 0)
+    return text
+
+  return applyEdits(text, edits).text
 }
 
 function collapseRepeatedInlineComments(text: string): string {
@@ -1511,11 +1557,13 @@ function createEditForTarget(
     }
   }
 
-  const replacement = printer.printNode(
-    ts.EmitHint.Expression,
-    ts.factory.createNonNullExpression(target.expression),
-    sourceFile,
-  )
+  const replacement = shouldPrintInlineNonNullAssertion(target.expression)
+    ? `${target.expression.getText(sourceFile)}!`
+    : printer.printNode(
+        ts.EmitHint.Expression,
+        ts.factory.createNonNullExpression(target.expression),
+        sourceFile,
+      )
 
   return {
     end: target.expression.getEnd(),
