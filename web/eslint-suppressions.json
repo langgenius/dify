@@ -1992,7 +1992,7 @@
   },
   "app/components/base/content-dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/copy-feedback/index.tsx": {
