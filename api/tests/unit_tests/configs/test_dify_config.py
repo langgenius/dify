@@ -163,7 +163,7 @@ def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     assert "timezone=UTC" in options
 
 
-def test_db_timezone_can_disable_app_level_timezone_injection(monkeypatch: pytest.MonkeyPatch):
+def test_db_session_timezone_override_can_disable_app_level_timezone_injection(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_TYPE", "postgresql")
     monkeypatch.setenv("DB_USERNAME", "postgres")
     monkeypatch.setenv("DB_PASSWORD", "postgres")
@@ -171,7 +171,7 @@ def test_db_timezone_can_disable_app_level_timezone_injection(monkeypatch: pytes
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("DB_EXTRAS", "options=-c search_path=myschema")
-    monkeypatch.setenv("DB_TIMEZONE", "")
+    monkeypatch.setenv("DB_SESSION_TIMEZONE_OVERRIDE", "")
 
     config = DifyConfig()
 

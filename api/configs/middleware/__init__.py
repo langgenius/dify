@@ -160,9 +160,9 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
-    DB_TIMEZONE: str = Field(
+    DB_SESSION_TIMEZONE_OVERRIDE: str = Field(
         description=(
-            "PostgreSQL session timezone injected via startup options."
+            "PostgreSQL session timezone override injected via startup options."
             " Default is 'UTC' for out-of-the-box consistency."
             " Set to empty string to disable app-level timezone injection, for example when using RDS Proxy"
             " together with a database-side default timezone."
@@ -238,9 +238,9 @@ class DatabaseConfig(BaseSettings):
         # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
         if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
             merged_options = options.strip()
-            db_timezone = self.DB_TIMEZONE.strip()
-            if db_timezone:
-                timezone_opt = f"-c timezone={db_timezone}"
+            session_timezone_override = self.DB_SESSION_TIMEZONE_OVERRIDE.strip()
+            if session_timezone_override:
+                timezone_opt = f"-c timezone={session_timezone_override}"
                 merged_options = f"{merged_options} {timezone_opt}".strip() if merged_options else timezone_opt
             if merged_options:
                 connect_args = {"options": merged_options}
