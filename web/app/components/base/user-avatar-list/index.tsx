@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { AvatarSize } from '@/app/components/base/ui/avatar'
 import { memo } from 'react'
-import { Avatar } from '@/app/components/base/ui/avatar'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 
@@ -59,13 +59,20 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
             className="relative"
             style={{ zIndex: visibleUsers.length - index }}
           >
-            <Avatar
-              name={user.name}
-              avatar={user.avatar_url || null}
-              size={size}
-              className="ring-2 ring-components-panel-bg"
-              backgroundColor={userColor}
-            />
+            <AvatarRoot size={size} className="ring-2 ring-components-panel-bg">
+              {user.avatar_url && (
+                <AvatarImage
+                  src={user.avatar_url}
+                  alt={user.name}
+                />
+              )}
+              <AvatarFallback
+                size={size}
+                style={userColor ? { backgroundColor: userColor } : undefined}
+              >
+                {user.name?.[0]?.toLocaleUpperCase()}
+              </AvatarFallback>
+            </AvatarRoot>
           </div>
         )
       },
