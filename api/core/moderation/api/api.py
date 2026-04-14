@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -10,7 +12,7 @@ from models.api_based_extension import APIBasedExtension
 
 class ModerationInputParams(BaseModel):
     app_id: str = ""
-    inputs: dict = Field(default_factory=dict)
+    inputs: dict[str, Any] = Field(default_factory=dict)
     query: str = ""
 
 
@@ -23,7 +25,7 @@ class ApiModeration(Moderation):
     name: str = "api"
 
     @classmethod
-    def validate_config(cls, tenant_id: str, config: dict):
+    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
         """
         Validate the incoming form config data.
 
@@ -41,7 +43,7 @@ class ApiModeration(Moderation):
         if not extension:
             raise ValueError("API-based Extension not found. Please check it again.")
 
-    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+    def moderation_for_inputs(self, inputs: dict[str, Any], query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
         if self.config is None:
@@ -73,7 +75,7 @@ class ApiModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
-    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict):
+    def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict[str, Any]):
         if self.config is None:
             raise ValueError("The config is not set.")
         extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id", ""))
