@@ -103,10 +103,14 @@ class AdjustedJSON(TypeDecorator[dict | list | None]):
         else:
             return dialect.type_descriptor(sa.JSON())
 
-    def process_bind_param(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+    def process_bind_param(
+        self, value: dict[str, Any] | list[Any] | None, dialect: Dialect
+    ) -> dict[str, Any] | list[Any] | None:
         return value
 
-    def process_result_value(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+    def process_result_value(
+        self, value: dict[str, Any] | list[Any] | None, dialect: Dialect
+    ) -> dict[str, Any] | list[Any] | None:
         return value
 
 
