@@ -17,7 +17,6 @@ def http_status_message(code):
 
 
 def register_external_error_handlers(api: Api):
-    @api.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
 
@@ -74,27 +73,18 @@ def register_external_error_handlers(api: Api):
                     headers["Set-Cookie"] = build_force_logout_cookie_headers()
             return data, status_code, headers
 
-    _ = handle_http_exception
-
-    @api.errorhandler(ValueError)
     def handle_value_error(e: ValueError):
         got_request_exception.send(current_app, exception=e)
         status_code = 400
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
         return data, status_code
 
-    _ = handle_value_error
-
-    @api.errorhandler(AppInvokeQuotaExceededError)
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
         got_request_exception.send(current_app, exception=e)
         status_code = 429
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
         return data, status_code
 
-    _ = handle_quota_exceeded
-
-    @api.errorhandler(Exception)
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
 
@@ -113,7 +103,10 @@ def register_external_error_handlers(api: Api):
 
         return data, status_code
 
-    _ = handle_general_exception
+    api.errorhandler(HTTPException)(handle_http_exception)
+    api.errorhandler(ValueError)(handle_value_error)
+    api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
+    api.errorhandler(Exception)(handle_general_exception)
 
 
 class ExternalApi(Api):
