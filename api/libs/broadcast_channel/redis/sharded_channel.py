@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis, RedisCluster
 
@@ -60,7 +62,7 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
         assert self._pubsub is not None
         self._pubsub.sunsubscribe(self._topic)  # type: ignore[attr-defined]
 
-    def _get_message(self) -> dict | None:
+    def _get_message(self) -> dict[str, Any] | None:
         assert self._pubsub is not None
         # NOTE(QuantumGhost): this is an issue in
         # upstream code. If Sharded PubSub is used with Cluster, the

@@ -89,7 +89,7 @@ def _get_case_routing() -> dict[TelemetryCase, CaseRoute]:
     return _case_routing
 
 
-def __getattr__(name: str) -> dict:
+def __getattr__(name: str) -> Any:
     """Lazy module-level access to routing tables."""
     if name == "CASE_ROUTING":
         return _get_case_routing()
