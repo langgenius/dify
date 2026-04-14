@@ -43,12 +43,12 @@ class LeakedDependencyResponse(ResponseModel):
 
 
 class AppImportResponse(ResponseModel):
-    id: str
+    id: str | None = None
     status: ImportStatus
     app_id: str | None = None
     app_mode: str | None = None
-    current_dsl_version: str
-    imported_dsl_version: str
+    current_dsl_version: str = ""
+    imported_dsl_version: str = ""
     error: str = ""
 
 
