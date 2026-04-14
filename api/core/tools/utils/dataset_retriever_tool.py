@@ -33,7 +33,7 @@ class DatasetRetrieverTool(Tool):
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
         user_id: str,
-        inputs: dict,
+        inputs: dict[str, Any],
     ) -> list["DatasetRetrieverTool"]:
         """
         get dataset tool
