@@ -13,7 +13,7 @@ class ExternalDataToolFactory:
         )
 
     @classmethod
-    def validate_config(cls, name: str, tenant_id: str, config: dict[str, Any]):
+    def validate_config(cls, name: str, tenant_id: str, config: dict[str, Any]) -> None:
         """
         Validate the incoming form config data.
 
