@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Ramură Fail",
   "nodes.common.errorHandle.none.desc": "Nodul se va opri din rulare dacă apare o excepție și nu este gestionat",
   "nodes.common.errorHandle.none.title": "Niciunul",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Există {{num}} noduri în proces care rulează anormal, vă rugăm să mergeți la urmărire pentru a verifica jurnalele.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Există {{num}} noduri în proces care rulează anormal, vă rugăm să mergeți la <tracingLink>urmărire</tracingLink> pentru a verifica jurnalele.",
   "nodes.common.errorHandle.tip": "Strategie de gestionare a excepțiilor, declanșată atunci când un nod întâlnește o excepție.",
   "nodes.common.errorHandle.title": "Gestionarea erorilor",
   "nodes.common.inputVars": "Variabile de intrare",

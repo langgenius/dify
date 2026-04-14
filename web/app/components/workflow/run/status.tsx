@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
@@ -16,6 +16,7 @@ type ResultProps = {
   exceptionCounts?: number
   isListening?: boolean
   workflowRunId?: string
+  onOpenTracingTab?: () => void
 }
 
 const StatusPanel: FC<ResultProps> = ({
@@ -26,6 +27,7 @@ const StatusPanel: FC<ResultProps> = ({
   exceptionCounts,
   isListening = false,
   workflowRunId,
+  onOpenTracingTab,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -64,6 +66,30 @@ const StatusPanel: FC<ResultProps> = ({
     }
     return inputURLs
   }, [pausedDetails])
+
+  const partialSucceededTip = exceptionCounts
+    ? (
+        <Trans
+          i18nKey="nodes.common.errorHandle.partialSucceeded.tip"
+          ns="workflow"
+          values={{ num: exceptionCounts }}
+          components={{
+            tracingLink: onOpenTracingTab
+              ? (
+                  <a
+                    href="#tracing"
+                    className="cursor-pointer text-text-accent hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onOpenTracingTab()
+                    }}
+                  />
+                )
+              : <span />,
+          }}
+        />
+      )
+    : null
 
   return (
     <StatusContainer status={status}>
@@ -160,7 +186,7 @@ const StatusPanel: FC<ResultProps> = ({
               <>
                 <div className="my-2 h-[0.5px] bg-divider-subtle" />
                 <div className="system-xs-regular text-text-destructive">
-                  {t('nodes.common.errorHandle.partialSucceeded.tip', { ns: 'workflow', num: exceptionCounts })}
+                  {partialSucceededTip}
                 </div>
               </>
             )
@@ -172,7 +198,7 @@ const StatusPanel: FC<ResultProps> = ({
           <>
             <div className="my-2 h-[0.5px] bg-divider-deep" />
             <div className="system-xs-medium text-text-warning">
-              {t('nodes.common.errorHandle.partialSucceeded.tip', { ns: 'workflow', num: exceptionCounts })}
+              {partialSucceededTip}
             </div>
           </>
         )

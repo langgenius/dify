@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "실패 분기",
   "nodes.common.errorHandle.none.desc": "예외가 발생하고 처리되지 않으면 노드 실행이 중지됩니다",
   "nodes.common.errorHandle.none.title": "없음",
-  "nodes.common.errorHandle.partialSucceeded.tip": "프로세스에 {{num}} 노드가 비정상적으로 실행 중입니다. 추적으로 이동하여 로그를 확인하십시오.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "프로세스에 {{num}} 노드가 비정상적으로 실행 중입니다. <tracingLink>추적</tracingLink>으로 이동하여 로그를 확인하십시오.",
   "nodes.common.errorHandle.tip": "노드에 예외가 발생할 때 트리거되는 예외 처리 전략입니다.",
   "nodes.common.errorHandle.title": "오류 처리",
   "nodes.common.inputVars": "입력 변수",

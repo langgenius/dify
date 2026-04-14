@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "فرع الفشل",
   "nodes.common.errorHandle.none.desc": "ستتوقف العقدة عن العمل في حالة حدوث استثناء ولم يتم التعامل معه",
   "nodes.common.errorHandle.none.title": "لا شيء",
-  "nodes.common.errorHandle.partialSucceeded.tip": "هناك {{num}} عقد في العملية تعمل بشكل غير طبيعي، يرجى الانتقال إلى التتبع للتحقق من السجلات.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "هناك {{num}} عقد في العملية تعمل بشكل غير طبيعي، يرجى الانتقال إلى <tracingLink>التتبع</tracingLink> للتحقق من السجلات.",
   "nodes.common.errorHandle.tip": "استراتيجية التعامل مع الاستثناءات، يتم تشغيلها عندما تواجه العقدة استثناءً.",
   "nodes.common.errorHandle.title": "معالجة الأخطاء",
   "nodes.common.inputVars": "متغيرات الإدخال",

@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Napaka veja",
   "nodes.common.errorHandle.none.desc": "Vozlišče se bo prenehalo izvajati, če pride do izjeme, ki ni obravnavana.",
   "nodes.common.errorHandle.none.title": "Noben",
-  "nodes.common.errorHandle.partialSucceeded.tip": "V procesu je {{num}} vozlišč, ki delujejo nenormalno, prosim, pojdite na sledenje, da preverite dnevnike.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "V procesu je {{num}} vozlišč, ki delujejo nenormalno, prosim, pojdite na <tracingLink>sledenje</tracingLink>, da preverite dnevnike.",
   "nodes.common.errorHandle.tip": "Strategija ravnanja z izjemo, ki se sproži, ko vozlišče naleti na izjemo.",
   "nodes.common.errorHandle.title": "Obvladovanje napak",
   "nodes.common.inputVars": "Vhodne spremenljivke",

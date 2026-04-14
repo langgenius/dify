@@ -174,6 +174,7 @@ const RunPanel: FC<RunProps> = ({
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
             workflowRunId={runDetail.id}
+            onOpenTracingTab={() => switchTab('TRACING')}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (

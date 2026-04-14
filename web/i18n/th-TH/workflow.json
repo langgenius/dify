@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "สาขาล้มเหลว",
   "nodes.common.errorHandle.none.desc": "โหนดจะหยุดทํางานหากเกิดข้อยกเว้นและไม่ได้รับการจัดการ",
   "nodes.common.errorHandle.none.title": "ไม่มีใคร",
-  "nodes.common.errorHandle.partialSucceeded.tip": "มีโหนด {{num}} ในกระบวนการที่ทํางานผิดปกติ โปรดไปที่การติดตามเพื่อตรวจสอบบันทึก",
+  "nodes.common.errorHandle.partialSucceeded.tip": "มีโหนด {{num}} ในกระบวนการที่ทํางานผิดปกติ โปรดไปที่<tracingLink>การติดตาม</tracingLink>เพื่อตรวจสอบบันทึก",
   "nodes.common.errorHandle.tip": "กลยุทธ์การจัดการข้อยกเว้น ทริกเกอร์เมื่อโหนดพบข้อยกเว้น",
   "nodes.common.errorHandle.title": "การจัดการข้อผิดพลาด",
   "nodes.common.inputVars": "ตัวแปรอินพุต",

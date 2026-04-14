@@ -101,6 +101,10 @@ const WorkflowPreview = () => {
     await submitHumanInputForm(formToken, formData)
   }, [])
 
+  const handleOpenTracingTab = useCallback(() => {
+    switchTab('TRACING')
+  }, [])
+
   return (
     <div
       className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
@@ -236,6 +240,7 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              onOpenTracingTab={handleOpenTracingTab}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
