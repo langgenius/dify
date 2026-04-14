@@ -114,6 +114,7 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -156,7 +157,7 @@ class VectorServiceTestDataFactory:
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
-        index_struct_dict: dict | None = None,
+        index_struct_dict: dict[str, Any] | None = None,
         **kwargs,
     ) -> Mock:
         """

@@ -6,9 +6,17 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher'
-import Confirm from '@/app/components/base/confirm'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 
@@ -74,15 +82,24 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         onRestore: () => setRestoreConfirmOpen(true),
       }}
       />
-      {restoreConfirmOpen && (
-        <Confirm
-          title={t('resetConfig.title', { ns: 'appDebug' })}
-          content={t('resetConfig.message', { ns: 'appDebug' })}
-          isShow={restoreConfirmOpen}
-          onConfirm={handleConfirm}
-          onCancel={() => setRestoreConfirmOpen(false)}
-        />
-      )}
+      <AlertDialog open={restoreConfirmOpen} onOpenChange={open => !open && setRestoreConfirmOpen(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('resetConfig.title', { ns: 'appDebug' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('resetConfig.message', { ns: 'appDebug' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
