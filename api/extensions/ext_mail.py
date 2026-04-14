@@ -4,6 +4,7 @@ from flask import Flask
 
 from configs import dify_config
 from dify_app import DifyApp
+from libs.smtp import SMTPClient, SMTPMessageDict
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,16 @@ class Mail:
 
         if not html:
             raise ValueError("mail html is not set")
+
+        if isinstance(self._client, SMTPClient):
+            self._client.send(
+                SMTPMessageDict(
+                    to=to,
+                    subject=subject,
+                    html=html,
+                )
+            )
+            return
 
         self._client.send(
             {
