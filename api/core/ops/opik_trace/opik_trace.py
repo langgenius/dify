@@ -3,8 +3,9 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
+from typing import Any, cast
 
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
 from sqlalchemy.orm import sessionmaker
@@ -24,7 +25,6 @@ from core.ops.entities.trace_entity import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
@@ -288,9 +288,7 @@ class OpikDataTrace(BaseTraceInstance):
         metadata["file_list"] = file_list
 
         if message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, message_data.from_end_user_id)
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id
@@ -438,7 +436,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         self.add_span(span_data)
 
-    def add_trace(self, opik_trace_data: dict) -> Trace:
+    def add_trace(self, opik_trace_data: dict[str, Any]) -> Trace:
         try:
             trace = self.opik_client.trace(**opik_trace_data)
             logger.debug("Opik Trace created successfully")
@@ -446,7 +444,7 @@ class OpikDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"Opik Failed to create trace: {str(e)}")
 
-    def add_span(self, opik_span_data: dict):
+    def add_span(self, opik_span_data: dict[str, Any]):
         try:
             self.opik_client.span(**opik_span_data)
             logger.debug("Opik Span created successfully")

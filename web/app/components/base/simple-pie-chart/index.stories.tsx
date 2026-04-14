@@ -33,7 +33,7 @@ const PieChartPlayground = ({
         <div className="flex flex-1 flex-col gap-2">
           <label className="flex items-center justify-between text-xs font-medium text-text-secondary">
             Target progress
-            <span className="rounded bg-background-default px-2 py-1 text-[11px] text-text-tertiary">{label}</span>
+            <span className="rounded-sm bg-background-default px-2 py-1 text-[11px] text-text-tertiary">{label}</span>
           </label>
           <input
             type="range"

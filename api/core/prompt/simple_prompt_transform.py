@@ -2,14 +2,8 @@ import json
 import os
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
-from core.app.app_config.entities import PromptTemplateEntity
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.prompt.prompt_transform import PromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from graphon.file import file_manager
 from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -19,10 +13,17 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+
+from core.app.app_config.entities import PromptTemplateEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.prompt.prompt_transform import PromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import AppMode
 
 if TYPE_CHECKING:
-    from graphon.file.models import File
+    from graphon.file import File
 
 
 class ModelMode(StrEnum):
@@ -31,6 +32,13 @@ class ModelMode(StrEnum):
 
 
 prompt_file_contents: dict[str, Any] = {}
+
+
+class PromptTemplateConfigDict(TypedDict):
+    prompt_template: PromptTemplateParser
+    custom_variable_keys: list[str]
+    special_variable_keys: list[str]
+    prompt_rules: dict[str, Any]
 
 
 class SimplePromptTransform(PromptTransform):
@@ -88,11 +96,11 @@ class SimplePromptTransform(PromptTransform):
         app_mode: AppMode,
         model_config: ModelConfigWithCredentialsEntity,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str | None = None,
         context: str | None = None,
         histories: str | None = None,
-    ) -> tuple[str, dict]:
+    ) -> tuple[str, dict[str, Any]]:
         # get prompt template
         prompt_template_config = self.get_prompt_template(
             app_mode=app_mode,
@@ -104,18 +112,13 @@ class SimplePromptTransform(PromptTransform):
             with_memory_prompt=histories is not None,
         )
 
-        custom_variable_keys_obj = prompt_template_config["custom_variable_keys"]
-        special_variable_keys_obj = prompt_template_config["special_variable_keys"]
+        custom_variable_keys = prompt_template_config["custom_variable_keys"]
+        if not isinstance(custom_variable_keys, list):
+            raise TypeError(f"Expected list for custom_variable_keys, got {type(custom_variable_keys)}")
 
-        # Type check for custom_variable_keys
-        if not isinstance(custom_variable_keys_obj, list):
-            raise TypeError(f"Expected list for custom_variable_keys, got {type(custom_variable_keys_obj)}")
-        custom_variable_keys = cast(list[str], custom_variable_keys_obj)
-
-        # Type check for special_variable_keys
-        if not isinstance(special_variable_keys_obj, list):
-            raise TypeError(f"Expected list for special_variable_keys, got {type(special_variable_keys_obj)}")
-        special_variable_keys = cast(list[str], special_variable_keys_obj)
+        special_variable_keys = prompt_template_config["special_variable_keys"]
+        if not isinstance(special_variable_keys, list):
+            raise TypeError(f"Expected list for special_variable_keys, got {type(special_variable_keys)}")
 
         variables = {k: inputs[k] for k in custom_variable_keys if k in inputs}
 
@@ -149,7 +152,7 @@ class SimplePromptTransform(PromptTransform):
         has_context: bool,
         query_in_prompt: bool,
         with_memory_prompt: bool = False,
-    ) -> dict[str, object]:
+    ) -> PromptTemplateConfigDict:
         prompt_rules = self._get_prompt_rule(app_mode=app_mode, provider=provider, model=model)
 
         custom_variable_keys: list[str] = []
@@ -172,18 +175,19 @@ class SimplePromptTransform(PromptTransform):
             prompt += prompt_rules.get("query_prompt", "{{#query#}}")
             special_variable_keys.append("#query#")
 
-        return {
+        result: PromptTemplateConfigDict = {
             "prompt_template": PromptTemplateParser(template=prompt),
             "custom_variable_keys": custom_variable_keys,
             "special_variable_keys": special_variable_keys,
             "prompt_rules": prompt_rules,
         }
+        return result
 
     def _get_chat_model_prompt_messages(
         self,
         app_mode: AppMode,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str,
         context: str | None,
         files: Sequence["File"],
@@ -230,7 +234,7 @@ class SimplePromptTransform(PromptTransform):
         self,
         app_mode: AppMode,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str,
         context: str | None,
         files: Sequence["File"],

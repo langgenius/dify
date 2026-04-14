@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
+from graphon.enums import WorkflowNodeExecutionStatus
 from openinference.semconv.trace import (
     MessageAttributes,
     OpenInferenceMimeTypeValues,
@@ -18,7 +19,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
+from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
@@ -37,6 +38,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
@@ -133,10 +135,10 @@ def set_span_status(current_span: Span, error: Exception | str | None = None):
             if not exception_message:
                 exception_message = repr(error)
             attributes: dict[str, AttributeValue] = {
-                OTELSpanAttributes.EXCEPTION_TYPE: exception_type,
-                OTELSpanAttributes.EXCEPTION_MESSAGE: exception_message,
-                OTELSpanAttributes.EXCEPTION_ESCAPED: False,
-                OTELSpanAttributes.EXCEPTION_STACKTRACE: error_string,
+                exception_attributes.EXCEPTION_TYPE: exception_type,
+                exception_attributes.EXCEPTION_MESSAGE: exception_message,
+                exception_attributes.EXCEPTION_ESCAPED: False,
+                exception_attributes.EXCEPTION_STACKTRACE: error_string,
             }
             current_span.add_event(name="exception", attributes=attributes)
     else:
@@ -300,7 +302,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         "app_name": node_execution.title,
                         "status": node_execution.status,
                         "status_message": node_execution.error or "",
-                        "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
+                        "level": "ERROR" if node_execution.status == WorkflowNodeExecutionStatus.FAILED else "DEFAULT",
                     }
                 )
 
@@ -361,7 +363,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
                 finally:
-                    if node_execution.status == "failed":
+                    if node_execution.status == WorkflowNodeExecutionStatus.FAILED:
                         set_span_status(node_span, node_execution.error)
                     else:
                         set_span_status(node_span)
@@ -409,9 +411,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
-            end_user_data: EndUser | None = (
-                db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
-            )
+            end_user_data: EndUser | None = db.session.get(EndUser, trace_info.message_data.from_end_user_id)
             if end_user_data is not None:
                 metadata["end_user_id"] = end_user_data.session_id
 
@@ -470,7 +470,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 llm_attributes[SpanAttributes.LLM_PROVIDER] = trace_info.message_data.model_provider
 
             if trace_info.message_data and trace_info.message_data.message_metadata:
-                metadata_dict = json.loads(trace_info.message_data.message_metadata)
+                metadata_dict = JSON_DICT_ADAPTER.validate_json(trace_info.message_data.message_metadata)
                 if model_params := metadata_dict.get("model_parameters"):
                     llm_attributes[SpanAttributes.LLM_INVOCATION_PARAMETERS] = json.dumps(model_params)
 
@@ -778,7 +778,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.info("[Arize/Phoenix] Failed to construct project URL: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}")
 
-    def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
+    def _construct_llm_attributes(self, prompts: dict[str, Any] | list[Any] | str | None) -> dict[str, str]:
         """Construct LLM attributes with passed prompts for Arize/Phoenix."""
         attributes: dict[str, str] = {}
 
@@ -797,7 +797,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             path = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{message_index}.{key}"
             set_attribute(path, value)
 
-        def set_tool_call_attributes(message_index: int, tool_index: int, tool_call: dict | object | None) -> None:
+        def set_tool_call_attributes(
+            message_index: int, tool_index: int, tool_call: dict[str, Any] | object | None
+        ) -> None:
             """Extract and assign tool call details safely."""
             if not tool_call:
                 return

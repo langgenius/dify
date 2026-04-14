@@ -1,4 +1,7 @@
+from typing import Any
+
 import yaml
+from sqlalchemy import select
 
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
@@ -12,12 +15,12 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict:
+    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
         _, current_tenant_id = current_account_with_tenant()
         result = self.fetch_pipeline_templates_from_customized(tenant_id=current_tenant_id, language=language)
         return result
 
-    def get_pipeline_template_detail(self, template_id: str):
+    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         result = self.fetch_pipeline_template_detail_from_db(template_id)
         return result
 
@@ -25,19 +28,18 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.CUSTOMIZED
 
     @classmethod
-    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict:
+    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param tenant_id: tenant id
         :param language: language
         :return:
         """
-        pipeline_customized_templates = (
-            db.session.query(PipelineCustomizedTemplate)
+        pipeline_customized_templates = db.session.scalars(
+            select(PipelineCustomizedTemplate)
             .where(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
             .order_by(PipelineCustomizedTemplate.position.asc(), PipelineCustomizedTemplate.created_at.desc())
-            .all()
-        )
+        ).all()
         recommended_pipelines_results = []
         for pipeline_customized_template in pipeline_customized_templates:
             recommended_pipeline_result = {
@@ -53,15 +55,13 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param template_id: Template ID
         :return:
         """
-        pipeline_template = (
-            db.session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
-        )
+        pipeline_template = db.session.get(PipelineCustomizedTemplate, template_id)
         if not pipeline_template:
             return None
 

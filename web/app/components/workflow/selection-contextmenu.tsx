@@ -16,9 +16,10 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@/app/components/base/ui/context-menu'
-import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
+import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
+import ShortcutsName from './shortcuts-name'
 import { useStore, useWorkflowStore } from './store'
 
 const AlignType = {
@@ -223,6 +224,7 @@ const SelectionContextmenu = () => {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionContextmenuCancel } = useSelectionInteractions()
+  const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
@@ -250,6 +252,21 @@ const SelectionContextmenu = () => {
     if (selectionMenu && selectedNodes.length <= 1)
       handleSelectionContextmenuCancel()
   }, [selectionMenu, selectedNodes.length, handleSelectionContextmenuCancel])
+
+  const handleCopyNodes = useCallback(() => {
+    handleNodesCopy()
+    handleSelectionContextmenuCancel()
+  }, [handleNodesCopy, handleSelectionContextmenuCancel])
+
+  const handleDuplicateNodes = useCallback(() => {
+    handleNodesDuplicate()
+    handleSelectionContextmenuCancel()
+  }, [handleNodesDuplicate, handleSelectionContextmenuCancel])
+
+  const handleDeleteNodes = useCallback(() => {
+    handleNodesDelete()
+    handleSelectionContextmenuCancel()
+  }, [handleNodesDelete, handleSelectionContextmenuCancel])
 
   const handleAlignNodes = useCallback((alignType: AlignTypeValue) => {
     if (getNodesReadOnly() || selectedNodes.length <= 1) {
@@ -329,6 +346,36 @@ const SelectionContextmenu = () => {
         popupClassName="w-[240px]"
         positionerProps={anchor ? { anchor } : undefined}
       >
+        <ContextMenuGroup>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary"
+            data-testid="selection-contextmenu-item-copy"
+            onClick={handleCopyNodes}
+          >
+            <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
+            <ShortcutsName keys={['ctrl', 'c']} />
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary"
+            data-testid="selection-contextmenu-item-duplicate"
+            onClick={handleDuplicateNodes}
+          >
+            <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
+            <ShortcutsName keys={['ctrl', 'd']} />
+          </ContextMenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+            data-testid="selection-contextmenu-item-delete"
+            onClick={handleDeleteNodes}
+          >
+            <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
+            <ShortcutsName keys={['del']} />
+          </ContextMenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}

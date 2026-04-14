@@ -31,7 +31,7 @@ type FormContentProps = {
 }
 
 const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
-  return <span className={cn('system-kbd mx-0.5 inline-flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray text-text-placeholder ', className)}>{children}</span>
+  return <span className={cn('system-kbd mx-0.5 inline-flex size-4 items-center justify-center radius-xs bg-components-kbd-bg-gray text-text-placeholder ', className)}>{children}</span>
 }
 
 const CtrlKey: FC = () => {
@@ -107,7 +107,7 @@ const FormContent: FC<FormContentProps> = ({
   return (
     <div
       className={cn(
-        'flex grow flex-col rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal pt-1',
+        'flex grow flex-col radius-lg border border-components-input-bg-normal bg-components-input-bg-normal pt-1',
         isFocus && 'border-components-input-border-active bg-components-input-bg-active',
         !isFocus && 'pb-[32px]',
         readonly && 'pointer-events-none',

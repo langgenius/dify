@@ -5,9 +5,13 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import GraphRuntimeState
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -34,10 +38,6 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.graph_engine.layers.base import GraphEngineLayer
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
@@ -83,7 +83,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -101,7 +101,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -119,7 +119,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
@@ -129,14 +129,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
         self,
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
@@ -146,7 +146,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -256,7 +256,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
         graph_runtime_state: GraphRuntimeState,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -264,7 +264,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Resume a paused workflow execution using the persisted runtime state.
         """
@@ -288,7 +288,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -299,7 +299,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -630,10 +630,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

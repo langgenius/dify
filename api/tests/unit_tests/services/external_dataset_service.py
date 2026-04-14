@@ -292,9 +292,9 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         """
 
         api = Mock(spec=ExternalKnowledgeApis)
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = api
+        mock_db_session.scalar.return_value = api
 
-        result = ExternalDatasetService.get_external_knowledge_api("api-id")
+        result = ExternalDatasetService.get_external_knowledge_api("api-id", "tenant-id")
         assert result is api
 
     def test_get_external_knowledge_api_not_found_raises(self, mock_db_session: MagicMock):
@@ -302,10 +302,10 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         When the record is absent, a ``ValueError`` is raised.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.get_external_knowledge_api("missing-id")
+            ExternalDatasetService.get_external_knowledge_api("missing-id", "tenant-id")
 
     def test_update_external_knowledge_api_success_with_hidden_api_key(self, mock_db_session: MagicMock):
         """
@@ -320,7 +320,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         existing_api = Mock(spec=ExternalKnowledgeApis)
         existing_api.settings_dict = {"api_key": "stored-key"}
         existing_api.settings = '{"api_key":"stored-key"}'
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = existing_api
+        mock_db_session.scalar.return_value = existing_api
 
         args = {
             "name": "New Name",
@@ -340,7 +340,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         Updating a non‑existent API template should raise ``ValueError``.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="api template not found"):
             ExternalDatasetService.update_external_knowledge_api(
@@ -356,7 +356,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         """
 
         api = Mock(spec=ExternalKnowledgeApis)
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = api
+        mock_db_session.scalar.return_value = api
 
         ExternalDatasetService.delete_external_knowledge_api("tenant-1", "api-1")
 
@@ -368,7 +368,7 @@ class TestExternalDatasetServiceCrudExternalKnowledgeApi:
         Deletion of a missing template should raise ``ValueError``.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="api template not found"):
             ExternalDatasetService.delete_external_knowledge_api("tenant-1", "missing")
@@ -394,21 +394,22 @@ class TestExternalDatasetServiceUsageAndBindings:
         When there are bindings, ``external_knowledge_api_use_check`` returns True and count.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.count.return_value = 3
+        mock_db_session.scalar.return_value = 3
 
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1")
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1", "tenant-1")
 
         assert in_use is True
         assert count == 3
+        assert "tenant_id" in str(mock_db_session.scalar.call_args.args[0])
 
     def test_external_knowledge_api_use_check_not_in_use(self, mock_db_session: MagicMock):
         """
         Zero bindings should return ``(False, 0)``.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.count.return_value = 0
+        mock_db_session.scalar.return_value = 0
 
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1")
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check("api-1", "tenant-1")
 
         assert in_use is False
         assert count == 0
@@ -419,7 +420,7 @@ class TestExternalDatasetServiceUsageAndBindings:
         """
 
         binding = Mock(spec=ExternalKnowledgeBindings)
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = binding
+        mock_db_session.scalar.return_value = binding
 
         result = ExternalDatasetService.get_external_knowledge_binding_with_dataset_id("tenant-1", "ds-1")
         assert result is binding
@@ -429,7 +430,7 @@ class TestExternalDatasetServiceUsageAndBindings:
         Missing binding should result in a ``ValueError``.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="external knowledge binding not found"):
             ExternalDatasetService.get_external_knowledge_binding_with_dataset_id("tenant-1", "ds-1")
@@ -460,7 +461,7 @@ class TestExternalDatasetServiceDocumentCreateArgsValidate:
             '[{"document_process_setting":[{"name":"foo","required":true},{"name":"bar","required":false}]}]'
         )
         # Raw string; the service itself calls json.loads on it
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = external_api
+        mock_db_session.scalar.return_value = external_api
 
         process_parameter = {"foo": "value", "bar": "optional"}
 
@@ -474,7 +475,7 @@ class TestExternalDatasetServiceDocumentCreateArgsValidate:
         When the referenced API template is missing, a ``ValueError`` is raised.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="api template not found"):
             ExternalDatasetService.document_create_args_validate("tenant-1", "missing", {})
@@ -488,7 +489,7 @@ class TestExternalDatasetServiceDocumentCreateArgsValidate:
         external_api.settings = (
             '[{"document_process_setting":[{"name":"foo","required":true},{"name":"bar","required":false}]}]'
         )
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = external_api
+        mock_db_session.scalar.return_value = external_api
 
         process_parameter = {"bar": "present"}  # missing "foo"
 
@@ -702,7 +703,7 @@ class TestExternalDatasetServiceCreateExternalDataset:
         }
 
         # No existing dataset with same name.
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
+        mock_db_session.scalar.side_effect = [
             None,  # duplicate‑name check
             Mock(spec=ExternalKnowledgeApis),  # external knowledge api
         ]
@@ -724,7 +725,7 @@ class TestExternalDatasetServiceCreateExternalDataset:
         """
 
         existing_dataset = Mock(spec=Dataset)
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = existing_dataset
+        mock_db_session.scalar.return_value = existing_dataset
 
         args = {
             "name": "Existing",
@@ -744,7 +745,7 @@ class TestExternalDatasetServiceCreateExternalDataset:
         """
 
         # First call: duplicate name check – not found.
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
+        mock_db_session.scalar.side_effect = [
             None,
             None,  # external knowledge api lookup
         ]
@@ -763,8 +764,10 @@ class TestExternalDatasetServiceCreateExternalDataset:
         ``external_knowledge_id`` and ``external_knowledge_api_id`` are mandatory.
         """
 
-        # duplicate name check
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
+        # duplicate name check — two calls to create_external_dataset, each does 2 scalar calls
+        mock_db_session.scalar.side_effect = [
+            None,
+            Mock(spec=ExternalKnowledgeApis),
             None,
             Mock(spec=ExternalKnowledgeApis),
         ]
@@ -826,7 +829,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
         api.settings = '{"endpoint":"https://example.com","api_key":"secret"}'
 
         # First query: binding; second query: api.
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
+        mock_db_session.scalar.side_effect = [
             binding,
             api,
         ]
@@ -861,7 +864,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
         Missing binding should raise ``ValueError``.
         """
 
-        mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="external knowledge binding not found"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
@@ -878,7 +881,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
         """
 
         binding = ExternalDatasetTestDataFactory.create_external_binding()
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
+        mock_db_session.scalar.side_effect = [
             binding,
             None,
         ]
@@ -901,7 +904,7 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
         api = Mock(spec=ExternalKnowledgeApis)
         api.settings = '{"endpoint":"https://example.com","api_key":"secret"}'
 
-        mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
+        mock_db_session.scalar.side_effect = [
             binding,
             api,
         ]

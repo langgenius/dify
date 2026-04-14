@@ -197,7 +197,7 @@ const PluginPage = ({
                       {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
-                  <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
+                  <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
                 </>
               )
             }

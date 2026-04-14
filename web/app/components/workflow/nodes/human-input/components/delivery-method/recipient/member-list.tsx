@@ -4,8 +4,8 @@ import type { Recipient } from '@/app/components/workflow/nodes/human-input/type
 import type { Member } from '@/models/common'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -40,7 +40,7 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
     return null
 
   return (
-    <div className="min-w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+    <div className="min-w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
       {!hideSearch && (
         <div className="p-2 pb-1">
           <Input

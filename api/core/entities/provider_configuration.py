@@ -6,22 +6,8 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from constants import HIDDEN_VALUE
-from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
-from core.entities.provider_entities import (
-    CustomConfiguration,
-    ModelSettings,
-    SystemConfiguration,
-    SystemConfigurationStatus,
-)
-from core.helper import encrypter
-from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
-from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -32,6 +18,22 @@ from graphon.model_runtime.entities.provider_entities import (
 from graphon.model_runtime.model_providers.__base.ai_model import AIModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.model_runtime.runtime import ModelRuntime
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from constants import HIDDEN_VALUE
+from core.entities import PluginCredentialType
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    ModelSettings,
+    SystemConfiguration,
+    SystemConfigurationStatus,
+)
+from core.helper import encrypter
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
 from models.enums import CredentialSourceType
@@ -46,7 +48,6 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class ProviderConfiguration(BaseModel):
             return ModelProviderFactory(model_runtime=self._bound_model_runtime)
         return create_plugin_model_provider_factory(tenant_id=self.tenant_id)
 
-    def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
+    def get_current_credentials(self, model_type: ModelType, model: str) -> dict[str, Any] | None:
         """
         Get current credentials.
 
@@ -233,7 +234,7 @@ class ProviderConfiguration(BaseModel):
 
         return session.execute(stmt).scalar_one_or_none()
 
-    def _get_specific_provider_credential(self, credential_id: str) -> dict | None:
+    def _get_specific_provider_credential(self, credential_id: str) -> dict[str, Any] | None:
         """
         Get a specific provider credential by ID.
         :param credential_id: Credential ID
@@ -297,7 +298,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_provider_credential(self, credential_id: str | None = None) -> dict | None:
+    def get_provider_credential(self, credential_id: str | None = None) -> dict[str, Any] | None:
         """
         Get provider credentials.
 
@@ -317,7 +318,9 @@ class ProviderConfiguration(BaseModel):
             else [],
         )
 
-    def validate_provider_credentials(self, credentials: dict, credential_id: str = "", session: Session | None = None):
+    def validate_provider_credentials(
+        self, credentials: dict[str, Any], credential_id: str = "", session: Session | None = None
+    ):
         """
         Validate custom credentials.
         :param credentials: provider credentials
@@ -403,7 +406,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                ProviderModelCredential.model_type == model_type,
             ),
         )
 
@@ -447,7 +450,7 @@ class ProviderConfiguration(BaseModel):
             provider_names.append(model_provider_id.provider_name)
         return provider_names
 
-    def create_provider_credential(self, credentials: dict, credential_name: str | None):
+    def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None):
         """
         Add custom provider credentials.
         :param credentials: provider credentials
@@ -515,7 +518,7 @@ class ProviderConfiguration(BaseModel):
 
     def update_provider_credential(
         self,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str,
         credential_name: str | None,
     ):
@@ -753,14 +756,14 @@ class ProviderConfiguration(BaseModel):
             ProviderModel.tenant_id == self.tenant_id,
             ProviderModel.provider_name.in_(provider_names),
             ProviderModel.model_name == model,
-            ProviderModel.model_type == model_type.to_origin_model_type(),
+            ProviderModel.model_type == model_type,
         )
 
         return session.execute(stmt).scalar_one_or_none()
 
     def _get_specific_custom_model_credential(
         self, model_type: ModelType, model: str, credential_id: str
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """
         Get a specific provider credential by ID.
         :param credential_id: Credential ID
@@ -778,7 +781,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                ProviderModelCredential.model_type == model_type,
             )
 
             credential_record = session.execute(stmt).scalar_one_or_none()
@@ -825,14 +828,16 @@ class ProviderConfiguration(BaseModel):
             ProviderModelCredential.tenant_id == self.tenant_id,
             ProviderModelCredential.provider_name.in_(self._get_provider_names()),
             ProviderModelCredential.model_name == model,
-            ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+            ProviderModelCredential.model_type == model_type,
             ProviderModelCredential.credential_name == credential_name,
         )
         if exclude_id:
             stmt = stmt.where(ProviderModelCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str | None) -> dict | None:
+    def get_custom_model_credential(
+        self, model_type: ModelType, model: str, credential_id: str | None
+    ) -> dict[str, Any] | None:
         """
         Get custom model credentials.
 
@@ -872,7 +877,7 @@ class ProviderConfiguration(BaseModel):
         self,
         model_type: ModelType,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str = "",
         session: Session | None = None,
     ):
@@ -901,7 +906,7 @@ class ProviderConfiguration(BaseModel):
                         ProviderModelCredential.tenant_id == self.tenant_id,
                         ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                         ProviderModelCredential.model_name == model,
-                        ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                        ProviderModelCredential.model_type == model_type,
                     )
                     credential_record = s.execute(stmt).scalar_one_or_none()
                     original_credentials = (
@@ -939,7 +944,7 @@ class ProviderConfiguration(BaseModel):
                 return _validate(new_session)
 
     def create_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict, credential_name: str | None
+        self, model_type: ModelType, model: str, credentials: dict[str, Any], credential_name: str | None
     ) -> None:
         """
         Create a custom model credential.
@@ -970,7 +975,7 @@ class ProviderConfiguration(BaseModel):
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
                     model_name=model,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     encrypted_config=json.dumps(credentials),
                     credential_name=credential_name,
                 )
@@ -983,7 +988,7 @@ class ProviderConfiguration(BaseModel):
                         tenant_id=self.tenant_id,
                         provider_name=self.provider.provider,
                         model_name=model,
-                        model_type=model_type.to_origin_model_type(),
+                        model_type=model_type,
                         credential_id=credential.id,
                         is_valid=True,
                     )
@@ -1002,7 +1007,12 @@ class ProviderConfiguration(BaseModel):
                 raise
 
     def update_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict, credential_name: str | None, credential_id: str
+        self,
+        model_type: ModelType,
+        model: str,
+        credentials: dict[str, Any],
+        credential_name: str | None,
+        credential_id: str,
     ) -> None:
         """
         Update a custom model credential.
@@ -1038,7 +1048,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                ProviderModelCredential.model_type == model_type,
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1083,7 +1093,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                ProviderModelCredential.model_type == model_type,
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1116,7 +1126,7 @@ class ProviderConfiguration(BaseModel):
                     ProviderModelCredential.tenant_id == self.tenant_id,
                     ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                     ProviderModelCredential.model_name == model,
-                    ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                    ProviderModelCredential.model_type == model_type,
                 )
                 available_credentials_count = session.execute(count_stmt).scalar() or 0
                 session.delete(credential_record)
@@ -1156,7 +1166,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                ProviderModelCredential.model_type == model_type,
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1171,7 +1181,7 @@ class ProviderConfiguration(BaseModel):
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
                     model_name=model,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     is_valid=True,
                     credential_id=credential_id,
                 )
@@ -1207,7 +1217,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type.to_origin_model_type(),
+                ProviderModelCredential.model_type == model_type,
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -1263,7 +1273,7 @@ class ProviderConfiguration(BaseModel):
         stmt = select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == self.tenant_id,
             ProviderModelSetting.provider_name.in_(self._get_provider_names()),
-            ProviderModelSetting.model_type == model_type.to_origin_model_type(),
+            ProviderModelSetting.model_type == model_type,
             ProviderModelSetting.model_name == model,
         )
         return session.execute(stmt).scalars().first()
@@ -1286,7 +1296,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     enabled=True,
                 )
@@ -1312,7 +1322,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     enabled=False,
                 )
@@ -1348,7 +1358,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(func.count(LoadBalancingModelConfig.id)).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(provider_names),
-                LoadBalancingModelConfig.model_type == model_type.to_origin_model_type(),
+                LoadBalancingModelConfig.model_type == model_type,
                 LoadBalancingModelConfig.model_name == model,
             )
             load_balancing_config_count = session.execute(stmt).scalar() or 0
@@ -1364,7 +1374,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     load_balancing_enabled=True,
                 )
@@ -1391,7 +1401,7 @@ class ProviderConfiguration(BaseModel):
                 model_setting = ProviderModelSetting(
                     tenant_id=self.tenant_id,
                     provider_name=self.provider.provider,
-                    model_type=model_type.to_origin_model_type(),
+                    model_type=model_type,
                     model_name=model,
                     load_balancing_enabled=False,
                 )
@@ -1412,7 +1422,9 @@ class ProviderConfiguration(BaseModel):
         # Get model instance of LLM
         return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
 
-    def get_model_schema(self, model_type: ModelType, model: str, credentials: dict | None) -> AIModelEntity | None:
+    def get_model_schema(
+        self, model_type: ModelType, model: str, credentials: dict[str, Any] | None
+    ) -> AIModelEntity | None:
         """
         Get model schema
         """
@@ -1471,7 +1483,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]):
+    def obfuscated_credentials(self, credentials: dict[str, Any], credential_form_schemas: list[CredentialFormSchema]):
         """
         Obfuscated credentials.
 

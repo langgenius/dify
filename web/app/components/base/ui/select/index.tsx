@@ -10,18 +10,21 @@ import { cn } from '@/utils/classnames'
 
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
+/** @public */
 export const SelectGroup = BaseSelect.Group
+/** @public */
 export const SelectGroupLabel = BaseSelect.GroupLabel
+/** @public */
 export const SelectSeparator = BaseSelect.Separator
 
-export const selectTriggerVariants = cva(
+const selectTriggerVariants = cva(
   '',
   {
     variants: {
       size: {
         small: 'h-6 gap-px rounded-md px-[5px] py-0 system-xs-regular',
         regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] px-2.5 py-1 system-md-regular',
+        large: 'h-9 gap-0.5 radius-lg px-2.5 py-1 system-md-regular',
       },
       variant: {
         default: '',
@@ -81,7 +84,7 @@ export function SelectTrigger({
         role="button"
         aria-label="Clear selection"
         tabIndex={-1}
-        className="shrink-0 cursor-pointer text-text-quaternary hover:text-text-secondary group-data-[disabled]:hidden group-data-[readonly]:hidden"
+        className="shrink-0 cursor-pointer text-text-quaternary group-data-disabled:hidden group-data-readonly:hidden hover:text-text-secondary"
         onClick={(e) => {
           e.stopPropagation()
           onClear?.()
@@ -94,7 +97,7 @@ export function SelectTrigger({
   }
   else {
     trailingIcon = (
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary data-[open]:text-text-secondary group-data-[readonly]:hidden">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     )
@@ -103,13 +106,13 @@ export function SelectTrigger({
   return (
     <BaseSelect.Trigger
       className={cn(
-        'group relative flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-none',
+        'group relative flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
         'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
-        'data-[placeholder]:text-components-input-text-placeholder',
+        'data-placeholder:text-components-input-text-placeholder',
         selectTriggerVariants({ size, variant }),
-        'data-[readonly]:cursor-default data-[readonly]:bg-transparent data-[readonly]:hover:bg-transparent',
-        'data-[disabled]:cursor-not-allowed data-[disabled]:bg-components-input-bg-disabled data-[disabled]:text-components-input-text-filled-disabled data-[disabled]:hover:bg-components-input-bg-disabled',
-        'data-[disabled]:data-[placeholder]:text-components-input-text-disabled',
+        'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
+        'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
+        'data-disabled:data-placeholder:text-components-input-text-disabled',
         className,
       )}
       {...props}
@@ -166,19 +169,19 @@ export function SelectContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         alignItemWithTrigger={false}
-        className={cn('z-[1002] outline-none', className)}
+        className={cn('z-1002 outline-hidden', className)}
         {...positionerProps}
       >
         <BaseSelect.Popup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none',
+            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...popupProps}
         >
           <BaseSelect.List
-            className={cn('max-h-80 min-w-[10rem] overflow-auto p-1 outline-none', listClassName)}
+            className={cn('max-h-80 min-w-40 overflow-auto p-1 outline-hidden', listClassName)}
             {...listProps}
           >
             {children}
@@ -197,8 +200,8 @@ export function SelectItem({
   return (
     <BaseSelect.Item
       className={cn(
-        'flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary outline-none system-sm-medium',
-        'data-[disabled]:cursor-not-allowed data-[highlighted]:bg-state-base-hover data-[disabled]:opacity-50',
+        'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-state-base-hover',
         className,
       )}
       {...props}

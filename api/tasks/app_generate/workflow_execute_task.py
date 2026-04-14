@@ -3,10 +3,11 @@ import logging
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
-from typing import Annotated, Any, TypeAlias, Union
+from typing import Annotated, Any
 
 from celery import shared_task
 from flask import current_app, json
+from graphon.runtime import GraphRuntimeState
 from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -22,7 +23,6 @@ from core.app.entities.app_invoke_entities import (
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.runtime import GraphRuntimeState
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -68,7 +68,7 @@ def _get_user_type_descriminator(value: Any):
         return None
 
 
-User: TypeAlias = Annotated[
+type User = Annotated[
     (Annotated[_Account, Tag(_UserType.ACCOUNT)] | Annotated[_EndUser, Tag(_UserType.END_USER)]),
     Discriminator(_get_user_type_descriminator),
 ]
@@ -93,7 +93,7 @@ class AppExecutionParams(BaseModel):
         cls,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,

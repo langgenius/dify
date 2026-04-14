@@ -64,18 +64,18 @@ class TestGetActiveAccount:
     def test_returns_active_account(self, mock_db):
         mock_account = MagicMock()
         mock_account.status = "active"
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = mock_account
+        mock_db.session.scalar.return_value = mock_account
 
         result = _get_active_account("user@example.com")
 
         assert result is mock_account
-        mock_db.session.query.return_value.filter_by.assert_called_once_with(email="user@example.com")
+        mock_db.session.scalar.assert_called_once()
 
     @patch("controllers.inner_api.app.dsl.db")
     def test_returns_none_for_inactive_account(self, mock_db):
         mock_account = MagicMock()
         mock_account.status = "banned"
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = mock_account
+        mock_db.session.scalar.return_value = mock_account
 
         result = _get_active_account("banned@example.com")
 
@@ -83,7 +83,7 @@ class TestGetActiveAccount:
 
     @patch("controllers.inner_api.app.dsl.db")
     def test_returns_none_for_nonexistent_email(self, mock_db):
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         result = _get_active_account("missing@example.com")
 
@@ -102,14 +102,16 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.fixture
     def _mock_import_deps(self):
-        """Patch db, Session, and AppDslService for import handler tests."""
+        """Patch db, sessionmaker, and AppDslService for import handler tests."""
+        mock_session_ctx = MagicMock()
+        mock_session_ctx.__enter__ = MagicMock(return_value=MagicMock())
+        mock_session_ctx.__exit__ = MagicMock(return_value=False)
+        mock_sessionmaker = MagicMock(return_value=MagicMock(begin=MagicMock(return_value=mock_session_ctx)))
         with (
             patch("controllers.inner_api.app.dsl.db"),
-            patch("controllers.inner_api.app.dsl.Session") as mock_session,
+            patch("controllers.inner_api.app.dsl.sessionmaker", mock_sessionmaker),
             patch("controllers.inner_api.app.dsl.AppDslService") as mock_dsl_cls,
         ):
-            mock_session.return_value.__enter__ = MagicMock(return_value=MagicMock())
-            mock_session.return_value.__exit__ = MagicMock(return_value=False)
             self._mock_dsl = MagicMock()
             mock_dsl_cls.return_value = self._mock_dsl
             yield
@@ -205,7 +207,7 @@ class TestEnterpriseAppDSLExport:
     @patch("controllers.inner_api.app.dsl.db")
     def test_export_success_returns_200(self, mock_db, mock_dsl_cls, api_instance, app: Flask):
         mock_app = MagicMock()
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = mock_app
+        mock_db.session.get.return_value = mock_app
         mock_dsl_cls.export_dsl.return_value = "version: 0.6.0\nkind: app\n"
 
         unwrapped = inspect.unwrap(api_instance.get)
@@ -221,7 +223,7 @@ class TestEnterpriseAppDSLExport:
     @patch("controllers.inner_api.app.dsl.db")
     def test_export_with_secret(self, mock_db, mock_dsl_cls, api_instance, app: Flask):
         mock_app = MagicMock()
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = mock_app
+        mock_db.session.get.return_value = mock_app
         mock_dsl_cls.export_dsl.return_value = "yaml-data"
 
         unwrapped = inspect.unwrap(api_instance.get)
@@ -234,7 +236,7 @@ class TestEnterpriseAppDSLExport:
 
     @patch("controllers.inner_api.app.dsl.db")
     def test_export_app_not_found_returns_404(self, mock_db, api_instance, app: Flask):
-        mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
 
         unwrapped = inspect.unwrap(api_instance.get)
         with app.test_request_context("?include_secret=false"):

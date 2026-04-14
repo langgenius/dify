@@ -59,7 +59,7 @@ describe('PluginTypeSwitch', () => {
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
     const allButton = screen.getByText('All').closest('div')
-    expect(allButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+    expect(allButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
   })
 
   it('should apply custom className', () => {
@@ -77,7 +77,7 @@ describe('PluginTypeSwitch', () => {
     fireEvent.click(screen.getByText('Models'))
 
     const modelsButton = screen.getByText('Models').closest('div')
-    expect(modelsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+    expect(modelsButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
   })
 
   it('should handle clicking on category with collections (Tools)', () => {
@@ -87,7 +87,7 @@ describe('PluginTypeSwitch', () => {
     fireEvent.click(screen.getByText('Tools'))
 
     const toolsButton = screen.getByText('Tools').closest('div')
-    expect(toolsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+    expect(toolsButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
   })
 
   it('should handle clicking on category without collections (Models)', () => {
@@ -97,7 +97,7 @@ describe('PluginTypeSwitch', () => {
     fireEvent.click(screen.getByText('Models'))
 
     const modelsButton = screen.getByText('Models').closest('div')
-    expect(modelsButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+    expect(modelsButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
   })
 
   it('should handle clicking on bundles', () => {
@@ -107,7 +107,7 @@ describe('PluginTypeSwitch', () => {
     fireEvent.click(screen.getByText('Bundles'))
 
     const bundlesButton = screen.getByText('Bundles').closest('div')
-    expect(bundlesButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+    expect(bundlesButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
   })
 
   it('should handle clicking on each category', () => {
@@ -119,7 +119,7 @@ describe('PluginTypeSwitch', () => {
       fireEvent.click(screen.getByText(category))
 
       const button = screen.getByText(category).closest('div')
-      expect(button?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+      expect(button?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
     })
   })
 

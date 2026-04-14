@@ -24,32 +24,32 @@ type UncontrolledSliderProps = SliderBaseProps & {
   defaultValue?: number
 }
 
-export type SliderProps = ControlledSliderProps | UncontrolledSliderProps
+type SliderProps = ControlledSliderProps | UncontrolledSliderProps
 
-const sliderRootClassName = 'group/slider relative inline-flex w-full data-[disabled]:opacity-30'
+const sliderRootClassName = 'group/slider relative inline-flex w-full data-disabled:opacity-30'
 const sliderControlClassName = cn(
-  'relative flex h-5 w-full touch-none select-none items-center',
-  'data-[disabled]:cursor-not-allowed',
+  'relative flex h-5 w-full touch-none items-center select-none',
+  'data-disabled:cursor-not-allowed',
 )
 const sliderTrackClassName = cn(
   'relative h-1 w-full overflow-hidden rounded-full',
-  'bg-[var(--slider-track,var(--color-components-slider-track))]',
+  'bg-(--slider-track,var(--color-components-slider-track))',
 )
 const sliderIndicatorClassName = cn(
   'h-full rounded-full',
-  'bg-[var(--slider-range,var(--color-components-slider-range))]',
+  'bg-(--slider-range,var(--color-components-slider-range))',
 )
 const sliderThumbClassName = cn(
   'block h-5 w-2 shrink-0 rounded-[3px] border-[0.5px]',
-  'border-[var(--slider-knob-border,var(--color-components-slider-knob-border))]',
-  'bg-[var(--slider-knob,var(--color-components-slider-knob))] shadow-sm',
+  'border-(--slider-knob-border,var(--color-components-slider-knob-border))',
+  'bg-(--slider-knob,var(--color-components-slider-knob)) shadow-sm',
   'transition-[background-color,border-color,box-shadow,opacity] motion-reduce:transition-none',
-  'hover:bg-[var(--slider-knob-hover,var(--color-components-slider-knob-hover))]',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-slider-knob-border-hover focus-visible:ring-offset-0',
+  'hover:bg-(--slider-knob-hover,var(--color-components-slider-knob-hover))',
+  'focus-visible:ring-2 focus-visible:ring-components-slider-knob-border-hover focus-visible:ring-offset-0 focus-visible:outline-hidden',
   'active:shadow-md',
-  'group-data-[disabled]/slider:bg-[var(--slider-knob-disabled,var(--color-components-slider-knob-disabled))]',
-  'group-data-[disabled]/slider:border-[var(--slider-knob-border,var(--color-components-slider-knob-border))]',
-  'group-data-[disabled]/slider:shadow-none',
+  'group-data-disabled/slider:bg-(--slider-knob-disabled,var(--color-components-slider-knob-disabled))',
+  'group-data-disabled/slider:border-(--slider-knob-border,var(--color-components-slider-knob-border))',
+  'group-data-disabled/slider:shadow-none',
 )
 
 const getSafeValue = (value: number | undefined, min: number) => {
@@ -82,7 +82,7 @@ export function Slider({
       step={step}
       disabled={disabled}
       name={name}
-      thumbAlignment="edge"
+      thumbAlignment="edge-client-only"
       className={cn(sliderRootClassName, className)}
     >
       <BaseSlider.Control className={sliderControlClassName}>

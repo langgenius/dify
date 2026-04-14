@@ -22,7 +22,7 @@ const Tab = ({ isActive, label, value, workflowRunningData, onClick }: TabProps)
       className={cn(
         'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
         isActive && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
-        !workflowRunningData && '!cursor-not-allowed opacity-30',
+        !workflowRunningData && 'cursor-not-allowed! opacity-30',
       )}
       onClick={handleClick}
       disabled={!workflowRunningData}

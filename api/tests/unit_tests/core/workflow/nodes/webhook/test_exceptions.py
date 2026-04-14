@@ -1,4 +1,5 @@
 import pytest
+from graphon.entities.exc import BaseNodeError
 
 from core.workflow.nodes.trigger_webhook.exc import (
     WebhookConfigError,
@@ -6,7 +7,6 @@ from core.workflow.nodes.trigger_webhook.exc import (
     WebhookNotFoundError,
     WebhookTimeoutError,
 )
-from graphon.entities.exc import BaseNodeError
 
 
 def test_webhook_node_error_inheritance():

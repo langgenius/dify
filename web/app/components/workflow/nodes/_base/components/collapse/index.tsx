@@ -33,7 +33,7 @@ const Collapse = ({
       <ArrowDownRoundFill
         className={cn(
           'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
-          collapsedMerged && 'rotate-[270deg]',
+          collapsedMerged && 'rotate-270',
         )}
       />
     )

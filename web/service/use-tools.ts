@@ -173,19 +173,6 @@ export const useAuthorizeMCP = () => {
   })
 }
 
-export const useUpdateMCPAuthorizationToken = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
-    mutationFn: (payload: { provider_id: string, authorization_code: string }) => {
-      return get<MCPServerDetail>('/workspaces/current/tool-provider/mcp/token', {
-        params: {
-          ...payload,
-        },
-      })
-    },
-  })
-}
-
 export const useMCPTools = (providerID: string) => {
   return useQuery({
     enabled: !!providerID,
@@ -275,64 +262,11 @@ export const useRefreshMCPServerCode = () => {
   })
 }
 
-export const useBuiltinProviderInfo = (providerName: string) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],
-    queryFn: () => get<Collection>(`/workspaces/current/tool-provider/builtin/${providerName}/info`),
-  })
-}
-
-export const useInvalidateBuiltinProviderInfo = () => {
-  const queryClient = useQueryClient()
-  return (providerName: string) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],
-      },
-    )
-  }
-}
-
 export const useBuiltinTools = (providerName: string) => {
   return useQuery({
     enabled: !!providerName,
     queryKey: [NAME_SPACE, 'builtin-provider-tools', providerName],
     queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/builtin/${providerName}/tools`),
-  })
-}
-
-export const useUpdateProviderCredentials = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-provider-credentials'],
-    mutationFn: (payload: { providerName: string, credentials: Record<string, any> }) => {
-      const { providerName, credentials } = payload
-      return post(`/workspaces/current/tool-provider/builtin/${providerName}/update`, {
-        body: {
-          credentials,
-        },
-      })
-    },
-    onSuccess,
-  })
-}
-
-export const useRemoveProviderCredentials = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'remove-provider-credentials'],
-    mutationFn: (providerName: string) => {
-      return post(`/workspaces/current/tool-provider/builtin/${providerName}/delete`, {
-        body: {},
-      })
-    },
-    onSuccess,
   })
 }
 

@@ -9,7 +9,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 
-export type Item = {
+type Item = {
   value: number | string
   name: string
 } & Record<string, any>
@@ -48,7 +48,7 @@ const Sort: FC<Props> = ({
           >
             <div className={cn(
               'flex min-h-8 cursor-pointer items-center rounded-l-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-              open && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
+              open && 'bg-state-base-hover-alt! hover:bg-state-base-hover-alt',
             )}
             >
               <div className="flex items-center gap-0.5 px-1">
@@ -60,7 +60,7 @@ const Sort: FC<Props> = ({
               <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className="z-[1002]">
+          <PortalToFollowElemContent className="z-1002">
             <div className="relative w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
               <div className="max-h-72 overflow-auto p-1">
                 {items.map(item => (

@@ -1,6 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import csv
+from typing import Any
 
 import pandas as pd
 
@@ -23,7 +24,7 @@ class CSVExtractor(BaseExtractor):
         encoding: str | None = None,
         autodetect_encoding: bool = False,
         source_column: str | None = None,
-        csv_args: dict | None = None,
+        csv_args: dict[str, Any] | None = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path

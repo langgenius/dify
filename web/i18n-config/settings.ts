@@ -6,7 +6,6 @@ export function getInitOptions(): InitOptions {
     // We do not have en for fallback
     load: 'currentOnly',
     fallbackLng: 'en-US',
-    showSupportNotice: false,
     partialBundledLanguages: true,
     keySeparator: false,
     ns: namespaces,

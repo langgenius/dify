@@ -143,7 +143,7 @@ const renderSelectCell = (
         'h-6 rounded-none bg-transparent pl-0 pr-6 text-text-secondary',
         'hover:bg-transparent focus-visible:bg-transparent group-hover/simple-select:bg-transparent',
       )}
-      optionWrapClassName="w-26 min-w-26 z-[60] -ml-3"
+      optionWrapClassName="w-26 min-w-26 z-60 -ml-3"
     />
   )
 }

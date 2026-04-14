@@ -9,13 +9,13 @@ import SearchMenu from '@/assets/search-menu.svg'
 import { cn } from '@/utils/classnames'
 import Button from '../button'
 
-export type CheckboxListOption = {
+type CheckboxListOption = {
   label: string
   value: string
   disabled?: boolean
 }
 
-export type CheckboxListProps = {
+type CheckboxListProps = {
   title?: string
   label?: string
   description?: string

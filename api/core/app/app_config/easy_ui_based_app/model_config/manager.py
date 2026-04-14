@@ -1,9 +1,10 @@
 from collections.abc import Mapping
 from typing import Any
 
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+
 from core.app.app_config.entities import ModelConfigEntity
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from models.model import AppModelConfigDict
 from models.provider_ids import ModelProviderID
 
@@ -107,7 +108,7 @@ class ModelConfigManager:
         return dict(config), ["model"]
 
     @classmethod
-    def validate_model_completion_params(cls, cp: dict):
+    def validate_model_completion_params(cls, cp: dict[str, Any]):
         # model.completion_params
         if not isinstance(cp, dict):
             raise ValueError("model.completion_params must be of object type")

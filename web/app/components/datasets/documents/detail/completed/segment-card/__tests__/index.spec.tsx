@@ -61,7 +61,7 @@ vi.mock('@/app/components/datasets/common/image-list', () => ({
   ),
 }))
 
-// Markdown uses next/dynamic and react-syntax-highlighter (ESM)
+// Markdown uses next/dynamic and shiki (ESM)
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content, className }: { content: string, className?: string }) => (
     <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>

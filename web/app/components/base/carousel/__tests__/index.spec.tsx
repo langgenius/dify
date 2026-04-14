@@ -11,15 +11,15 @@ type EmblaEventName = 'reInit' | 'select'
 type EmblaListener = (api: MockEmblaApi | undefined) => void
 
 type MockEmblaApi = {
-  scrollPrev: Mock
-  scrollNext: Mock
-  scrollTo: Mock
-  selectedScrollSnap: Mock
-  canScrollPrev: Mock
-  canScrollNext: Mock
-  slideNodes: Mock
-  on: Mock
-  off: Mock
+  scrollPrev: Mock<() => void>
+  scrollNext: Mock<() => void>
+  scrollTo: Mock<(index: number) => void>
+  selectedScrollSnap: Mock<() => number>
+  canScrollPrev: Mock<() => boolean>
+  canScrollNext: Mock<() => boolean>
+  slideNodes: Mock<() => HTMLDivElement[]>
+  on: Mock<(event: EmblaEventName, callback: EmblaListener) => void>
+  off: Mock<(event: EmblaEventName, callback: EmblaListener) => void>
 }
 
 let mockCanScrollPrev = false
@@ -33,19 +33,19 @@ const mockCarouselRef = vi.fn()
 const mockedUseEmblaCarousel = vi.mocked(useEmblaCarousel)
 
 const createMockEmblaApi = (): MockEmblaApi => ({
-  scrollPrev: vi.fn(),
-  scrollNext: vi.fn(),
-  scrollTo: vi.fn(),
-  selectedScrollSnap: vi.fn(() => mockSelectedIndex),
-  canScrollPrev: vi.fn(() => mockCanScrollPrev),
-  canScrollNext: vi.fn(() => mockCanScrollNext),
-  slideNodes: vi.fn(() =>
-    Array.from({ length: mockSlideCount }).fill(document.createElement('div')),
+  scrollPrev: vi.fn<() => void>(),
+  scrollNext: vi.fn<() => void>(),
+  scrollTo: vi.fn<(index: number) => void>(),
+  selectedScrollSnap: vi.fn<() => number>(() => mockSelectedIndex),
+  canScrollPrev: vi.fn<() => boolean>(() => mockCanScrollPrev),
+  canScrollNext: vi.fn<() => boolean>(() => mockCanScrollNext),
+  slideNodes: vi.fn<() => HTMLDivElement[]>(() =>
+    Array.from({ length: mockSlideCount }, () => document.createElement('div')),
   ),
-  on: vi.fn((event: EmblaEventName, callback: EmblaListener) => {
+  on: vi.fn<(event: EmblaEventName, callback: EmblaListener) => void>((event, callback) => {
     listeners[event].push(callback)
   }),
-  off: vi.fn((event: EmblaEventName, callback: EmblaListener) => {
+  off: vi.fn<(event: EmblaEventName, callback: EmblaListener) => void>((event, callback) => {
     listeners[event] = listeners[event].filter(listener => listener !== callback)
   }),
 })

@@ -26,7 +26,7 @@ const defaultState: IPagination = {
 
 const PaginationContext: React.Context<IPagination> = React.createContext<IPagination>(defaultState)
 
-export const PrevButton = ({
+const PrevButton = ({
   className,
   children,
   dataTestId,
@@ -50,7 +50,7 @@ export const PrevButton = ({
       tabIndex={disabled ? '-1' : 0}
       disabled={disabled}
       data-testid={dataTestId}
-      onKeyPress={(event: React.KeyboardEvent) => {
+      onKeyDown={(event: React.KeyboardEvent) => {
         event.preventDefault()
         if (event.key === 'Enter' && !disabled)
           previous()
@@ -61,7 +61,7 @@ export const PrevButton = ({
   )
 }
 
-export const NextButton = ({
+const NextButton = ({
   className,
   children,
   dataTestId,
@@ -85,7 +85,7 @@ export const NextButton = ({
       tabIndex={disabled ? '-1' : 0}
       disabled={disabled}
       data-testid={dataTestId}
-      onKeyPress={(event: React.KeyboardEvent) => {
+      onKeyDown={(event: React.KeyboardEvent) => {
         event.preventDefault()
         if (event.key === 'Enter' && !disabled)
           next()
@@ -117,7 +117,7 @@ const TruncableElement = ({ prev }: ITruncableElementProps) => {
     : null
 }
 
-export const PageButton = ({
+const PageButton = ({
   as = <a />,
   className,
   dataTestIdActive,
@@ -140,7 +140,7 @@ export const PageButton = ({
           }) || undefined
         }
         tabIndex={0}
-        onKeyPress={(event: React.KeyboardEvent) => {
+        onKeyDown={(event: React.KeyboardEvent) => {
           if (event.key === 'Enter')
             pagination.setCurrentPage(page - 1)
         }}

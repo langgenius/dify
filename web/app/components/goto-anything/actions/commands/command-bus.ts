@@ -1,4 +1,4 @@
-export type CommandHandler = (args?: Record<string, any>) => void | Promise<void>
+type CommandHandler = (args?: Record<string, any>) => void | Promise<void>
 
 const handlers = new Map<string, CommandHandler>()
 
