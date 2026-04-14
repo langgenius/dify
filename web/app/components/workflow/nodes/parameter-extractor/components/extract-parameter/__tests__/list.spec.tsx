@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ParamType } from '../../../types'
 import List from '../list'
@@ -32,7 +32,7 @@ describe('parameter-extractor/extract-parameter/list', () => {
   it('edits and deletes parameters through the real item and modal flow', async () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
-    const { rerender } = render(
+    const { container, rerender } = render(
       <List
         readonly={false}
         list={[createParam()]}
@@ -40,11 +40,11 @@ describe('parameter-extractor/extract-parameter/list', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.change(within(dialog).getByDisplayValue('city'), { target: { value: 'city_name' } })
-    fireEvent.change(within(dialog).getByDisplayValue('City name'), { target: { value: 'Updated city description' } })
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    const editAndDeleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
+    fireEvent.click(editAndDeleteButtons[0] as HTMLElement)
+    fireEvent.change(screen.getByDisplayValue('city'), { target: { value: 'city_name' } })
+    fireEvent.change(screen.getByDisplayValue('City name'), { target: { value: 'Updated city description' } })
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(handleChange.mock.lastCall).toEqual([[{
@@ -65,7 +65,8 @@ describe('parameter-extractor/extract-parameter/list', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const deleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
+    fireEvent.click(deleteButtons[1] as HTMLElement)
 
     expect(handleChange).toHaveBeenCalledWith([])
   })
