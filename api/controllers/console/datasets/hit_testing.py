@@ -1,13 +1,9 @@
-from flask_restx import Resource, fields
+from typing import Any
 
-from controllers.common.schema import register_schema_model
-from fields.hit_testing_fields import (
-    child_chunk_fields,
-    document_fields,
-    files_fields,
-    hit_testing_record_fields,
-    segment_fields,
-)
+from flask_restx import Resource
+
+from controllers.common.schema import register_schema_models
+from fields.base import ResponseModel
 from libs.login import login_required
 
 from .. import console_ns
@@ -18,39 +14,13 @@ from ..wraps import (
     setup_required,
 )
 
-register_schema_model(console_ns, HitTestingPayload)
+
+class HitTestingResponse(ResponseModel):
+    query: str
+    records: list[dict[str, Any]]
 
 
-def _get_or_create_model(model_name: str, field_def):
-    """Get or create a flask_restx model to avoid dict type issues in Swagger."""
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
-# Register models for flask_restx to avoid dict type issues in Swagger
-document_model = _get_or_create_model("HitTestingDocument", document_fields)
-
-segment_fields_copy = segment_fields.copy()
-segment_fields_copy["document"] = fields.Nested(document_model)
-segment_model = _get_or_create_model("HitTestingSegment", segment_fields_copy)
-
-child_chunk_model = _get_or_create_model("HitTestingChildChunk", child_chunk_fields)
-files_model = _get_or_create_model("HitTestingFile", files_fields)
-
-hit_testing_record_fields_copy = hit_testing_record_fields.copy()
-hit_testing_record_fields_copy["segment"] = fields.Nested(segment_model)
-hit_testing_record_fields_copy["child_chunks"] = fields.List(fields.Nested(child_chunk_model))
-hit_testing_record_fields_copy["files"] = fields.List(fields.Nested(files_model))
-hit_testing_record_model = _get_or_create_model("HitTestingRecord", hit_testing_record_fields_copy)
-
-# Response model for hit testing API
-hit_testing_response_fields = {
-    "query": fields.String,
-    "records": fields.List(fields.Nested(hit_testing_record_model)),
-}
-hit_testing_response_model = _get_or_create_model("HitTestingResponse", hit_testing_response_fields)
+register_schema_models(console_ns, HitTestingPayload, HitTestingResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/hit-testing")
@@ -59,7 +29,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
     @console_ns.expect(console_ns.models[HitTestingPayload.__name__])
-    @console_ns.response(200, "Hit testing completed successfully", model=hit_testing_response_model)
+    @console_ns.response(200, "Hit testing completed successfully", console_ns.models[HitTestingResponse.__name__])
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")
     @setup_required
@@ -74,4 +44,4 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
         args = payload.model_dump(exclude_none=True)
         self.hit_testing_args_check(args)
 
-        return self.perform_hit_testing(dataset, args)
+        return HitTestingResponse.model_validate(self.perform_hit_testing(dataset, args)).model_dump(mode="json")
