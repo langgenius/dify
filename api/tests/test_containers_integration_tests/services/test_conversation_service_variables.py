@@ -77,7 +77,7 @@ class ConversationServiceVariableIntegrationFactory:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=InvokeFrom.SERVICE_API,
+            type=InvokeFrom.SERVICE_API.value,
             external_user_id=f"external-{uuid4()}",
             name=f"End User {uuid4()}",
             is_anonymous=False,
@@ -162,9 +162,8 @@ def real_conversation_service_session_factory(flask_app_with_containers):
 
 class TestConversationServiceVariables:
     def test_get_conversational_variable_success(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -200,9 +199,8 @@ class TestConversationServiceVariables:
         assert result.has_more is False
 
     def test_get_conversational_variable_with_last_id(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -242,9 +240,8 @@ class TestConversationServiceVariables:
         assert result.has_more is False
 
     def test_get_conversational_variable_last_id_not_found_raises_error(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -259,9 +256,8 @@ class TestConversationServiceVariables:
             )
 
     def test_get_conversational_variable_with_name_filter_postgresql(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -293,9 +289,8 @@ class TestConversationServiceVariables:
         assert result.has_more is False
 
     def test_get_conversational_variable_sets_has_more(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -321,9 +316,8 @@ class TestConversationServiceVariables:
         assert result.has_more is True
 
     def test_update_conversation_variable_success(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -354,9 +348,8 @@ class TestConversationServiceVariables:
         assert result["updated_at"] == updated_at
 
     def test_update_conversation_variable_not_found_raises_error(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -371,9 +364,8 @@ class TestConversationServiceVariables:
             )
 
     def test_update_conversation_variable_type_mismatch_raises_error(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
@@ -394,9 +386,8 @@ class TestConversationServiceVariables:
             )
 
     def test_update_conversation_variable_integer_number_compatibility(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers, _real_conversation_service_session_factory
     ):
-        del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         conversation = factory.create_conversation(db_session_with_containers, app, account)
