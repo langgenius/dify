@@ -1,7 +1,7 @@
 import dataclasses
 import json
 import logging
-from collections.abc import AbstractSet, Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import StrEnum
@@ -277,7 +277,7 @@ class WorkflowDraftVariableService:
         limit: int,
         user_id: str,
         *,
-        exclude_node_ids: AbstractSet[str] | None = None,
+        exclude_node_ids: Set[str] | None = None,
     ) -> WorkflowDraftVariableList:
         criteria = [
             WorkflowDraftVariable.app_id == app_id,
