@@ -8,11 +8,11 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Indicator from '@/app/components/header/indicator'
@@ -228,7 +228,7 @@ const ProviderDetail = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <div className="flex h-full flex-col p-4">
         <div className="shrink-0">
@@ -238,7 +238,7 @@ const ProviderDetail = ({
               <div className="flex h-5 items-center">
                 <Title title={collection.label[language]} />
               </div>
-              <div className="mb-1 mt-0.5 flex h-4 items-center justify-between">
+              <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                 <OrgInfo
                   packageNameClassName="w-auto"
                   orgName={collection.author}
@@ -293,7 +293,7 @@ const ProviderDetail = ({
             <>
               <div className="shrink-0">
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
-                  <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+                  <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
                     {t('detailPanel.actionNum', { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                     {needAuth && (
                       <Button

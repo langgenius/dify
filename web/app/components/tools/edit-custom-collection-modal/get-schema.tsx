@@ -8,8 +8,8 @@ import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { importSchemaFromURL } from '@/service/tools'
 import examples from './examples'
@@ -58,14 +58,14 @@ const GetSchema: FC<Props> = ({
       <div ref={importURLRef}>
         <Button
           size="small"
-          className="space-x-1 "
+          className="space-x-1"
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
           <RiAddLine className="h-3 w-3" />
           <div className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
         </Button>
         {showImportFromUrl && (
-          <div className=" absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
+          <div className="absolute top-[26px] left-[-35px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
             <div className="relative">
               <Input
                 type="text"
@@ -75,7 +75,7 @@ const GetSchema: FC<Props> = ({
                 onChange={e => setImportUrl(e.target.value)}
               />
               <Button
-                className="absolute right-1 top-1"
+                className="absolute top-1 right-1"
                 size="small"
                 variant="primary"
                 disabled={!importUrl}
@@ -98,7 +98,7 @@ const GetSchema: FC<Props> = ({
           <RiArrowDownSLine className="h-3 w-3" />
         </Button>
         {showExamples && (
-          <div className="absolute right-0 top-7 rounded-lg bg-components-panel-bg p-1 shadow-sm">
+          <div className="absolute top-7 right-0 rounded-lg bg-components-panel-bg p-1 shadow-sm">
             {examples.map(item => (
               <div
                 key={item.key}
@@ -106,7 +106,7 @@ const GetSchema: FC<Props> = ({
                   onChange(item.content)
                   setShowExamples(false)
                 }}
-                className="system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
+                className="cursor-pointer rounded-lg px-3 py-1.5 system-sm-regular leading-5 whitespace-nowrap text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
               >
                 {t(`createTool.exampleOptions.${item.key}`, { ns: 'tools' })}
               </div>
