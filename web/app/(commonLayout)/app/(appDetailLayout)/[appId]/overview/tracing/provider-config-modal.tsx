@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
@@ -13,7 +14,6 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import Confirm from '@/app/components/base/ui/confirm-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'

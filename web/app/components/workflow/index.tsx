@@ -103,7 +103,7 @@ import { WorkflowHistoryProvider } from './workflow-history-store'
 import 'reactflow/dist/style.css'
 import './style.css'
 
-const Confirm = dynamic(() => import('@/app/components/base/ui/confirm-dialog'), {
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
 })
 

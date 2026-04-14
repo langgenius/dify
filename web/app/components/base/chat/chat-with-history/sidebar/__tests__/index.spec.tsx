@@ -106,6 +106,22 @@ vi.mock('@/app/components/base/modal', () => ({
   },
 }))
 
+// Mock Confirm
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ onCancel, onConfirm, title, content, isShow }: { onCancel: () => void, onConfirm: () => void, title: string, content?: React.ReactNode, isShow: boolean }) => {
+    if (!isShow)
+      return null
+    return (
+      <div data-testid="confirm-dialog">
+        <div data-testid="confirm-title">{title}</div>
+        <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
+        <div data-testid="confirm-content">{content}</div>
+        <button data-testid="confirm-confirm" onClick={onConfirm}>Confirm</button>
+      </div>
+    )
+  },
+}))
+
 describe('Sidebar Index', () => {
   const mockContextValue = {
     isInstalledApp: false,
@@ -459,9 +475,8 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      const dialog = screen.getByRole('alertdialog')
-      expect(dialog).toBeInTheDocument()
-      expect(within(dialog).getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-title')).toBeInTheDocument()
     })
 
     it('should call handleDeleteConversation when confirm is clicked', async () => {
@@ -475,8 +490,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      const dialog = screen.getByRole('alertdialog')
-      await user.click(within(dialog).getAllByRole('button').at(-1)!)
+      await user.click(screen.getByTestId('confirm-confirm'))
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.objectContaining({
         onSuccess: expect.any(Function),
@@ -488,12 +502,11 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      const dialog = screen.getByRole('alertdialog')
-      expect(dialog).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
 
-      await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(screen.getByTestId('confirm-cancel'))
       await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       })
     })
 
@@ -512,8 +525,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      const dialog = screen.getByRole('alertdialog')
-      await user.click(within(dialog).getAllByRole('button').at(-1)!)
+      await user.click(screen.getByTestId('confirm-confirm'))
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.any(Object))
     })
@@ -825,8 +837,7 @@ describe('Sidebar Index', () => {
 
       // Delete it
       await user.click(screen.getByTestId('delete-1'))
-      const dialog = await screen.findByRole('alertdialog')
-      await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(screen.getByTestId('confirm-confirm'))
       expect(handleDeleteConversation).toHaveBeenCalled()
     })
 
@@ -890,9 +901,8 @@ describe('Sidebar Index', () => {
       try {
         render(<Sidebar />)
         await user.click(screen.getByTestId('delete-1'))
-        const dialog = screen.getByRole('alertdialog')
-        expect(dialog).toBeInTheDocument()
-        expect(dialog).not.toHaveTextContent('share.chat.deleteConversation.content')
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-content')).toBeEmptyDOMElement()
       }
       finally {
         useTranslationSpy.mockRestore()

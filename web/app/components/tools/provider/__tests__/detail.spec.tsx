@@ -1,5 +1,5 @@
 import type { Collection } from '../../types'
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
@@ -77,6 +77,28 @@ vi.mock('@/utils/var', () => ({
 vi.mock('@/app/components/base/drawer', () => ({
   default: ({ children, isOpen }: { children: React.ReactNode, isOpen: boolean }) =>
     isOpen ? <div data-testid="drawer">{children}</div> : null,
+}))
+
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, onConfirm, onCancel, title }: { isShow: boolean, onConfirm: () => void, onCancel: () => void, title: string }) =>
+    isShow
+      ? (
+          <div data-testid="confirm-dialog">
+            <span>{title}</span>
+            <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
+            <button data-testid="cancel-btn" onClick={onCancel}>Cancel</button>
+          </div>
+        )
+      : null,
+}))
+
+const mockToastSuccess = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
+  },
 }))
 
 vi.mock('@/app/components/header/indicator', () => ({
@@ -530,9 +552,9 @@ describe('ProviderDetail', () => {
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
       fireEvent.click(screen.getByTestId('edit-remove'))
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       await act(async () => {
-        fireEvent.click(within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!)
+        fireEvent.click(screen.getByTestId('confirm-btn'))
       })
       await waitFor(() => {
         expect(mockRemoveCustomCollection).toHaveBeenCalledWith('test-collection')
@@ -604,9 +626,9 @@ describe('ProviderDetail', () => {
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
       fireEvent.click(screen.getByTestId('wf-remove'))
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       await act(async () => {
-        fireEvent.click(within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!)
+        fireEvent.click(screen.getByTestId('confirm-btn'))
       })
       await waitFor(() => {
         expect(mockDeleteWorkflowTool).toHaveBeenCalledWith('test-id')
@@ -688,9 +710,9 @@ describe('ProviderDetail', () => {
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
       fireEvent.click(screen.getByTestId('edit-remove'))
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-      fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'common.operation.cancel' }))
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('cancel-btn'))
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
     })
   })
 })

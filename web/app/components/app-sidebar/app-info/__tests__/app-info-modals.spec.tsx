@@ -1,5 +1,5 @@
 import type { App, AppSSO } from '@/types/app'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
@@ -33,6 +33,24 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
 vi.mock('@/app/components/app/duplicate-modal', () => ({
   default: ({ show, onHide }: { show: boolean, onHide: () => void }) => (
     show ? <div data-testid="duplicate-modal"><button type="button" onClick={onHide}>Close Dup</button></div> : null
+  ),
+}))
+
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, title, onConfirm, onCancel }: {
+    isShow: boolean
+    title: string
+    onConfirm: () => void
+    onCancel: () => void
+  }) => (
+    isShow
+      ? (
+          <div data-testid="confirm-modal" data-title={title}>
+            <button type="button" onClick={onConfirm}>Confirm</button>
+            <button type="button" onClick={onCancel}>Cancel</button>
+          </div>
+        )
+      : null
   ),
 }))
 
@@ -95,7 +113,7 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal={null} />)
     })
     expect(screen.queryByTestId('switch-modal')).not.toBeInTheDocument()
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
   })
 
   it('should render SwitchAppModal when activeModal is switch', async () => {
@@ -130,9 +148,9 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
     await waitFor(() => {
-      const dialog = screen.getByRole('alertdialog')
-      expect(dialog).toBeInTheDocument()
-      expect(within(dialog).getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
+      const confirm = screen.getByTestId('confirm-modal')
+      expect(confirm).toBeInTheDocument()
+      expect(confirm).toHaveAttribute('data-title', 'app.deleteAppConfirmTitle')
     })
   })
 
@@ -150,9 +168,9 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="exportWarning" />)
     })
     await waitFor(() => {
-      const dialog = screen.getByRole('alertdialog')
-      expect(dialog).toBeInTheDocument()
-      expect(within(dialog).getByText('workflow.sidebar.exportWarning')).toBeInTheDocument()
+      const confirm = screen.getByTestId('confirm-modal')
+      expect(confirm).toBeInTheDocument()
+      expect(confirm).toHaveAttribute('data-title', 'workflow.sidebar.exportWarning')
     })
   })
 
@@ -184,8 +202,8 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
 
-    const dialog = await screen.findByRole('alertdialog')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.getByText('Cancel')).toBeInTheDocument())
+    await user.click(screen.getByText('Cancel'))
 
     expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
   })
@@ -196,9 +214,8 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
 
-    await user.type(screen.getByRole('textbox'), 'Test App')
-    const dialog = screen.getByRole('alertdialog')
-    await user.click(within(dialog).getAllByRole('button').at(-1)!)
+    await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
+    await user.click(screen.getByText('Confirm'))
 
     expect(defaultProps.onConfirmDelete).toHaveBeenCalledTimes(1)
   })
@@ -209,8 +226,8 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="exportWarning" />)
     })
 
-    const dialog = await screen.findByRole('alertdialog')
-    await user.click(within(dialog).getAllByRole('button').at(-1)!)
+    await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
+    await user.click(screen.getByText('Confirm'))
 
     expect(defaultProps.handleConfirmExport).toHaveBeenCalledTimes(1)
   })

@@ -1,7 +1,6 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as toastModule from '@/app/components/base/ui/toast'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
@@ -15,23 +14,54 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const mockToastSuccess = vi.fn()
-const mockToastError = vi.fn()
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
 
-vi.spyOn(toastModule.toast, 'success').mockImplementation((...args) => {
-  mockToastSuccess(...args)
-  return 'toast-id'
-})
-
-vi.spyOn(toastModule.toast, 'error').mockImplementation((...args) => {
-  mockToastError(...args)
-  return 'toast-id'
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+      error: mockToastError,
+    },
+  }
 })
 
 // Mock download utilities
 vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
+}))
+
+// Capture Confirm callbacks
+let _capturedOnConfirm: (() => void) | undefined
+let _capturedOnCancel: (() => void) | undefined
+
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, onConfirm, onCancel, title, content }: {
+    isShow: boolean
+    onConfirm: () => void
+    onCancel: () => void
+    title: string
+    content: string
+  }) => {
+    _capturedOnConfirm = onConfirm
+    _capturedOnCancel = onCancel
+    return isShow
+      ? (
+          <div data-testid="confirm-dialog">
+            <div data-testid="confirm-title">{title}</div>
+            <div data-testid="confirm-content">{content}</div>
+            <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
+            <button data-testid="confirm-submit" onClick={onConfirm}>Confirm</button>
+          </div>
+        )
+      : null
+  },
 }))
 
 // Capture Actions callbacks
@@ -157,6 +187,8 @@ describe('TemplateCard', () => {
     mockToastSuccess.mockReset()
     mockToastError.mockReset()
     mockIsExporting = false
+    _capturedOnConfirm = undefined
+    _capturedOnCancel = undefined
     _capturedHandleDelete = undefined
     _capturedHandleExportDSL = undefined
     _capturedOpenEditModal = undefined
@@ -475,7 +507,7 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
     })
 
@@ -485,14 +517,14 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      const cancelButton = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'common.operation.cancel' })
+      const cancelButton = screen.getByTestId('confirm-cancel')
       fireEvent.click(cancelButton)
 
       await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       })
     })
 
@@ -507,10 +539,10 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      const confirmButton = within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!
+      const confirmButton = screen.getByTestId('confirm-submit')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
@@ -529,10 +561,10 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      const confirmButton = within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!
+      const confirmButton = screen.getByTestId('confirm-submit')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
@@ -551,14 +583,14 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      const confirmButton = within(screen.getByRole('alertdialog')).getAllByRole('button').at(-1)!
+      const confirmButton = screen.getByTestId('confirm-submit')
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       })
     })
   })

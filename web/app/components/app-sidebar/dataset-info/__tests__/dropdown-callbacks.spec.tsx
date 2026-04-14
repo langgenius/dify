@@ -1,8 +1,7 @@
 import type { DataSet } from '@/models/datasets'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import * as toastModule from '@/app/components/base/ui/toast'
 import {
   ChunkingMode,
   DatasetPermission,
@@ -113,6 +112,10 @@ vi.mock('@/service/datasets', () => ({
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: (...args: unknown[]) => mockToast(...args),
+}))
+
 vi.mock('@/app/components/datasets/rename-modal', () => ({
   default: ({
     show,
@@ -134,6 +137,33 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
   },
 }))
 
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({
+    isShow,
+    onConfirm,
+    onCancel,
+    title,
+    content,
+  }: {
+    isShow: boolean
+    onConfirm: () => void
+    onCancel: () => void
+    title: string
+    content: string
+  }) => {
+    if (!isShow)
+      return null
+    return (
+      <div data-testid="confirm-dialog">
+        <span>{title}</span>
+        <span>{content}</span>
+        <button type="button" onClick={onConfirm}>confirm</button>
+        <button type="button" onClick={onCancel}>cancel</button>
+      </div>
+    )
+  },
+}))
+
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
@@ -141,11 +171,6 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   ),
   PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
-
-vi.spyOn(toastModule, 'toast').mockImplementation((...args) => {
-  mockToast(...args)
-  return 'toast-id'
-})
 
 describe('Dropdown callback coverage', () => {
   beforeEach(() => {
@@ -195,11 +220,14 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByTestId('portal-trigger'))
     await user.click(screen.getByText('common.operation.delete'))
 
-    const dialog = await screen.findByRole('alertdialog')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('cancel'))
 
     await waitFor(() => {
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -245,6 +273,6 @@ describe('Dropdown callback coverage', () => {
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith('check failed', { type: 'error' })
     })
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
   })
 })

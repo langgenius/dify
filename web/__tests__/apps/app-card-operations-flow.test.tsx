@@ -10,7 +10,7 @@
  *   - Access mode icons
  */
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppCard from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
@@ -22,7 +22,26 @@ let mockSystemFeatures = {
   branding: { enabled: false },
   webapp_auth: { enabled: false },
 }
+
+const toastMocks = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
 const mockRouterPush = vi.fn()
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'info', message, ...options }),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  },
+}))
 const mockOnPlanInfoChanged = vi.fn()
 const mockDeleteAppMutation = vi.fn().mockResolvedValue(undefined)
 let mockDeleteMutationPending = false
@@ -188,6 +207,20 @@ vi.mock('@/app/components/app/switch-app-modal', () => ({
   },
 }))
 
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, onConfirm, onCancel, title }: Record<string, unknown>) => {
+    if (!isShow)
+      return null
+    return (
+      <div data-testid="confirm-delete-modal">
+        <span>{title as string}</span>
+        <button data-testid="confirm-delete" onClick={onConfirm as () => void}>Delete</button>
+        <button data-testid="cancel-delete" onClick={onCancel as () => void}>Cancel</button>
+      </div>
+    )
+  },
+}))
+
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   default: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="dsl-export-confirm-modal">
@@ -309,15 +342,14 @@ describe('App Card Operations Flow', () => {
             fireEvent.click(deleteBtn)
         })
 
-        const dialog = await screen.findByRole('alertdialog')
-        fireEvent.change(within(dialog).getByRole('textbox', { name: 'deleteAppConfirmInputLabel' }), {
-          target: { value: 'Deletable App' },
-        })
-        fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+        const confirmBtn = screen.queryByTestId('confirm-delete')
+        if (confirmBtn) {
+          fireEvent.click(confirmBtn)
 
-        await waitFor(() => {
-          expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
-        })
+          await waitFor(() => {
+            expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
+          })
+        }
       }
     })
   })

@@ -1,7 +1,6 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as toastModule from '@/app/components/base/ui/toast'
 
 // ==================== Imports (after mocks) ====================
 
@@ -17,19 +16,30 @@ const {
   mockCheckForUpdates,
   mockSetShowUpdatePluginModal,
   mockInvalidateInstalledPluginList,
+  mockToastNotify,
 } = vi.hoisted(() => ({
   mockUninstallPlugin: vi.fn(),
   mockFetchReleases: vi.fn(),
   mockCheckForUpdates: vi.fn(),
   mockSetShowUpdatePluginModal: vi.fn(),
   mockInvalidateInstalledPluginList: vi.fn(),
+  mockToastNotify: vi.fn(),
 }))
-const mockToastNotify = vi.fn()
 
-vi.spyOn(toastModule, 'toast').mockImplementation((message, options) => {
-  mockToastNotify({ type: options?.type, message })
-  return 'toast-id'
-})
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
+}))
 
 // Mock uninstall plugin service
 vi.mock('@/service/plugins', () => ({
@@ -82,6 +92,30 @@ vi.mock('../../../base/tooltip', () => ({
   ),
 }))
 
+// Mock Confirm - uses createPortal which has issues in test environment
+vi.mock('../../../base/confirm', () => ({
+  default: ({ isShow, title, content, onCancel, onConfirm, isLoading, isDisabled }: {
+    isShow: boolean
+    title: string
+    content: React.ReactNode
+    onCancel: () => void
+    onConfirm: () => void
+    isLoading: boolean
+    isDisabled: boolean
+  }) => {
+    if (!isShow)
+      return null
+    return (
+      <div data-testid="confirm-modal" data-loading={isLoading} data-disabled={isDisabled}>
+        <div data-testid="confirm-title">{title}</div>
+        <div data-testid="confirm-content">{content}</div>
+        <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
+        <button data-testid="confirm-ok" onClick={onConfirm} disabled={isDisabled}>Confirm</button>
+      </div>
+    )
+  },
+}))
+
 // ==================== Test Utilities ====================
 
 type ActionProps = {
@@ -116,11 +150,6 @@ const createActionProps = (overrides: Partial<ActionProps> = {}): ActionProps =>
   },
   ...overrides,
 })
-
-const getConfirmDialog = () => screen.getByRole('alertdialog')
-const getConfirmButtons = () => within(getConfirmDialog()).getAllByRole('button')
-const getConfirmCancelButton = () => getConfirmButtons()[0]
-const getConfirmConfirmButton = () => getConfirmButtons().at(-1)!
 
 // ==================== Tests ====================
 
@@ -248,8 +277,8 @@ describe('Action Component', () => {
       fireEvent.click(getActionButtons()[0])
 
       // Assert
-      expect(getConfirmDialog()).toBeInTheDocument()
-      expect(screen.getByText('plugin.action.delete')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-title')).toHaveTextContent('plugin.action.delete')
     })
 
     it('should display plugin name in delete confirm content', () => {
@@ -269,7 +298,7 @@ describe('Action Component', () => {
       expect(screen.getByText('my-awesome-plugin')).toBeInTheDocument()
     })
 
-    it('should hide confirm modal when cancel is clicked', async () => {
+    it('should hide confirm modal when cancel is clicked', () => {
       // Arrange
       const props = createActionProps({
         isShowDelete: true,
@@ -280,14 +309,12 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      expect(getConfirmDialog()).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
 
-      fireEvent.click(getConfirmCancelButton())
+      fireEvent.click(screen.getByTestId('confirm-cancel'))
 
       // Assert
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
+      expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
     })
 
     it('should call uninstallPlugin when confirm is clicked', async () => {
@@ -302,7 +329,7 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       // Assert
       await waitFor(() => {
@@ -324,7 +351,7 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       // Assert
       await waitFor(() => {
@@ -346,7 +373,7 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       // Assert
       await waitFor(() => {
@@ -368,7 +395,7 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       // Assert
       await waitFor(() => {
@@ -395,17 +422,17 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       // Assert - Loading state
       await waitFor(() => {
-        expect(getConfirmConfirmButton()).toHaveAttribute('aria-busy', 'true')
+        expect(screen.getByTestId('confirm-modal')).toHaveAttribute('data-loading', 'true')
       })
 
       // Resolve and check modal closes
       resolveUninstall!({ success: true })
       await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
       })
     })
   })
@@ -672,7 +699,7 @@ describe('Action Component', () => {
       // Act - First render and delete
       const { rerender } = render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       await waitFor(() => {
         expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
@@ -682,7 +709,7 @@ describe('Action Component', () => {
       mockUninstallPlugin.mockClear()
       rerender(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       await waitFor(() => {
         expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
@@ -708,7 +735,7 @@ describe('Action Component', () => {
       // Act
       const { rerender } = render(<Action {...props1} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       await waitFor(() => {
         expect(mockUninstallPlugin).toHaveBeenCalledWith('install-1')
@@ -717,7 +744,7 @@ describe('Action Component', () => {
       mockUninstallPlugin.mockClear()
       rerender(<Action {...props2} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       await waitFor(() => {
         expect(mockUninstallPlugin).toHaveBeenCalledWith('install-2')
@@ -745,7 +772,7 @@ describe('Action Component', () => {
       // Act
       const { rerender } = render(<Action {...props1} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       await waitFor(() => {
         expect(onDelete1).toHaveBeenCalled()
@@ -754,7 +781,7 @@ describe('Action Component', () => {
 
       rerender(<Action {...props2} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       await waitFor(() => {
         expect(onDelete2).toHaveBeenCalled()
@@ -820,17 +847,17 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0])
-      fireEvent.click(getConfirmConfirmButton())
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       // The confirm button should be disabled during deletion
-      expect(getConfirmConfirmButton()).toHaveAttribute('aria-busy', 'true')
-      expect(getConfirmConfirmButton()).toBeDisabled()
+      expect(screen.getByTestId('confirm-modal')).toHaveAttribute('data-loading', 'true')
+      expect(screen.getByTestId('confirm-modal')).toHaveAttribute('data-disabled', 'true')
 
       // Resolve the deletion
       resolveFirst!({ success: true })
 
       await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
       })
     })
 

@@ -1,9 +1,9 @@
 'use client'
 
-import type { IConfirm } from '@/app/components/base/ui/confirm-dialog'
+import type { IConfirm } from '@/app/components/base/confirm'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/ui/confirm-dialog'
+import Confirm from '@/app/components/base/confirm'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useNotionBinding } from '@/service/use-common'
 

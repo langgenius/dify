@@ -11,7 +11,7 @@ import dynamic from '@/next/dynamic'
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), { ssr: false })
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), { ssr: false })
-const Confirm = dynamic(() => import('@/app/components/base/ui/confirm-dialog'), { ssr: false })
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), { ssr: false })
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), { ssr: false })
 const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), { ssr: false })
 
