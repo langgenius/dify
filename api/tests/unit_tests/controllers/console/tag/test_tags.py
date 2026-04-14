@@ -4,6 +4,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
+import controllers.console.tag.tags as module
 from controllers.console import console_ns
 from controllers.console.tag.tags import (
     TagBindingCreateApi,
@@ -277,3 +278,12 @@ class TestTagBindingDeleteApi:
             ):
                 with pytest.raises(Forbidden):
                     method(api)
+
+
+class TestTagResponseModel:
+    def test_tag_response_normalizes_enum_type(self):
+        payload = module.TagResponse.model_validate(
+            {"id": "tag-1", "name": "tag", "type": TagType.KNOWLEDGE, "binding_count": 1}
+        ).model_dump(mode="json")
+
+        assert payload["type"] == "knowledge"
