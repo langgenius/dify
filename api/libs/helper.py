@@ -410,7 +410,7 @@ class TokenManager:
         token_type: str,
         account: "Account | None" = None,
         email: str | None = None,
-        additional_data: dict | None = None,
+        additional_data: dict[str, Any] | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")

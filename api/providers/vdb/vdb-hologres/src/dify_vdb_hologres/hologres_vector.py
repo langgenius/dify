@@ -43,7 +43,7 @@ class HologresVectorConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         if not values.get("host"):
             raise ValueError("config HOLOGRES_HOST is required")
         if not values.get("database"):
