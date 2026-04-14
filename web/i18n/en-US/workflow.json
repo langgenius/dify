@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Fail Branch",
   "nodes.common.errorHandle.none.desc": "The node will stop running if an exception occurs and is not handled",
   "nodes.common.errorHandle.none.title": "None",
-  "nodes.common.errorHandle.partialSucceeded.tip": "There are {{num}} nodes in the process running abnormally, please go to tracing to check the logs.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "There are {{num}} nodes in the process running abnormally, please go to <tracingLink>TRACING</tracingLink> to check the logs.",
   "nodes.common.errorHandle.tip": "Exception handling strategy, triggered when a node encounters an exception.",
   "nodes.common.errorHandle.title": "Error Handling",
   "nodes.common.inputVars": "Input Variables",
