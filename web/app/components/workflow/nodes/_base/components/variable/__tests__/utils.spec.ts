@@ -1,10 +1,13 @@
+import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
+import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
 import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { getNodeUsedVars, updateNodeVars } from '../utils'
 
-const createNode = (data: Node['data']): Node => ({
+const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
   type: 'custom',
   position: { x: 0, y: 0 },
@@ -20,7 +23,7 @@ const createPromptItem = (overrides: Partial<PromptItem> = {}): PromptItem => ({
 describe('variable utils', () => {
   describe('getNodeUsedVars', () => {
     it('should read variables from llm jinja prompt text', () => {
-      const node = createNode({
+      const node = createNode<LLMNodeType>({
         type: BlockEnum.LLM,
         title: 'LLM',
         desc: '',
@@ -42,7 +45,7 @@ describe('variable utils', () => {
     })
 
     it('should read variables from human input email body', () => {
-      const node = createNode({
+      const node = createNode<HumanInputNodeType>({
         type: BlockEnum.HumanInput,
         title: 'Human Input',
         desc: '',
@@ -76,7 +79,7 @@ describe('variable utils', () => {
 
   describe('updateNodeVars', () => {
     it('should replace answer prompt references', () => {
-      const node = createNode({
+      const node = createNode<AnswerNodeType>({
         type: BlockEnum.Answer,
         title: 'Answer',
         desc: '',
@@ -86,11 +89,11 @@ describe('variable utils', () => {
 
       const updatedNode = updateNodeVars(node, ['env', 'API_KEY'], ['env', 'RENAMED_KEY'])
 
-      expect(updatedNode.data.answer).toBe('Answer {{#env.RENAMED_KEY#}}')
+      expect((updatedNode.data as AnswerNodeType).answer).toBe('Answer {{#env.RENAMED_KEY#}}')
     })
 
     it('should replace llm jinja prompt references', () => {
-      const node = createNode({
+      const node = createNode<LLMNodeType>({
         type: BlockEnum.LLM,
         title: 'LLM',
         desc: '',
@@ -111,14 +114,14 @@ describe('variable utils', () => {
 
       const updatedNode = updateNodeVars(node, ['env', 'API_KEY'], ['env', 'RENAMED_KEY'])
 
-      expect((updatedNode.data.prompt_template as PromptItem[])[0]).toMatchObject({
+      expect(((updatedNode.data as LLMNodeType).prompt_template as PromptItem[])[0]).toMatchObject({
         text: '{{#env.RENAMED_KEY#}}',
         jinja2_text: 'Hello {{#env.RENAMED_KEY#}}',
       })
     })
 
     it('should replace human input email template references', () => {
-      const node = createNode({
+      const node = createNode<HumanInputNodeType>({
         type: BlockEnum.HumanInput,
         title: 'Human Input',
         desc: '',
@@ -144,7 +147,7 @@ describe('variable utils', () => {
 
       const updatedNode = updateNodeVars(node, ['env', 'API_KEY'], ['env', 'RENAMED_KEY'])
 
-      expect(updatedNode.data.delivery_methods[0]?.config).toMatchObject({
+      expect((updatedNode.data as HumanInputNodeType).delivery_methods[0]?.config).toMatchObject({
         subject: 'Subject {{#conversation.memory#}}',
         body: 'Body {{#env.RENAMED_KEY#}}',
       })

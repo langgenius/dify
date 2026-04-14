@@ -156,7 +156,7 @@ const OnlineUsers = () => {
                 <TooltipContent
                   placement="bottom"
                   sideOffset={4}
-                  popupClassName="flex h-[28px] w-[85px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
+                  className="flex h-[28px] w-[85px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
                 >
                   {renderDisplayName(
                     user,

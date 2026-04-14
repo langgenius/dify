@@ -27,11 +27,11 @@ import type {
   EnvironmentVariable,
   Node,
   NodeOutPutVar,
+  PromptItem,
   ToolWithProvider,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import { uniq } from 'es-toolkit/array'
