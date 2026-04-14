@@ -1,5 +1,6 @@
 """Testcontainers integration tests for DatasetService permission and lifecycle SQL paths."""
 
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -387,7 +388,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
             enable_api=False,
         )
-        now = object()
+        now = datetime(2026, 4, 14, 18, 0, 0)
 
         with (
             patch("services.dataset_service.current_user", owner),
@@ -398,7 +399,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         db_session_with_containers.refresh(dataset)
         assert dataset.enable_api is True
         assert dataset.updated_by == owner.id
-        assert dataset.updated_at is now
+        assert dataset.updated_at == now
 
     def test_get_dataset_auto_disable_logs_returns_empty_when_billing_is_disabled(
         self, db_session_with_containers: Session
