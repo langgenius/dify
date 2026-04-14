@@ -1,6 +1,9 @@
+from typing import Any
+
+
 class SuggestedQuestionsAfterAnswerConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> bool:
+    def convert(cls, config: dict[str, Any]) -> bool:
         """
         Convert model config to model config
 
@@ -15,7 +18,7 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         return suggested_questions_after_answer
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for suggested questions feature
 
