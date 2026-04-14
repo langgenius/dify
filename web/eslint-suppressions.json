@@ -480,9 +480,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -7201,11 +7198,6 @@
   },
   "app/components/workflow/header/editing-title.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/header/header-in-restoring.tsx": {
-    "perfectionist/sort-imports": {
       "count": 1
     }
   },
