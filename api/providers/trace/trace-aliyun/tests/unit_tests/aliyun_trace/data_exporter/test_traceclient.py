@@ -5,9 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.trace import SpanKind, Status, StatusCode
-
 from dify_trace_aliyun.data_exporter.traceclient import (
     INVALID_SPAN_ID,
     SpanBuilder,
@@ -21,6 +18,8 @@ from dify_trace_aliyun.data_exporter.traceclient import (
     generate_span_id,
 )
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 
 @pytest.fixture

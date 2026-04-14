@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from dify_trace_langfuse.config import LangfuseConfig
+from pydantic import ValidationError
 
 
 class TestLangfuseConfig:

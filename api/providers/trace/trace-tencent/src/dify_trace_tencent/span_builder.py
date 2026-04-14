@@ -16,6 +16,7 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from core.rag.models.document import Document
 from dify_trace_tencent.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_FRAMEWORK,
@@ -42,7 +43,6 @@ from dify_trace_tencent.entities.semconv import (
 )
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from dify_trace_tencent.utils import TencentTraceUtils
-from core.rag.models.document import Document
 
 logger = logging.getLogger(__name__)
 

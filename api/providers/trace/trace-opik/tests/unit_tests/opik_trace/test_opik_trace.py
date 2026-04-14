@@ -5,9 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_opik.config import OpikConfig
+from dify_trace_opik.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 
-from dify_trace_opik.config import OpikConfig
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -18,7 +19,6 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from dify_trace_opik.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
 from models import EndUser
 from models.enums import MessageStatus
 

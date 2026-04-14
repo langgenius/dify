@@ -26,7 +26,6 @@ from opentelemetry.util.types import AttributeValue
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -40,6 +39,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
+from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecutionTriggeredFrom

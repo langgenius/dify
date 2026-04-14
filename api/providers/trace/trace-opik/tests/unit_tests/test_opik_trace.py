@@ -14,8 +14,9 @@ import uuid
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from core.ops.entities.trace_entity import TraceTaskName, WorkflowTraceInfo
 from dify_trace_opik.opik_trace import OpikDataTrace, _seed_to_uuid4, prepare_opik_uuid
+
+from core.ops.entities.trace_entity import TraceTaskName, WorkflowTraceInfo
 
 # A stable UUID4 used as the workflow_run_id throughout all tests.
 _WORKFLOW_RUN_ID = "a3f1b2c4-d5e6-4f78-9a0b-c1d2e3f4a5b6"

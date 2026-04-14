@@ -1,10 +1,11 @@
-from core.ops.entities.config_entity import TracingProviderEnum
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from dify_trace_langfuse.config import LangfuseConfig
 from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_opik.config import OpikConfig
 from dify_trace_weave.config import WeaveConfig
+
+from core.ops.entities.config_entity import TracingProviderEnum
 
 
 class TestTracingProviderEnum:

@@ -4,13 +4,10 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
-from opentelemetry.trace import Link, SpanContext, SpanKind, Status, StatusCode, TraceFlags
-
 import dify_trace_aliyun.aliyun_trace as aliyun_trace_module
+import pytest
 from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
+from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
@@ -26,7 +23,10 @@ from dify_trace_aliyun.entities.semconv import (
     TOOL_PARAMETERS,
     GenAISpanKind,
 )
-from dify_trace_aliyun.config import AliyunConfig
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from opentelemetry.trace import Link, SpanContext, SpanKind, Status, StatusCode, TraceFlags
+
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,

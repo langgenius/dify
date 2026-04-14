@@ -1,10 +1,6 @@
 import json
 from unittest.mock import MagicMock
 
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowNodeExecutionStatus
-from opentelemetry.trace import Link, StatusCode
-
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
     GEN_AI_SESSION_ID,
@@ -25,6 +21,10 @@ from dify_trace_aliyun.utils import (
     get_workflow_node_status,
     serialize_json_data,
 )
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
+from opentelemetry.trace import Link, StatusCode
+
 from core.rag.models.document import Document
 from models import EndUser
 

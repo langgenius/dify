@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from dify_trace_langsmith.config import LangSmithConfig
+from pydantic import ValidationError
 
 
 class TestLangSmithConfig:

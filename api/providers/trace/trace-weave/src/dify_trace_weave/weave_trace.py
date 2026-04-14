@@ -18,7 +18,6 @@ from weave.trace_server.trace_server_interface import (
 )
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_weave.config import WeaveConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -30,8 +29,9 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
+from dify_trace_weave.config import WeaveConfig
+from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 

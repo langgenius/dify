@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from dify_trace_aliyun.config import AliyunConfig
+from pydantic import ValidationError
 
 
 class TestAliyunConfig:

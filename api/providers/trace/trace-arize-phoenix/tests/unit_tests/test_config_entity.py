@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
+from pydantic import ValidationError
 
 
 class TestArizeConfig:

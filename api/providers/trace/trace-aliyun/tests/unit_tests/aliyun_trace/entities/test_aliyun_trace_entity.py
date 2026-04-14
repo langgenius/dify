@@ -1,10 +1,9 @@
 import pytest
+from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from opentelemetry import trace as trace_api
 from opentelemetry.sdk.trace import Event
 from opentelemetry.trace import SpanKind, Status, StatusCode
 from pydantic import ValidationError
-
-from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 
 
 class TestTraceMetadata:

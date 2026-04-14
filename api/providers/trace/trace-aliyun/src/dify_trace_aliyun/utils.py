@@ -6,6 +6,7 @@ from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from opentelemetry.trace import Link, Status, StatusCode
 
+from core.rag.models.document import Document
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
     GEN_AI_SESSION_ID,
@@ -15,7 +16,6 @@ from dify_trace_aliyun.entities.semconv import (
     OUTPUT_VALUE,
     GenAISpanKind,
 )
-from core.rag.models.document import Document
 from extensions.ext_database import db
 from models import EndUser
 

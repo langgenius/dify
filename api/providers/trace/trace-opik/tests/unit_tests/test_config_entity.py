@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from dify_trace_opik.config import OpikConfig
+from pydantic import ValidationError
 
 
 class TestOpikConfig:

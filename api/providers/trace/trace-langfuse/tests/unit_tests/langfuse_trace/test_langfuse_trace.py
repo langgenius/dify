@@ -5,9 +5,17 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_langfuse.config import LangfuseConfig
+from dify_trace_langfuse.entities.langfuse_trace_entity import (
+    LangfuseGeneration,
+    LangfuseSpan,
+    LangfuseTrace,
+    LevelEnum,
+    UnitEnum,
+)
+from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
 from graphon.enums import BuiltinNodeTypes
 
-from dify_trace_langfuse.config import LangfuseConfig
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -18,14 +26,6 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from dify_trace_langfuse.entities.langfuse_trace_entity import (
-    LangfuseGeneration,
-    LangfuseSpan,
-    LangfuseTrace,
-    LevelEnum,
-    UnitEnum,
-)
-from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
 from models import EndUser
 from models.enums import MessageStatus
 

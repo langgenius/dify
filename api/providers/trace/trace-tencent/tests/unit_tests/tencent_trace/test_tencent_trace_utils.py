@@ -8,9 +8,8 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
-from opentelemetry.trace import Link, TraceFlags
-
 from dify_trace_tencent.utils import TencentTraceUtils
+from opentelemetry.trace import Link, TraceFlags
 
 
 def test_convert_to_trace_id_with_valid_uuid() -> None:

@@ -11,7 +11,6 @@ from opik.id_helpers import uuid4_to_uuid7
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_opik.config import OpikConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -24,6 +23,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
+from dify_trace_opik.config import OpikConfig
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 

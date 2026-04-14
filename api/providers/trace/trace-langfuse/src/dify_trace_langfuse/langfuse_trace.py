@@ -17,7 +17,6 @@ from langfuse.api.commons.types.usage import Usage
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_langfuse.config import LangfuseConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -29,6 +28,9 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.utils import filter_none_values
+from core.repositories import DifyCoreRepositoryFactory
+from dify_trace_langfuse.config import LangfuseConfig
 from dify_trace_langfuse.entities.langfuse_trace_entity import (
     GenerationUsage,
     LangfuseGeneration,
@@ -37,8 +39,6 @@ from dify_trace_langfuse.entities.langfuse_trace_entity import (
     LevelEnum,
     UnitEnum,
 )
-from core.ops.utils import filter_none_values
-from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus

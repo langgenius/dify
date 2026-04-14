@@ -12,7 +12,6 @@ from mlflow.tracing.provider import detach_span_from_context, set_span_in_contex
 from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -25,6 +24,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import JSON_DICT_ADAPTER
+from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from extensions.ext_database import db
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel

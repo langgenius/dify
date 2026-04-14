@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from dify_trace_weave.config import WeaveConfig
+from pydantic import ValidationError
 
 
 class TestWeaveConfig:

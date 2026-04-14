@@ -2,10 +2,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-from opentelemetry.sdk.trace import Tracer
-from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
-from opentelemetry.trace import StatusCode
-
 from dify_trace_arize_phoenix.arize_phoenix_trace import (
     ArizePhoenixDataTrace,
     datetime_to_nanos,
@@ -16,6 +12,10 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
     wrap_span_metadata,
 )
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
+from opentelemetry.sdk.trace import Tracer
+from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
+from opentelemetry.trace import StatusCode
+
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,

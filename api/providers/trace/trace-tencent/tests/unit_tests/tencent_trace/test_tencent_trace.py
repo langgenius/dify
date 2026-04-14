@@ -2,10 +2,11 @@ import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dify_trace_tencent.config import TencentConfig
+from dify_trace_tencent.tencent_trace import TencentDataTrace
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes
 
-from dify_trace_tencent.config import TencentConfig
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -15,7 +16,6 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from dify_trace_tencent.tencent_trace import TencentDataTrace
 from models import Account, App, TenantAccountJoin
 
 logger = logging.getLogger(__name__)
@@ -409,9 +409,7 @@ class TestTencentDataTrace:
                 session = mock_session_ctx.return_value.__enter__.return_value
                 session.scalar.side_effect = [app, account, tenant_join]
 
-                with patch(
-                    "dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"
-                ) as mock_repo:
+                with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
                     mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
 
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)

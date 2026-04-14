@@ -8,12 +8,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from opentelemetry.sdk.trace import Event
-from opentelemetry.trace import Status, StatusCode
-
 from dify_trace_tencent import client as client_module
 from dify_trace_tencent.client import TencentTraceClient, _get_opentelemetry_sdk_version
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
+from opentelemetry.sdk.trace import Event
+from opentelemetry.trace import Status, StatusCode
 
 metric_reader_instances: list[DummyMetricReader] = []
 meter_provider_instances: list[DummyMeterProvider] = []

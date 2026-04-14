@@ -12,7 +12,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_tencent.config import TencentConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -23,11 +22,12 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from dify_trace_tencent.client import TencentTraceClient
+from dify_trace_tencent.config import TencentConfig
 from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from dify_trace_tencent.span_builder import TencentSpanBuilder
 from dify_trace_tencent.utils import TencentTraceUtils
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 

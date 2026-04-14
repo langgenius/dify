@@ -316,6 +316,7 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
         except ImportError:
             raise ImportError(f"Provider {provider} is not installed.")
 
+
 provider_config_map = OpsTraceProviderConfigMap()
 
 

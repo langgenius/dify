@@ -9,9 +9,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+from dify_trace_mlflow.mlflow_trace import MLflowDataTrace, datetime_to_nanoseconds
 from graphon.enums import BuiltinNodeTypes
 
-from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -21,7 +22,6 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from dify_trace_mlflow.mlflow_trace import MLflowDataTrace, datetime_to_nanoseconds
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
