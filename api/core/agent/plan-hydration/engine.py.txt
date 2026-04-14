@@ -1,0 +1,150 @@
+"""
+EROS (Execution-Ready Optimized Short-circuit) Plan Hydration Engine
+====================================================================
+Professional Implementation for Dify Agent Nodes.
+"""
+
+import hashlib
+import json
+import logging
+from typing import Dict, List, Optional, Tuple, Any, Set
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from uuid import uuid4
+
+# Dify / SQLAlchemy dependencies
+from sqlalchemy import select
+from extensions.ext_database import db
+from models.model import MessageAgentThought
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class EROSResult:
+    status: str  # 'EXACT_HIT', 'PARTIAL_HIT', or 'MISS'
+    plan_steps: List[Dict[str, Any]] = field(default_factory=list)
+    match_ratio: float = 0.0
+    fingerprint: str = ""
+    original_query: Optional[str] = None
+
+class EROS3LayerHydrator:
+    def __init__(self, partial_threshold: float = 0.50):
+        self.partial_threshold = partial_threshold
+        # Functional tokens only; ignore noise
+        self.stop_words = {'the', 'is', 'at', 'and', 'a', 'an', 'to', 'of', 'for', 'in', 'with', 'on'}
+
+    def _tokenize(self, text: str) -> Set[str]:
+        if not text: return set()
+        return {w.lower() for w in text.split() if w.lower() not in self.stop_words and len(w) > 2}
+
+    def _generate_fp(self, query: str, instruction: str, tenant_id: str) -> str:
+        """
+        Dify Standard: Ensure multi-tenant isolation via fingerprinting.
+        """
+        payload = f"{tenant_id}|{query.strip().lower()}|{instruction.strip().lower()}"
+        return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+    def check(self, query: str, tenant_id: str, instruction: str = "") -> EROSResult:
+        """
+        Layer 1 & 2: Scoped retrieval.
+        """
+        fp = self._generate_fp(query, instruction, tenant_id)
+        
+        # Layer 1: Exact Hit
+        stmt = select(MessageAgentThought).where(
+            MessageAgentThought.observation == f"EROS_V1_{fp}"
+        ).order_by(MessageAgentThought.created_at.desc()).limit(1)
+        
+        record = db.session.scalar(stmt)
+        if record and record.tool_input:
+            try:
+                data = json.loads(record.tool_input)
+                # Double-check tenant ownership in JSON payload
+                if data.get('tenant_id') == tenant_id:
+                    return EROSResult(status='EXACT_HIT', plan_steps=data.get('plan_steps', []), fingerprint=fp)
+            except Exception as e:
+                logger.error(f"EROS L1 Parse Error: {e}")
+
+        # Layer 2: Pattern Match (Last 50 verified tasks)
+        stmt = select(MessageAgentThought).where(
+            MessageAgentThought.observation.like("EROS_V1_%")
+        ).order_by(MessageAgentThought.created_at.desc()).limit(50)
+        
+        candidates = db.session.scalars(stmt).all()
+        current_tokens = self._tokenize(query)
+
+        for cand in candidates:
+            try:
+                data = json.loads(cand.tool_input)
+                if data.get('tenant_id') != tenant_id: continue
+                
+                cached_tokens = self._tokenize(cand.message)
+                intersection = current_tokens & cached_tokens
+                ratio = len(intersection) / len(current_tokens) if current_tokens else 0
+
+                if ratio >= self.partial_threshold:
+                    return EROSResult(
+                        status='PARTIAL_HIT', 
+                        plan_steps=data.get('plan_steps', []), 
+                        match_ratio=ratio, 
+                        fingerprint=fp,
+                        original_query=cand.message
+                    )
+            except Exception: continue
+
+        return EROSResult(status='MISS', fingerprint=fp)
+
+    def verify_plan(self, plan_steps: List[Dict], current_tools: List[Any]) -> Tuple[bool, str]:
+        """
+        Layer 3: Integrity Check.
+        Ensures tools haven't been deleted/renamed since the plan was cached.
+        """
+        if not plan_steps: return False, "EMPTY_PLAN"
+        
+        # Extract tool names from Dify's ToolEntity structure
+        available = {t.identity.name for t in current_tools} if current_tools else set()
+        
+        for step in plan_steps:
+            name = step.get('tool_name') or step.get('tool')
+            if name not in available:
+                return False, f"STALE_TOOL:{name}"
+        
+        return True, "VALID"
+
+    def store(self, query: str, tools: List[Any], plan_steps: List[Dict], tenant_id: str, instruction: str = ""):
+        """
+        Dify Standard: Persistence using the Thought model.
+        """
+        is_valid, _ = self.verify_plan(plan_steps, tools)
+        if not is_valid: return
+
+        fp = self._generate_fp(query, instruction, tenant_id)
+        
+        try:
+            payload = {
+                'plan_steps': plan_steps,
+                'tenant_id': tenant_id,
+                'created_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Map directly to Dify's SQLAlchemy model fields
+            thought = MessageAgentThought(
+                message=query,
+                observation=f"EROS_V1_{fp}",
+                tool_input=json.dumps(payload),
+                message_id=str(uuid4()),
+                created_at=datetime.now(timezone.utc)
+            )
+            
+            db.session.add(thought)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"EROS Store Error: {e}")
+
+# Singleton pattern used across Dify core
+_instance = EROS3LayerHydrator()
+def get_hydrator(): return _instance
+        
+
+
