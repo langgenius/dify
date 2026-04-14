@@ -326,7 +326,7 @@ class TestWeaviateVector(unittest.TestCase):
 
         add_calls = mock_col.config.add_property.call_args_list
         added_names = [call.args[0].name for call in add_calls]
-        assert added_names == ["document_id", "doc_id", "doc_type", "chunk_index"]
+        assert added_names == ["document_id", "doc_id", "doc_type", "chunk_index", "is_summary", "original_chunk_id"]
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_ensure_properties_skips_existing_doc_type(self, mock_weaviate_module):
@@ -346,6 +346,8 @@ class TestWeaviateVector(unittest.TestCase):
             SimpleNamespace(name="doc_id"),
             SimpleNamespace(name="doc_type"),
             SimpleNamespace(name="chunk_index"),
+            SimpleNamespace(name="is_summary"),
+            SimpleNamespace(name="original_chunk_id"),
         ]
         mock_cfg = MagicMock()
         mock_cfg.properties = existing_props
@@ -383,7 +385,7 @@ class TestWeaviateVector(unittest.TestCase):
         with patch.object(weaviate_vector_module.logger, "warning") as mock_warning:
             wv._ensure_properties()
 
-        assert mock_warning.call_count == 4
+        assert mock_warning.call_count == 6
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_vector_returns_doc_type_in_metadata(self, mock_weaviate_module):
