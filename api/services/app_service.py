@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict[str, Any]) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
@@ -78,7 +78,7 @@ class AppService:
 
         return app_models
 
-    def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
+    def create_app(self, tenant_id: str, args: dict[str, Any], account: Account) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -389,7 +389,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta: dict = {"tool_icons": {}}
+        meta: dict[str, Any] = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow

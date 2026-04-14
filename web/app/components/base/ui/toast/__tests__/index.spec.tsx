@@ -33,7 +33,7 @@ describe('base/ui/toast', () => {
     expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     const viewport = screen.getByRole('region', { name: 'Notifications' })
     expect(viewport).toHaveAttribute('aria-live', 'polite')
-    expect(viewport).toHaveClass('z-1101')
+    expect(viewport).toHaveClass('z-1003')
     expect(viewport.firstElementChild).toHaveClass('top-4')
     expect(screen.getByRole('dialog')).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
