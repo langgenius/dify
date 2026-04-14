@@ -123,7 +123,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
             <ApiConnectionMod className="h-4 w-4" />
             <div className="system-sm-medium">{api.name}</div>
           </div>
-          <div className="system-xs-regular self-stretch text-text-tertiary">{api.settings.endpoint}</div>
+          <div className="self-stretch system-xs-regular text-text-tertiary">{api.settings.endpoint}</div>
         </div>
         <div className="flex items-start gap-1">
           <ActionButton onClick={handleEditClick}>
@@ -139,28 +139,26 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
           </ActionButton>
         </div>
       </div>
-      {showConfirm && (
-        <AlertDialog open={showConfirm} onOpenChange={open => !open && setShowConfirm(false)}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {`${t('deleteExternalAPIConfirmWarningContent.title.front', { ns: 'dataset' })} ${api.name}${t('deleteExternalAPIConfirmWarningContent.title.end', { ns: 'dataset' })}`}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {usageCount > 0
-                  ? `${t('deleteExternalAPIConfirmWarningContent.content.front', { ns: 'dataset' })} ${usageCount} ${t('deleteExternalAPIConfirmWarningContent.content.end', { ns: 'dataset' })}`
-                  : t('deleteExternalAPIConfirmWarningContent.noConnectionContent', { ns: 'dataset' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={handleConfirmDelete}>
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={showConfirm} onOpenChange={open => !open && setShowConfirm(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {`${t('deleteExternalAPIConfirmWarningContent.title.front', { ns: 'dataset' })} ${api.name}${t('deleteExternalAPIConfirmWarningContent.title.end', { ns: 'dataset' })}`}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {usageCount > 0
+                ? `${t('deleteExternalAPIConfirmWarningContent.content.front', { ns: 'dataset' })} ${usageCount} ${t('deleteExternalAPIConfirmWarningContent.content.end', { ns: 'dataset' })}`
+                : t('deleteExternalAPIConfirmWarningContent.noConnectionContent', { ns: 'dataset' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

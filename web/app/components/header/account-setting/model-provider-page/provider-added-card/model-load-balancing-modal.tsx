@@ -195,7 +195,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
             {Boolean(model) && (
               <div className="flex h-5 items-center">
                 <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model!.model} />
-                <ModelName className="grow text-text-secondary system-md-regular" modelItem={model!} showModelType showMode showContextSize />
+                <ModelName className="grow system-md-regular text-text-secondary" modelItem={model!} showModelType showMode showContextSize />
               </div>
             )}
           </div>
@@ -207,7 +207,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
               <>
                 <div className="py-2">
                   <div className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')} onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}>
-                    <div className="flex select-none items-center gap-2 px-[15px] py-3">
+                    <div className="flex items-center gap-2 px-[15px] py-3 select-none">
                       <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
                         {Boolean(model) && (<ModelIcon className="shrink-0" provider={provider} modelName={model!.model} />)}
                       </div>
@@ -273,23 +273,21 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
               </>
             )}
       </Modal>
-      {deleteModel && (
-        <AlertDialog open onOpenChange={open => !open && closeConfirmDelete()}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('modelProvider.confirmDelete', { ns: 'common' })}
-              </AlertDialogTitle>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={!!deleteModel} onOpenChange={open => !open && closeConfirmDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('modelProvider.confirmDelete', { ns: 'common' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -144,7 +144,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       data-testid="segment-card"
       className={cn(
         'chunk-card group/card w-full rounded-xl px-3',
-        isFullDocMode ? '' : 'pb-2 pt-2.5 hover:bg-dataset-chunk-detail-card-hover-bg',
+        isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg',
         focused.segmentContent ? 'bg-dataset-chunk-detail-card-hover-bg' : '',
         className,
       )}
@@ -177,7 +177,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <div className="flex items-center">
                   <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
                   {embeddingAvailable && (
-                    <div className="absolute -right-2.5 -top-2 z-20 hidden items-center gap-x-0.5 radius-lg border-[0.5px]
+                    <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 radius-lg border-[0.5px]
                       border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex"
                     >
                       {!archived && (
@@ -261,7 +261,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           ? (
               <button
                 type="button"
-                className="system-xs-semibold-uppercase mb-2 mt-0.5 text-text-accent"
+                className="mt-0.5 mb-2 system-xs-semibold-uppercase text-text-accent"
                 onClick={() => onClick?.()}
               >
                 {t('operation.viewMore', { ns: 'common' })}
@@ -283,24 +283,21 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           />
         )
       }
-      {showModal
-        && (
-          <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('segment.delete', { ns: 'datasetDocuments' })}
-                </AlertDialogTitle>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton onClick={async () => { await onDelete?.(id) }}>
-                  {t('operation.sure', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+      <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('segment.delete', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={async () => { await onDelete?.(id) }}>
+              {t('operation.sure', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

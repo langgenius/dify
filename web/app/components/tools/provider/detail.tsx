@@ -236,7 +236,7 @@ const ProviderDetail = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <div className="flex h-full flex-col p-4">
         <div className="shrink-0">
@@ -246,7 +246,7 @@ const ProviderDetail = ({
               <div className="flex h-5 items-center">
                 <Title title={collection.label[language]} />
               </div>
-              <div className="mb-1 mt-0.5 flex h-4 items-center justify-between">
+              <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                 <OrgInfo
                   packageNameClassName="w-auto"
                   orgName={collection.author}
@@ -301,7 +301,7 @@ const ProviderDetail = ({
             <>
               <div className="shrink-0">
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
-                  <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+                  <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
                     {t('detailPanel.actionNum', { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                     {needAuth && (
                       <Button
@@ -409,26 +409,24 @@ const ProviderDetail = ({
             onSave={updateWorkflowToolProvider}
           />
         )}
-        {showConfirmDelete && (
-          <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
-                </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton onClick={handleConfirmDelete}>
-                  {t('operation.confirm', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+        <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Drawer>
   )

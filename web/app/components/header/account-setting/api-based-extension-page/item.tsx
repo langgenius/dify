@@ -64,26 +64,21 @@ const Item: FC<ItemProps> = ({
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>
-      {
-        showDeleteConfirm
-        && (
-          <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {`${t('operation.delete', { ns: 'common' })} “${data.name}”?`}
-                </AlertDialogTitle>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton onClick={handleDeleteApiBasedExtension}>
-                  {t('operation.delete', { ns: 'common' }) || ''}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )
-      }
+      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {`${t('operation.delete', { ns: 'common' })} \u201C${data.name}\u201D?`}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleDeleteApiBasedExtension}>
+              {t('operation.delete', { ns: 'common' }) || ''}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

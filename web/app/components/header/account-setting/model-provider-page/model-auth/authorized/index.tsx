@@ -179,7 +179,7 @@ const Authorized = ({
           >
             {
               popupTitle && (
-                <div className="px-3 pb-0.5 pt-[10px] text-text-tertiary system-xs-medium">
+                <div className="px-3 pt-[10px] pb-0.5 system-xs-medium text-text-tertiary">
                   {popupTitle}
                 </div>
               )
@@ -225,7 +225,7 @@ const Authorized = ({
                         }
                       : undefined,
                   )}
-                  className="flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only system-xs-medium"
+                  className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <RiAddLine className="mr-1 h-4 w-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
@@ -247,25 +247,21 @@ const Authorized = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      {
-        deleteCredentialId && (
-          <AlertDialog open onOpenChange={open => !open && closeConfirmDelete()}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('modelProvider.confirmDelete', { ns: 'common' })}
-                </AlertDialogTitle>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
-                  {t('operation.confirm', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )
-      }
+      <AlertDialog open={!!deleteCredentialId} onOpenChange={open => !open && closeConfirmDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('modelProvider.confirmDelete', { ns: 'common' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

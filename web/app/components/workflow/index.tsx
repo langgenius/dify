@@ -402,7 +402,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <SyncingDataModal />
       <CandidateNode />
       <div
-        className="pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+        className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
         style={{ height: controlHeight }}
       >
         <Control />
@@ -413,30 +413,26 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <EdgeContextmenu />
       <SelectionContextmenu />
       <HelpLine />
-      {
-        !!showConfirm && (
-          <AlertDialog open onOpenChange={open => !open && setShowConfirm(undefined)}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {showConfirm.title}
-                </AlertDialogTitle>
-                {showConfirm.desc && (
-                  <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                    {showConfirm.desc}
-                  </AlertDialogDescription>
-                )}
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton onClick={showConfirm.onConfirm}>
-                  {t('operation.confirm', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )
-      }
+      <AlertDialog open={!!showConfirm} onOpenChange={open => !open && setShowConfirm(undefined)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {showConfirm?.title}
+            </AlertDialogTitle>
+            {showConfirm?.desc && (
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {showConfirm.desc}
+              </AlertDialogDescription>
+            )}
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
