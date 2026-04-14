@@ -2,13 +2,10 @@
 
 //   z-index strategy (relies on root `isolation: isolate` in layout.tsx):
 //   All base/ui/* overlay primitives — z-1002
+//   Toast stays one layer above overlays at z-1003.
 //   Overlays share the same z-index; DOM order handles stacking when multiple are open.
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
-//   During migration, z-1002 is chosen to sit above all legacy overlays
-//   (Modal z-[60], PortalToFollowElem callers up to z-[1001]).
-//   Once all legacy overlays are migrated, this can be reduced back to z-50.
-//   Toast uses z-1101 during migration so it stays above legacy highPriority modals.
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import * as React from 'react'
@@ -60,7 +57,7 @@ export function DialogContent({
       <BaseDialog.Backdrop
         {...backdropProps}
         className={cn(
-          'inset-0 fixed z-1002 bg-background-overlay',
+          'fixed inset-0 z-1002 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
           overlayClassName,
           backdropProps?.className,
