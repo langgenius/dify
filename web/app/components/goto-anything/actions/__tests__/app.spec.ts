@@ -41,12 +41,18 @@ describe('appAction', () => {
       url: 'apps',
       params: { page: 1, name: 'test' },
     })
-    expect(results).toHaveLength(1)
+    expect(results).toHaveLength(5)
     expect(results[0]).toMatchObject({
       id: 'app-1',
       title: 'My App',
       type: 'app',
     })
+    expect(results.slice(1).map(r => r.id)).toEqual([
+      'app-1:configuration',
+      'app-1:overview',
+      'app-1:logs',
+      'app-1:develop',
+    ])
   })
 
   it('returns empty array when response has no data', async () => {
