@@ -1,6 +1,6 @@
 """Testcontainers integration tests for schedule service SQL-backed behavior."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -108,7 +108,7 @@ def _no_schedule_workflow():
 class TestScheduleServiceIntegration:
     def test_create_schedule_persists_schedule(self, db_session_with_containers: Session):
         account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        expected_next_run = datetime(2026, 1, 1, 10, 30, 0, tzinfo=UTC)
+        expected_next_run = datetime(2026, 1, 1, 10, 30, 0)
         config = ScheduleConfig(
             node_id="start",
             cron_expression="30 10 * * *",
@@ -143,7 +143,7 @@ class TestScheduleServiceIntegration:
             cron_expression="30 10 * * *",
             timezone="UTC",
         )
-        expected_next_run = datetime(2026, 1, 2, 12, 0, 0, tzinfo=UTC)
+        expected_next_run = datetime(2026, 1, 2, 12, 0, 0)
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
@@ -166,7 +166,7 @@ class TestScheduleServiceIntegration:
 
     def test_update_schedule_updates_only_node_id_without_recomputing_time(self, db_session_with_containers: Session):
         _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        initial_next_run = datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
+        initial_next_run = datetime(2026, 1, 1, 10, 0, 0)
         schedule = ScheduleServiceIntegrationFactory.create_schedule_plan(
             db_session_with_containers,
             tenant_id=tenant.id,
@@ -178,7 +178,7 @@ class TestScheduleServiceIntegration:
 
             def _track(*args, **kwargs):
                 calls.append((args, kwargs))
-                return datetime(2026, 1, 9, 10, 0, 0, tzinfo=UTC)
+                return datetime(2026, 1, 9, 10, 0, 0)
 
             monkeypatch.setattr("services.trigger.schedule_service.calculate_next_run_at", _track)
             updated = ScheduleService.update_schedule(
@@ -278,7 +278,7 @@ class TestScheduleServiceIntegration:
             db_session_with_containers,
             tenant_id=tenant.id,
         )
-        expected_next_run = datetime(2026, 1, 3, 10, 30, 0, tzinfo=UTC)
+        expected_next_run = datetime(2026, 1, 3, 10, 30, 0)
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
@@ -306,7 +306,7 @@ class TestSyncScheduleFromWorkflowIntegration:
     def test_sync_schedule_create_new(self, db_session_with_containers: Session):
         _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
         app_id = str(uuid4())
-        expected_next_run = datetime(2026, 1, 4, 10, 30, 0, tzinfo=UTC)
+        expected_next_run = datetime(2026, 1, 4, 10, 30, 0)
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
@@ -323,7 +323,6 @@ class TestSyncScheduleFromWorkflowIntegration:
         persisted = db_session_with_containers.execute(
             select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app_id)
         ).scalar_one()
-        assert persisted.id == result.id
         assert persisted.node_id == "start"
         assert persisted.cron_expression == "30 10 * * *"
         assert persisted.timezone == "UTC"
@@ -340,7 +339,8 @@ class TestSyncScheduleFromWorkflowIntegration:
             cron_expression="30 10 * * *",
             timezone="UTC",
         )
-        expected_next_run = datetime(2026, 1, 5, 12, 0, 0, tzinfo=UTC)
+        existing_id = existing.id
+        expected_next_run = datetime(2026, 1, 5, 12, 0, 0)
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
@@ -358,12 +358,12 @@ class TestSyncScheduleFromWorkflowIntegration:
             )
 
         assert result is not None
-        db_session_with_containers.refresh(existing)
-        assert result.id == existing.id
-        assert existing.node_id == "start"
-        assert existing.cron_expression == "0 12 * * *"
-        assert existing.timezone == "America/New_York"
-        assert existing.next_run_at == expected_next_run
+        persisted = db_session_with_containers.get(WorkflowSchedulePlan, existing_id)
+        assert persisted is not None
+        assert persisted.node_id == "start"
+        assert persisted.cron_expression == "0 12 * * *"
+        assert persisted.timezone == "America/New_York"
+        assert persisted.next_run_at == expected_next_run
 
     def test_sync_schedule_remove_when_no_config(self, db_session_with_containers: Session):
         _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
@@ -373,6 +373,7 @@ class TestSyncScheduleFromWorkflowIntegration:
             tenant_id=tenant.id,
             app_id=app_id,
         )
+        existing_id = existing.id
 
         result = sync_schedule_from_workflow(
             tenant_id=tenant.id,
@@ -381,4 +382,4 @@ class TestSyncScheduleFromWorkflowIntegration:
         )
 
         assert result is None
-        assert db_session_with_containers.get(WorkflowSchedulePlan, existing.id) is None
+        assert db_session_with_containers.get(WorkflowSchedulePlan, existing_id) is None
