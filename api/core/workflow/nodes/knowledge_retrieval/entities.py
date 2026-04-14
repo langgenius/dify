@@ -5,27 +5,9 @@ from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.llm.entities import ModelConfig, VisionConfig
 from pydantic import BaseModel, Field
 
-from core.rag.entities import Condition, KeywordSetting, MetadataFilteringCondition, VectorSetting
+from core.rag.entities import Condition, MetadataFilteringCondition, RerankingModelConfig, WeightedScoreConfig
 
 __all__ = ["Condition"]
-
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    provider: str
-    model: str
-
-
-class WeightedScoreConfig(BaseModel):
-    """
-    Weighted score Config.
-    """
-
-    vector_setting: VectorSetting
-    keyword_setting: KeywordSetting
 
 
 class MultipleRetrievalConfig(BaseModel):

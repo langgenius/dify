@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 import pytz
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -175,7 +174,7 @@ reg(CheckEmailUniquePayload)
 register_schema_models(console_ns, AccountResponse)
 
 
-def _serialize_account(account) -> dict:
+def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 
@@ -562,8 +561,7 @@ class ChangeEmailSendEmailApi(Resource):
 
             user_email = current_user.email
         else:
-            with sessionmaker(db.engine).begin() as session:
-                account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
+            account = AccountService.get_account_by_email_with_case_fallback(args.email)
             if account is None:
                 raise AccountNotFound()
             email_for_sending = account.email

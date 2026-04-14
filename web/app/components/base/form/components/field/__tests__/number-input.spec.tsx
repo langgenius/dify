@@ -27,7 +27,7 @@ describe('NumberInputField', () => {
 
   it('should update value when users click increment', () => {
     render(<NumberInputField label="Count" />)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.increment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Increment value' }))
     expect(mockField.handleChange).toHaveBeenCalledWith(3)
   })
 
