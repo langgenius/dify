@@ -122,7 +122,7 @@ export const CheckModal = () => {
         </div>
         <AlertDialogActions>
           <AlertDialogConfirmButton
-            destructive={confirmInfo.type !== 'info'}
+            tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}
             onClick={handleCancelShowPayStatusModal}
           >
             {confirmInfo.type === 'info'

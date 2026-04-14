@@ -11,6 +11,15 @@ import ActionButton from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'

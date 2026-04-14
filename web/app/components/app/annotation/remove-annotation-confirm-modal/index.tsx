@@ -37,7 +37,7 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({
           <AlertDialogCancelButton>
             {t('operation.cancel', { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton destructive={true} onClick={onRemove}>
+          <AlertDialogConfirmButton tone="destructive" onClick={onRemove}>
             {t('operation.confirm', { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

@@ -100,77 +100,73 @@ const AppInfoModals = ({
           onHide={closeModal}
         />
       )}
-      {activeModal === 'delete' && (
-        <AlertDialog open onOpenChange={open => !open && handleDeleteDialogClose()}>
-          <AlertDialogContent>
-            <form
-              className="flex flex-col"
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (isDeleteConfirmDisabled)
-                  return
-                onConfirmDelete()
-              }}
-            >
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('deleteAppConfirmTitle', { ns: 'app' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('deleteAppConfirmContent', { ns: 'app' })}
-                </AlertDialogDescription>
-                <div className="mt-2">
-                  <label className="mb-1 block system-sm-regular text-text-secondary">
-                    {t('deleteAppConfirmInputLabel', { ns: 'app', appName: appDetail.name })}
-                  </label>
-                  <Input
-                    type="text"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
-                    value={confirmDeleteInput}
-                    onChange={e => setConfirmDeleteInput(e.target.value)}
-                  />
-                </div>
+      <AlertDialog open={activeModal === 'delete'} onOpenChange={open => !open && handleDeleteDialogClose()}>
+        <AlertDialogContent>
+          <form
+            className="flex flex-col"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (isDeleteConfirmDisabled)
+                return
+              onConfirmDelete()
+            }}
+          >
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('deleteAppConfirmTitle', { ns: 'app' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('deleteAppConfirmContent', { ns: 'app' })}
+              </AlertDialogDescription>
+              <div className="mt-2">
+                <label className="mb-1 block system-sm-regular text-text-secondary">
+                  {t('deleteAppConfirmInputLabel', { ns: 'app', appName: appDetail.name })}
+                </label>
+                <Input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
+                  value={confirmDeleteInput}
+                  onChange={e => setConfirmDeleteInput(e.target.value)}
+                />
               </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton type="button">
-                  {t('operation.cancel', { ns: 'common' })}
-                </AlertDialogCancelButton>
-                <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
-                  {t('operation.confirm', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </form>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton type="button">
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
       {activeModal === 'importDSL' && (
         <UpdateDSLModal
           onCancel={closeModal}
           onBackup={exportCheck}
         />
       )}
-      {activeModal === 'exportWarning' && (
-        <AlertDialog open onOpenChange={open => !open && closeModal()}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('sidebar.exportWarning', { ns: 'workflow' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('sidebar.exportWarningDesc', { ns: 'workflow' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton destructive={false} onClick={handleConfirmExport}>
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={activeModal === 'exportWarning'} onOpenChange={open => !open && closeModal()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('sidebar.exportWarning', { ns: 'workflow' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('sidebar.exportWarningDesc', { ns: 'workflow' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton tone="default" onClick={handleConfirmExport}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {secretEnvList.length > 0 && (
         <DSLExportConfirmModal
           envList={secretEnvList}

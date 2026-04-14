@@ -128,7 +128,7 @@ const EditAnnotationModal: FC<Props> = ({
                       {t('operation.cancel', { ns: 'common' })}
                     </AlertDialogCancelButton>
                     <AlertDialogConfirmButton
-                      destructive={true}
+                      tone="destructive"
                       onClick={() => {
                         onRemove()
                         setShowModal(false)

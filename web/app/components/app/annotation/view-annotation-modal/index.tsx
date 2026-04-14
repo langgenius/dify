@@ -234,7 +234,7 @@ const ViewAnnotationModal: FC<Props> = ({
                     {t('operation.cancel', { ns: 'common' })}
                   </AlertDialogCancelButton>
                   <AlertDialogConfirmButton
-                    destructive={true}
+                    tone="destructive"
                     onClick={async () => {
                       await onRemove()
                       setShowModal(false)
