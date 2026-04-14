@@ -29,6 +29,7 @@ const ChatVariablePanel = () => {
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
+  const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
   const appId = useStore(s => s.appId) as string
   const {
     invalidateConversationVarValues,
@@ -156,6 +157,7 @@ const ChatVariablePanel = () => {
         return node
       })
       setNodes(newNodes)
+      setControlPromptEditorRerenderKey(Date.now())
     }
 
     // Use new dedicated conversation variables API
@@ -179,7 +181,7 @@ const ChatVariablePanel = () => {
       // Revert local state on error
       updateChatVarList(varList)
     }
-  }, [currentVar, getEffectedNodes, collaborativeWorkflow, updateChatVarList, varList, appId, invalidateConversationVarValues])
+  }, [currentVar, getEffectedNodes, collaborativeWorkflow, updateChatVarList, varList, appId, invalidateConversationVarValues, setControlPromptEditorRerenderKey])
 
   return (
     <div
