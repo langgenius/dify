@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -20,7 +21,6 @@ from models.dataset import (
 from models.enums import DataSourceType
 from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
-from werkzeug.exceptions import NotFound
 
 
 class DatasetPermissionIntegrationFactory:
@@ -224,7 +224,9 @@ class TestDatasetServicePermissionsAndLifecycle:
 
     def test_check_dataset_permission_rejects_cross_tenant_access(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        outsider, _other_tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
+        outsider, _other_tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(
+            db_session_with_containers
+        )
         dataset = DatasetPermissionIntegrationFactory.create_dataset(
             db_session_with_containers,
             tenant_id=tenant.id,

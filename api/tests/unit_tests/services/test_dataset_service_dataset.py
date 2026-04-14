@@ -1,8 +1,6 @@
 """Unit tests for DatasetService and dataset-related collaborators."""
 
 from .dataset_service_test_helpers import (
-    Dataset,
-    DatasetCollectionBindingService,
     DatasetNameDuplicateError,
     DatasetPermissionEnum,
     DatasetPermissionService,
@@ -10,11 +8,9 @@ from .dataset_service_test_helpers import (
     DatasetServiceUnitDataFactory,
     LLMBadRequestError,
     MagicMock,
-    Mock,
     ModelFeature,
     ModelType,
     NoPermissionError,
-    NotFound,
     PipelineIconInfo,
     ProviderTokenNotInitError,
     RagPipelineDatasetCreateEntity,
