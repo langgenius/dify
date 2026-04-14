@@ -42,6 +42,7 @@ def check_workspace_member_invite_permission(workspace_id: str) -> None:
             raise
         except Exception:
             logger.exception("Failed to check workspace invite permission for %s", workspace_id)
+            raise Forbidden("Unable to verify workspace invitation permission")
 
 
 def check_workspace_owner_transfer_permission(workspace_id: str) -> None:
@@ -72,3 +73,4 @@ def check_workspace_owner_transfer_permission(workspace_id: str) -> None:
             raise
         except Exception:
             logger.exception("Failed to check workspace transfer permission for %s", workspace_id)
+            raise Forbidden("Unable to verify workspace ownership transfer permission")
