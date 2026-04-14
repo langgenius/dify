@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import Flask
 from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel
@@ -28,7 +30,7 @@ class FreeHostingQuota(HostingQuota):
 
 class HostingProvider(BaseModel):
     enabled: bool = False
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
     quota_unit: QuotaUnit | None = None
     quotas: list[HostingQuota] = []
 

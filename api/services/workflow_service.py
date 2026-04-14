@@ -241,8 +241,8 @@ class WorkflowService:
         self,
         *,
         app_model: App,
-        graph: dict,
-        features: dict,
+        graph: dict[str, Any],
+        features: dict[str, Any],
         unique_hash: str | None,
         account: Account,
         environment_variables: Sequence[VariableBase],
@@ -576,7 +576,7 @@ class WorkflowService:
         except Exception as e:
             raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
 
-    def _validate_load_balancing_credentials(self, workflow: Workflow, node_data: dict, node_id: str) -> None:
+    def _validate_load_balancing_credentials(self, workflow: Workflow, node_data: dict[str, Any], node_id: str) -> None:
         """
         Validate load balancing credentials for a workflow node.
 
@@ -1214,7 +1214,7 @@ class WorkflowService:
         return variable_pool
 
     def run_free_workflow_node(
-        self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
+        self, node_data: dict[str, Any], tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
     ) -> WorkflowNodeExecution:
         """
         Run free workflow node
@@ -1361,7 +1361,7 @@ class WorkflowService:
             node_execution.status = WorkflowNodeExecutionStatus.FAILED
             node_execution.error = error
 
-    def convert_to_workflow(self, app_model: App, account: Account, args: dict) -> App:
+    def convert_to_workflow(self, app_model: App, account: Account, args: dict[str, Any]) -> App:
         """
         Basic mode of chatbot app(expert mode) to workflow
         Completion App to Workflow App
@@ -1421,7 +1421,7 @@ class WorkflowService:
             if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 
-    def validate_features_structure(self, app_model: App, features: dict):
+    def validate_features_structure(self, app_model: App, features: dict[str, Any]):
         match app_model.mode:
             case AppMode.ADVANCED_CHAT:
                 return AdvancedChatAppConfigManager.config_validate(
@@ -1434,7 +1434,7 @@ class WorkflowService:
             case _:
                 raise ValueError(f"Invalid app mode: {app_model.mode}")
 
-    def _validate_human_input_node_data(self, node_data: dict) -> None:
+    def _validate_human_input_node_data(self, node_data: dict[str, Any]) -> None:
         """
         Validate HumanInput node data format.
 
@@ -1452,7 +1452,7 @@ class WorkflowService:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
     def update_workflow(
-        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
+        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict[str, Any]
     ) -> Workflow | None:
         """
         Update workflow attributes
