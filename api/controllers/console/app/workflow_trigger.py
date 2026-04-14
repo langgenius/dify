@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
@@ -44,6 +44,13 @@ class WorkflowTriggerResponse(ResponseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
+    @field_validator("id", "trigger_type", "title", "node_id", "provider_name", "icon", "status", mode="before")
+    @classmethod
+    def _normalize_string_fields(cls, value: object) -> str:
+        if isinstance(value, str):
+            return value
+        return str(value)
+
 
 class WorkflowTriggerListResponse(ResponseModel):
     data: list[WorkflowTriggerResponse]
@@ -56,6 +63,13 @@ class WebhookTriggerResponse(ResponseModel):
     webhook_debug_url: str
     node_id: str
     created_at: datetime | None = None
+
+    @field_validator("id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", mode="before")
+    @classmethod
+    def _normalize_string_fields(cls, value: object) -> str:
+        if isinstance(value, str):
+            return value
+        return str(value)
 
 
 register_schema_models(
