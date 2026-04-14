@@ -1,14 +1,13 @@
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.account import TenantPluginPermission
 
 
 class PluginPermissionService:
     @staticmethod
     def get_permission(tenant_id: str) -> TenantPluginPermission | None:
-        with sessionmaker(bind=db.engine).begin() as session:
+        with session_factory.create_session() as session:
             return session.scalar(
                 select(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).limit(1)
             )
@@ -19,7 +18,7 @@ class PluginPermissionService:
         install_permission: TenantPluginPermission.InstallPermission,
         debug_permission: TenantPluginPermission.DebugPermission,
     ):
-        with sessionmaker(bind=db.engine).begin() as session:
+        with session_factory.create_session() as session, session.begin():
             permission = session.scalar(
                 select(TenantPluginPermission).where(TenantPluginPermission.tenant_id == tenant_id).limit(1)
             )

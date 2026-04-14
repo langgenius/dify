@@ -100,8 +100,8 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, disabled, className, variant, loading }: {
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children, onClick, disabled, className, variant, loading }: {
     children: React.ReactNode
     onClick?: () => void
     disabled?: boolean
@@ -324,11 +324,11 @@ describe('UpdateDSLModal', () => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
-    it('should render import button with warning variant', () => {
+    it('should render import button with primary destructive variant', () => {
       render(<UpdateDSLModal {...defaultProps} />)
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).toHaveAttribute('data-variant', 'warning')
+      expect(importButton).toHaveAttribute('data-variant', 'primary')
     })
 
     it('should render backup button with secondary variant', () => {

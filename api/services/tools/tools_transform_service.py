@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 from yarl import URL
@@ -69,7 +69,9 @@ class ToolTransformService:
                 return ""
 
     @staticmethod
-    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity, PluginDatasourceProviderEntity]):
+    def repack_provider(
+        tenant_id: str, provider: dict[str, Any] | ToolProviderApiEntity | PluginDatasourceProviderEntity
+    ):
         """
         repack provider
 
@@ -426,7 +428,7 @@ class ToolTransformService:
 
     @staticmethod
     def convert_builtin_provider_to_credential_entity(
-        provider: BuiltinToolProvider, credentials: dict
+        provider: BuiltinToolProvider, credentials: dict[str, Any]
     ) -> ToolProviderCredentialApiEntity:
         return ToolProviderCredentialApiEntity(
             id=provider.id,

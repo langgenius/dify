@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "例外分岐",
   "nodes.common.errorHandle.none.desc": "例外発生時に処理を停止",
   "nodes.common.errorHandle.none.title": "処理なし",
-  "nodes.common.errorHandle.partialSucceeded.tip": "{{num}}個のノードで異常発生。ログはトレース画面で確認可能",
+  "nodes.common.errorHandle.partialSucceeded.tip": "{{num}}個のノードで異常発生。ログは<tracingLink>トレース</tracingLink>画面で確認可能",
   "nodes.common.errorHandle.tip": "ノード例外発生時の処理ポリシーを設定",
   "nodes.common.errorHandle.title": "例外処理",
   "nodes.common.inputVars": "入力変数",
