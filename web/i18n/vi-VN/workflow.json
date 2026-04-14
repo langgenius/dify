@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Chi nhánh thất bại",
   "nodes.common.errorHandle.none.desc": "Nút sẽ ngừng chạy nếu xảy ra ngoại lệ và không được xử lý",
   "nodes.common.errorHandle.none.title": "Không ai",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Có {{num}} node trong quá trình chạy bất thường, vui lòng truy tìm để kiểm tra nhật ký.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Có {{num}} node trong quá trình chạy bất thường, vui lòng vào <tracingLink>truy tìm</tracingLink> để kiểm tra nhật ký.",
   "nodes.common.errorHandle.tip": "Chiến lược xử lý ngoại lệ, được kích hoạt khi một nút gặp phải ngoại lệ.",
   "nodes.common.errorHandle.title": "Xử lý lỗi",
   "nodes.common.inputVars": "Biến đầu vào",

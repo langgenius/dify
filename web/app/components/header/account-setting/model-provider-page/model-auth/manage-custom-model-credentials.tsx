@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   Button,
-} from '@/app/components/base/button'
+} from '@/app/components/base/ui/button'
 import {
   ConfigurationMethodEnum,
   ModelModalModeEnum,

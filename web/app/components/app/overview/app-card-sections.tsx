@@ -6,7 +6,6 @@ import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
@@ -19,6 +18,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -180,28 +180,26 @@ export const AppCardUrlSection = ({
       <CopyFeedback content={accessibleUrl} className="size-6!" />
       {isApp && <ShareQRCode content={accessibleUrl} />}
       {isApp && <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />}
-      {showConfirmDelete && (
-        <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && onHideRegenerateConfirm()}>
-          <AlertDialogContent>
-            <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
-              <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-                {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('overview.appInfo.regenerateNotice', { ns: 'appOverview' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton onClick={onHideRegenerateConfirm}>
-                {t('operation.cancel', { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={onRegenerate}>
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && onHideRegenerateConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
+            <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+              {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('overview.appInfo.regenerateNotice', { ns: 'appOverview' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton onClick={onHideRegenerateConfirm}>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onRegenerate}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {isApp && isCurrentWorkspaceManager && (
         <MaybeTooltip content={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
           <div

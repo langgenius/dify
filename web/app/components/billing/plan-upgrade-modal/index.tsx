@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useModalContext } from '@/context/modal-context'
 import { SquareChecklist } from '../../base/icons/src/vender/other'
@@ -69,7 +69,7 @@ const PlanUpgradeModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className="mb-8 mt-10 flex justify-end space-x-2 px-8">
+      <div className="mt-10 mb-8 flex justify-end space-x-2 px-8">
         <Button
           onClick={onClose}
         >
