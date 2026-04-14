@@ -599,7 +599,7 @@ def test_delete_documents_ignores_empty_input(db_session_with_containers):
 
 def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_with_containers):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
-    dataset.doc_form = IndexStructureType.PARAGRAPH_INDEX
+    dataset.chunk_structure = IndexStructureType.PARAGRAPH_INDEX
     db_session_with_containers.commit()
     upload_file_a = DocumentServiceIntegrationFactory.create_upload_file(
         db_session_with_containers,
