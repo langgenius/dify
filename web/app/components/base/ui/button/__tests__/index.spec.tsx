@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import Button from '../index'
+import { Button } from '../index'
 
 afterEach(cleanup)
 
@@ -41,7 +41,6 @@ describe('Button', () => {
 
     it.each([
       'primary',
-      'warning',
       'secondary',
       'secondary-accent',
       'ghost',
@@ -94,12 +93,6 @@ describe('Button', () => {
     it('does not set aria-busy when not loading', () => {
       render(<Button>Click me</Button>)
       expect(screen.getByRole('button')).not.toHaveAttribute('aria-busy')
-    })
-
-    it('applies custom spinnerClassName', () => {
-      const animClassName = 'anim-breath'
-      render(<Button loading spinnerClassName={animClassName}>Click me</Button>)
-      expect(screen.getByRole('button').querySelector('.animate-spin')?.className).toContain(animClassName)
     })
   })
 

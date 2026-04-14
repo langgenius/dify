@@ -10,10 +10,10 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   Button,
-} from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
+} from '@/app/components/base/ui/button'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useCredentialStatus } from './hooks'

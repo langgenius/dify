@@ -10,7 +10,6 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Drawer from '@/app/components/base/drawer'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -25,6 +24,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'

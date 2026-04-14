@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Gałąź Fail (Gałąź Niepowodzenia",
   "nodes.common.errorHandle.none.desc": "Węzeł przestanie działać, jeśli wystąpi wyjątek i nie zostanie obsłużony",
   "nodes.common.errorHandle.none.title": "Żaden",
-  "nodes.common.errorHandle.partialSucceeded.tip": "W procesie {{num}} węzły działają nieprawidłowo, przejdź do śledzenia, aby sprawdzić dzienniki.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "W procesie {{num}} węzły działają nieprawidłowo, przejdź do <tracingLink>śledzenia</tracingLink>, aby sprawdzić dzienniki.",
   "nodes.common.errorHandle.tip": "Strategia obsługi wyjątków, wyzwalana, gdy węzeł napotka wyjątek.",
   "nodes.common.errorHandle.title": "Obsługa błędów",
   "nodes.common.inputVars": "Zmienne wejściowe",

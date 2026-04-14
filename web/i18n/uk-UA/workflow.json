@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Гілка невдачі",
   "nodes.common.errorHandle.none.desc": "Вузол припинить роботу, якщо виникне виняток і не буде оброблений",
   "nodes.common.errorHandle.none.title": "Ніхто",
-  "nodes.common.errorHandle.partialSucceeded.tip": "У процесі є вузли {{num}}, які працюють ненормально, будь ласка, перейдіть до трасування, щоб перевірити логи.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "У процесі є вузли {{num}}, які працюють ненормально, будь ласка, перейдіть до <tracingLink>трасування</tracingLink>, щоб перевірити логи.",
   "nodes.common.errorHandle.tip": "Стратегія обробки винятків, що спрацьовує, коли вузол стикається з винятком.",
   "nodes.common.errorHandle.title": "Обробка помилок",
   "nodes.common.inputVars": "Вхідні змінні",

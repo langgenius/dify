@@ -19,11 +19,11 @@ import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 
 import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -62,7 +62,7 @@ const TryLabel: FC<{
 }> = ({ Icon, text, onClick }) => {
   return (
     <div
-      className="mr-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
+      className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
       <Icon className="h-4 w-4 text-text-tertiary"></Icon>
@@ -283,7 +283,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
+            <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
             <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('generate.description', { ns: 'appDebug' })}</div>
           </div>
           <div>
@@ -301,7 +301,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {isBasicMode && (
             <div className="mt-4">
               <div className="flex items-center">
-                <div className="mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary">{t('generate.tryIt', { ns: 'appDebug' })}</div>
+                <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">{t('generate.tryIt', { ns: 'appDebug' })}</div>
                 <div
                   className="h-px grow"
                   style={{
@@ -326,7 +326,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {/* inputs */}
           <div className="mt-4">
             <div>
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
               {isBasicMode
                 ? (
                     <InstructionEditorInBasic

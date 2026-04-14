@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 type InlineDeleteConfirmProps = {
@@ -36,7 +36,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       className={cn(
         'flex w-[120px] flex-col justify-center gap-1.5',
         'radius-lg border-[0.5px] border-components-panel-border-subtle',
-        'bg-components-panel-bg-blur px-2 pb-2 pt-1.5',
+        'bg-components-panel-bg-blur px-2 pt-1.5 pb-2',
         'backdrop-blur-[10px]',
         'shadow-lg',
         className,
