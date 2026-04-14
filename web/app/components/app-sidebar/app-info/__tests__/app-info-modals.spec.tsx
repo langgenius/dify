@@ -1,5 +1,5 @@
 import type { App, AppSSO } from '@/types/app'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
@@ -185,6 +185,33 @@ describe('AppInfoModals', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
+  })
+
+  it('should clear the delete confirmation input when delete modal is cancelled', async () => {
+    const user = userEvent.setup()
+    await act(async () => {
+      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
+    })
+
+    const input = await screen.findByRole('textbox')
+    await user.type(input, 'wrong-name')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
+    expect(input).toHaveValue('')
+  })
+
+  it('should not confirm delete when the form is submitted with unmatched input', async () => {
+    await act(async () => {
+      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
+    })
+
+    const form = document.querySelector('form')
+    expect(form).toBeTruthy()
+
+    fireEvent.submit(form!)
+
+    expect(defaultProps.onConfirmDelete).not.toHaveBeenCalled()
   })
 
   it('should call onConfirmDelete when confirm on delete modal', async () => {
