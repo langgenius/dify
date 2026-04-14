@@ -6,9 +6,9 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import BaseInput from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
@@ -29,7 +29,7 @@ type Props = {
 const Field = ({ title, isRequired, children }: { title: string, isRequired?: boolean, children: React.JSX.Element }) => {
   return (
     <div>
-      <div className="text-[13px] font-medium leading-8 text-text-secondary">
+      <div className="text-[13px] leading-8 font-medium text-text-secondary">
         {title}
         {isRequired && <span className="ml-0.5 text-text-destructive">*</span>}
       </div>
