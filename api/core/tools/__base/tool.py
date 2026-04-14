@@ -198,7 +198,7 @@ class Tool(ABC):
             message=ToolInvokeMessage.TextMessage(text=text),
         )
 
-    def create_blob_message(self, blob: bytes, meta: dict | None = None) -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict[str, Any] | None = None) -> ToolInvokeMessage:
         """
         create a blob message
 
@@ -212,7 +212,7 @@ class Tool(ABC):
             meta=meta,
         )
 
-    def create_json_message(self, object: dict, suppress_output: bool = False) -> ToolInvokeMessage:
+    def create_json_message(self, object: dict[str, Any], suppress_output: bool = False) -> ToolInvokeMessage:
         """
         create a json message
         """
