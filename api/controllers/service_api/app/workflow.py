@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Literal
 
@@ -175,10 +176,15 @@ register_schema_models(
 
 def _serialize_workflow_run(workflow_run: WorkflowRun) -> dict:
     status = _enum_value(workflow_run.status)
-    if status == WorkflowExecutionStatus.PAUSED.value:
+    raw_outputs = workflow_run.outputs_dict
+    if status == WorkflowExecutionStatus.PAUSED.value or raw_outputs is None:
         outputs: dict = {}
+    elif isinstance(raw_outputs, dict):
+        outputs = raw_outputs
+    elif isinstance(raw_outputs, Mapping):
+        outputs = dict(raw_outputs)
     else:
-        outputs = workflow_run.outputs_dict or {}
+        outputs = {}
     return WorkflowRunResponse.model_validate(
         {
             "id": workflow_run.id,
