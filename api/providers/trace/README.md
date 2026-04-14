@@ -64,7 +64,7 @@ If the `match` case is missing, the provider string will not resolve and tracing
 Each provider is a normal uv workspace member, for example:
 
 - `api/providers/trace/trace-<name>/pyproject.toml` — project name `dify-trace-<name>`, dependencies on vendor SDKs
-- `api/providers/trace/trace-<name>/src/dify_trace_<name>/` — `config.py`, `<name>_trace.py`, optional `entities/`
+- `api/providers/trace/trace-<name>/src/dify_trace_<name>/` — `config.py`, `<name>_trace.py`, optional `entities/`, and an empty **`py.typed`** file (PEP 561) so the API type checker treats the package as typed; list `py.typed` under `[tool.setuptools.package-data]` for that import name in `pyproject.toml`.
 
 Reference implementations: `trace-langfuse/`, `trace-langsmith/`, `trace-opik/`.
 
