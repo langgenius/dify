@@ -4,7 +4,7 @@ from typing import Literal
 
 from dateutil.parser import isoparse
 from flask import request
-from flask_restx import Resource
+from flask_restx import Resource, fields
 from graphon.enums import WorkflowExecutionStatus
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -75,6 +75,21 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
 
 def _enum_value(value):
     return getattr(value, "value", value)
+
+
+class WorkflowRunStatusField(fields.Raw):
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        return _enum_value(obj.status)
+
+
+class WorkflowRunOutputsField(fields.Raw):
+    def output(self, key, obj: WorkflowRun, **kwargs):
+        status = _enum_value(obj.status)
+        if status == WorkflowExecutionStatus.PAUSED.value:
+            return {}
+
+        outputs = obj.outputs_dict
+        return outputs or {}
 
 
 class WorkflowRunResponse(ResponseModel):
