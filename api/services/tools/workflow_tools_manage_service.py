@@ -40,7 +40,7 @@ class WorkflowToolManageService:
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
         labels: list[str] | None = None,
-        import_id: str = ""
+        import_id: str = "",
     ):
         # check if the name is unique
         existing_workflow_tool_provider = db.session.scalar(

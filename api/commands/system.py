@@ -264,7 +264,7 @@ def _do_import_custom_data(input_file):
                 if field not in tool_data:
                     raise ValueError(f"Missing required field: {field}")
             tenant_name = tool_data["tenant_name"]
-            tenant = db.session.query(Tenant).filter(Tenant.name == tenant_name).first()
+            tenant = db.session.query(Tenant).where(Tenant.name == tenant_name).first()
             if tenant is None:
                 raise ValueError(f"Tenant not found: {tenant_name}")
             click.echo(f"    tenant: {tenant_name} (id={tenant.id})")
@@ -281,8 +281,8 @@ def _do_import_custom_data(input_file):
             schema_info = ApiToolManageService.parser_api_schema(schema=tool_data["schema"])
             click.echo(f"    schema_type: {schema_info['schema_type']}")
             icon = tool_data.get("icon", {"content": "🕵️", "background": "#FEF7C3"})
-            credentials = tool_data.get('credentials', {"auth_type": "none"})
-            exist_obj = db.session.query(ApiToolProvider).filter(ApiToolProvider.name == provider_name).first()
+            credentials = tool_data.get("credentials", {"auth_type": "none"})
+            exist_obj = db.session.query(ApiToolProvider).where(ApiToolProvider.name == provider_name).first()
             if exist_obj:
                 click.echo(f"    existing provider found (id={exist_obj.id}), updating...")
                 ApiToolManageService.update_api_tool_provider(
@@ -311,7 +311,7 @@ def _do_import_custom_data(input_file):
                     credentials=credentials,
                     custom_disclaimer=tool_data.get("custom_disclaimer", ""),
                     labels=tool_data.get("labels", []),
-                    icon=icon
+                    icon=icon,
                 )
                 click.echo(click.style(f"    ✓ Created tool: {provider_name}", fg="green"))
             tool_success_list.append(provider_name)
@@ -333,7 +333,7 @@ def _do_import_custom_data(input_file):
                 if field not in workflow_data:
                     raise ValueError(f"Missing required field: {field}")
             tenant_name = workflow_data["tenant_name"]
-            tenant = db.session.query(Tenant).filter(Tenant.name == tenant_name).first()
+            tenant = db.session.query(Tenant).where(Tenant.name == tenant_name).first()
             if tenant is None:
                 raise ValueError(f"Tenant not found: {tenant_name}")
             click.echo(f"    tenant: {tenant_name} (id={tenant.id})")
@@ -350,7 +350,7 @@ def _do_import_custom_data(input_file):
             tenant_account.current_tenant = tenant
             click.echo(f"    account: {tenant_account.email} (id={tenant_account.id})")
             dsl_content = workflow_data["dsl"]
-            exist_obj = db.session.query(App).filter(App.id == app_id).first()
+            exist_obj = db.session.query(App).where(App.id == app_id).first()
             click.echo(f"    app exists: {exist_obj is not None}")
             with Session(db.engine) as session:
                 import_service = AppDslService(session)
@@ -368,14 +368,14 @@ def _do_import_custom_data(input_file):
                         account=tenant_account,
                         import_mode="yaml-content",
                         yaml_content=dsl_content,
-                        import_app_id=app_id
+                        import_app_id=app_id,
                     )
                 session.commit()
                 click.echo(f"    DSL import result: app_id={getattr(import_result, 'app_id', app_id)}")
                 # auto publish
                 try:
                     db.session.flush()
-                    app_model = db.session.query(App).filter(App.id == app_id).first()
+                    app_model = db.session.query(App).where(App.id == app_id).first()
                     click.echo("    publishing workflow...")
                     workflow = WorkflowService().publish_workflow(
                         session=session,
@@ -395,9 +395,9 @@ def _do_import_custom_data(input_file):
                 publish_api = workflow_data.get("publish_api", False)
                 api_key = None
                 if publish_api:
-                    exist_api = db.session.query(ApiToken).filter(
-                        ApiToken.type == "app", ApiToken.app_id == app_id
-                    ).first()
+                    exist_api = (
+                        db.session.query(ApiToken).filter(ApiToken.type == "app", ApiToken.app_id == app_id).first()
+                    )
                     if exist_api:
                         api_key = exist_api.token
                         click.echo(f"    reusing existing api_key: {api_key[:8]}...")
@@ -433,7 +433,7 @@ def _do_import_custom_data(input_file):
                 if field not in workflow_tool_data:
                     raise ValueError(f"Missing required field: {field}")
             tenant_name = workflow_tool_data["tenant_name"]
-            tenant = db.session.query(Tenant).filter(Tenant.name == tenant_name).first()
+            tenant = db.session.query(Tenant).where(Tenant.name == tenant_name).first()
             if tenant is None:
                 raise ValueError(f"Tenant not found: {tenant_name}")
             click.echo(f"    tenant: {tenant_name} (id={tenant.id}), app_id={workflow_tool_data['app_id']}")
@@ -447,13 +447,17 @@ def _do_import_custom_data(input_file):
             if tenant_account is None:
                 raise ValueError(f"No owner account found for tenant: {tenant_name}")
             click.echo(f"    account: {tenant_account.email} (id={tenant_account.id})")
-            existing = db.session.query(WorkflowToolProvider).filter(
-                WorkflowToolProvider.tenant_id == tenant.id,
-                or_(
-                    WorkflowToolProvider.name == tool_name,
-                    WorkflowToolProvider.app_id == workflow_tool_data["app_id"],
-                ),
-            ).first()
+            existing = (
+                db.session.query(WorkflowToolProvider)
+                .filter(
+                    WorkflowToolProvider.tenant_id == tenant.id,
+                    or_(
+                        WorkflowToolProvider.name == tool_name,
+                        WorkflowToolProvider.app_id == workflow_tool_data["app_id"],
+                    ),
+                )
+                .first()
+            )
             click.echo(f"    existing workflow_tool: {existing.id if existing else 'none'}")
             kwargs = {
                 "user_id": tenant_account.id,
@@ -485,7 +489,7 @@ def _do_import_custom_data(input_file):
             workflow_tools_error_list.append(tool_name)
             click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
             traceback.print_exc()
-    mcp_tools_data = data.get('mcp_tools', [])
+    mcp_tools_data = data.get("mcp_tools", [])
     mcp_success_list = []
     mcp_error_list = []
     if mcp_tools_data:
@@ -496,16 +500,17 @@ def _do_import_custom_data(input_file):
         from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
         from models.tools import MCPToolProvider
         from services.tools.mcp_tools_manage_service import MCPToolManageService
+
         for mcp_data in mcp_tools_data:
             try:
                 # Validate required fields
-                required_fields = ['name', 'server_url', 'server_identifier']
+                required_fields = ["name", "server_url", "server_identifier"]
                 for field in required_fields:
                     if field not in mcp_data:
                         raise ValueError(f"Missing required field: {field}")
 
-                tenant_name = mcp_data['tenant_name']
-                tenant = db.session.query(Tenant).filter(Tenant.name == tenant_name).first()
+                tenant_name = mcp_data["tenant_name"]
+                tenant = db.session.query(Tenant).where(Tenant.name == tenant_name).first()
                 if tenant is None:
                     raise ValueError(f"Tenant not found: {tenant_name}")
                 tenant_account = (
@@ -518,19 +523,23 @@ def _do_import_custom_data(input_file):
                 if tenant_account is None:
                     raise ValueError(f"No owner account found for tenant: {tenant_name}")
                 # Build MCP configuration
-                configuration = MCPConfiguration.model_validate(mcp_data.get('configuration', {}))
+                configuration = MCPConfiguration.model_validate(mcp_data.get("configuration", {}))
                 authentication = None
-                if mcp_data.get('authentication'):
-                    authentication = MCPAuthentication.model_validate(mcp_data['authentication'])
-                import_id = mcp_data.get('id')
+                if mcp_data.get("authentication"):
+                    authentication = MCPAuthentication.model_validate(mcp_data["authentication"])
+                import_id = mcp_data.get("id")
                 # Check if already exists
-                existing_provider = db.session.query(MCPToolProvider).filter(
-                    or_(
-                        MCPToolProvider.id == import_id,
-                        MCPToolProvider.server_identifier == mcp_data['server_identifier']
-                    ),
-                    MCPToolProvider.tenant_id == tenant.id
-                ).first()
+                existing_provider = (
+                    db.session.query(MCPToolProvider)
+                    .filter(
+                        or_(
+                            MCPToolProvider.id == import_id,
+                            MCPToolProvider.server_identifier == mcp_data["server_identifier"],
+                        ),
+                        MCPToolProvider.tenant_id == tenant.id,
+                    )
+                    .first()
+                )
 
                 if existing_provider:
                     # Update existing MCP tool
@@ -538,18 +547,18 @@ def _do_import_custom_data(input_file):
                     service.update_provider(
                         provider_id=existing_provider.id,
                         tenant_id=tenant.id,
-                        server_url=mcp_data['server_url'],
-                        name=mcp_data['name'],
-                        icon=mcp_data.get('icon', ''),
-                        icon_type=mcp_data.get('icon_type', 'emoji'),
-                        icon_background=mcp_data.get('icon_background', ''),
-                        server_identifier=mcp_data['server_identifier'],
-                        headers=mcp_data.get('headers', {}),
+                        server_url=mcp_data["server_url"],
+                        name=mcp_data["name"],
+                        icon=mcp_data.get("icon", ""),
+                        icon_type=mcp_data.get("icon_type", "emoji"),
+                        icon_background=mcp_data.get("icon_background", ""),
+                        server_identifier=mcp_data["server_identifier"],
+                        headers=mcp_data.get("headers", {}),
                         configuration=configuration,
-                        authentication=authentication
+                        authentication=authentication,
                     )
                     db.session.commit()
-                    mcp_success_list.append(mcp_data['name'])
+                    mcp_success_list.append(mcp_data["name"])
                     click.echo(click.style(f"    ✓ updated mcp tool: {mcp_data['name']}", fg="green"))
                 else:
                     # Create new MCP tool
@@ -557,49 +566,57 @@ def _do_import_custom_data(input_file):
                     service.create_provider(
                         tenant_id=tenant.id,
                         user_id=tenant_account.id,
-                        server_url=mcp_data['server_url'],
-                        name=mcp_data['name'],
-                        icon=mcp_data.get('icon', ''),
-                        icon_type=mcp_data.get('icon_type', 'emoji'),
-                        icon_background=mcp_data.get('icon_background', ''),
-                        server_identifier=mcp_data['server_identifier'],
-                        headers=mcp_data.get('headers', {}),
+                        server_url=mcp_data["server_url"],
+                        name=mcp_data["name"],
+                        icon=mcp_data.get("icon", ""),
+                        icon_type=mcp_data.get("icon_type", "emoji"),
+                        icon_background=mcp_data.get("icon_background", ""),
+                        server_identifier=mcp_data["server_identifier"],
+                        headers=mcp_data.get("headers", {}),
                         configuration=configuration,
-                        authentication=authentication
+                        authentication=authentication,
                     )
                     db.session.commit()
-                    mcp_success_list.append(mcp_data['name'])
+                    mcp_success_list.append(mcp_data["name"])
                     click.echo(click.style(f"    ✓ Created mcp tool: {mcp_data['name']}", fg="green"))
 
             except Exception as e:
                 db.session.rollback()
-                mcp_error_list.append(mcp_data.get('name', 'Unknown'))
+                mcp_error_list.append(mcp_data.get("name", "Unknown"))
                 click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
                 traceback.print_exc()
     # ── Summary ───────────────────────────────────────────────────────────────────
     click.echo(click.style("\n=== Summary ===", fg="cyan", bold=True))
-    click.echo(click.style(
-        f"Tools        : {len(tool_success_list)} ok, {len(tool_error_list)} failed"
-        + (f"  failed={tool_error_list}" if tool_error_list else ""),
-        fg="green" if not tool_error_list else "yellow",
-    ))
-    click.echo(click.style(
-        f"Workflows    : {len(workflow_success_list)} ok, {len(workflow_error_list)} failed"
-        + (f"  failed={[w['name'] for w in workflow_error_list]}" if workflow_error_list else ""),
-        fg="green" if not workflow_error_list else "yellow",
-    ))
+    click.echo(
+        click.style(
+            f"Tools        : {len(tool_success_list)} ok, {len(tool_error_list)} failed"
+            + (f"  failed={tool_error_list}" if tool_error_list else ""),
+            fg="green" if not tool_error_list else "yellow",
+        )
+    )
+    click.echo(
+        click.style(
+            f"Workflows    : {len(workflow_success_list)} ok, {len(workflow_error_list)} failed"
+            + (f"  failed={[w['name'] for w in workflow_error_list]}" if workflow_error_list else ""),
+            fg="green" if not workflow_error_list else "yellow",
+        )
+    )
     for w in workflow_success_list:
         click.echo(f"  {w['name']}  api_key={w['api_key']}")
-    click.echo(click.style(
-        f"WorkflowTools: {len(workflow_tools_success_list)} ok, {len(workflow_tools_error_list)} failed"
-        + (f"  failed={workflow_tools_error_list}" if workflow_tools_error_list else ""),
-        fg="green" if not workflow_tools_error_list else "yellow",
-    ))
-    click.echo(click.style(
-        f"mcp Tools        : {len(mcp_success_list)} ok, {len(mcp_error_list)} failed"
-        + (f"  failed={mcp_error_list}" if mcp_error_list else ""),
-        fg="green" if not mcp_error_list else "yellow",
-    ))
+    click.echo(
+        click.style(
+            f"WorkflowTools: {len(workflow_tools_success_list)} ok, {len(workflow_tools_error_list)} failed"
+            + (f"  failed={workflow_tools_error_list}" if workflow_tools_error_list else ""),
+            fg="green" if not workflow_tools_error_list else "yellow",
+        )
+    )
+    click.echo(
+        click.style(
+            f"mcp Tools        : {len(mcp_success_list)} ok, {len(mcp_error_list)} failed"
+            + (f"  failed={mcp_error_list}" if mcp_error_list else ""),
+            fg="green" if not mcp_error_list else "yellow",
+        )
+    )
 
 
 def _do_export_custom_data(input_file, output_file):
@@ -640,7 +657,7 @@ def _do_export_custom_data(input_file, output_file):
         return
 
     tenant_name = data.get("tenant_name", os.getenv("INIT_WORKSPACE_NAME", ""))
-    tenant = db.session.query(Tenant).filter(Tenant.name == tenant_name).first()
+    tenant = db.session.query(Tenant).where(Tenant.name == tenant_name).first()
     if tenant:
         click.echo(f"Tenant: {tenant_name} (id={tenant.id})")
     else:
@@ -650,26 +667,33 @@ def _do_export_custom_data(input_file, output_file):
     workflows_data = data.get("workflows", [])
     workflow_publish_api = data.get("workflow_publish_api", False)
     workflow_tools_data = data.get("workflow_tools", [])
-    mcp_tools_data = data.get('mcp_tools', [])
+    mcp_tools_data = data.get("mcp_tools", [])
     mcp_tools_list = []
     export_all_workflows = data.get("export_all_workflows", False)
-    click.echo(f"Plan: export_all_workflows={export_all_workflows}, "
-               f"{len(tools_data)} tools, {len(workflows_data)} workflows, {len(workflow_tools_data)} workflow_tools")
+    click.echo(
+        f"Plan: export_all_workflows={export_all_workflows}, "
+        f"{len(tools_data)} tools, {len(workflows_data)} workflows, {len(workflow_tools_data)} workflow_tools"
+    )
 
     tool_list, workflow_list, workflow_tools_list = [], [], []
 
     # ── Export all workflows ──────────────────────────────────────────────────────────
     if export_all_workflows:
-        apps = db.session.query(App).filter(App.mode.in_(["workflow", "advanced-chat"])).all()
+        apps = db.session.query(App).where(App.mode.in_(["workflow", "advanced-chat"])).all()
         click.echo(click.style(f"\n[Workflows] export_all_workflows=True, found {len(apps)} app(s)...", fg="cyan"))
         for idx, app in enumerate(apps, 1):
             click.echo(f"  [{idx}/{len(apps)}] {app.id}  name={app.name}  mode={app.mode}")
             try:
                 dsl_content = AppDslService.export_dsl(app_model=app, include_secret=True)
-                workflow_list.append({
-                    "id": app.id, "name": app.name, "dsl": dsl_content,
-                    "tenant_name": tenant_name, "publish_api": workflow_publish_api,
-                })
+                workflow_list.append(
+                    {
+                        "id": app.id,
+                        "name": app.name,
+                        "dsl": dsl_content,
+                        "tenant_name": tenant_name,
+                        "publish_api": workflow_publish_api,
+                    }
+                )
                 click.echo(click.style("    ✓ Exported", fg="green"))
             except Exception as e:
                 click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
@@ -690,9 +714,7 @@ def _do_export_custom_data(input_file, output_file):
             for idx, tool_name in enumerate(tools_data, 1):
                 click.echo(f"  [{idx}/{len(tools_data)}] tool: {tool_name}")
                 try:
-                    tool_dict = ToolManager.user_get_api_provider(
-                        provider=tool_name, tenant_id=tenant.id, mask=False
-                    )
+                    tool_dict = ToolManager.user_get_api_provider(provider=tool_name, tenant_id=tenant.id, mask=False)
                     tool_dict["tenant_name"] = tenant_name
                     tool_dict["provider_name"] = tool_name
                     tool_dict.pop("tools", None)
@@ -708,15 +730,20 @@ def _do_export_custom_data(input_file, output_file):
         for idx, workflow_id in enumerate(workflows_data, 1):
             click.echo(f"  [{idx}/{len(workflows_data)}] workflow_id: {workflow_id}")
             try:
-                app = db.session.query(App).filter(App.id == workflow_id).first()
+                app = db.session.query(App).where(App.id == workflow_id).first()
                 if app is None:
                     raise ValueError(f"App not found: {workflow_id}")
                 click.echo(f"    name={app.name}  mode={app.mode}")
                 dsl_content = AppDslService.export_dsl(app_model=app, include_secret=True)
-                workflow_list.append({
-                    "id": workflow_id, "name": app.name, "dsl": dsl_content,
-                    "tenant_name": tenant_name, "publish_api": workflow_publish_api,
-                })
+                workflow_list.append(
+                    {
+                        "id": workflow_id,
+                        "name": app.name,
+                        "dsl": dsl_content,
+                        "tenant_name": tenant_name,
+                        "publish_api": workflow_publish_api,
+                    }
+                )
                 click.echo(click.style(f"    ✓ Exported workflow: {app.name}", fg="green"))
             except Exception as e:
                 click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
@@ -736,9 +763,9 @@ def _do_export_custom_data(input_file, output_file):
                 .first()
             )
             if tenant_account is None:
-                click.echo(click.style(
-                    f"[Workflow Tools] skipped — no owner account for tenant: {tenant_name}", fg="red"
-                ))
+                click.echo(
+                    click.style(f"[Workflow Tools] skipped — no owner account for tenant: {tenant_name}", fg="red")
+                )
             else:
                 click.echo(f"    account: {tenant_account.email} (id={tenant_account.id})")
             for idx, _id in enumerate(workflow_tools_data, 1):
@@ -767,16 +794,17 @@ def _do_export_custom_data(input_file, output_file):
         if tenant is None:
             click.echo(click.style(f"\n[mcp Tools] skipped — tenant not found: {tenant_name}", fg="red"))
         else:
-            click.echo(
-                click.style(f"\n[mcp Tools] exporting {len(mcp_tools_data)} item(s)...", fg="cyan"))
+            click.echo(click.style(f"\n[mcp Tools] exporting {len(mcp_tools_data)} item(s)...", fg="cyan"))
             from models.tools import MCPToolProvider
+
             for mcp_id in mcp_tools_data:
                 try:
                     # Query MCP tool
-                    mcp_provider = db.session.query(MCPToolProvider).filter(
-                        MCPToolProvider.id == mcp_id,
-                        MCPToolProvider.tenant_id == tenant.id
-                    ).first()
+                    mcp_provider = (
+                        db.session.query(MCPToolProvider)
+                        .filter(MCPToolProvider.id == mcp_id, MCPToolProvider.tenant_id == tenant.id)
+                        .first()
+                    )
                     if mcp_provider is None:
                         raise ValueError(f"MCP tool not found: {mcp_id}")
                     mcp_provider_entity = mcp_provider.to_entity()
@@ -791,27 +819,23 @@ def _do_export_custom_data(input_file, output_file):
                         icon_type = "url"  # other types are URLs
                         icon_content = provider_icon
                         # Build configuration
-                    configuration = {
-                        "timeout": mcp_provider.timeout,
-                        "sse_read_timeout": mcp_provider.sse_read_timeout
-                    }
+                    configuration = {"timeout": mcp_provider.timeout, "sse_read_timeout": mcp_provider.sse_read_timeout}
                     # Build export data
                     mcp_dict = {
-                        'id': mcp_provider.id,
-                        'name': mcp_provider.name,
-                        'server_url': mcp_provider_entity.decrypt_server_url(),
-                        'server_identifier': mcp_provider.server_identifier,
-                        'icon': icon_content,
-                        'icon_type': icon_type,
-                        'icon_background': icon_background,
-                        'headers': mcp_provider_entity.decrypt_headers(),
-                        'configuration': configuration,
-                        'authentication': None,
-                        'tenant_name': tenant_name
+                        "id": mcp_provider.id,
+                        "name": mcp_provider.name,
+                        "server_url": mcp_provider_entity.decrypt_server_url(),
+                        "server_identifier": mcp_provider.server_identifier,
+                        "icon": icon_content,
+                        "icon_type": icon_type,
+                        "icon_background": icon_background,
+                        "headers": mcp_provider_entity.decrypt_headers(),
+                        "configuration": configuration,
+                        "authentication": None,
+                        "tenant_name": tenant_name,
                     }
                     mcp_tools_list.append(mcp_dict)
-                    click.echo(
-                    click.style(f"    ✓ Exported mcp tool: {mcp_provider.name}", fg="green"))
+                    click.echo(click.style(f"    ✓ Exported mcp tool: {mcp_provider.name}", fg="green"))
                 except Exception as e:
                     click.echo(click.style(f"    ✗ FAILED: {e}", fg="red"))
                     traceback.print_exc()
