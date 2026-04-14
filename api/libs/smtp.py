@@ -1,8 +1,8 @@
 import logging
 import smtplib
-from typing import Any
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any
 
 from configs import dify_config
 
