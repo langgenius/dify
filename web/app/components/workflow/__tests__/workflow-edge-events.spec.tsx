@@ -408,4 +408,46 @@ describe('Workflow edge event wiring', () => {
 
     expect(store.getState().edgeMenu).toBeUndefined()
   })
+
+  it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const onConfirm = vi.fn()
+    const { store } = renderSubject({
+      initialStoreState: {
+        showConfirm: {
+          title: 'Confirm title',
+          desc: 'Confirm description',
+          onConfirm,
+        },
+      },
+    })
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Confirm title')).toBeInTheDocument()
+    expect(screen.getByText('Confirm description')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(store.getState().showConfirm).toBeUndefined()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('should call showConfirm.onConfirm when confirm is clicked', () => {
+    const onConfirm = vi.fn()
+
+    renderSubject({
+      initialStoreState: {
+        showConfirm: {
+          title: 'Confirm title',
+          onConfirm,
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
 })

@@ -4,9 +4,17 @@ import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remi
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
 import { PortalToFollowElem, PortalToFollowElemContent } from '@/app/components/base/portal-to-follow-elem'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { createExternalAPI } from '@/service/datasets'
@@ -176,7 +184,27 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
               {t('externalAPIForm.encrypted.end', { ns: 'dataset' })}
             </div>
           </div>
-          {showConfirm && (datasetBindings?.length ?? 0) > 0 && (<Confirm isShow={showConfirm} type="warning" title="Warning" content={`${t('editExternalAPIConfirmWarningContent.front', { ns: 'dataset' })} ${datasetBindings?.length} ${t('editExternalAPIConfirmWarningContent.end', { ns: 'dataset' })}`} onCancel={() => setShowConfirm(false)} onConfirm={handleSave} />)}
+          <AlertDialog
+            open={showConfirm && (datasetBindings?.length ?? 0) > 0}
+            onOpenChange={open => !open && setShowConfirm(false)}
+          >
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  Warning
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {`${t('editExternalAPIConfirmWarningContent.front', { ns: 'dataset' })} ${datasetBindings?.length} ${t('editExternalAPIConfirmWarningContent.end', { ns: 'dataset' })}`}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton onClick={handleSave}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

@@ -5,11 +5,18 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import Pagination from '@/app/components/base/pagination'
 import TabSlider from '@/app/components/base/tab-slider-plain'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
@@ -212,16 +219,33 @@ const ViewAnnotationModal: FC<Props> = ({
             <div className="space-y-6 p-6 pb-4">
               {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
             </div>
-            <Confirm
-              isShow={showModal}
-              onCancel={() => setShowModal(false)}
-              onConfirm={async () => {
-                await onRemove()
-                setShowModal(false)
-                onHide()
-              }}
-              title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
-            />
+            <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+              <AlertDialogContent>
+                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                  <AlertDialogTitle
+                    title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                    className="w-full truncate title-2xl-semi-bold text-text-primary"
+                  >
+                    {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                  </AlertDialogTitle>
+                </div>
+                <AlertDialogActions>
+                  <AlertDialogCancelButton>
+                    {t('operation.cancel', { ns: 'common' })}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    tone="destructive"
+                    onClick={async () => {
+                      await onRemove()
+                      setShowModal(false)
+                      onHide()
+                    }}
+                  >
+                    {t('operation.confirm', { ns: 'common' })}
+                  </AlertDialogConfirmButton>
+                </AlertDialogActions>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
         foot={id

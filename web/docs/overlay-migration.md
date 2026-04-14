@@ -8,7 +8,6 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/portal-to-follow-elem`
   - `@/app/components/base/tooltip`
   - `@/app/components/base/modal`
-  - `@/app/components/base/confirm`
   - `@/app/components/base/select` (including `custom` / `pure`)
   - `@/app/components/base/popover`
   - `@/app/components/base/dropdown`

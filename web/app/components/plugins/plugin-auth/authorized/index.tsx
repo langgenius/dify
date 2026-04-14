@@ -12,12 +12,19 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
@@ -318,17 +325,21 @@ const Authorized = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      {
-        deleteCredentialId && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            isDisabled={doingAction}
-            onCancel={closeConfirm}
-            onConfirm={handleConfirm}
-          />
-        )
-      }
+      <AlertDialog open={!!deleteCredentialId} onOpenChange={open => !open && closeConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {
         !!editValues && (
           <ApiKeyModal

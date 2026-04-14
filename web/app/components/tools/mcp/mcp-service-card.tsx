@@ -6,12 +6,20 @@ import type { AppSSO } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
@@ -295,16 +303,24 @@ const MCPServiceCard: FC<IAppCardProps> = ({
         />
       )}
 
-      {showConfirmDelete && (
-        <Confirm
-          type="warning"
-          title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-          content={t('mcp.server.reGen', { ns: 'tools' })}
-          isShow={showConfirmDelete}
-          onConfirm={onConfirmRegenerate}
-          onCancel={closeConfirmDelete}
-        />
-      )}
+      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && closeConfirmDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('mcp.server.reGen', { ns: 'tools' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmRegenerate}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

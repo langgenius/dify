@@ -5,10 +5,18 @@ import { useBoolean, useKeyPress } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
@@ -224,7 +232,29 @@ const Popup = () => {
           </div>
         </Button>
       </div>
-      {confirmVisible && (<Confirm isShow={confirmVisible} title={t('common.confirmPublish', { ns: 'pipeline' })} content={t('common.confirmPublishContent', { ns: 'pipeline' })} onCancel={hideConfirm} onConfirm={handlePublish} isDisabled={publishing} />)}
+      <AlertDialog open={confirmVisible} onOpenChange={open => !open && hideConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle
+              title={t('common.confirmPublish', { ns: 'pipeline' })}
+              className="w-full truncate title-2xl-semi-bold text-text-primary"
+            >
+              {t('common.confirmPublish', { ns: 'pipeline' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('common.confirmPublishContent', { ns: 'pipeline' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={publishing} onClick={() => void handlePublish()}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {showPublishAsKnowledgePipelineModal && (<PublishAsKnowledgePipelineModal confirmDisabled={isPublishingAsCustomizedPipeline} onConfirm={handlePublishAsKnowledgePipeline} onCancel={hidePublishAsKnowledgePipelineModal} />)}
     </div>
   )

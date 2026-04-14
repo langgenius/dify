@@ -207,20 +207,6 @@ vi.mock('@/app/components/app/switch-app-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: Record<string, unknown>) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-delete-modal">
-        <span>{title as string}</span>
-        <button data-testid="confirm-delete" onClick={onConfirm as () => void}>Delete</button>
-        <button data-testid="cancel-delete" onClick={onCancel as () => void}>Cancel</button>
-      </div>
-    )
-  },
-}))
-
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   default: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="dsl-export-confirm-modal">
@@ -342,14 +328,16 @@ describe('App Card Operations Flow', () => {
             fireEvent.click(deleteBtn)
         })
 
-        const confirmBtn = screen.queryByTestId('confirm-delete')
-        if (confirmBtn) {
-          fireEvent.click(confirmBtn)
+        await waitFor(() => {
+          expect(screen.getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
+        })
 
-          await waitFor(() => {
-            expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
-          })
-        }
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Deletable App' } })
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+        await waitFor(() => {
+          expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
+        })
       }
     })
   })

@@ -3,10 +3,18 @@ import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLin
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { Button } from '@/app/components/base/ui/button'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { IS_CE_EDITION } from '@/config'
 import { cn } from '@/utils/classnames'
 
@@ -147,20 +155,24 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="px-0.5">{t(`${i18nPrefix}.cancel`, { ns: 'dataset' })}</span>
         </Button>
       </div>
-      {
-        isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            content={t('list.delete.content', { ns: 'datasetDocuments' })}
-            confirmText={t('operation.sure', { ns: 'common' })}
-            onConfirm={handleBatchDelete}
-            onCancel={hideDeleteConfirm}
-            isLoading={isDeleting}
-            isDisabled={isDeleting}
-          />
-        )
-      }
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('list.delete.content', { ns: 'datasetDocuments' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
+              {t('operation.sure', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

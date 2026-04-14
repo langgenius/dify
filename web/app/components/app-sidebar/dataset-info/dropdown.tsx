@@ -14,8 +14,16 @@ import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import ActionButton from '../../base/action-button'
-import Confirm from '../../base/confirm'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '../../base/ui/alert-dialog'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
@@ -135,15 +143,26 @@ const DropDown = ({
           onSuccess={refreshDataset}
         />
       )}
-      {showConfirmDelete && (
-        <Confirm
-          title={t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
-          content={confirmMessage}
-          isShow={showConfirmDelete}
-          onConfirm={onConfirmDelete}
-          onCancel={() => setShowConfirmDelete(false)}
-        />
-      )}
+      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {confirmMessage}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </PortalToFollowElem>
   )
 }

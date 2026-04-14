@@ -10,10 +10,18 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -263,18 +271,29 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
         )}
       </div>
-      {isShowConfirmOverwrite && (
-        <Confirm
-          title={t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
-          content={t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
-          isShow
-          onConfirm={() => {
-            hideShowConfirmOverwrite()
-            onFinished(current!)
-          }}
-          onCancel={hideShowConfirmOverwrite}
-        />
-      )}
+      <AlertDialog open={isShowConfirmOverwrite} onOpenChange={open => !open && hideShowConfirmOverwrite()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                hideShowConfirmOverwrite()
+                onFinished(current!)
+              }}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </Modal>
   )
 }

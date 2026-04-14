@@ -1,9 +1,16 @@
 import type { Credential, CustomConfigurationModelFixedFields, ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -266,7 +273,21 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
               </>
             )}
       </Modal>
-      {deleteModel && (<Confirm isShow title={t('modelProvider.confirmDelete', { ns: 'common' })} onCancel={closeConfirmDelete} onConfirm={handleDeleteModel} isDisabled={doingAction} />)}
+      <AlertDialog open={!!deleteModel} onOpenChange={open => !open && closeConfirmDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('modelProvider.confirmDelete', { ns: 'common' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

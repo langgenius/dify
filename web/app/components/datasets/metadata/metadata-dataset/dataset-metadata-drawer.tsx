@@ -6,13 +6,21 @@ import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { Button } from '@/app/components/base/ui/button'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { cn } from '@/utils/classnames'
@@ -95,16 +103,24 @@ const Item: FC<ItemProps> = ({
             <RiDeleteBinLine className="size-4 cursor-pointer" onClick={showDeleteConfirm} />
           </div>
         </div>
-        {isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            type="warning"
-            title={t('metadata.datasetMetadata.deleteTitle', { ns: 'dataset' })}
-            content={t('metadata.datasetMetadata.deleteContent', { ns: 'dataset', name: payload.name })}
-            onConfirm={handleDelete}
-            onCancel={hideDeleteConfirm}
-          />
-        )}
+        <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('metadata.datasetMetadata.deleteTitle', { ns: 'dataset' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('metadata.datasetMetadata.deleteContent', { ns: 'dataset', name: payload.name })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={handleDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
