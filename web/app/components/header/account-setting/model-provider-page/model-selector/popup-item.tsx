@@ -200,7 +200,7 @@ const PopupItem: FC<PopupItemProps> = ({
           <TooltipContent
             placement="right"
             variant="plain"
-            popupClassName="w-[206px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 backdrop-blur-xs"
+            className="w-[206px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 backdrop-blur-xs"
           >
             <div className="flex flex-col gap-1">
               <div className="flex flex-col items-start gap-2">

@@ -29,7 +29,7 @@ export const NodeHeaderMeta = ({
               {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
-          <TooltipContent popupClassName="w-[180px]">
+          <TooltipContent className="w-[180px]">
             <div className="font-extrabold">
               {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
             </div>

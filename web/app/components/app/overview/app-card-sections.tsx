@@ -75,12 +75,12 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, AccessModeLabelKey> = {
 const MaybeTooltip = ({
   children,
   content,
-  popupClassName,
+  tooltipClassName,
   show = true,
 }: {
   children: ReactNode
   content?: ReactNode
-  popupClassName?: string
+  tooltipClassName?: string
   show?: boolean
 }) => {
   if (!show || !content)
@@ -89,7 +89,7 @@ const MaybeTooltip = ({
   return (
     <Tooltip>
       <TooltipTrigger render={<div>{children}</div>} />
-      <TooltipContent popupClassName={popupClassName}>
+      <TooltipContent className={tooltipClassName}>
         {content}
       </TooltipContent>
     </Tooltip>
@@ -269,7 +269,7 @@ export const AppCardOperations = ({
       >
         <MaybeTooltip
           content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
-          popupClassName="mt-[-8px]"
+          tooltipClassName="mt-[-8px]"
           show={disabled}
         >
           <div className="flex items-center justify-center gap-px">

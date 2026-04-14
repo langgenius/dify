@@ -13,8 +13,8 @@ type TooltipContentProps = {
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
+  positionerClassName?: string
   className?: string
-  popupClassName?: string
   variant?: TooltipContentVariant
 } & Omit<React.ComponentPropsWithoutRef<typeof BaseTooltip.Popup>, 'children' | 'className'>
 
@@ -23,8 +23,8 @@ export function TooltipContent({
   placement = 'top',
   sideOffset = 8,
   alignOffset = 0,
+  positionerClassName,
   className,
-  popupClassName,
   variant = 'default',
   ...props
 }: TooltipContentProps) {
@@ -37,13 +37,13 @@ export function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-1002 outline-hidden', className)}
+        className={cn('z-1002 outline-hidden', positionerClassName)}
       >
         <BaseTooltip.Popup
           className={cn(
             variant === 'default' && 'max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
             'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
-            popupClassName,
+            className,
           )}
           {...props}
         >
