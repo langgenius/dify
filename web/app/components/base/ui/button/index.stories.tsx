@@ -11,7 +11,10 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {
     loading: { control: 'boolean' },
-    destructive: { control: 'boolean' },
+    tone: {
+      control: 'select',
+      options: ['default', 'destructive'],
+    },
     disabled: { control: 'boolean' },
     variant: {
       control: 'select',
@@ -92,7 +95,7 @@ export const Loading: Story = {
 export const Destructive: Story = {
   args: {
     variant: 'primary',
-    destructive: true,
+    tone: 'destructive',
     children: 'Delete',
   },
 }
