@@ -608,7 +608,8 @@ class TestWorkflowTriggerEndpoints:
         with app.test_request_context("/?node_id=node-1"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is trigger
+        assert isinstance(result, dict)
+        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
 
 
 class TestWrapsEndpoints:
