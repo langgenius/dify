@@ -3,7 +3,7 @@ import { chromium, type Browser } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ensureAuthenticatedState } from '../../fixtures/auth'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 import type { DifyWorld } from './world'
 
@@ -31,7 +31,7 @@ const writeArtifact = async (
   return artifactPath
 }
 
-BeforeAll(async () => {
+BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
   await mkdir(artifactsDir, { recursive: true })
 
   browser = await chromium.launch({

@@ -3,10 +3,10 @@ from typing import Literal
 
 from flask import request
 from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.common.controller_schemas import MessageFeedbackPayload
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -25,7 +25,6 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
 from libs import helper
-from libs.helper import uuid_value
 from models.enums import FeedbackRating
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
@@ -39,19 +38,6 @@ from services.errors.message import (
 from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
-
-
-class MessageListQuery(BaseModel):
-    conversation_id: str = Field(description="Conversation UUID")
-    first_id: str | None = Field(default=None, description="First message ID for pagination")
-    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return (1-100)")
-
-    @field_validator("conversation_id", "first_id")
-    @classmethod
-    def validate_uuid(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return uuid_value(value)
 
 
 class MessageMoreLikeThisQuery(BaseModel):
