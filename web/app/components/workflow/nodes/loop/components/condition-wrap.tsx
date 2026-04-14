@@ -8,8 +8,8 @@ import {
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
@@ -76,7 +76,7 @@ const ConditionWrap: FC<Props> = ({
         <div
           className={cn(
             'group relative radius-lg bg-components-panel-bg',
-            !isSubVariable && 'min-h-[40px] px-3 py-1 ',
+            !isSubVariable && 'min-h-[40px] px-3 py-1',
             isSubVariable && 'px-1 py-2',
           )}
         >

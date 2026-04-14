@@ -3,7 +3,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
@@ -94,7 +94,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               text={(
                 <>
                   <span>{version}</span>
-                  {isFromMarketplace && <span className="i-ri-arrow-left-right-line ml-1 h-3 w-3" />}
+                  {isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}

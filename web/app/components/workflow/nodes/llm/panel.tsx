@@ -4,7 +4,6 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import AddButton2 from '@/app/components/base/button/add-button'
 import { toast } from '@/app/components/base/ui/toast'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -146,7 +145,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
             )}
           </>
         </Field>
@@ -173,7 +172,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <Field
             title={t('nodes.templateTransform.inputVars', { ns: 'workflow' })}
             operations={
-              !readOnly ? <AddButton2 onClick={handleAddEmptyVariable} /> : undefined
+              !readOnly
+                ? (
+                    <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddEmptyVariable} data-testid="add-button">
+                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+                    </div>
+                  )
+                : undefined
             }
           >
             <VarList
