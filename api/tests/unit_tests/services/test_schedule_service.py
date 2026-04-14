@@ -2,14 +2,14 @@ import unittest
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate, VisualConfig
-from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
+from core.workflow.nodes.trigger_schedule.entities import VisualConfig
+from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
@@ -75,6 +75,7 @@ class TestScheduleService(unittest.TestCase):
 
         with pytest.raises(UnknownTimeZoneError):
             calculate_next_run_at(cron_expr, timezone)
+
 
 class TestVisualToCron(unittest.TestCase):
     """Test cases for visual configuration to cron conversion."""
