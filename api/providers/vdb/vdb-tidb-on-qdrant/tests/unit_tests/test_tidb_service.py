@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 
 
@@ -10,11 +9,7 @@ class TestFetchQdrantEndpoint:
     @patch.object(TidbService, "get_tidb_serverless_cluster")
     def test_returns_endpoint_when_host_present(self, mock_get_cluster):
         mock_get_cluster.return_value = {
-            "status": {
-                "connection_strings": {
-                    "standard": {"host": "gateway01.us-east-1.tidbcloud.com"}
-                }
-            }
+            "status": {"connection_strings": {"standard": {"host": "gateway01.us-east-1.tidbcloud.com"}}}
         }
         result = TidbService.fetch_qdrant_endpoint("url", "pub", "priv", "c-123")
         assert result == "https://qdrant-gateway01.us-east-1.tidbcloud.com"
@@ -78,7 +73,9 @@ class TestCreateTidbServerlessClusterQdrantEndpoint:
     @patch.object(TidbService, "get_tidb_serverless_cluster")
     @patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client")
     @patch("dify_vdb_tidb_on_qdrant.tidb_service.dify_config")
-    def test_result_qdrant_endpoint_none_when_fetch_fails(self, mock_config, mock_http, mock_get_cluster, mock_fetch_ep):
+    def test_result_qdrant_endpoint_none_when_fetch_fails(
+        self, mock_config, mock_http, mock_get_cluster, mock_fetch_ep
+    ):
         mock_config.TIDB_SPEND_LIMIT = 10
         mock_http.post.return_value = MagicMock(status_code=200, json=lambda: {"clusterId": "c-1"})
         mock_get_cluster.return_value = {"state": "ACTIVE", "userPrefix": "pfx"}
