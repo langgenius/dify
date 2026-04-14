@@ -291,7 +291,6 @@ class ApiToolManageService:
         :param privacy_policy: The privacy policy URL or text.
         :param custom_disclaimer: Custom disclaimer text.
         :param labels: A list of labels for the provider.
-        :param session: Optional SQLAlchemy session.
         :return: A dictionary indicating the result status.
         """
 
@@ -430,7 +429,6 @@ class ApiToolManageService:
         :param parameters: The parameters to pass to the tool.
         :param schema_type: The type of schema (e.g., OpenAPI).
         :param schema: The raw schema string.
-        :param session: Optional SQLAlchemy session.
         :return: A dictionary containing the result or error message.
         """
 
