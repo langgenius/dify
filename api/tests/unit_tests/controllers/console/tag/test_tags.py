@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -84,13 +85,20 @@ class TestTagListApi:
                 ),
                 patch(
                     "controllers.console.tag.tags.TagService.get_tags",
-                    return_value=[{"id": "1", "name": "tag"}],
+                    return_value=[
+                        SimpleNamespace(
+                            id="1",
+                            name="tag",
+                            type=TagType.KNOWLEDGE,
+                            binding_count=1,
+                        )
+                    ],
                 ),
             ):
                 result, status = method(api)
 
         assert status == 200
-        assert isinstance(result, list)
+        assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
     def test_post_success(self, app, admin_user, tag, payload_patch):
         api = TagListApi()
@@ -114,6 +122,7 @@ class TestTagListApi:
 
         assert status == 200
         assert result["name"] == "test-tag"
+        assert result["binding_count"] == "0"
 
     def test_post_forbidden(self, app, readonly_user, payload_patch):
         api = TagListApi()
@@ -159,7 +168,7 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, "tag-1")
 
         assert status == 200
-        assert result["binding_count"] == 3
+        assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app, readonly_user, payload_patch):
         api = TagUpdateDeleteApi()
@@ -287,3 +296,4 @@ class TestTagResponseModel:
         ).model_dump(mode="json")
 
         assert payload["type"] == "knowledge"
+        assert payload["binding_count"] == "1"

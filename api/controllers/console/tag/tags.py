@@ -46,7 +46,7 @@ class TagResponse(ResponseModel):
     id: str
     name: str
     type: str | None = None
-    binding_count: int | str | None = None
+    binding_count: str | None = None
 
     @field_validator("type", mode="before")
     @classmethod
@@ -56,6 +56,13 @@ class TagResponse(ResponseModel):
         if isinstance(value, TagType):
             return value.value
         return value
+
+    @field_validator("binding_count", mode="before")
+    @classmethod
+    def normalize_binding_count(cls, value: int | str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value)
 
 
 register_schema_models(
@@ -76,6 +83,7 @@ class TagListApi(Resource):
     @console_ns.doc(
         params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
     )
+    @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         raw_args = request.args.to_dict()
