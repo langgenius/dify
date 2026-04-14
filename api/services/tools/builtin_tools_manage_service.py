@@ -147,7 +147,7 @@ class BuiltinToolManageService:
         tenant_id: str,
         provider: str,
         credential_id: str,
-        credentials: dict | None = None,
+        credentials: dict[str, Any] | None = None,
         name: str | None = None,
     ):
         """
@@ -177,7 +177,7 @@ class BuiltinToolManageService:
                     )
 
                     original_credentials = encrypter.decrypt(db_provider.credentials)
-                    new_credentials: dict = {
+                    new_credentials: dict[str, Any] = {
                         key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
                         for key, value in credentials.items()
                     }
@@ -216,7 +216,7 @@ class BuiltinToolManageService:
         api_type: CredentialType,
         tenant_id: str,
         provider: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         expires_at: int = -1,
         name: str | None = None,
     ):
@@ -657,7 +657,7 @@ class BuiltinToolManageService:
     def save_custom_oauth_client_params(
         tenant_id: str,
         provider: str,
-        client_params: dict | None = None,
+        client_params: dict[str, Any] | None = None,
         enable_oauth_custom_client: bool | None = None,
     ):
         """
