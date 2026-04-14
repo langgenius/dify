@@ -30,7 +30,7 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({
         <Button onClick={onCancel}>
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button variant="primary" destructive onClick={onConfirm}>
+        <Button variant="primary" tone="destructive" onClick={onConfirm}>
           {t('operation.regenerate', { ns: 'common' })}
         </Button>
       </div>
@@ -50,7 +50,7 @@ const RegeneratingContent: FC = React.memo(() => {
         <p className="system-md-regular text-text-secondary">{t('segment.regeneratingMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end pt-6">
-        <Button variant="primary" destructive disabled className="inline-flex items-center gap-x-0.5">
+        <Button variant="primary" tone="destructive" disabled className="inline-flex items-center gap-x-0.5">
           <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-destructive-primary-text-disabled" />
           <span>{t('operation.regenerate', { ns: 'common' })}</span>
         </Button>

@@ -87,24 +87,6 @@ vi.mock('@/app/components/base/ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-  }) =>
-    isShow
-      ? (
-          <div data-testid="confirm-modal">
-            <span>{title}</span>
-            <button data-testid="publish-confirm" onClick={onConfirm}>OK</button>
-            <button data-testid="publish-cancel" onClick={onCancel}>Cancel</button>
-          </div>
-        )
-      : null,
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr />,
 }))

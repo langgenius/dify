@@ -7,11 +7,19 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import { Button } from '@/app/components/base/ui/button'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
@@ -87,6 +95,14 @@ const SecretKeyModal = ({
     return `${token.slice(0, 3)}...${token.slice(-20)}`
   }
 
+  const handleDeleteConfirmOpenChange = (open: boolean) => {
+    if (open)
+      return
+
+    setDelKeyId('')
+    setShowConfirmDelete(false)
+  }
+
   return (
     <Modal isShow={isShow} onClose={onClose} title={`${t('apiKeyModal.apiSecretKey', { ns: 'appApi' })}`} className={`${s.customModal} flex flex-col px-8`}>
       <div className="-mt-6 -mr-2 mb-4 flex justify-end">
@@ -135,18 +151,29 @@ const SecretKeyModal = ({
         </Button>
       </div>
       <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
-      {showConfirmDelete && (
-        <Confirm
-          title={`${t('actionMsg.deleteConfirmTitle', { ns: 'appApi' })}`}
-          content={`${t('actionMsg.deleteConfirmTips', { ns: 'appApi' })}`}
-          isShow={showConfirmDelete}
-          onConfirm={onDel}
-          onCancel={() => {
-            setDelKeyId('')
-            setShowConfirmDelete(false)
-          }}
-        />
-      )}
+      <AlertDialog
+        open={showConfirmDelete}
+        onOpenChange={handleDeleteConfirmOpenChange}
+      >
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('actionMsg.deleteConfirmTitle', { ns: 'appApi' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('actionMsg.deleteConfirmTips', { ns: 'appApi' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onDel}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </Modal>
   )
 }

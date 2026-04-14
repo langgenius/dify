@@ -165,7 +165,7 @@ describe('ConfirmModal', () => {
       // Assert
       const confirmButton = screen.getByText('common.operation.confirm')
       expect(confirmButton).toHaveClass('btn-primary')
-      expect(confirmButton).toHaveClass('btn-destructive')
+      expect(confirmButton).toHaveClass('btn-destructive-primary')
     })
   })
 
