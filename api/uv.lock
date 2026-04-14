@@ -1886,6 +1886,20 @@ vdb-xinference = [{ name = "xinference-client", specifier = "~=2.4.0" }]
 name = "dify-trace-aliyun"
 version = "0.0.1"
 source = { editable = "providers/trace/trace-aliyun" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
 
 [[package]]
 name = "dify-trace-arize-phoenix"
@@ -1955,10 +1969,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "opentelemetry-api", specifier = "==1.41.0" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = "==1.41.0" },
-    { name = "opentelemetry-sdk", specifier = "==1.41.0" },
-    { name = "opentelemetry-semantic-conventions", specifier = "==0.62b0" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
 ]
 
 [[package]]
