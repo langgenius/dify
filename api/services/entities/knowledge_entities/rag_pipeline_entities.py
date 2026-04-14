@@ -1,9 +1,27 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 
 from core.rag.entities import KeywordSetting, VectorSetting
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
+
+class RerankingModelConfig(BaseModel):
+    """
+    Reranking Model Config.
+    """
+
+    reranking_provider_name: str | None = ""
+    reranking_model_name: str | None = ""
+
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+
+    vector_setting: VectorSetting | None
+    keyword_setting: KeywordSetting | None
 
 
 class IconInfo(BaseModel):
@@ -26,24 +44,6 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     permission: str
     partial_member_list: list[dict[str, str]] | None = None
     yaml_content: str | None = None
-
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    reranking_provider_name: str | None = ""
-    reranking_model_name: str | None = ""
-
-
-class WeightedScoreConfig(BaseModel):
-    """
-    Weighted score Config.
-    """
-
-    vector_setting: VectorSetting | None
-    keyword_setting: KeywordSetting | None
 
 
 class RetrievalSetting(BaseModel):
@@ -73,7 +73,7 @@ class KnowledgeConfiguration(BaseModel):
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
     # add summary index setting
-    summary_index_setting: dict | None = None
+    summary_index_setting: dict[str, Any] | None = None
 
     @field_validator("embedding_model_provider", mode="before")
     @classmethod

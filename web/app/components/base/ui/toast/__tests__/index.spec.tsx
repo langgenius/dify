@@ -33,7 +33,7 @@ describe('base/ui/toast', () => {
     expect(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     const viewport = screen.getByRole('region', { name: 'Notifications' })
     expect(viewport).toHaveAttribute('aria-live', 'polite')
-    expect(viewport).toHaveClass('z-1101')
+    expect(viewport).toHaveClass('z-1003')
     expect(viewport.firstElementChild).toHaveClass('top-4')
     expect(screen.getByRole('dialog')).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
@@ -249,6 +249,32 @@ describe('base/ui/toast', () => {
     expect(screen.getByText('Done')).toBeInTheDocument()
     expect(screen.getByText('Your data is ready.')).toBeInTheDocument()
     expect(screen.queryByText('Loading')).not.toBeInTheDocument()
+  })
+
+  // Re-adding the same toast id should upsert in place instead of stacking duplicates.
+  it('should upsert an existing toast when add is called with the same id', async () => {
+    render(<ToastHost />)
+
+    act(() => {
+      toast('Syncing', {
+        id: 'sync-job',
+        description: 'Uploading changes…',
+      })
+    })
+
+    expect(await screen.findByText('Syncing')).toBeInTheDocument()
+
+    act(() => {
+      toast.success('Synced', {
+        id: 'sync-job',
+        description: 'All changes are uploaded.',
+      })
+    })
+
+    expect(screen.queryByText('Syncing')).not.toBeInTheDocument()
+    expect(screen.getByText('Synced')).toBeInTheDocument()
+    expect(screen.getByText('All changes are uploaded.')).toBeInTheDocument()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
   })
 
   // Action props should pass through to the Base UI action button.
