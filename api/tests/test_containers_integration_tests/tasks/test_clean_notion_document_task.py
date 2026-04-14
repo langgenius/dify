@@ -11,7 +11,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
@@ -21,11 +22,11 @@ from tasks.clean_notion_document_task import clean_notion_document_task
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
-def _count_documents(session, condition) -> int:
+def _count_documents(session: Session, condition: ColumnElement[bool]) -> int:
     return session.scalar(select(func.count()).select_from(Document).where(condition)) or 0
 
 
-def _count_segments(session, condition) -> int:
+def _count_segments(session: Session, condition: ColumnElement[bool]) -> int:
     return session.scalar(select(func.count()).select_from(DocumentSegment).where(condition)) or 0
 
 
