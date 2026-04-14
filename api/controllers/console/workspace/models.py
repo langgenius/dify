@@ -465,7 +465,7 @@ class ModelProviderModelDisableApi(Resource):
 class ParserValidate(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict
+    credentials: dict[str, Any]
 
 
 console_ns.schema_model(

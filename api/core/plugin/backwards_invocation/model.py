@@ -1,6 +1,7 @@
 import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
+from typing import Any
 
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -226,7 +227,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         # invoke model
         response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
 
-        def handle() -> Generator[dict, None, None]:
+        def handle() -> Generator[dict[str, Any], None, None]:
             for chunk in response:
                 yield {"result": hexlify(chunk).decode("utf-8")}
 
