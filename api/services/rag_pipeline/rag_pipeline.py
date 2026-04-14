@@ -467,7 +467,9 @@ class RagPipelineService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: dict[str, Any] | None = None) -> Mapping[str, object] | None:
+    def get_default_block_config(
+        self, node_type: str, filters: dict[str, Any] | None = None
+    ) -> Mapping[str, object] | None:
         """
         Get default config of node.
         :param node_type: node type
@@ -1099,7 +1101,9 @@ class RagPipelineService:
         ]
         return datasource_provider_variables
 
-    def get_rag_pipeline_paginate_workflow_runs(self, pipeline: Pipeline, args: dict[str, Any]) -> InfiniteScrollPagination:
+    def get_rag_pipeline_paginate_workflow_runs(
+        self, pipeline: Pipeline, args: dict[str, Any]
+    ) -> InfiniteScrollPagination:
         """
         Get debug workflow run list
         Only return triggered_from == debugging
