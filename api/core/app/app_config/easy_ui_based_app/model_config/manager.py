@@ -41,7 +41,7 @@ class ModelConfigManager:
         )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for model config
 
