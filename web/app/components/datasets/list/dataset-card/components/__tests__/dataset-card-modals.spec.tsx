@@ -172,7 +172,7 @@ describe('DatasetCardModals', () => {
         />,
       )
 
-      // Find and click the confirm button
+      // Find and click the confirm button using our mocked Confirm component
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
       fireEvent.click(confirmButton)
 
