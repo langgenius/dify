@@ -7804,11 +7804,6 @@
       "count": 2
     }
   },
-  "app/components/workflow-app/components/workflow-onboarding-modal/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
