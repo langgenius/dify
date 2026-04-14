@@ -3053,11 +3053,6 @@
       "count": 1
     }
   },
-  "app/components/base/modal/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
   "app/components/base/modal/modal.stories.tsx": {
     "no-console": {
       "count": 4
@@ -3727,16 +3722,6 @@
       "count": 1
     }
   },
-  "app/components/base/ui/dialog/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/base/ui/toast/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -4241,9 +4226,6 @@
   },
   "app/components/datasets/create/step-two/components/inputs.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -5677,11 +5659,6 @@
   },
   "app/components/goto-anything/hooks/use-goto-anything-results.ts": {
     "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "app/components/goto-anything/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -11406,11 +11383,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/signin/normal-form.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 25
     }
   },
   "app/signin/one-more-step.tsx": {
