@@ -5,7 +5,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -526,7 +526,7 @@ class RagPipelineDslService:
         self,
         *,
         pipeline: Pipeline | None,
-        data: dict,
+        data: dict[str, Any],
         account: Account,
         dependencies: list[PluginDependency] | None = None,
     ) -> Pipeline:
@@ -660,7 +660,9 @@ class RagPipelineDslService:
 
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
-    def _append_workflow_export_data(self, *, export_data: dict, pipeline: Pipeline, include_secret: bool) -> None:
+    def _append_workflow_export_data(
+        self, *, export_data: dict[str, Any], pipeline: Pipeline, include_secret: bool
+    ) -> None:
         """
         Append workflow export data
         :param export_data: export data
