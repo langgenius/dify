@@ -629,18 +629,62 @@ function findElementAccessArgumentTarget(token: ts.Node): EditTarget | undefined
   return createExpressionTarget(matchingElementAccess.argumentExpression)
 }
 
-function findIterableTarget(token: ts.Node): EditTarget | undefined {
+function findIterableTarget(
+  sourceFile: ts.SourceFile,
+  token: ts.Node,
+  start: number,
+  end: number,
+  checker: ts.TypeChecker,
+): EditTarget | undefined {
   const spreadElement = findAncestor(token, ts.isSpreadElement)
-  if (spreadElement)
+  if (
+    spreadElement
+    && typeIncludesUndefined(checker.getTypeAtLocation(spreadElement.expression))
+    && !isAlreadyNonNull(spreadElement.expression)
+  ) {
     return createExpressionTarget(spreadElement.expression)
+  }
+
+  const arrayLiteral = findAncestor(token, ts.isArrayLiteralExpression)
+  if (arrayLiteral) {
+    for (const element of arrayLiteral.elements) {
+      if (!ts.isSpreadElement(element))
+        continue
+
+      const elementStart = element.getStart(sourceFile)
+      const elementEnd = element.getEnd()
+      const overlapsDiagnostic = elementStart <= start && end <= elementEnd
+
+      if (!overlapsDiagnostic && (start < arrayLiteral.getStart(sourceFile) || end > arrayLiteral.getEnd()))
+        continue
+
+      if (
+        typeIncludesUndefined(checker.getTypeAtLocation(element.expression))
+        && !isAlreadyNonNull(element.expression)
+      ) {
+        return createExpressionTarget(element.expression)
+      }
+    }
+  }
 
   const variableDeclaration = findAncestor(token, ts.isVariableDeclaration)
-  if (variableDeclaration?.initializer)
+  if (
+    variableDeclaration?.initializer
+    && typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer))
+    && !isAlreadyNonNull(variableDeclaration.initializer)
+  ) {
     return createExpressionTarget(variableDeclaration.initializer)
+  }
 
   const binaryExpression = findAncestor(token, ts.isBinaryExpression)
-  if (binaryExpression && isAssignmentOperator(binaryExpression.operatorToken.kind))
+  if (
+    binaryExpression
+    && isAssignmentOperator(binaryExpression.operatorToken.kind)
+    && typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right))
+    && !isAlreadyNonNull(binaryExpression.right)
+  ) {
     return createExpressionTarget(binaryExpression.right)
+  }
 
   return undefined
 }
@@ -698,6 +742,9 @@ function findArrayDestructuringTarget(
 ): EditTarget | undefined {
   const binaryExpression = findAncestor(token, ts.isBinaryExpression)
   if (binaryExpression && isAssignmentOperator(binaryExpression.operatorToken.kind) && ts.isArrayLiteralExpression(binaryExpression.left)) {
+    if (typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right)) && !isAlreadyNonNull(binaryExpression.right))
+      return createExpressionTarget(binaryExpression.right)
+
     const replacement = createArrayDestructuringReplacement(
       binaryExpression.getSourceFile(),
       binaryExpression.right,
@@ -716,6 +763,9 @@ function findArrayDestructuringTarget(
 
   const variableDeclaration = findAncestor(token, ts.isVariableDeclaration)
   if (variableDeclaration?.initializer && ts.isArrayBindingPattern(variableDeclaration.name)) {
+    if (typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer)) && !isAlreadyNonNull(variableDeclaration.initializer))
+      return createExpressionTarget(variableDeclaration.initializer)
+
     const replacement = createArrayDestructuringReplacement(
       variableDeclaration.getSourceFile(),
       variableDeclaration.initializer,
@@ -1354,7 +1404,7 @@ function resolveEditTarget(
     return findImplicitAnyParameterTarget(token)
 
   if (diagnostic.code === 2488) {
-    const iterableTarget = findIterableTarget(token)
+    const iterableTarget = findIterableTarget(sourceFile, token, start, end, checker)
     if (iterableTarget && isExpressionTarget(iterableTarget) && !isAlreadyNonNull(iterableTarget.expression))
       return iterableTarget
   }

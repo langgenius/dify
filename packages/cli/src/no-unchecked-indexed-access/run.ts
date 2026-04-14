@@ -7,7 +7,7 @@ import { runMigration, SUPPORTED_DIAGNOSTIC_CODES } from './migrate'
 const execFileAsync = promisify(execFile)
 const DIAGNOSTIC_PATTERN = /^(.+?\.(?:ts|tsx))\((\d+),(\d+)\): error TS(\d+): (.+)$/
 const DEFAULT_BATCH_SIZE = 100
-const DEFAULT_BATCH_ITERATIONS = 2
+const DEFAULT_BATCH_ITERATIONS = 5
 const DEFAULT_MAX_ROUNDS = 20
 
 type CliOptions = {
