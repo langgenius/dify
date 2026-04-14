@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-import services
 from werkzeug.exceptions import HTTPException
 
+import services
 from controllers.console.auth.error import MemberNotInTenantError
 from controllers.console.workspace import members as members_module
 from controllers.console.workspace.members import MemberCancelInviteApi, MemberUpdateRoleApi, OwnerTransfer
