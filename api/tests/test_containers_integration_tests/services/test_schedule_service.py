@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate
@@ -41,8 +42,7 @@ class ScheduleServiceIntegrationFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.role = role
-        account._current_tenant = tenant
+        account.current_tenant = tenant
         return account, tenant
 
     @staticmethod
@@ -250,7 +250,7 @@ class TestScheduleServiceIntegration:
 
     def test_get_tenant_owner_raises_when_account_record_missing(self, db_session_with_containers: Session):
         _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.execute(delete(TenantAccountJoin))
         missing_account_id = str(uuid4())
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -266,7 +266,7 @@ class TestScheduleServiceIntegration:
 
     def test_get_tenant_owner_raises_when_no_owner_or_admin_found(self, db_session_with_containers: Session):
         _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        db_session_with_containers.query(TenantAccountJoin).delete()
+        db_session_with_containers.execute(delete(TenantAccountJoin))
         db_session_with_containers.commit()
 
         with pytest.raises(AccountNotFoundError, match=tenant.id):
@@ -320,7 +320,9 @@ class TestSyncScheduleFromWorkflowIntegration:
             )
 
         assert result is not None
-        persisted = db_session_with_containers.query(WorkflowSchedulePlan).filter_by(app_id=app_id).one()
+        persisted = db_session_with_containers.execute(
+            select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app_id)
+        ).scalar_one()
         assert persisted.id == result.id
         assert persisted.node_id == "start"
         assert persisted.cron_expression == "30 10 * * *"
