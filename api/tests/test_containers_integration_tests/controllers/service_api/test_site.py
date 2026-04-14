@@ -58,6 +58,7 @@ def _create_site(db_session: Session, app_id: str) -> Site:
         default_language="en-US",
         prompt_public=True,
         show_workflow_steps=True,
+        customize_token_strategy="not_allow",
         use_icon_as_answer_icon=False,
         chat_color_theme="light",
         chat_color_theme_inverted=False,
