@@ -97,7 +97,6 @@ ignore = [
     "N803", # invalid-argument-name
 ]
 "tests/*" = [
-    "F811", # redefined-while-unused
     "T201", # allow print in tests,
     "S110", # allow ignoring exceptions in tests code (currently)
 ]
