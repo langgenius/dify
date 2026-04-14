@@ -10189,6 +10189,11 @@
       "count": 3
     }
   },
+  "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 4
+    }
+  },
   "app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
     "no-restricted-imports": {
       "count": 2
