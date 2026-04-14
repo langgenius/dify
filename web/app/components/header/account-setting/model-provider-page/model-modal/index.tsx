@@ -386,7 +386,8 @@ const ModelModal: FC<ModelModalProps> = ({
             {
               isEditMode && (
                 <Button
-                  variant="warning"
+                  variant="primary"
+                  destructive
                   onClick={() => openConfirmDelete(credential, model)}
                 >
                   {t('operation.remove', { ns: 'common' })}

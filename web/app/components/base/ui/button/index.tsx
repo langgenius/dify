@@ -1,7 +1,7 @@
+import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 const buttonVariants = cva(
@@ -10,7 +10,6 @@ const buttonVariants = cva(
     variants: {
       variant: {
         'primary': 'btn-primary',
-        'warning': 'btn-warning',
         'secondary': 'btn-secondary',
         'secondary-accent': 'btn-secondary-accent',
         'ghost': 'btn-ghost',
@@ -33,12 +32,12 @@ const buttonVariants = cva(
   },
 )
 
-export type ButtonProps = {
-  loading?: boolean
-  ref?: React.Ref<HTMLButtonElement>
-  render?: React.ReactElement
-  focusableWhenDisabled?: boolean
-} & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
+export type ButtonProps
+  = Omit<BaseButtonNS.Props, 'className'>
+    & VariantProps<typeof buttonVariants> & {
+      loading?: boolean
+      className?: string
+    }
 
 export function Button({
   className,
@@ -46,26 +45,18 @@ export function Button({
   size,
   destructive,
   loading,
-  children,
-  ref,
-  render,
-  focusableWhenDisabled,
   disabled,
   type = 'button',
+  children,
   ...props
 }: ButtonProps) {
-  const isDisabled = disabled || loading
-
   return (
     <BaseButton
       type={type}
       className={cn(buttonVariants({ variant, size, destructive, className }))}
-      ref={ref}
-      render={render}
-      {...props}
-      disabled={isDisabled}
-      focusableWhenDisabled={focusableWhenDisabled}
+      disabled={disabled || loading}
       aria-busy={loading || undefined}
+      {...props}
     >
       {children}
       {loading && (

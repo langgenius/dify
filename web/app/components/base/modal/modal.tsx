@@ -46,7 +46,7 @@ const Modal = ({
   cancelButtonText,
   onCancel,
   showExtraButton,
-  extraButtonVariant = 'warning',
+  extraButtonVariant = 'primary',
   extraButtonText,
   onExtraButtonClick,
   footerSlot,

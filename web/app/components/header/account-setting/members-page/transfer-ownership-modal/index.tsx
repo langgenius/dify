@@ -173,7 +173,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <MemberSelector exclude={[userProfile.id]} value={newOwner} onSelect={setNewOwner} />
           </div>
           <div className="mt-4 space-y-2">
-            <Button data-testid="transfer-modal-submit" disabled={!newOwner || isTransfer} className="w-full!" variant="warning" onClick={handleTransfer}>
+            <Button data-testid="transfer-modal-submit" disabled={!newOwner || isTransfer} className="w-full!" variant="primary" destructive onClick={handleTransfer}>
               {t('members.transferModal.transfer', { ns: 'common' })}
             </Button>
             <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>

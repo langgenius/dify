@@ -15,7 +15,7 @@ const meta = {
     disabled: { control: 'boolean' },
     variant: {
       control: 'select',
-      options: ['primary', 'warning', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
+      options: ['primary', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
     },
     size: {
       control: 'select',
@@ -70,13 +70,6 @@ export const Tertiary: Story = {
   args: {
     variant: 'tertiary',
     children: 'Tertiary Button',
-  },
-}
-
-export const Warning: Story = {
-  args: {
-    variant: 'warning',
-    children: 'Warning Button',
   },
 }
 

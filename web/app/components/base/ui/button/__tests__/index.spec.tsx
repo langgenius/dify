@@ -41,7 +41,6 @@ describe('Button', () => {
 
     it.each([
       'primary',
-      'warning',
       'secondary',
       'secondary-accent',
       'ghost',

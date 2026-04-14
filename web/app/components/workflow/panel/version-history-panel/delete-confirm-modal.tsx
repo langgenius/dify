@@ -34,7 +34,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
         <Button onClick={onClose}>
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button variant="warning" onClick={onDelete.bind(null, versionInfo.id)}>
+        <Button variant="primary" destructive onClick={onDelete.bind(null, versionInfo.id)}>
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>

@@ -246,7 +246,8 @@ const UpdateDSLModal = ({
           <Button onClick={onCancel}>{t('newApp.Cancel', { ns: 'app' })}</Button>
           <Button
             disabled={!currentFile || loading}
-            variant="warning"
+            variant="primary"
+            destructive
             onClick={handleImport}
             loading={loading}
           >
