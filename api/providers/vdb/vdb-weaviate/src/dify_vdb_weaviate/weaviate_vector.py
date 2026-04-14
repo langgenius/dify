@@ -406,20 +406,27 @@ class WeaviateVector(BaseVector):
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
-        query_kwargs = {
-            "near_vector": query_vector,
-            "limit": top_k,
-            "return_properties": props,
-            "return_metadata": MetadataQuery(distance=True),
-            "include_vector": False,
-            "filters": where,
-            "target_vector": "default",
-        }
         try:
-            res = col.query.near_vector(**query_kwargs)
+            res = col.query.near_vector(
+                near_vector=query_vector,
+                limit=top_k,
+                return_properties=props,
+                return_metadata=MetadataQuery(distance=True),
+                include_vector=False,
+                filters=where,
+                target_vector="default",
+            )
         except WeaviateQueryError:
             self._ensure_properties()
-            res = col.query.near_vector(**query_kwargs)
+            res = col.query.near_vector(
+                near_vector=query_vector,
+                limit=top_k,
+                return_properties=props,
+                return_metadata=MetadataQuery(distance=True),
+                include_vector=False,
+                filters=where,
+                target_vector="default",
+            )
 
         docs: list[Document] = []
         for obj in res.objects:
@@ -457,19 +464,25 @@ class WeaviateVector(BaseVector):
 
         top_k = int(kwargs.get("top_k", 4))
 
-        query_kwargs = {
-            "query": query,
-            "query_properties": [Field.TEXT_KEY.value],
-            "limit": top_k,
-            "return_properties": props,
-            "include_vector": True,
-            "filters": where,
-        }
         try:
-            res = col.query.bm25(**query_kwargs)
+            res = col.query.bm25(
+                query=query,
+                query_properties=[Field.TEXT_KEY.value],
+                limit=top_k,
+                return_properties=props,
+                include_vector=True,
+                filters=where,
+            )
         except WeaviateQueryError:
             self._ensure_properties()
-            res = col.query.bm25(**query_kwargs)
+            res = col.query.bm25(
+                query=query,
+                query_properties=[Field.TEXT_KEY.value],
+                limit=top_k,
+                return_properties=props,
+                include_vector=True,
+                filters=where,
+            )
 
         docs: list[Document] = []
         for obj in res.objects:
