@@ -530,7 +530,9 @@ class TestCleanNotionDocumentTask:
         # Verify only specified documents' segments are deleted
         assert (
             db_session_with_containers.scalar(
-                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id.in_(documents_to_clean))
+                select(func.count())
+                .select_from(DocumentSegment)
+                .where(DocumentSegment.document_id.in_(documents_to_clean))
             )
             == 0
         )
@@ -950,7 +952,9 @@ class TestCleanNotionDocumentTask:
         # Verify only documents' segments from target dataset are deleted
         assert (
             db_session_with_containers.scalar(
-                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == target_document.id)
+                select(func.count())
+                .select_from(DocumentSegment)
+                .where(DocumentSegment.document_id == target_document.id)
             )
             == 0
         )
