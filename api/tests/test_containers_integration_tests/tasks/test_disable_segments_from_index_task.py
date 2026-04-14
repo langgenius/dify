@@ -9,8 +9,8 @@ The task is responsible for removing document segments from the search index whe
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, DocumentSegment
