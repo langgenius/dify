@@ -38,4 +38,4 @@ class ExternalDataToolFactory:
         :param query: the query of chat app
         :return: the tool query result
         """
-        return cast(str, self.__extension_instance.query(inputs, query))
+        return self.__extension_instance.query(inputs, query)
