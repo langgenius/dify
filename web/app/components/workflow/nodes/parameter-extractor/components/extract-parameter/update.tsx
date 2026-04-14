@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import { Button } from '@/app/components/base/button'
-import AddButton from '@/app/components/base/button/add-button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Select from '@/app/components/base/select'
@@ -120,7 +119,9 @@ const AddExtractParameter: FC<Props> = ({
   return (
     <div>
       {isAdd && (
-        <AddButton className="mx-1" onClick={showAddModal} />
+        <div className="mx-1 cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={showAddModal} data-testid="add-button">
+          <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+        </div>
       )}
       {isShowModal && (
         <Modal
