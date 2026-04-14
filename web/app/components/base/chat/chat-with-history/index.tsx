@@ -147,11 +147,15 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    siteDescription,
+    showSiteDescription,
   } = useChatWithHistory(installedAppInfo)
 
   return (
     <ChatWithHistoryContext.Provider value={{
       appData,
+      siteDescription,
+      showSiteDescription,
       appParams,
       appMeta,
       appChatListDataLoading,

@@ -6,6 +6,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import Confirm from '@/app/components/base/confirm'
+import { cn } from '@/utils/classnames'
 import { useChatWithHistoryContext } from './context'
 import MobileOperationDropdown from './header/mobile-operation-dropdown'
 import Operation from './header/operation'
@@ -14,6 +15,8 @@ import Sidebar from './sidebar'
 const HeaderInMobile = () => {
   const {
     appData,
+    siteDescription,
+    showSiteDescription,
     currentConversationId,
     currentConversationItem,
     pinnedConversationList,
@@ -63,43 +66,50 @@ const HeaderInMobile = () => {
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
-        <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
-          <div className="i-ri-menu-line h-[18px] w-[18px]" />
-        </ActionButton>
-        <div className="flex grow items-center justify-center">
-          {!currentConversationId && (
-            <>
-              <AppIcon
-                className="mr-2"
-                size="tiny"
-                icon={appData?.site.icon}
-                iconType={appData?.site.icon_type}
-                imageUrl={appData?.site.icon_url}
-                background={appData?.site.icon_background}
+      <div className={cn('shrink-0 bg-mask-top2bottom-gray-50-to-transparent px-2', showSiteDescription ? 'py-2' : 'py-3')}>
+        <div className="flex items-center gap-1">
+          <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
+            <div className="i-ri-menu-line h-[18px] w-[18px]" />
+          </ActionButton>
+          <div className="flex grow items-center justify-center">
+            {!currentConversationId && (
+              <>
+                <AppIcon
+                  className="mr-2"
+                  size="tiny"
+                  icon={appData?.site.icon}
+                  iconType={appData?.site.icon_type}
+                  imageUrl={appData?.site.icon_url}
+                  background={appData?.site.icon_background}
+                />
+                <div className="truncate text-text-secondary system-md-semibold">
+                  {appData?.site.title}
+                </div>
+              </>
+            )}
+            {currentConversationId && (
+              <Operation
+                title={currentConversationItem?.name || ''}
+                isPinned={!!isPin}
+                togglePin={() => handleOperate(isPin ? 'unpin' : 'pin')}
+                isShowDelete
+                isShowRenameConversation
+                onRenameConversation={() => handleOperate('rename')}
+                onDelete={() => handleOperate('delete')}
               />
-              <div className="truncate text-text-secondary system-md-semibold">
-                {appData?.site.title}
-              </div>
-            </>
-          )}
-          {currentConversationId && (
-            <Operation
-              title={currentConversationItem?.name || ''}
-              isPinned={!!isPin}
-              togglePin={() => handleOperate(isPin ? 'unpin' : 'pin')}
-              isShowDelete
-              isShowRenameConversation
-              onRenameConversation={() => handleOperate('rename')}
-              onDelete={() => handleOperate('delete')}
-            />
-          )}
+            )}
+          </div>
+          <MobileOperationDropdown
+            handleResetChat={handleNewConversation}
+            handleViewChatSettings={() => setShowChatSettings(true)}
+            hideViewChatSettings={inputsForms.length < 1}
+          />
         </div>
-        <MobileOperationDropdown
-          handleResetChat={handleNewConversation}
-          handleViewChatSettings={() => setShowChatSettings(true)}
-          hideViewChatSettings={inputsForms.length < 1}
-        />
+        {showSiteDescription && (
+          <div className="system-xs-regular mt-1 line-clamp-2 break-words px-1 text-center text-text-tertiary">
+            {siteDescription}
+          </div>
+        )}
       </div>
       {showSidebar && (
         <div
