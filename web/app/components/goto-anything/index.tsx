@@ -131,8 +131,10 @@ const GotoAnything: FC<Props> = ({
       return 'loading'
     if (isError)
       return 'error'
-    if (!searchQuery.trim())
-      return 'default'
+    if (!searchQuery.trim()) {
+      // Show default hint only when there are no recent items to display
+      return dedupedResults.length === 0 ? 'default' : null
+    }
     if (dedupedResults.length === 0 && !isCommandsMode)
       return 'no-results'
     return null

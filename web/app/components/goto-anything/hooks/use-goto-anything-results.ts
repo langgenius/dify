@@ -1,10 +1,13 @@
 'use client'
 
-import type { ActionItem, SearchResult } from '../actions/types'
+import type { ActionItem, RecentSearchResult, SearchResult } from '../actions/types'
+import { RiTimeLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
+import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
 import { matchAction, searchAnything } from '../actions'
+import { getRecentItems } from '../actions/recent-store'
 
 type UseGotoAnythingResultsReturn = {
   searchResults: SearchResult[]
@@ -70,16 +73,37 @@ export const useGotoAnythingResults = (
     },
   )
 
+  // Build recent items to show when search is empty
+  const recentResults = useMemo((): RecentSearchResult[] => {
+    if (searchQueryDebouncedValue || isCommandsMode)
+      return []
+    return getRecentItems().map(item => ({
+      id: `recent-${item.id}`,
+      title: item.title,
+      description: item.description,
+      type: 'recent' as const,
+      originalType: item.originalType,
+      path: item.path,
+      icon: React.createElement(
+        'div',
+        { className: 'flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg' },
+        React.createElement(RiTimeLine, { className: 'h-4 w-4 text-text-tertiary' }),
+      ),
+      data: { path: item.path },
+    }))
+  }, [searchQueryDebouncedValue, isCommandsMode])
+
   const dedupedResults = useMemo(() => {
+    const allResults = recentResults.length ? recentResults : searchResults
     const seen = new Set<string>()
-    return searchResults.filter((result) => {
+    return allResults.filter((result) => {
       const key = `${result.type}-${result.id}`
       if (seen.has(key))
         return false
       seen.add(key)
       return true
     })
-  }, [searchResults])
+  }, [searchResults, recentResults])
 
   // Group results by type
   const groupedResults = useMemo(() => dedupedResults.reduce((acc, result) => {
