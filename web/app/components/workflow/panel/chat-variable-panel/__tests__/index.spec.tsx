@@ -9,6 +9,7 @@ type MockWorkflowStoreState = {
   appId: string
   conversationVariables: ConversationVariable[]
   setConversationVariables: (value: ConversationVariable[]) => void
+  setControlPromptEditorRerenderKey: (value: number) => void
 }
 
 type MockFlowStore = {
@@ -18,6 +19,7 @@ type MockFlowStore = {
 
 const mockSetShowChatVariablePanel = vi.fn()
 const mockSetConversationVariables = vi.fn()
+const mockSetControlPromptEditorRerenderKey = vi.fn()
 const mockInvalidateConversationVarValues = vi.fn()
 const mockUpdateConversationVariables = vi.fn().mockResolvedValue(undefined)
 const mockFindUsedVarNodes = vi.fn<(selector: string[], nodes: Node[]) => Node[]>()
@@ -64,6 +66,7 @@ vi.mock('@/app/components/workflow/store', () => ({
     appId: 'app-1',
     conversationVariables: mockConversationVariables,
     setConversationVariables: mockSetConversationVariables,
+    setControlPromptEditorRerenderKey: mockSetControlPromptEditorRerenderKey,
   }),
 }))
 
@@ -239,6 +242,7 @@ describe('ChatVariablePanel', () => {
       ['conversation', 'conversation_var_next'],
     )
     expect(mockSetNodes).toHaveBeenCalledWith([updatedNode, createNode('node-2')])
+    expect(mockSetControlPromptEditorRerenderKey).toHaveBeenCalled()
   })
 
   it('should require confirmation before deleting variables referenced by workflow nodes', async () => {

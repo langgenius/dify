@@ -41,6 +41,7 @@ const useEnvPanelActions = ({
   envSecrets,
   updateEnvList,
   setEnvSecrets,
+  setControlPromptEditorRerenderKey,
   doSyncWorkflowDraft,
 }: {
   collaborativeWorkflow: ReturnType<typeof useCollaborativeWorkflow>
@@ -48,6 +49,7 @@ const useEnvPanelActions = ({
   envSecrets: Record<string, string>
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
+  setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   doSyncWorkflowDraft: () => Promise<void>
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(async () => {
@@ -99,7 +101,8 @@ const useEnvPanelActions = ({
       return node
     })
     setNodes(nextNodes)
-  }, [collaborativeWorkflow, getAffectedNodes])
+    setControlPromptEditorRerenderKey(Date.now())
+  }, [collaborativeWorkflow, getAffectedNodes, setControlPromptEditorRerenderKey])
 
   const syncEnvList = useCallback(async (
     nextEnvList: EnvironmentVariable[],
@@ -152,6 +155,7 @@ const EnvPanel = () => {
   const envSecrets = useStore(s => s.envSecrets)
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
   const setEnvSecrets = useStore(s => s.setEnvSecrets)
+  const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
   const appId = useStore(s => s.appId) as string
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const {
@@ -166,6 +170,7 @@ const EnvPanel = () => {
     envSecrets,
     updateEnvList,
     setEnvSecrets,
+    setControlPromptEditorRerenderKey,
     doSyncWorkflowDraft,
   })
 

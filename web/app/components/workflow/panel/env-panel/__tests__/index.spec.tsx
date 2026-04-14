@@ -333,6 +333,7 @@ describe('EnvPanel container', () => {
       }),
       expect.objectContaining({ id: 'node-2' }),
     ])
+    expect(store.getState().controlPromptEditorRerenderKey).toBeGreaterThan(0)
   })
 
   it('should convert edited plain variables into secrets and store the masked secret value', async () => {
