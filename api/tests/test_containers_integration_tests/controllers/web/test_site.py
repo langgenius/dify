@@ -64,9 +64,7 @@ def _create_site(db_session: Session, app_id: str) -> Site:
 
 class TestAppSiteApi:
     @patch("controllers.web.site.FeatureService.get_features")
-    def test_happy_path(
-        self, mock_features, app: Flask, db_session_with_containers: Session
-    ) -> None:
+    def test_happy_path(self, mock_features, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers)
         app_model = _create_app(db_session_with_containers, tenant.id)
