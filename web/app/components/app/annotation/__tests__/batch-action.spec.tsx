@@ -38,4 +38,19 @@ describe('BatchAction', () => {
       expect(onBatchDelete).toHaveBeenCalledTimes(1)
     })
   })
+
+  it('should hide delete confirmation when cancel is clicked', async () => {
+    const onBatchDelete = vi.fn()
+    render(<BatchAction {...baseProps} onBatchDelete={onBatchDelete} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+    expect(onBatchDelete).not.toHaveBeenCalled()
+  })
 })
