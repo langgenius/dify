@@ -737,7 +737,7 @@ class IndexingRunner:
     def _update_document_index_status(
         document_id: str,
         after_indexing_status: IndexingStatus,
-        extra_update_params: dict[Any, Any] | None = None,
+        extra_update_params: Mapping[Any, Any] | None = None,
     ):
         """
         Update the document indexing status.
@@ -764,7 +764,7 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: dict[Any, Any]):
+    def _update_segments_by_document(dataset_document_id: str, update_params: Mapping[Any, Any]):
         """
         Update the document segment by document id.
         """

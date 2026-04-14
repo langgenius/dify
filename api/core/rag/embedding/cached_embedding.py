@@ -106,7 +106,7 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
         multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
