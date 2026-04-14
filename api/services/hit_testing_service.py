@@ -83,8 +83,8 @@ class HitTestingService:
             dataset_id=dataset.id,
             query=query,
             attachment_ids=attachment_ids,
-            top_k=retrieval_model.get("top_k", 4),
-            score_threshold=retrieval_model.get("score_threshold", 0.0)
+            top_k=int(retrieval_model.get("top_k", 4)),
+            score_threshold=float(retrieval_model.get("score_threshold", 0.0))
             if retrieval_model["score_threshold_enabled"]
             else 0.0,
             reranking_model=retrieval_model.get("reranking_model", None)
