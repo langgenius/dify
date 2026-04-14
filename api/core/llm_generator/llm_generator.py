@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Protocol, TypedDict, cast
+from typing import Any, Protocol, TypedDict, cast
 
 import json_repair
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -533,7 +533,7 @@ class LLMGenerator:
     def __instruction_modify_common(
         tenant_id: str,
         model_config: ModelConfig,
-        last_run: dict | None,
+        last_run: dict[str, Any] | None,
         current: str | None,
         error_message: str | None,
         instruction: str,

@@ -129,7 +129,7 @@ class TestDocumentServiceQueryAndDownloadHelpers:
 
     def test_update_documents_need_summary_updates_matching_documents_and_commits(self):
         session = MagicMock()
-        session.query.return_value.filter.return_value.update.return_value = 2
+        session.execute.return_value.rowcount = 2
 
         with patch("services.dataset_service.session_factory") as session_factory_mock:
             session_factory_mock.create_session.return_value = _make_session_context(session)

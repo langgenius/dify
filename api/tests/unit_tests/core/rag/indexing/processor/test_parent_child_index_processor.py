@@ -258,10 +258,10 @@ class TestParentChildIndexProcessor:
         session.commit.assert_called_once()
 
     def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        segment_query = Mock()
-        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.query.return_value = segment_query
+        session.scalars.return_value = scalars_result
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False

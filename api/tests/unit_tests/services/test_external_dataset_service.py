@@ -1560,6 +1560,17 @@ class TestExternalDatasetServiceFetchRetrieval:
         with pytest.raises(ValueError, match="external knowledge binding not found"):
             ExternalDatasetService.fetch_external_knowledge_retrieval("tenant-123", "dataset-123", "query", {})
 
+    @patch("services.external_knowledge_service.db")
+    def test_fetch_external_knowledge_retrieval_cross_tenant_api_template_error(self, mock_db, factory):
+        """Test error when a binding points to an API template outside the dataset tenant."""
+        # Arrange
+        binding = factory.create_external_knowledge_binding_mock()
+        mock_db.session.scalar.side_effect = [binding, None]
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="external api template not found"):
+            ExternalDatasetService.fetch_external_knowledge_retrieval("tenant-123", "dataset-123", "query", {})
+
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_empty_results(self, mock_db, mock_process, factory):
@@ -1691,7 +1702,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(Exception, match=""):
+        with pytest.raises(ValueError):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
                 "tenant-123", "dataset-123", "query", {"top_k": 5}
             )

@@ -6,7 +6,6 @@ import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
@@ -19,6 +18,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -75,12 +75,12 @@ const ACCESS_MODE_LABEL_MAP: Record<AccessMode, AccessModeLabelKey> = {
 const MaybeTooltip = ({
   children,
   content,
-  popupClassName,
+  tooltipClassName,
   show = true,
 }: {
   children: ReactNode
   content?: ReactNode
-  popupClassName?: string
+  tooltipClassName?: string
   show?: boolean
 }) => {
   if (!show || !content)
@@ -89,7 +89,7 @@ const MaybeTooltip = ({
   return (
     <Tooltip>
       <TooltipTrigger render={<div>{children}</div>} />
-      <TooltipContent popupClassName={popupClassName}>
+      <TooltipContent className={tooltipClassName}>
         {content}
       </TooltipContent>
     </Tooltip>
@@ -269,7 +269,7 @@ export const AppCardOperations = ({
       >
         <MaybeTooltip
           content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
-          popupClassName="mt-[-8px]"
+          tooltipClassName="mt-[-8px]"
           show={disabled}
         >
           <div className="flex items-center justify-center gap-px">

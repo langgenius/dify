@@ -103,7 +103,10 @@ class DbMigrationAutoRenewLock:
                 timeout=self._ttl_seconds,
                 thread_local=False,
             )
-        acquired = bool(self._lock.acquire(*args, **kwargs))
+        lock = self._lock
+        if lock is None:
+            raise RuntimeError("Redis lock initialization failed.")
+        acquired = bool(lock.acquire(*args, **kwargs))
         self._acquired = acquired
         if acquired:
             self._start_heartbeat()

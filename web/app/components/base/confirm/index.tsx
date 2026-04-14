@@ -7,7 +7,7 @@ import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import Button from '../button'
+import { Button } from '@/app/components/base/ui/button'
 import Tooltip from '../tooltip'
 
 /** @deprecated Use `@/app/components/base/ui/alert-dialog` instead. */
@@ -122,7 +122,7 @@ function Confirm({
     >
       <div ref={dialogRef} className="relative w-full max-w-[480px] overflow-hidden">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
-          <div className="flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6">
+          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
             <Tooltip
               popupContent={title}
               disabled={!isTitleTruncated}
@@ -130,19 +130,19 @@ function Confirm({
               asChild={false}
               triggerClassName="w-full"
             >
-              <div ref={titleRef} className="title-2xl-semi-bold w-full truncate text-text-primary">
+              <div ref={titleRef} className="w-full truncate title-2xl-semi-bold text-text-primary">
                 {title}
               </div>
             </Tooltip>
-            <div className="w-full whitespace-pre-wrap wrap-break-word text-text-tertiary system-md-regular">{content}</div>
+            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">{content}</div>
             {confirmInputLabel && (
               <div className="mt-2">
-                <label className="mb-1 block text-text-secondary system-sm-regular">
+                <label className="mb-1 block system-sm-regular text-text-secondary">
                   {confirmInputLabel}
                 </label>
                 <input
                   type="text"
-                  className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:outline-hidden focus:ring-1"
+                  className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus focus:ring-components-input-border-focus h-9 w-full rounded-lg border px-3 text-sm text-text-primary placeholder:text-text-quaternary focus:ring-1 focus:outline-hidden"
                   placeholder={confirmInputPlaceholder}
                   value={confirmInputValue}
                   onChange={e => onConfirmInputChange?.(e.target.value)}
