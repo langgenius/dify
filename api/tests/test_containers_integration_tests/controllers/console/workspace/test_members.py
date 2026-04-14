@@ -86,7 +86,11 @@ class TestMemberCancelInviteApiWithContainers:
 
         assert status == 200
         assert result["result"] == "success"
-        mock_remove_member.assert_called_once_with(tenant, member, current_user)
+        mock_remove_member.assert_called_once()
+        called_tenant, called_member, called_current_user = mock_remove_member.call_args.args
+        assert called_tenant.id == tenant.id
+        assert called_member.id == member.id
+        assert called_current_user.id == current_user.id
 
     def test_cancel_not_found(self, flask_app_with_containers, db_session_with_containers):
         api = MemberCancelInviteApi()
@@ -219,7 +223,12 @@ class TestMemberUpdateRoleApiWithContainers:
             result = result[0]
 
         assert result["result"] == "success"
-        mock_update_role.assert_called_once_with(tenant, member, "normal", current_user)
+        mock_update_role.assert_called_once()
+        called_tenant, called_member, called_role, called_current_user = mock_update_role.call_args.args
+        assert called_tenant.id == tenant.id
+        assert called_member.id == member.id
+        assert called_role == "normal"
+        assert called_current_user.id == current_user.id
 
     def test_update_member_not_found(self, flask_app_with_containers, db_session_with_containers):
         api = MemberUpdateRoleApi()
@@ -331,6 +340,11 @@ class TestOwnerTransferApiWithContainers:
             result = method(api, member.id)
 
         assert result["result"] == "success"
-        mock_update_role.assert_called_once_with(tenant, member, "owner", current_user)
+        mock_update_role.assert_called_once()
+        called_tenant, called_member, called_role, called_current_user = mock_update_role.call_args.args
+        assert called_tenant.id == tenant.id
+        assert called_member.id == member.id
+        assert called_role == "owner"
+        assert called_current_user.id == current_user.id
         mock_new_owner_email.assert_called_once()
         mock_old_owner_email.assert_called_once()
