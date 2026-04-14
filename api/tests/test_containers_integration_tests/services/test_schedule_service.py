@@ -358,6 +358,7 @@ class TestSyncScheduleFromWorkflowIntegration:
             )
 
         assert result is not None
+        db_session_with_containers.expire_all()
         persisted = db_session_with_containers.get(WorkflowSchedulePlan, existing_id)
         assert persisted is not None
         assert persisted.node_id == "start"
@@ -382,4 +383,5 @@ class TestSyncScheduleFromWorkflowIntegration:
         )
 
         assert result is None
+        db_session_with_containers.expire_all()
         assert db_session_with_containers.get(WorkflowSchedulePlan, existing_id) is None
