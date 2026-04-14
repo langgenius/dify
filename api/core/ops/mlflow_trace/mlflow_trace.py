@@ -242,7 +242,7 @@ class MLflowDataTrace(BaseTraceInstance):
 
         return inputs, attributes
 
-    def _parse_knowledge_retrieval_outputs(self, outputs: dict):
+    def _parse_knowledge_retrieval_outputs(self, outputs: dict[str, Any]):
         """Parse KR outputs and attributes from KR workflow node"""
         retrieved = outputs.get("result", [])
 
@@ -319,7 +319,7 @@ class MLflowDataTrace(BaseTraceInstance):
             end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
         )
 
-    def _get_message_user_id(self, metadata: dict) -> str | None:
+    def _get_message_user_id(self, metadata: dict[str, Any]) -> str | None:
         if (end_user_id := metadata.get("from_end_user_id")) and (
             end_user_data := db.session.get(EndUser, end_user_id)
         ):
@@ -468,7 +468,7 @@ class MLflowDataTrace(BaseTraceInstance):
         }
         return node_type_mapping.get(node_type, "CHAIN")  # type: ignore[arg-type,call-overload]
 
-    def _set_trace_metadata(self, span: Span, metadata: dict):
+    def _set_trace_metadata(self, span: Span, metadata: dict[str, Any]):
         token = None
         try:
             # NB: Set span in context such that we can use update_current_trace() API
@@ -490,7 +490,7 @@ class MLflowDataTrace(BaseTraceInstance):
             return messages
         return prompts  # Fallback to original format
 
-    def _parse_single_message(self, item: dict):
+    def _parse_single_message(self, item: dict[str, Any]):
         """Postprocess single message format to be standard chat message"""
         role = item.get("role", "user")
         msg = {"role": role, "content": item.get("text", "")}
