@@ -421,6 +421,7 @@ class TestWebhookServiceRelationshipSyncWithContainers:
             node_id="node-stale",
             webhook_id="stale-webhook-id-000001",
         )
+        stale_trigger_id = stale_trigger.id
         workflow = factory.create_workflow(
             db_session_with_containers,
             app=app,
@@ -441,7 +442,7 @@ class TestWebhookServiceRelationshipSyncWithContainers:
 
         assert [record.node_id for record in records] == ["node-new"]
         assert records[0].webhook_id == "new-webhook-id-000001"
-        assert db_session_with_containers.get(WorkflowWebhookTrigger, stale_trigger.id) is None
+        assert db_session_with_containers.get(WorkflowWebhookTrigger, stale_trigger_id) is None
 
     def test_sync_webhook_relationships_sets_redis_cache_for_new_record(
         self, db_session_with_containers: Session, flask_app_with_containers
