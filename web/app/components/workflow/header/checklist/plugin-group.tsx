@@ -3,7 +3,7 @@ import type { BlockEnum } from '../../types'
 import type { Dependency } from '@/app/components/plugins/types'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { PopoverClose } from '@/app/components/base/ui/popover'
 import BlockIcon from '../../block-icon'
 import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
@@ -59,7 +59,7 @@ export const ChecklistPluginGroup = memo(({
         <div className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-icon-bg-midnight-solid shadow-xs">
           <span className="i-ri-download-line size-3.5 text-white" />
         </div>
-        <span className="min-w-0 grow truncate text-sm font-medium leading-5 text-text-primary">
+        <span className="min-w-0 grow truncate text-sm leading-5 font-medium text-text-primary">
           {t('nodes.common.pluginsNotInstalled', { ns: 'workflow', count: items.length })}
         </span>
         <PopoverClose

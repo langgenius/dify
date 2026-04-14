@@ -10,12 +10,12 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -140,7 +140,7 @@ const RetrievalConfig: FC<Props> = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className="w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg  px-4 pb-4 pt-3  shadow-xl">
+        <div className="w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
           <ConfigRetrievalContent
             datasetConfigs={datasetConfigs}
             onChange={handleChange}

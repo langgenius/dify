@@ -5,11 +5,11 @@ import { useBoolean, useKeyPress } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
@@ -76,13 +76,13 @@ const Popup = () => {
         if (res) {
           toast.success(t('publishPipeline.success.message', { ns: 'datasetPipeline' }), {
             description: (
-              <div className="text-text-secondary system-xs-regular">
+              <div className="system-xs-regular text-text-secondary">
                 <Trans
                   i18nKey="publishPipeline.success.tip"
                   ns="datasetPipeline"
                   components={{
                     CustomLink: (
-                      <Link className="text-text-accent system-xs-medium" href={`/datasets/${datasetId}/documents`}>
+                      <Link className="system-xs-medium text-text-accent" href={`/datasets/${datasetId}/documents`}>
                       </Link>
                     ),
                   }}
@@ -129,10 +129,10 @@ const Popup = () => {
       toast.success(t('publishTemplate.success.message', { ns: 'datasetPipeline' }), {
         description: (
           <div className="flex flex-col gap-y-1">
-            <span className="text-text-secondary system-xs-regular">
+            <span className="system-xs-regular text-text-secondary">
               {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
             </span>
-            <Link href={docLink()} target="_blank" className="inline-block text-text-accent system-xs-medium-uppercase">
+            <Link href={docLink()} target="_blank" className="inline-block system-xs-medium-uppercase text-text-accent">
               {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
             </Link>
           </div>
@@ -157,13 +157,13 @@ const Popup = () => {
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">
-        <div className="flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
+        <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
           {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
         </div>
         {publishedAt
           ? (
               <div className="flex items-center justify-between">
-                <div className="flex items-center text-text-secondary system-sm-medium">
+                <div className="flex items-center system-sm-medium text-text-secondary">
                   {t('common.publishedAt', { ns: 'workflow' })}
                   {' '}
                   {formatTimeFromNow(publishedAt)}
@@ -171,7 +171,7 @@ const Popup = () => {
               </div>
             )
           : (
-              <div className="flex items-center text-text-secondary system-sm-medium">
+              <div className="flex items-center system-sm-medium text-text-secondary">
                 {t('common.autoSaved', { ns: 'workflow' })}
                 {' '}
                 ·

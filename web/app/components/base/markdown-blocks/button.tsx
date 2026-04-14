@@ -1,5 +1,5 @@
-import Button from '@/app/components/base/button'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import { isValidUrl } from './utils'
 
@@ -14,7 +14,7 @@ const MarkdownButton = ({ node }: any) => {
     <Button
       variant={variant}
       size={size}
-      className={cn('h-auto! min-h-8 select-none whitespace-normal px-3!')}
+      className={cn('h-auto! min-h-8 px-3! whitespace-normal select-none')}
       onClick={() => {
         if (link && isValidUrl(link)) {
           window.open(link, '_blank')

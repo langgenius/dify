@@ -6,7 +6,7 @@ import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useMemo } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import Card from '@/app/components/plugins/card'
 import CardTags from '@/app/components/plugins/card/card-tags'
 import { useTags } from '@/app/components/plugins/hooks'
@@ -54,7 +54,7 @@ const CardWrapperComponent = ({
             />
           )}
         />
-        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pb-4 pt-4 group-hover:flex">
+        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pt-4 pb-4 group-hover:flex">
           <Button
             variant="primary"
             className="w-[calc(50%-4px)]"

@@ -1,5 +1,5 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/button'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
@@ -13,12 +13,12 @@ import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { Button } from '@/app/components/base/ui/button'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
@@ -100,7 +100,7 @@ const FormContent = () => {
   if (success) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-        <div className="min-w-[480px] max-w-[640px]">
+        <div className="max-w-[640px] min-w-[480px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="h-[56px] w-[56px] shrink-0 rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiCheckboxCircleFill className="h-8 w-8 text-text-success" />
@@ -109,7 +109,7 @@ const FormContent = () => {
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.thanks', { ns: 'share' })}</div>
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.recorded', { ns: 'share' })}</div>
             </div>
-            <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+            <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(
@@ -128,7 +128,7 @@ const FormContent = () => {
   if (expired) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-        <div className="min-w-[480px] max-w-[640px]">
+        <div className="max-w-[640px] min-w-[480px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
@@ -137,7 +137,7 @@ const FormContent = () => {
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.sorry', { ns: 'share' })}</div>
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.expired', { ns: 'share' })}</div>
             </div>
-            <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+            <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(
@@ -156,7 +156,7 @@ const FormContent = () => {
   if (submitted) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-        <div className="min-w-[480px] max-w-[640px]">
+        <div className="max-w-[640px] min-w-[480px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
@@ -165,7 +165,7 @@ const FormContent = () => {
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.sorry', { ns: 'share' })}</div>
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.completed', { ns: 'share' })}</div>
             </div>
-            <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+            <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(
@@ -184,7 +184,7 @@ const FormContent = () => {
   if (rateLimitExceeded) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-        <div className="min-w-[480px] max-w-[640px]">
+        <div className="max-w-[640px] min-w-[480px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
@@ -210,7 +210,7 @@ const FormContent = () => {
   if (!formData) {
     return (
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-        <div className="min-w-[480px] max-w-[640px]">
+        <div className="max-w-[640px] min-w-[480px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 radius-3xl border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
@@ -245,7 +245,7 @@ const FormContent = () => {
           background={site.icon_background}
           imageUrl={site.icon_url}
         />
-        <div className="system-xl-semibold grow text-text-primary">{site.title}</div>
+        <div className="grow system-xl-semibold text-text-primary">{site.title}</div>
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
         <div className="border-components-divider-subtle radius-3xl border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">

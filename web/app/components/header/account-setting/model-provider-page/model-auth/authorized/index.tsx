@@ -19,13 +19,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
@@ -172,7 +172,7 @@ const Authorized = ({
           >
             {
               popupTitle && (
-                <div className="px-3 pb-0.5 pt-[10px] text-text-tertiary system-xs-medium">
+                <div className="px-3 pt-[10px] pb-0.5 system-xs-medium text-text-tertiary">
                   {popupTitle}
                 </div>
               )
@@ -218,7 +218,7 @@ const Authorized = ({
                         }
                       : undefined,
                   )}
-                  className="flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only system-xs-medium"
+                  className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <RiAddLine className="mr-1 h-4 w-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}

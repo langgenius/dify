@@ -3,8 +3,8 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { Button } from '@/app/components/base/ui/button'
 import Divider from '../../base/divider'
 import {
   useWorkflowRun,

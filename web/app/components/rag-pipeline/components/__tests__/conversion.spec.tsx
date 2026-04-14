@@ -41,8 +41,8 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, ...props }: Record<string, unknown>) => (
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} {...props}>{children as string}</button>
   ),
 }))

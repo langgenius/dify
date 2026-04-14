@@ -7,12 +7,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Confirm from '@/app/components/base/confirm'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -98,20 +98,20 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         isShow={show}
         onClose={noop}
       >
-        <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
+        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
         <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
           <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
         </div>
-        <div className="relative mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('switch', { ns: 'app' })}</div>
+        <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('switch', { ns: 'app' })}</div>
         <div className="my-1 text-sm leading-5 text-text-tertiary">
           <span>{t('switchTipStart', { ns: 'app' })}</span>
           <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
           <span>{t('switchTipEnd', { ns: 'app' })}</span>
         </div>
         <div className="pb-4">
-          <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
+          <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
           <div className="flex items-center justify-between space-x-2">
             <AppIcon
               size="large"
@@ -152,7 +152,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           </div>
           <div className="flex items-center">
             <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button className="border-red-700" disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" destructive onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
           </div>
         </div>
       </Modal>

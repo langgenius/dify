@@ -1,12 +1,12 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { RiMoreLine } from '@remixicon/react'
 import { useState } from 'react'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 
 type AgentLogNavMoreProps = {
   options: AgentLogItemWithChildren[]
@@ -42,7 +42,7 @@ const AgentLogNavMore = ({
             options.map(option => (
               <div
                 key={option.message_id}
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary hover:bg-state-base-hover"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-2 system-md-regular text-text-secondary hover:bg-state-base-hover"
                 onClick={() => {
                   onShowAgentOrToolLog(option)
                   setOpen(false)

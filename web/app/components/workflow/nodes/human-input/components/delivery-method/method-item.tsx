@@ -15,9 +15,9 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
@@ -89,7 +89,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     <>
       <div
         className={cn(
-          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-2 pl-1.5 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
           isHovering && 'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
         )}
       >
@@ -104,7 +104,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
-          <div className="system-xs-medium capitalize text-text-secondary">{method.type}</div>
+          <div className="system-xs-medium text-text-secondary capitalize">{method.type}</div>
           {method.type === DeliveryMethodType.Email
             && (method.config as EmailConfig)?.debug_mode
             && <Badge size="s" className="px-1! py-0.5!">DEBUG</Badge>}

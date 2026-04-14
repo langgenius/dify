@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Dialog,
   DialogCloseButton,
@@ -166,10 +166,10 @@ const UpdatePluginModal: FC<Props> = ({
         )}
         {!doShowDowngradeWarningModal && (
           <>
-            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
             </DialogTitle>
-            <div className="mb-2 mt-3 text-text-secondary system-md-regular">
+            <div className="mt-3 mb-2 system-md-regular text-text-secondary">
               {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
             </div>
             <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

@@ -6,13 +6,13 @@ import type { AppSSO } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { useDocLink } from '@/context/i18n'
@@ -56,12 +56,12 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
   const { t } = useTranslation()
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="system-xs-medium pb-1 text-text-tertiary">
+      <div className="pb-1 system-xs-medium text-text-tertiary">
         {t('mcp.server.url', { ns: 'tools' })}
       </div>
       <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
         <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
+          <div className="overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-text-secondary">
             {serverURL}
           </div>
         </div>
@@ -225,7 +225,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
 
   return (
     <>
-      <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight', isMinimalState && 'h-12')}>
+      <div className={cn('w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight', isMinimalState && 'h-12')}>
         <div className={cn('relative rounded-xl bg-background-default', triggerModeDisabled && 'opacity-60')}>
           {triggerModeDisabled && (
             <TriggerModeOverlay triggerModeMessage={triggerModeMessage} />
@@ -237,7 +237,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                   <Mcp className="h-4 w-4 text-text-primary-on-surface" />
                 </div>
                 <div className="group w-full">
-                  <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
+                  <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
                     {t('mcp.server.title', { ns: 'tools' })}
                   </div>
                 </div>
@@ -274,7 +274,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
               >
                 <div className="flex items-center justify-center gap-px">
                   <RiEditLine className="h-3.5 w-3.5" />
-                  <div className="system-xs-medium px-[3px] text-text-tertiary">
+                  <div className="px-[3px] system-xs-medium text-text-tertiary">
                     {serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}
                   </div>
                 </div>

@@ -35,8 +35,8 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
   MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span data-testid="button-content">{children}</span>,
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({ children }: { children: React.ReactNode }) => <span data-testid="button-content">{children}</span>,
 }))
 
 vi.mock('@/app/components/base/portal-to-follow-elem', async () => {

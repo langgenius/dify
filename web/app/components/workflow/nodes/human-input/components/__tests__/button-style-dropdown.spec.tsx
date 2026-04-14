@@ -10,9 +10,8 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  __esModule: true,
-  default: (props: {
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: (props: {
     variant?: string
     children?: React.ReactNode
     className?: string

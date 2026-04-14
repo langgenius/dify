@@ -4,8 +4,8 @@ import type { FilterState } from './filter-management'
 import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
@@ -77,7 +77,7 @@ const PluginsPanel = () => {
 
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-3 self-stretch px-12 pb-3 pt-1">
+      <div className="flex flex-col items-start justify-center gap-3 self-stretch px-12 pt-1 pb-3">
         <div className="h-px self-stretch bg-divider-subtle"></div>
         <FilterManagement
           onFilterChange={handleFilterChange}

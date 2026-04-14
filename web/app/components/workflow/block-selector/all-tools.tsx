@@ -14,9 +14,9 @@ import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { Button } from '@/app/components/base/ui/button'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
@@ -259,7 +259,7 @@ const AllTools = ({
             )}
             {hasToolsListContent && (
               <>
-                <div className="px-3 pb-1 pt-2">
+                <div className="px-3 pt-2 pb-1">
                   <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
                 </div>
                 <Tools

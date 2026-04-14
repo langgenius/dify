@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
-import Button from '../../base/button'
 
 type Props = {
   className?: string

@@ -3,8 +3,8 @@ import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import { Pagination } from './pagination'
 
@@ -89,7 +89,7 @@ const CustomizedPagination: FC<Props> = ({
 
   return (
     <Pagination
-      className={cn('flex w-full select-none items-center px-6 py-3', className)}
+      className={cn('flex w-full items-center px-6 py-3 select-none', className)}
       currentPage={current}
       edgePageCount={2}
       middlePagesSiblingCount={1}
@@ -151,14 +151,14 @@ const CustomizedPagination: FC<Props> = ({
       </div>
       <div className={cn('flex grow list-none items-center justify-center gap-1')}>
         <Pagination.PageButton
-          className="system-sm-medium flex min-w-8 cursor-pointer items-center justify-center rounded-lg px-1 py-2 hover:bg-components-button-ghost-bg-hover"
+          className="flex min-w-8 cursor-pointer items-center justify-center rounded-lg px-1 py-2 system-sm-medium hover:bg-components-button-ghost-bg-hover"
           activeClassName="bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover"
           inactiveClassName="text-text-tertiary"
         />
       </div>
       {onLimitChange && (
         <div className="flex shrink-0 items-center gap-2">
-          <div className="system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary">{showPerPageTip ? t('pagination.perPage', { ns: 'common' }) : ''}</div>
+          <div className="w-[51px] shrink-0 text-end system-2xs-regular-uppercase text-text-tertiary">{showPerPageTip ? t('pagination.perPage', { ns: 'common' }) : ''}</div>
           <div
             className="flex items-center gap-px radius-lg bg-components-segmented-control-bg-normal p-0.5"
             onMouseEnter={() => setShowPerPageTip(true)}
@@ -166,7 +166,7 @@ const CustomizedPagination: FC<Props> = ({
           >
             <div
               className={cn(
-                'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                'cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                 limit === 10 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(10)}
@@ -175,7 +175,7 @@ const CustomizedPagination: FC<Props> = ({
             </div>
             <div
               className={cn(
-                'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                'cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                 limit === 25 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(25)}
@@ -184,7 +184,7 @@ const CustomizedPagination: FC<Props> = ({
             </div>
             <div
               className={cn(
-                'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                'cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                 limit === 50 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(50)}

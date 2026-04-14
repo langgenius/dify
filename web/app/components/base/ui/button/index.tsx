@@ -1,9 +1,8 @@
+import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '@/utils/classnames'
-import Spinner from '../spinner'
 
 const buttonVariants = cva(
   'btn',
@@ -11,7 +10,6 @@ const buttonVariants = cva(
     variants: {
       variant: {
         'primary': 'btn-primary',
-        'warning': 'btn-warning',
         'secondary': 'btn-secondary',
         'secondary-accent': 'btn-secondary-accent',
         'ghost': 'btn-ghost',
@@ -34,48 +32,39 @@ const buttonVariants = cva(
   },
 )
 
-export type ButtonProps = {
-  loading?: boolean
-  spinnerClassName?: string
-  ref?: React.Ref<HTMLButtonElement>
-  render?: React.ReactElement
-  focusableWhenDisabled?: boolean
-} & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
+export type ButtonProps
+  = Omit<BaseButtonNS.Props, 'className'>
+    & VariantProps<typeof buttonVariants> & {
+      loading?: boolean
+      className?: string
+    }
 
-const Button = ({
+export function Button({
   className,
   variant,
   size,
   destructive,
   loading,
-  children,
-  spinnerClassName,
-  ref,
-  render,
-  focusableWhenDisabled,
   disabled,
   type = 'button',
+  children,
   ...props
-}: ButtonProps) => {
-  const isDisabled = disabled || loading
-
+}: ButtonProps) {
   return (
     <BaseButton
       type={type}
       className={cn(buttonVariants({ variant, size, destructive, className }))}
-      ref={ref}
-      render={render}
-      {...props}
-      disabled={isDisabled}
-      focusableWhenDisabled={focusableWhenDisabled}
+      disabled={disabled || loading}
       aria-busy={loading || undefined}
+      {...props}
     >
       {children}
-      {loading && <Spinner loading={loading} className={cn('ml-1! h-3! w-3! border-2! text-white!', spinnerClassName)} />}
+      {loading && (
+        <i
+          className="ml-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+          aria-hidden="true"
+        />
+      )}
     </BaseButton>
   )
 }
-Button.displayName = 'Button'
-
-export default Button
-export { Button, buttonVariants }
