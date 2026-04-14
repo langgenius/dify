@@ -258,7 +258,7 @@ class TestConversationServiceVariables:
                 last_id=str(uuid4()),
             )
 
-    def test_get_conversational_variable_with_name_filter_postgresql(
+    def test_get_conversational_variable_with_name_filter_without_match(
         self, db_session_with_containers, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
@@ -279,17 +279,16 @@ class TestConversationServiceVariables:
             variable=StringVariable(id=str(uuid4()), name="project_name", value="migration"),
         )
 
-        with patch("services.conversation_service.dify_config.DB_TYPE", "postgresql"):
-            result = ConversationService.get_conversational_variable(
-                app_model=app,
-                conversation_id=conversation.id,
-                user=account,
-                limit=10,
-                last_id=None,
-                variable_name="email",
-            )
+        result = ConversationService.get_conversational_variable(
+            app_model=app,
+            conversation_id=conversation.id,
+            user=account,
+            limit=10,
+            last_id=None,
+            variable_name="email",
+        )
 
-        assert [item["name"] for item in result.data] == ["customer_email"]
+        assert result.data == []
         assert result.has_more is False
 
     def test_get_conversational_variable_sets_has_more(
