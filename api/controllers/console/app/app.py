@@ -6,7 +6,6 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from graphon.enums import WorkflowExecutionStatus
-from graphon.file import helpers as file_helpers
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -31,6 +30,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
@@ -161,15 +161,6 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
     return value
 
 
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
-    if icon is None or icon_type is None:
-        return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
-        return None
-    return file_helpers.get_signed_file_url(icon)
-
-
 class Tag(ResponseModel):
     id: str
     name: str
@@ -292,7 +283,7 @@ class Site(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("icon_type", mode="before")
     @classmethod
@@ -342,7 +333,7 @@ class AppPartial(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -390,7 +381,7 @@ class AppDetailWithSite(AppDetail):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
 
 class AppPagination(ResponseModel):
