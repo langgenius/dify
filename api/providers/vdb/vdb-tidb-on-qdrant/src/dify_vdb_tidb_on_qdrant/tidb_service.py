@@ -24,9 +24,7 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 class TidbService:
     @staticmethod
-    def fetch_qdrant_endpoint(
-        api_url: str, public_key: str, private_key: str, cluster_id: str
-    ) -> str | None:
+    def fetch_qdrant_endpoint(api_url: str, public_key: str, private_key: str, cluster_id: str) -> str | None:
         """Fetch the qdrant endpoint for a cluster by calling the Get Cluster API.
 
         The Get Cluster response contains ``status.connection_strings.standard.host``
@@ -34,9 +32,7 @@ class TidbService:
         as an ``https://`` URL.
         """
         try:
-            cluster_response = TidbService.get_tidb_serverless_cluster(
-                api_url, public_key, private_key, cluster_id
-            )
+            cluster_response = TidbService.get_tidb_serverless_cluster(api_url, public_key, private_key, cluster_id)
             if not cluster_response:
                 return None
             # v1beta: status.connection_strings.standard.host
@@ -100,9 +96,7 @@ class TidbService:
                 cluster_response = TidbService.get_tidb_serverless_cluster(api_url, public_key, private_key, cluster_id)
                 if cluster_response["state"] == "ACTIVE":
                     user_prefix = cluster_response["userPrefix"]
-                    qdrant_endpoint = TidbService.fetch_qdrant_endpoint(
-                        api_url, public_key, private_key, cluster_id
-                    )
+                    qdrant_endpoint = TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, cluster_id)
                     return {
                         "cluster_id": cluster_id,
                         "cluster_name": display_name,
