@@ -4,7 +4,6 @@ import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
-import Link from 'next/link'
 import {
   memo,
   useCallback,
@@ -15,6 +14,7 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import Link from '@/next/link'
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
@@ -46,7 +46,7 @@ const InstallFromMarketplace = ({
 
   return (
     <div className="mb-2">
-      <Divider className="!mt-4 h-px" />
+      <Divider className="mt-4! h-px" />
       <div className="flex items-center justify-between">
         <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />

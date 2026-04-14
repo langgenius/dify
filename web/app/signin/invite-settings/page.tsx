@@ -2,19 +2,19 @@
 import type { Locale } from '@/i18n-config'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import { LICENSE_LINK } from '@/constants/link'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
@@ -41,7 +41,7 @@ export default function InviteSettingsPage() {
   const handleActivate = useCallback(async () => {
     try {
       if (!name) {
-        Toast.notify({ type: 'error', message: t('enterYourName', { ns: 'login' }) })
+        toast.error(t('enterYourName', { ns: 'login' }))
         return
       }
       const res = await activateMember({
@@ -75,7 +75,7 @@ export default function InviteSettingsPage() {
           <h2 className="text-text-primary title-4xl-semi-bold">{t('invalid', { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
-          <Button variant="primary" className="w-full !text-sm">
+          <Button variant="primary" className="w-full text-sm!">
             <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
           </Button>
         </div>

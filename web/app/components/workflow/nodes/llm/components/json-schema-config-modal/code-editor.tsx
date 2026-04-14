@@ -1,11 +1,13 @@
 import type { FC } from 'react'
+import { Editor } from '@monaco-editor/react'
 import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModernMonacoEditor } from '@/app/components/base/modern-monaco/modern-monaco-editor'
 import Tooltip from '@/app/components/base/tooltip'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
 type CodeEditorProps = {
@@ -33,11 +35,54 @@ const CodeEditor: FC<CodeEditorProps> = ({
   onBlur,
 }) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
+  const monacoRef = useRef<any>(null)
   const editorRef = useRef<any>(null)
+  const [isMounted, setIsMounted] = React.useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const handleEditorReady = useCallback((editor: any) => {
+  useEffect(() => {
+    if (monacoRef.current) {
+      if (theme === Theme.light)
+        monacoRef.current.editor.setTheme('light-theme')
+      else
+        monacoRef.current.editor.setTheme('dark-theme')
+    }
+  }, [theme])
+
+  const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor
-    editor.getModel()?.updateOptions({ tabSize: 2 })
+    monacoRef.current = monaco
+
+    editor.onDidFocusEditorText(() => {
+      onFocus?.()
+    })
+    editor.onDidBlurEditorText(() => {
+      onBlur?.()
+    })
+
+    monaco.editor.defineTheme('light-theme', {
+      base: 'vs',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#00000000',
+        'editor.lineHighlightBackground': '#00000000',
+        'focusBorder': '#00000000',
+      },
+    })
+    monaco.editor.defineTheme('dark-theme', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#00000000',
+        'editor.lineHighlightBackground': '#00000000',
+        'focusBorder': '#00000000',
+      },
+    })
+    monaco.editor.setTheme('light-theme')
+    setIsMounted(true)
   }, [])
 
   const formatJsonContent = useCallback(() => {
@@ -50,11 +95,29 @@ const CodeEditor: FC<CodeEditorProps> = ({
       onUpdate?.(value)
   }, [onUpdate])
 
+  const editorTheme = useMemo(() => {
+    if (theme === Theme.light)
+      return 'light-theme'
+    return 'dark-theme'
+  }, [theme])
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      editorRef.current?.layout()
+    })
+
+    if (containerRef.current)
+      resizeObserver.observe(containerRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
     <div className={cn('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
       {!hideTopMenu && (
         <div className="flex items-center justify-between pl-2 pr-1 pt-1">
-          <div className="py-0.5 text-text-secondary system-xs-semibold-uppercase">
+          <div className="system-xs-semibold-uppercase py-0.5 text-text-secondary">
             <span className="px-1 py-0.5">JSON</span>
           </div>
           <div className="flex items-center gap-x-0.5">
@@ -83,17 +146,19 @@ const CodeEditor: FC<CodeEditorProps> = ({
       )}
       {topContent}
       <div className={cn('relative overflow-hidden', editorWrapperClassName)}>
-        <ModernMonacoEditor
-          language="json"
+        <Editor
+          defaultLanguage="json"
+          theme={isMounted ? editorTheme : 'default-theme'} // sometimes not load the default theme
           value={value}
-          readOnly={readOnly}
           onChange={handleEditorChange}
-          onReady={handleEditorReady}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          loading={<span className="text-text-primary">{t('loading', { ns: 'common' })}</span>}
+          onMount={handleEditorDidMount}
           options={{
+            readOnly,
+            domReadOnly: true,
+            minimap: { enabled: false },
+            tabSize: 2,
             scrollBeyondLastLine: false,
+            wordWrap: 'on',
             wrappingIndent: 'same',
             overviewRulerBorder: false,
             hideCursorInOverviewRuler: true,

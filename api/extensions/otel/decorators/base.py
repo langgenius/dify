@@ -1,15 +1,12 @@
 import functools
 from collections.abc import Callable
-from typing import ParamSpec, TypeVar, cast
+from typing import cast
 
 from opentelemetry.trace import get_tracer
 
 from configs import dify_config
 from extensions.otel.decorators.handler import SpanHandler
 from extensions.otel.runtime import is_instrument_flag_enabled
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 _HANDLER_INSTANCES: dict[type[SpanHandler], SpanHandler] = {SpanHandler: SpanHandler()}
 
@@ -21,7 +18,7 @@ def _get_handler_instance(handler_class: type[SpanHandler]) -> SpanHandler:
     return _HANDLER_INSTANCES[handler_class]
 
 
-def trace_span(handler_class: type[SpanHandler] | None = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def trace_span[**P, R](handler_class: type[SpanHandler] | None = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator that traces a function with an OpenTelemetry span.
 
@@ -40,12 +37,7 @@ def trace_span(handler_class: type[SpanHandler] | None = None) -> Callable[[Call
             handler = _get_handler_instance(handler_class or SpanHandler)
             tracer = get_tracer(__name__)
 
-            return handler.wrapper(
-                tracer=tracer,
-                wrapped=func,
-                args=args,
-                kwargs=kwargs,
-            )
+            return handler.wrapper(tracer, func, *args, **kwargs)
 
         return cast(Callable[P, R], wrapper)
 

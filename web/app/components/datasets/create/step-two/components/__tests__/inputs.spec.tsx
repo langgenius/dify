@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
@@ -33,6 +33,22 @@ describe('DelimiterInput', () => {
     // Tooltip triggers render; component mounts without error
     expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
   })
+
+  it('should suppress onChange during IME composition', () => {
+    const onChange = vi.fn()
+    const finalValue = 'wu'
+    render(<DelimiterInput value="" onChange={onChange} />)
+    const input = screen.getByPlaceholderText(`${ns}.stepTwo.separatorPlaceholder`)
+
+    fireEvent.compositionStart(input)
+    fireEvent.change(input, { target: { value: 'w' } })
+    fireEvent.change(input, { target: { value: finalValue } })
+    expect(onChange).not.toHaveBeenCalled()
+
+    fireEvent.compositionEnd(input)
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0][0].target.value).toBe(finalValue)
+  })
 })
 
 describe('MaxLengthInput', () => {
@@ -47,19 +63,34 @@ describe('MaxLengthInput', () => {
 
   it('should render number input', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
 
   it('should accept value prop', () => {
     render(<MaxLengthInput value={500} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('500')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue('500')
   })
 
   it('should have min of 1', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    const input = screen.getByRole('textbox')
+    expect(input).toBeInTheDocument()
+  })
+
+  it('should reset to the minimum when users clear the value', () => {
+    const onChange = vi.fn()
+    render(<MaxLengthInput value={500} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith(1)
+  })
+
+  it('should clamp out-of-range text edits before updating state', () => {
+    const onChange = vi.fn()
+    render(<MaxLengthInput value={500} max={1000} onChange={onChange} />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '1200' } })
+    expect(onChange).toHaveBeenLastCalledWith(1000)
   })
 })
 
@@ -75,18 +106,33 @@ describe('OverlapInput', () => {
 
   it('should render number input', () => {
     render(<OverlapInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
+    const input = screen.getByRole('textbox')
     expect(input).toBeInTheDocument()
   })
 
   it('should accept value prop', () => {
     render(<OverlapInput value={50} onChange={vi.fn()} />)
-    expect(screen.getByDisplayValue('50')).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue('50')
   })
 
   it('should have min of 1', () => {
     render(<OverlapInput onChange={vi.fn()} />)
-    const input = screen.getByRole('spinbutton')
-    expect(input).toHaveAttribute('min', '1')
+    const input = screen.getByRole('textbox')
+    expect(input).toBeInTheDocument()
+  })
+
+  it('should reset to the minimum when users clear the value', () => {
+    const onChange = vi.fn()
+    render(<OverlapInput value={50} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith(1)
+  })
+
+  it('should clamp out-of-range text edits before updating state', () => {
+    const onChange = vi.fn()
+    render(<OverlapInput value={50} max={100} onChange={onChange} />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '150' } })
+    expect(onChange).toHaveBeenLastCalledWith(100)
   })
 })

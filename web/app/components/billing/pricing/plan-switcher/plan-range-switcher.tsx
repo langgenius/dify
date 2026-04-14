@@ -23,7 +23,7 @@ const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
   return (
     <div className="flex items-center justify-end gap-x-3 pr-5">
       <Switch
-        size="l"
+        size="lg"
         value={value === PlanRange.yearly}
         onChange={(v) => {
           onChange(v ? PlanRange.yearly : PlanRange.monthly)

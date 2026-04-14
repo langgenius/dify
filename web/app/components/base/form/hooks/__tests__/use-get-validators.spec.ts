@@ -75,4 +75,59 @@ describe('useGetValidators', () => {
     expect(changeMessage).toContain('"field":"Workspace"')
     expect(nonRequiredValidators).toBeUndefined()
   })
+
+  it('should return undefined when value is truthy (onMount, onChange, onBlur)', () => {
+    const { result } = renderHook(() => useGetValidators())
+    const validators = result.current.getValidators({
+      name: 'username',
+      label: 'Username',
+      required: true,
+      type: FormTypeEnum.textInput,
+    })
+
+    expect(validators?.onMount?.({ value: 'some value' })).toBeUndefined()
+    expect(validators?.onChange?.({ value: 'some value' })).toBeUndefined()
+    expect(validators?.onBlur?.({ value: 'some value' })).toBeUndefined()
+  })
+
+  it('should handle null/missing labels correctly', () => {
+    const { result } = renderHook(() => useGetValidators())
+
+    // Explicitly test fallback to name when label is missing
+    const validators = result.current.getValidators({
+      name: 'id_field',
+      label: null as unknown as string,
+      required: true,
+      type: FormTypeEnum.textInput,
+    })
+
+    const mountMessage = validators?.onMount?.({ value: '' })
+    expect(mountMessage).toContain('"field":"id_field"')
+  })
+
+  it('should handle onChange message with fallback to name', () => {
+    const { result } = renderHook(() => useGetValidators())
+    const validators = result.current.getValidators({
+      name: 'desc',
+      label: createElement('span'), // results in '' label
+      required: true,
+      type: FormTypeEnum.textInput,
+    })
+
+    const changeMessage = validators?.onChange?.({ value: '' })
+    expect(changeMessage).toContain('"field":"desc"')
+  })
+
+  it('should handle onBlur message specifically', () => {
+    const { result } = renderHook(() => useGetValidators())
+    const validators = result.current.getValidators({
+      name: 'email',
+      label: 'Email Address',
+      required: true,
+      type: FormTypeEnum.textInput,
+    })
+
+    const blurMessage = validators?.onBlur?.({ value: '' })
+    expect(blurMessage).toContain('"field":"Email Address"')
+  })
 })

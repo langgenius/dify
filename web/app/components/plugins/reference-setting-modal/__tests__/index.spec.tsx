@@ -717,7 +717,7 @@ describe('reference-setting-modal', () => {
 
         // Assert
         const modal = screen.getByTestId('modal')
-        expect(modal).toHaveClass('w-[620px]', 'max-w-[620px]', '!p-0')
+        expect(modal).toHaveClass('w-[620px]', 'max-w-[620px]', 'p-0!')
       })
 
       it('should pass isShow=true to Modal', () => {

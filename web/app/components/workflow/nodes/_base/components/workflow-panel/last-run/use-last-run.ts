@@ -3,7 +3,7 @@ import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useState } from 'react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
@@ -28,8 +28,8 @@ import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/nodes/template-transform/use-single-run-form-params'
 
-import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
-import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/use-single-run-form-params'
+import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/hooks/use-get-data-for-check-more'
+import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/hooks/use-single-run-form-params'
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 
@@ -159,11 +159,11 @@ const useLastRun = <T>({
     if (!warningForNode)
       return false
 
-    if (warningForNode.unConnected && !warningForNode.errorMessage)
+    if (warningForNode.unConnected && warningForNode.errorMessages.length === 0)
       return false
 
-    const message = warningForNode.errorMessage || 'This node has unresolved checklist issues'
-    Toast.notify({ type: 'error', message })
+    const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
+    toast.error(message)
     return true
   }, [warningNodes, id])
 

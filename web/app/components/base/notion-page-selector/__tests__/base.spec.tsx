@@ -9,6 +9,8 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import NotionPageSelector from '../base'
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/service/knowledge/use-import', () => ({
   usePreImportNotionPages: vi.fn(),
   useInvalidPreImportNotionPages: vi.fn(),
@@ -81,7 +83,11 @@ describe('NotionPageSelector Base', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useModalContextSelector).mockReturnValue(mockSetShowAccountSettingModal)
+    vi.mocked(useModalContextSelector).mockImplementation((selector) => {
+      // Execute the selector to get branch/func coverage for the inline function
+      selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal } as unknown as Parameters<Parameters<typeof useModalContextSelector>[0]>[0])
+      return mockSetShowAccountSettingModal
+    })
     vi.mocked(useInvalidPreImportNotionPages).mockReturnValue(mockInvalidPreImportNotionPages)
   })
 
@@ -179,7 +185,7 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Configure Notion' }))
+    await user.click(screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }))
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   })
 
@@ -267,5 +273,58 @@ describe('NotionPageSelector Base', () => {
     vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} canPreview={false} />)
     expect(screen.queryByTestId('notion-page-preview-root-1')).not.toBeInTheDocument()
+  })
+
+  it('should handle undefined data gracefully during loading', () => {
+    vi.mocked(usePreImportNotionPages).mockReturnValue({
+      data: undefined,
+      isFetching: true,
+      isError: false,
+    } as unknown as ReturnType<typeof usePreImportNotionPages>)
+    render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
+    expect(screen.getByTestId('notion-page-selector-loading')).toBeInTheDocument()
+  })
+
+  it('should handle credential with empty id', () => {
+    vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
+    const onSelectCredential = vi.fn()
+    render(
+      <NotionPageSelector
+        credentialList={[buildCredential('', 'Empty', 'Empty Workspace')]}
+        onSelect={vi.fn()}
+        onSelectCredential={onSelectCredential}
+      />,
+    )
+    expect(onSelectCredential).toHaveBeenCalledWith('')
+  })
+
+  it('should render empty page selector when notion_info is empty', () => {
+    vi.mocked(usePreImportNotionPages).mockReturnValue({
+      data: { notion_info: undefined },
+      isFetching: false,
+      isError: false,
+    } as unknown as ReturnType<typeof usePreImportNotionPages>)
+    render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
+    expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
+  })
+
+  it('should run credential effect fallback when onSelectCredential is not provided', () => {
+    vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
+    const { rerender } = render(
+      <NotionPageSelector
+        credentialList={mockCredentialList}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    // Rerender with a new credentialList but same credential to hit the else block without onSelectCredential
+    rerender(
+      <NotionPageSelector
+        credentialList={[...mockCredentialList, buildCredential('c3', 'Cred 3', 'Workspace 3')]}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
   })
 })

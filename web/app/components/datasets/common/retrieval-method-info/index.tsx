@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import Image from 'next/image'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import RadioCard from '@/app/components/base/radio-card'
@@ -28,7 +27,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const type = value.search_method
-  const icon = <Image className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(type)} alt="" />
+  const icon = <img className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(type)} alt="" />
   return (
     <div className="space-y-2">
       <RadioCard
@@ -36,7 +35,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         title={t(`retrieval.${type}.title`, { ns: 'dataset' })}
         description={t(`retrieval.${type}.description`, { ns: 'dataset' })}
         noRadio
-        chosenConfigWrapClassName="!pb-3"
+        chosenConfigWrapClassName="pb-3!"
         chosenConfig={(
           <div className="flex flex-wrap text-xs font-normal leading-[18px]">
             {value.reranking_model.reranking_model_name && (

@@ -12,7 +12,7 @@ import { cn } from '@/utils/classnames'
 
 init({ data })
 
-export type AppIconProps = {
+type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
   rounded?: boolean
   iconType?: AppIconType | null
@@ -30,11 +30,11 @@ const appIconVariants = cva(
   {
     variants: {
       size: {
-        xs: 'w-4 h-4 text-xs rounded-[4px]',
+        xs: 'w-4 h-4 text-xs radius-xs',
         tiny: 'w-6 h-6 text-base rounded-md',
         small: 'w-8 h-8 text-xl rounded-lg',
-        medium: 'w-9 h-9 text-[22px] rounded-[10px]',
-        large: 'w-10 h-10 text-[24px] rounded-[10px]',
+        medium: 'w-9 h-9 text-[22px] radius-lg',
+        large: 'w-10 h-10 text-[24px] radius-lg',
         xl: 'w-12 h-12 text-[28px] rounded-xl',
         xxl: 'w-14 h-14 text-[32px] rounded-2xl',
       },
@@ -53,11 +53,11 @@ const EditIconWrapperVariants = cva(
   {
     variants: {
       size: {
-        xs: 'w-4 h-4 rounded-[4px]',
+        xs: 'w-4 h-4 radius-xs',
         tiny: 'w-6 h-6 rounded-md',
         small: 'w-8 h-8 rounded-lg',
-        medium: 'w-9 h-9 rounded-[10px]',
-        large: 'w-10 h-10 rounded-[10px]',
+        medium: 'w-9 h-9 radius-lg',
+        large: 'w-10 h-10 radius-lg',
         xl: 'w-12 h-12 rounded-xl',
         xxl: 'w-14 h-14 rounded-2xl',
       },

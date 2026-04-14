@@ -5,7 +5,7 @@ const mockCopy = vi.fn()
 const mockReset = vi.fn()
 let mockCopied = false
 
-vi.mock('foxact/use-clipboard', () => ({
+vi.mock('@/hooks/use-clipboard', () => ({
   useClipboard: () => ({
     copy: mockCopy,
     reset: mockReset,
@@ -59,6 +59,11 @@ describe('CopyFeedbackNew', () => {
     it('renders the component', () => {
       const { container } = render(<CopyFeedbackNew content="test content" />)
       expect(container.querySelector('.cursor-pointer')).toBeInTheDocument()
+    })
+
+    it('renders with custom className', () => {
+      const { container } = render(<CopyFeedbackNew content="test content" className="test-class" />)
+      expect(container.querySelector('.test-class')).toBeInTheDocument()
     })
 
     it('applies copied CSS class when copied is true', () => {

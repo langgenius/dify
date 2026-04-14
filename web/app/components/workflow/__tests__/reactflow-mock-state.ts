@@ -16,8 +16,8 @@ import * as React from 'react'
 type MockNode = {
   id: string
   position: { x: number, y: number }
-  width?: number
-  height?: number
+  width?: number | null
+  height?: number | null
   parentId?: string
   data: Record<string, unknown>
 }

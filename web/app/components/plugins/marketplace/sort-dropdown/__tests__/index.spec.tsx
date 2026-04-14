@@ -659,13 +659,13 @@ describe('SortDropdown', () => {
       expect(checkIcon).toBeInTheDocument()
     })
 
-    it('should apply blur backdrop to dropdown container', () => {
+    it('should apply blur-sm backdrop to dropdown container', () => {
       render(<SortDropdown />)
 
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       const content = screen.getByTestId('portal-content')
-      const container = content.querySelector('.backdrop-blur-sm')
+      const container = content.querySelector('.backdrop-blur-xs')
       expect(container).toBeInTheDocument()
     })
   })

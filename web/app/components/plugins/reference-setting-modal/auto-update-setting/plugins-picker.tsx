@@ -34,7 +34,7 @@ const PluginsPicker: FC<Props> = ({
     set: setToolPicker,
   }] = useBoolean(false)
   return (
-    <div className="mt-2 rounded-[10px] bg-background-section-burn p-2.5">
+    <div className="mt-2 radius-lg bg-background-section-burn p-2.5">
       {hasSelected
         ? (
             <div className="flex justify-between text-text-tertiary">

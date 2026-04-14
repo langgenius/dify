@@ -1,6 +1,5 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
-import Link from 'next/link'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
@@ -9,6 +8,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import Link from '@/next/link'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
@@ -116,7 +116,7 @@ const Popup: FC<PopupProps> = ({
                             )
                           }
                         </div>
-                        <div data-testid="popup-source-content" className="break-words text-[13px] text-text-secondary">{source.content}</div>
+                        <div data-testid="popup-source-content" className="wrap-break-word text-[13px] text-text-secondary">{source.content}</div>
                         {
                           showHitInfo && (
                             <div data-testid="popup-hit-info" className="mt-2 flex flex-wrap items-center text-text-quaternary system-xs-medium">

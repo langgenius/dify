@@ -1,8 +1,6 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import Toast from '@/app/components/base/toast'
 import { ChunkingMode } from '@/models/datasets'
 import EditPipelineInfo from '../edit-pipeline-info'
 
@@ -16,11 +14,20 @@ vi.mock('@/service/use-pipeline', () => ({
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
 }))
+
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      error: mockToastError,
+    },
+  }
+})
 
 // Mock AppIconPicker to capture interactions
 let _mockOnSelect: ((icon: { type: 'emoji' | 'image', icon?: string, background?: string, fileId?: string, url?: string }) => void) | undefined
@@ -88,6 +95,7 @@ describe('EditPipelineInfo', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastError.mockReset()
     _mockOnSelect = undefined
     _mockOnClose = undefined
   })
@@ -235,10 +243,7 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Please enter a name for the Knowledge Base.',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('datasetPipeline.editPipelineInfoNameRequired')
       })
     })
 

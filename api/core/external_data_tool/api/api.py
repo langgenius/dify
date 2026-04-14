@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any, TypedDict
+
 from sqlalchemy import select
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
@@ -5,6 +8,16 @@ from core.external_data_tool.base import ExternalDataTool
 from core.helper import encrypter
 from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+
+
+class ApiToolConfig(TypedDict, total=False):
+    """Expected config shape for ApiExternalDataTool.
+
+    Not used directly in method signatures (base class accepts dict[str, Any]);
+    kept here to document the keys this tool reads from config.
+    """
+
+    api_based_extension_id: str
 
 
 class ApiExternalDataTool(ExternalDataTool):
@@ -16,7 +29,7 @@ class ApiExternalDataTool(ExternalDataTool):
     """the unique name of external data tool"""
 
     @classmethod
-    def validate_config(cls, tenant_id: str, config: dict):
+    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
         """
         Validate the incoming form config data.
 
@@ -37,7 +50,7 @@ class ApiExternalDataTool(ExternalDataTool):
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
 
-    def query(self, inputs: dict, query: str | None = None) -> str:
+    def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
         """
         Query the external data tool.
 

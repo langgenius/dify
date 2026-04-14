@@ -152,7 +152,7 @@ const OpeningSettingModal = ({
                       return item
                     }))
                   }}
-                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-none"
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-hidden"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
@@ -188,7 +188,7 @@ const OpeningSettingModal = ({
     <Modal
       isShow
       onClose={noop}
-      className="!mt-14 !w-[640px] !max-w-none !bg-components-panel-bg-blur !p-6"
+      className="mt-14! w-[640px]! max-w-none! bg-components-panel-bg-blur! p-6!"
     >
       <div className="mb-6 flex items-center justify-between">
         <div className="text-text-primary title-2xl-semi-bold">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>

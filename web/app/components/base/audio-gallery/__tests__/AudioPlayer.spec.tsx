@@ -1,6 +1,5 @@
-import type { ToastHandle } from '@/app/components/base/toast'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
+import { toast } from '@/app/components/base/ui/toast'
 import useThemeMock from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import AudioPlayer from '../AudioPlayer'
@@ -263,14 +262,12 @@ describe('AudioPlayer — waveform generation', () => {
 
   it('should show Toast when AudioContext is not available', async () => {
     vi.stubGlobal('AudioContext', undefined)
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
     render(<AudioPlayer src="https://example.com/audio.mp3" />)
     await advanceWaveformTimer()
 
-    const toastFound = Array.from(document.body.querySelectorAll('div')).some(
-      d => d.textContent?.includes('Web Audio API is not supported in this browser'),
-    )
-    expect(toastFound).toBe(true)
+    expect(toastSpy).toHaveBeenCalledWith('Web Audio API is not supported in this browser')
   })
 
   it('should set audio unavailable when URL is not http/https', async () => {
@@ -529,7 +526,7 @@ describe('AudioPlayer — missing coverage', () => {
 
   it('should keep play button disabled when source is unavailable', async () => {
     vi.stubGlobal('AudioContext', buildAudioContext(300))
-    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     render(<AudioPlayer src="blob:https://example.com" />)
     await advanceWaveformTimer() // sets isAudioAvailable to false (invalid protocol)
 
@@ -545,7 +542,7 @@ describe('AudioPlayer — missing coverage', () => {
   })
 
   it('should notify when toggle is invoked while audio is unavailable', async () => {
-    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     render(<AudioPlayer src="https://example.com/a.mp3" />)
     const audio = document.querySelector('audio') as HTMLAudioElement
     await act(async () => {
@@ -559,10 +556,7 @@ describe('AudioPlayer — missing coverage', () => {
       props.onClick?.()
     })
 
-    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'Audio element not found',
-    }))
+    expect(toastSpy).toHaveBeenCalledWith('Audio element not found')
     toastSpy.mockRestore()
   })
 })
@@ -626,7 +620,7 @@ describe('AudioPlayer — additional branch coverage', () => {
   })
 
   it('should ignore toggle click after audio error marks source unavailable', async () => {
-    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     render(<AudioPlayer src="https://example.com/a.mp3" />)
     const audio = document.querySelector('audio') as HTMLAudioElement
     await act(async () => {
