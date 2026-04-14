@@ -50,8 +50,8 @@ class AppSiteUpdatePayload(BaseModel):
 
 class AppSiteResponse(ResponseModel):
     app_id: str
-    access_token: str | None = Field(default=None, validation_alias="code")
-    code: str | None = None
+    access_token: str = Field(validation_alias="code")
+    code: str
     title: str
     icon: str | None = None
     icon_background: str | None = None
@@ -61,7 +61,7 @@ class AppSiteResponse(ResponseModel):
     copyright: str | None = None
     privacy_policy: str | None = None
     custom_disclaimer: str | None = None
-    customize_token_strategy: str
+    customize_token_strategy: str | None = None
     prompt_public: bool
     show_workflow_steps: bool
     use_icon_as_answer_icon: bool
