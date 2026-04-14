@@ -47,7 +47,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(
         tool: Tool,
-        tool_parameters: Union[str, dict],
+        tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
         tenant_id: str,
         message: Message,
@@ -85,7 +85,7 @@ class ToolEngine:
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
-                invocation_meta_dict: dict[str, Any],
+                invocation_meta_dict: dict[str, ToolInvokeMeta],
                 messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
             ):
                 for message in messages:
