@@ -15,7 +15,7 @@ const meta = {
     disabled: { control: 'boolean' },
     variant: {
       control: 'select',
-      options: ['primary', 'warning', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
+      options: ['primary', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
     },
     size: {
       control: 'select',
@@ -73,13 +73,6 @@ export const Tertiary: Story = {
   },
 }
 
-export const Warning: Story = {
-  args: {
-    variant: 'warning',
-    children: 'Warning Button',
-  },
-}
-
 export const Disabled: Story = {
   args: {
     variant: 'primary',
@@ -109,7 +102,7 @@ export const WithIcon: Story = {
     variant: 'primary',
     children: (
       <>
-        <span className="i-heroicons-rocket-launch-20-solid mr-1.5 h-4 w-4" />
+        <span className="mr-1.5 i-heroicons-rocket-launch-20-solid h-4 w-4" />
         Launch
       </>
     ),

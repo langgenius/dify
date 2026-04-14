@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 
 type PluginAuthInDataSourceNodeProps = {
   children?: ReactNode
