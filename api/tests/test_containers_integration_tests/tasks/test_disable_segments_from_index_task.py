@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 from faker import Faker
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, DocumentSegment
@@ -471,9 +472,9 @@ class TestDisableSegmentsFromIndexTask:
                 db_session_with_containers.refresh(segments[1])
 
                 # Check that segments are re-enabled after error
-                updated_segments = (
-                    db_session_with_containers.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).all()
-                )
+                updated_segments = db_session_with_containers.scalars(
+                    select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                ).all()
 
                 for segment in updated_segments:
                     assert segment.enabled is True
