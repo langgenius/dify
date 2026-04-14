@@ -599,6 +599,19 @@ importers:
         specifier: 'catalog:'
         version: 0.1.16(@types/node@25.6.0)(@voidzero-dev/vite-plus-core@0.1.16(@types/node@25.6.0)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3))(happy-dom@20.9.0)(jiti@2.6.1)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@6.0.2)(yaml@2.8.3)
 
+  packages/cli:
+    dependencies:
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+
   packages/iconify-collections:
     devDependencies:
       iconify-import-svg:
@@ -953,6 +966,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.1.2(storybook@10.3.5(@testing-library/dom@10.4.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
+      '@dify/cli':
+        specifier: workspace:*
+        version: link:../packages/cli
       '@dify/iconify-collections':
         specifier: workspace:*
         version: link:../packages/iconify-collections

@@ -9,15 +9,29 @@ const execFileAsync = promisify(execFile)
 const PRESERVED_FILES = new Set([
   'web/package.json',
   'web/tsconfig.json',
-  'web/scripts/migrate-no-unchecked-indexed-access.ts',
-  'web/scripts/run-no-unchecked-indexed-access-migration.ts',
-  'web/scripts/normalize-no-unchecked-indexed-access-migration.ts',
-  'web/scripts/reset-no-unchecked-indexed-access-migration.ts',
 ])
 
-async function getTrackedChangedFiles(): Promise<string[]> {
+async function findWorkspaceRoot(startDirectory: string): Promise<string> {
+  let currentDirectory = path.resolve(startDirectory)
+
+  while (true) {
+    try {
+      await fs.access(path.join(currentDirectory, 'pnpm-workspace.yaml'))
+      return currentDirectory
+    }
+    catch {}
+
+    const parentDirectory = path.dirname(currentDirectory)
+    if (parentDirectory === currentDirectory)
+      throw new Error('Could not find workspace root from the current directory.')
+
+    currentDirectory = parentDirectory
+  }
+}
+
+async function getTrackedChangedFiles(repoRoot: string): Promise<string[]> {
   const { stdout } = await execFileAsync('git', ['diff', '--name-only', 'HEAD', '--', 'web'], {
-    cwd: path.resolve(process.cwd(), '..'),
+    cwd: repoRoot,
     maxBuffer: 1024 * 1024 * 8,
   })
 
@@ -27,9 +41,9 @@ async function getTrackedChangedFiles(): Promise<string[]> {
     .filter(Boolean)
 }
 
-async function getUntrackedFiles(): Promise<string[]> {
+async function getUntrackedFiles(repoRoot: string): Promise<string[]> {
   const { stdout } = await execFileAsync('git', ['ls-files', '--others', '--exclude-standard', '--', 'web'], {
-    cwd: path.resolve(process.cwd(), '..'),
+    cwd: repoRoot,
     maxBuffer: 1024 * 1024 * 8,
   })
 
@@ -40,9 +54,9 @@ async function getUntrackedFiles(): Promise<string[]> {
 }
 
 async function main() {
-  const repoRoot = path.resolve(process.cwd(), '..')
-  const trackedChangedFiles = await getTrackedChangedFiles()
-  const untrackedFiles = await getUntrackedFiles()
+  const repoRoot = await findWorkspaceRoot(process.cwd())
+  const trackedChangedFiles = await getTrackedChangedFiles(repoRoot)
+  const untrackedFiles = await getUntrackedFiles(repoRoot)
 
   let restoredCount = 0
   for (const relativePath of trackedChangedFiles) {
@@ -71,4 +85,6 @@ async function main() {
   console.log(`Restored ${restoredCount} tracked file(s) and removed ${removedCount} untracked file(s).`)
 }
 
-await main()
+export async function runResetCommand(_argv: string[]) {
+  await main()
+}

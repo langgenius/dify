@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
 import { promisify } from 'node:util'
-import { runMigration, SUPPORTED_DIAGNOSTIC_CODES } from './migrate-no-unchecked-indexed-access'
+import { runMigration, SUPPORTED_DIAGNOSTIC_CODES } from './migrate'
 
 const execFileAsync = promisify(execFile)
 const DIAGNOSTIC_PATTERN = /^(.+?\.(?:ts|tsx))\((\d+),(\d+)\): error TS(\d+): (.+)$/
@@ -36,6 +36,9 @@ function parseArgs(argv: string[]): CliOptions {
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
+
+    if (arg === '--')
+      continue
 
     if (arg === '--verbose') {
       options.verbose = true
@@ -166,9 +169,7 @@ function chunk<T>(items: T[], size: number): T[][] {
   return batches
 }
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2))
-
+async function runBatchMigration(options: CliOptions) {
   for (let round = 1; round <= options.maxRounds; round += 1) {
     const { diagnostics, exitCode, rawOutput } = await runTypeCheck(options.project)
     if (exitCode === 0) {
@@ -226,4 +227,6 @@ async function main() {
   process.exitCode = 1
 }
 
-await main()
+export async function runBatchMigrationCommand(argv: string[]) {
+  await runBatchMigration(parseArgs(argv))
+}

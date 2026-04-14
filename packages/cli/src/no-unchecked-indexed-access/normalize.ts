@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
-import { normalizeMalformedAssertions } from './migrate-no-unchecked-indexed-access'
+import { normalizeMalformedAssertions } from './migrate'
 
 const ROOT = process.cwd()
 const EXTENSIONS = new Set(['.ts', '.tsx'])
@@ -46,4 +46,6 @@ async function main() {
   console.log(`Normalized malformed assertion syntax in ${changedFileCount} file(s).`)
 }
 
-await main()
+export async function runNormalizeCommand(_argv: string[]) {
+  await main()
+}

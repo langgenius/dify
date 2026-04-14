@@ -1,0 +1,16 @@
+{
+  "name": "@dify/cli",
+  "private": true,
+  "version": "0.0.0-private",
+  "type": "module",
+  "bin": {
+    "dify-cli": "./bin/dify-cli.js"
+  },
+  "dependencies": {
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

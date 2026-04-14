@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
-import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 
 const SUPPORTED_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts'])
@@ -42,6 +41,9 @@ export function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (!arg)
+      continue
+
+    if (arg === '--')
       continue
 
     if (arg === '--write') {
@@ -151,9 +153,6 @@ function isTargetFile(fileName: string): boolean {
     return false
 
   if (fileName.endsWith('.d.ts'))
-    return false
-
-  if (fileName.endsWith(`${path.sep}scripts${path.sep}migrate-no-unchecked-indexed-access.ts`))
     return false
 
   return !fileName.includes(`${path.sep}.next${path.sep}`)
@@ -1642,9 +1641,6 @@ export async function runMigration(options: CliOptions) {
   return { converged, totalEdits }
 }
 
-async function main() {
-  await runMigration(parseArgs(process.argv.slice(2)))
+export async function runMigrationCommand(argv: string[]) {
+  await runMigration(parseArgs(argv))
 }
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await main()
