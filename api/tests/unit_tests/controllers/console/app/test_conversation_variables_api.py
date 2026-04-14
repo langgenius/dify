@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from graphon.variables.types import SegmentType
 from pydantic import ValidationError
 
 from controllers.console.app import conversation_variables as conversation_variables_module
@@ -60,6 +61,42 @@ def test_get_conversation_variables_returns_paginated_response(app, monkeypatch:
     assert response["data"][0]["id"] == "var-1"
     assert response["data"][0]["created_at"] == int(created_at.timestamp())
     assert response["data"][0]["updated_at"] == int(updated_at.timestamp())
+
+
+def test_get_conversation_variables_normalizes_value_type_and_value(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = conversation_variables_module.ConversationVariablesApi()
+    method = _unwrap(api.get)
+
+    row = SimpleNamespace(
+        created_at=None,
+        updated_at=None,
+        to_variable=lambda: SimpleNamespace(
+            model_dump=lambda: {
+                "id": "var-2",
+                "name": "my_var_2",
+                "value_type": SegmentType.INTEGER,
+                "value": 42,
+                "description": None,
+            }
+        ),
+    )
+    session = SimpleNamespace(scalars=lambda _stmt: SimpleNamespace(all=lambda: [row]))
+    monkeypatch.setattr(conversation_variables_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        conversation_variables_module,
+        "sessionmaker",
+        lambda *_args, **_kwargs: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+
+    with app.test_request_context(
+        "/console/api/apps/app-1/conversation-variables",
+        method="GET",
+        query_string={"conversation_id": "conv-1"},
+    ):
+        response = method(app_model=SimpleNamespace(id="app-1"))
+
+    assert response["data"][0]["value_type"] == "number"
+    assert response["data"][0]["value"] == "42"
 
 
 def test_get_conversation_variables_requires_conversation_id(app) -> None:

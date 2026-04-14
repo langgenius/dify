@@ -14,6 +14,7 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
+from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
 from libs.login import login_required
 from models import ConversationVariable
@@ -34,10 +35,32 @@ class ConversationVariableResponse(ResponseModel):
     id: str
     name: str
     value_type: str
-    value: Any | None = None
+    value: str | None = None
     description: str | None = None
     created_at: int | None = None
     updated_at: int | None = None
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def _normalize_value_type(cls, value: Any) -> str:
+        exposed_type = getattr(value, "exposed_type", None)
+        if callable(exposed_type):
+            return str(exposed_type().value)
+        if isinstance(value, str):
+            return value
+        try:
+            return serialize_value_type(value)
+        except Exception:
+            return serialize_value_type({"value_type": value})
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _normalize_value(cls, value: Any | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(value)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
