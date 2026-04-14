@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "Polecenia",
   "gotoAnything.groups.knowledgeBases": "Bazy wiedzy",
   "gotoAnything.groups.plugins": "Wtyczki",
+  "gotoAnything.groups.recent": "Ostatnie",
   "gotoAnything.groups.workflowNodes": "Węzły przepływu pracy",
   "gotoAnything.inScope": "w {{scope}}s",
   "gotoAnything.noMatchingCommands": "Nie znaleziono pasujących poleceń",
