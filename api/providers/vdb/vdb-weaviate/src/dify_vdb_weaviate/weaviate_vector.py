@@ -20,7 +20,7 @@ from pydantic import BaseModel, model_validator
 from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
-from weaviate.exceptions import UnexpectedStatusCodeError
+from weaviate.exceptions import UnexpectedStatusCodeError, WeaviateQueryError
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -230,6 +230,8 @@ class WeaviateVector(BaseVector):
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_type", data_type=wc.DataType.TEXT),
                             wc.Property(name="chunk_index", data_type=wc.DataType.INT),
+                            wc.Property(name="is_summary", data_type=wc.DataType.BOOL),
+                            wc.Property(name="original_chunk_id", data_type=wc.DataType.TEXT),
                         ],
                         vector_config=wc.Configure.Vectors.self_provided(),
                     )
@@ -262,6 +264,10 @@ class WeaviateVector(BaseVector):
             to_add.append(wc.Property(name="doc_type", data_type=wc.DataType.TEXT))
         if "chunk_index" not in existing:
             to_add.append(wc.Property(name="chunk_index", data_type=wc.DataType.INT))
+        if "is_summary" not in existing:
+            to_add.append(wc.Property(name="is_summary", data_type=wc.DataType.BOOL))
+        if "original_chunk_id" not in existing:
+            to_add.append(wc.Property(name="original_chunk_id", data_type=wc.DataType.TEXT))
 
         for prop in to_add:
             try:
@@ -400,15 +406,27 @@ class WeaviateVector(BaseVector):
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
-        res = col.query.near_vector(
-            near_vector=query_vector,
-            limit=top_k,
-            return_properties=props,
-            return_metadata=MetadataQuery(distance=True),
-            include_vector=False,
-            filters=where,
-            target_vector="default",
-        )
+        try:
+            res = col.query.near_vector(
+                near_vector=query_vector,
+                limit=top_k,
+                return_properties=props,
+                return_metadata=MetadataQuery(distance=True),
+                include_vector=False,
+                filters=where,
+                target_vector="default",
+            )
+        except WeaviateQueryError:
+            self._ensure_properties()
+            res = col.query.near_vector(
+                near_vector=query_vector,
+                limit=top_k,
+                return_properties=props,
+                return_metadata=MetadataQuery(distance=True),
+                include_vector=False,
+                filters=where,
+                target_vector="default",
+            )
 
         docs: list[Document] = []
         for obj in res.objects:
@@ -446,14 +464,25 @@ class WeaviateVector(BaseVector):
 
         top_k = int(kwargs.get("top_k", 4))
 
-        res = col.query.bm25(
-            query=query,
-            query_properties=[Field.TEXT_KEY.value],
-            limit=top_k,
-            return_properties=props,
-            include_vector=True,
-            filters=where,
-        )
+        try:
+            res = col.query.bm25(
+                query=query,
+                query_properties=[Field.TEXT_KEY.value],
+                limit=top_k,
+                return_properties=props,
+                include_vector=True,
+                filters=where,
+            )
+        except WeaviateQueryError:
+            self._ensure_properties()
+            res = col.query.bm25(
+                query=query,
+                query_properties=[Field.TEXT_KEY.value],
+                limit=top_k,
+                return_properties=props,
+                include_vector=True,
+                filters=where,
+            )
 
         docs: list[Document] = []
         for obj in res.objects:
