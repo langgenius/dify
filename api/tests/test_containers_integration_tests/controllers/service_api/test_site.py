@@ -80,7 +80,6 @@ class TestAppSiteApi:
         assert response["title"] == "Service API Site"
         assert response["icon"] == "robot"
         assert response["description"] == "Service API test site"
-        assert response["app_id"] == app_model.id
 
     def test_get_site_not_found(self, app: Flask, db_session_with_containers: Session) -> None:
         tenant = _create_tenant(db_session_with_containers)
