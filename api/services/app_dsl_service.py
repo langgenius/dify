@@ -97,7 +97,7 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         app_id: str | None = None,
-        import_app_id: str | None = None
+        import_app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -263,7 +263,7 @@ class AppDslService:
                 icon=icon,
                 icon_background=icon_background,
                 dependencies=check_dependencies_pending_data,
-                import_app_id=import_app_id
+                import_app_id=import_app_id,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -387,7 +387,7 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         dependencies: list[PluginDependency] | None = None,
-        import_app_id: str | None = None
+        import_app_id: str | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
