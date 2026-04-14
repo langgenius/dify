@@ -1,7 +1,10 @@
+import logging
+
 from flask import make_response, request
 from flask_restx import Resource
 from jwt import InvalidTokenError
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
@@ -20,7 +23,7 @@ from controllers.console.wraps import (
 )
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
-from libs.helper import EmailStr
+from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
@@ -29,8 +32,10 @@ from libs.token import (
 )
 from services.account_service import AccountService
 from services.app_service import AppService
-from services.entities.auth_entities import LoginPayloadBase
+from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.webapp_auth_service import WebAppAuthService
+
+logger = logging.getLogger(__name__)
 
 
 class LoginPayload(LoginPayloadBase):
@@ -76,14 +81,18 @@ class LoginApi(Resource):
     def post(self):
         """Authenticate user and login."""
         payload = LoginPayload.model_validate(web_ns.payload or {})
+        normalized_email = payload.email.lower()
 
         try:
             account = WebAppAuthService.authenticate(payload.email, payload.password)
         except services.errors.account.AccountLoginError:
+            _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
+            _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError()
         except services.errors.account.AccountNotFoundError:
+            _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_NOT_FOUND)
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
@@ -212,21 +221,30 @@ class EmailCodeLoginApi(Resource):
 
         token_data = WebAppAuthService.get_email_code_login_data(payload.token)
         if token_data is None:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
             raise InvalidTokenError()
 
         token_email = token_data.get("email")
         if not isinstance(token_email, str):
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
         normalized_token_email = token_email.lower()
         if normalized_token_email != user_email:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
 
         if token_data["code"] != payload.code:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
         WebAppAuthService.revoke_email_code_login_token(payload.token)
-        account = WebAppAuthService.get_user_through_email(token_email)
+        try:
+            account = WebAppAuthService.get_user_through_email(token_email)
+        except Unauthorized as exc:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+            raise AccountBannedError() from exc
         if not account:
+            _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_NOT_FOUND)
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
@@ -234,3 +252,12 @@ class EmailCodeLoginApi(Resource):
         response = make_response({"result": "success", "data": {"access_token": token}})
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response
+
+
+def _log_web_login_failure(*, email: str, reason: LoginFailureReason) -> None:
+    logger.warning(
+        "Web login failed: email=%s reason=%s ip_address=%s",
+        email,
+        reason,
+        extract_remote_ip(request),
+    )

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from requests import HTTPError
 
@@ -263,7 +264,7 @@ class PluginInstaller(BasePluginClient):
         original_plugin_unique_identifier: str,
         new_plugin_unique_identifier: str,
         source: PluginInstallationSource,
-        meta: dict,
+        meta: dict[str, Any],
     ) -> PluginInstallTaskStartResponse:
         """
         Upgrade a plugin.

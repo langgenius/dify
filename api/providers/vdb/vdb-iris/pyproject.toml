@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-iris"
+version = "0.0.1"
+
+dependencies = [
+    "intersystems-irispython>=5.1.0",
+]
+description = "Dify vector store backend (dify-vdb-iris)."
+
+[project.entry-points."dify.vector_backends"]
+iris = "dify_vdb_iris.iris_vector:IrisVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

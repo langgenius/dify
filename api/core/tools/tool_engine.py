@@ -85,7 +85,8 @@ class ToolEngine:
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
-                invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]
+                invocation_meta_dict: dict[str, Any],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -200,7 +201,7 @@ class ToolEngine:
     @staticmethod
     def _invoke(
         tool: Tool,
-        tool_parameters: dict,
+        tool_parameters: dict[str, Any],
         user_id: str,
         conversation_id: str | None = None,
         app_id: str | None = None,

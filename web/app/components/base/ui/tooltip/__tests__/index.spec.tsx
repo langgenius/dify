@@ -83,6 +83,26 @@ describe('TooltipContent', () => {
       expect(popup).toHaveAttribute('data-track-id', 'tooltip-track')
       expect(onMouseEnter).toHaveBeenCalledTimes(1)
     })
+
+    it('should apply className to the popup and positionerClassName to the positioner', () => {
+      render(
+        <Tooltip open>
+          <TooltipTrigger aria-label="tooltip trigger">Trigger</TooltipTrigger>
+          <TooltipContent
+            className="popup-class"
+            positionerClassName="positioner-class"
+            role="tooltip"
+            aria-label="styled tooltip"
+          >
+            Tooltip body
+          </TooltipContent>
+        </Tooltip>,
+      )
+
+      const popup = screen.getByRole('tooltip', { name: 'styled tooltip' })
+      expect(popup).toHaveClass('popup-class')
+      expect(popup.parentElement).toHaveClass('positioner-class')
+    })
   })
 })
 

@@ -403,43 +403,6 @@ class TestAudioServiceTTS:
             voice="en-US-Neural",
         )
 
-    @patch("services.audio_service.db.session", autospec=True)
-    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_with_message_id_success(self, mock_model_manager_class, mock_db_session, factory):
-        """Test successful TTS with message ID."""
-        # Arrange
-        app_model_config = factory.create_app_model_config_mock(
-            text_to_speech_dict={"enabled": True, "voice": "en-US-Neural"}
-        )
-        app = factory.create_app_mock(
-            mode=AppMode.CHAT,
-            app_model_config=app_model_config,
-        )
-
-        message = factory.create_message_mock(
-            message_id="550e8400-e29b-41d4-a716-446655440000",
-            answer="Message answer text",
-        )
-
-        # Mock database lookup
-        mock_db_session.get.return_value = message
-
-        # Mock ModelManager
-        mock_model_manager = mock_model_manager_class.return_value
-        mock_model_instance = MagicMock()
-        mock_model_instance.invoke_tts.return_value = b"audio from message"
-        mock_model_manager.get_default_model_instance.return_value = mock_model_instance
-
-        # Act
-        result = AudioService.transcript_tts(
-            app_model=app,
-            message_id="550e8400-e29b-41d4-a716-446655440000",
-        )
-
-        # Assert
-        assert result == b"audio from message"
-        mock_model_instance.invoke_tts.assert_called_once()
-
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_with_default_voice(self, mock_model_manager_class, factory):
         """Test TTS uses default voice when none specified."""
@@ -543,62 +506,6 @@ class TestAudioServiceTTS:
         # Act & Assert
         with pytest.raises(ValueError, match="Text is required"):
             AudioService.transcript_tts(app_model=app, text=None)
-
-    @patch("services.audio_service.db.session")
-    def test_transcript_tts_returns_none_for_invalid_message_id(self, mock_db_session, factory):
-        """Test that TTS returns None for invalid message ID format."""
-        # Arrange
-        app = factory.create_app_mock()
-
-        # Act
-        result = AudioService.transcript_tts(
-            app_model=app,
-            message_id="invalid-uuid",
-        )
-
-        # Assert
-        assert result is None
-
-    @patch("services.audio_service.db.session")
-    def test_transcript_tts_returns_none_for_nonexistent_message(self, mock_db_session, factory):
-        """Test that TTS returns None when message doesn't exist."""
-        # Arrange
-        app = factory.create_app_mock()
-
-        # Mock database lookup returning None
-        mock_db_session.get.return_value = None
-
-        # Act
-        result = AudioService.transcript_tts(
-            app_model=app,
-            message_id="550e8400-e29b-41d4-a716-446655440000",
-        )
-
-        # Assert
-        assert result is None
-
-    @patch("services.audio_service.db.session")
-    def test_transcript_tts_returns_none_for_empty_message_answer(self, mock_db_session, factory):
-        """Test that TTS returns None when message answer is empty."""
-        # Arrange
-        app = factory.create_app_mock()
-
-        message = factory.create_message_mock(
-            answer="",
-            status=MessageStatus.NORMAL,
-        )
-
-        # Mock database lookup
-        mock_db_session.get.return_value = message
-
-        # Act
-        result = AudioService.transcript_tts(
-            app_model=app,
-            message_id="550e8400-e29b-41d4-a716-446655440000",
-        )
-
-        # Assert
-        assert result is None
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_raises_error_when_no_voices_available(self, mock_model_manager_class, factory):

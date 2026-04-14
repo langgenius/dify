@@ -105,6 +105,7 @@ describe('SlashCommandProvider', () => {
       'community',
       'account',
       'zen',
+      'go',
     ])
     expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'theme' }), { setTheme: mockSetTheme })
     expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'language' }), { setLocale: mockSetLocale })
@@ -119,6 +120,7 @@ describe('SlashCommandProvider', () => {
       'community',
       'account',
       'zen',
+      'go',
     ])
   })
 })

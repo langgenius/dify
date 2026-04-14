@@ -64,7 +64,7 @@ pnpm -C web lint:fix --prune-suppressions <changed-files>
 ## z-index strategy
 
 All new overlay primitives in `base/ui/` share a single z-index value:
-**`z-1002`**, except Toast which stays at **`z-1101`** during migration.
+**`z-1002`**, except Toast which stays one layer above at **`z-1003`**.
 
 ### Why z-[1002]?
 
@@ -77,16 +77,15 @@ portal to `document.body` with explicit z-index values:
 | Legacy Modal                      | `z-60`         | `base/modal` (default)                       |
 | Legacy PortalToFollowElem callers | up to `z-1001` | various business components                  |
 | **New UI primitives**             | **`z-1002`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Legacy Modal (highPriority)       | `z-1100`       | `base/modal` (`highPriority={true}`)         |
-| Toast                             | `z-1101`       | `base/ui/toast`                              |
+| Toast                             | `z-1003`       | `base/ui/toast`                              |
 
 `z-1002` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
 new primitives share the same z-index and rely on **DOM order** for stacking
 (later portal = on top).
 
-Toast stays one layer above the remaining legacy `highPriority` modal path
-(`z-1100`) so notifications keep their current visibility without falling
+Toast stays one layer above the overlay primitives so notifications remain
+visible above dialogs, popovers, and other portalled surfaces without falling
 back to `z-9999`.
 
 ### Rules
@@ -104,7 +103,7 @@ back to `z-9999`.
 Once all legacy overlays are removed:
 
 1. Reduce `z-1002` back to `z-50` across all `base/ui/` primitives.
-1. Reduce Toast from `z-1101` to `z-51`.
+1. Reduce Toast from `z-1003` to `z-51`.
 1. Remove this section from the migration guide.
 
 ## React Refresh policy for base UI primitives

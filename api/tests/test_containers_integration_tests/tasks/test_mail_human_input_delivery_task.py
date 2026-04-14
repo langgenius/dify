@@ -6,6 +6,7 @@ import pytest
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
+from sqlalchemy import delete
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -30,14 +31,14 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 @pytest.fixture(autouse=True)
 def cleanup_database(db_session_with_containers):
-    db_session_with_containers.query(HumanInputFormRecipient).delete()
-    db_session_with_containers.query(HumanInputDelivery).delete()
-    db_session_with_containers.query(HumanInputForm).delete()
-    db_session_with_containers.query(WorkflowPause).delete()
-    db_session_with_containers.query(WorkflowRun).delete()
-    db_session_with_containers.query(TenantAccountJoin).delete()
-    db_session_with_containers.query(Tenant).delete()
-    db_session_with_containers.query(Account).delete()
+    db_session_with_containers.execute(delete(HumanInputFormRecipient))
+    db_session_with_containers.execute(delete(HumanInputDelivery))
+    db_session_with_containers.execute(delete(HumanInputForm))
+    db_session_with_containers.execute(delete(WorkflowPause))
+    db_session_with_containers.execute(delete(WorkflowRun))
+    db_session_with_containers.execute(delete(TenantAccountJoin))
+    db_session_with_containers.execute(delete(Tenant))
+    db_session_with_containers.execute(delete(Account))
     db_session_with_containers.commit()
 
 

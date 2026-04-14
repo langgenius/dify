@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-oracle"
+version = "0.0.1"
+
+dependencies = [
+    "oracledb==3.4.2",
+]
+description = "Dify vector store backend (dify-vdb-oracle)."
+
+[project.entry-points."dify.vector_backends"]
+oracle = "dify_vdb_oracle.oraclevector:OracleVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

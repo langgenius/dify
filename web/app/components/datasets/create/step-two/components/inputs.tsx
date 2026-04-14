@@ -1,6 +1,7 @@
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
 import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@/app/components/base/ui/number-field'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
@@ -16,7 +17,7 @@ import {
 import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className="text-xs font-semibold leading-none text-text-secondary">{props.children}</label>
+  return <label className="text-xs leading-none font-semibold text-text-secondary">{props.children}</label>
 }
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -28,8 +29,11 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   )
 }
 
-export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => {
+export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip, onChange, value, ...rest }) => {
   const { t } = useTranslation()
+  const isComposing = useRef(false)
+  const [compositionValue, setCompositionValue] = useState('')
+
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
@@ -37,7 +41,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
-              {props.tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+              {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
             </div>
           )}
         />
@@ -48,7 +52,24 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
         type="text"
         className="h-9"
         placeholder={t('stepTwo.separatorPlaceholder', { ns: 'datasetCreation' })!}
-        {...props}
+        value={isComposing.current ? compositionValue : value}
+        onChange={(e) => {
+          if (isComposing.current)
+            setCompositionValue(e.target.value)
+          else
+            onChange?.(e)
+        }}
+        onCompositionStart={() => {
+          isComposing.current = true
+          setCompositionValue(String(value ?? ''))
+        }}
+        onCompositionEnd={(e) => {
+          const committed = e.currentTarget.value
+          isComposing.current = false
+          setCompositionValue('')
+          onChange?.({ ...e, target: { ...e.target, value: committed } } as unknown as React.ChangeEvent<HTMLInputElement>)
+        }}
+        {...rest}
       />
     </FormField>
   )

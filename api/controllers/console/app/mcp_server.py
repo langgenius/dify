@@ -26,13 +26,13 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
 
 class MCPServerCreatePayload(BaseModel):
     description: str | None = Field(default=None, description="Server description")
-    parameters: dict = Field(..., description="Server parameters configuration")
+    parameters: dict[str, Any] = Field(..., description="Server parameters configuration")
 
 
 class MCPServerUpdatePayload(BaseModel):
     id: str = Field(..., description="Server ID")
     description: str | None = Field(default=None, description="Server description")
-    parameters: dict = Field(..., description="Server parameters configuration")
+    parameters: dict[str, Any] = Field(..., description="Server parameters configuration")
     status: str | None = Field(default=None, description="Server status")
 
 

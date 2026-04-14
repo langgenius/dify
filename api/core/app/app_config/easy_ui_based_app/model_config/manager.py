@@ -108,7 +108,7 @@ class ModelConfigManager:
         return dict(config), ["model"]
 
     @classmethod
-    def validate_model_completion_params(cls, cp: dict):
+    def validate_model_completion_params(cls, cp: dict[str, Any]):
         # model.completion_params
         if not isinstance(cp, dict):
             raise ValueError("model.completion_params must be of object type")

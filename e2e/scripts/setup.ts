@@ -1,14 +1,15 @@
-import { access, mkdir, rm } from 'node:fs/promises'
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process'
 import {
   apiDir,
   apiEnvExampleFile,
   dockerDir,
+  e2eWebEnvOverrides,
   e2eDir,
   ensureFileExists,
   ensureLineInFile,
-  ensureWebEnvLocal,
+  getWebEnvLocalHash,
   isMainModule,
   isTcpPortReachable,
   middlewareComposeFile,
@@ -23,6 +24,7 @@ import {
 } from './common'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
+const webBuildEnvStampPath = path.join(webDir, '.next', 'e2e-web-env.sha256')
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -110,27 +112,47 @@ const waitForDependency = async ({
 }
 
 export const ensureWebBuild = async () => {
-  await ensureWebEnvLocal()
+  const envHash = await getWebEnvLocalHash()
+  const buildEnv = {
+    ...e2eWebEnvOverrides,
+  }
 
   if (process.env.E2E_FORCE_WEB_BUILD === '1') {
     await runCommandOrThrow({
       command: 'pnpm',
       args: ['run', 'build'],
       cwd: webDir,
+      env: buildEnv,
     })
+    await writeFile(webBuildEnvStampPath, `${envHash}\n`, 'utf8')
     return
   }
 
   try {
-    await access(buildIdPath)
-    console.log('Reusing existing web build artifact.')
+    const [buildExists, previousEnvHash] = await Promise.all([
+      access(buildIdPath)
+        .then(() => true)
+        .catch(() => false),
+      readFile(webBuildEnvStampPath, 'utf8')
+        .then((value) => value.trim())
+        .catch(() => ''),
+    ])
+
+    if (buildExists && previousEnvHash === envHash) {
+      console.log('Reusing existing web build artifact.')
+      return
+    }
   } catch {
-    await runCommandOrThrow({
-      command: 'pnpm',
-      args: ['run', 'build'],
-      cwd: webDir,
-    })
+    // Fall through to rebuild when the existing build cannot be verified.
   }
+
+  await runCommandOrThrow({
+    command: 'pnpm',
+    args: ['run', 'build'],
+    cwd: webDir,
+    env: buildEnv,
+  })
+  await writeFile(webBuildEnvStampPath, `${envHash}\n`, 'utf8')
 }
 
 export const startWeb = async () => {
@@ -141,6 +163,7 @@ export const startWeb = async () => {
     args: ['run', 'start'],
     cwd: webDir,
     env: {
+      ...e2eWebEnvOverrides,
       HOSTNAME: '127.0.0.1',
       PORT: '3000',
     },
@@ -152,14 +175,25 @@ export const startApi = async () => {
 
   await runCommandOrThrow({
     command: 'uv',
-    args: ['run', '--project', '.', 'flask', 'upgrade-db'],
+    args: ['run', '--project', '.', '--no-sync', 'flask', 'upgrade-db'],
     cwd: apiDir,
     env,
   })
 
   await runForegroundProcess({
     command: 'uv',
-    args: ['run', '--project', '.', 'flask', 'run', '--host', '127.0.0.1', '--port', '5001'],
+    args: [
+      'run',
+      '--project',
+      '.',
+      '--no-sync',
+      'flask',
+      'run',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      '5001',
+    ],
     cwd: apiDir,
     env,
   })

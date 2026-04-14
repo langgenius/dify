@@ -73,7 +73,7 @@ class PluginBasicBooleanResponse(BaseModel):
     """
 
     result: bool
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
 
 
 class PluginModelSchemaEntity(BaseModel):

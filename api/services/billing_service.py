@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 import httpx
 from pydantic import TypeAdapter
@@ -541,7 +541,7 @@ class BillingService:
         start_time / end_time: RFC3339 strings (e.g. "2026-03-01T00:00:00Z"), optional.
         Returns {"notification_id": str}.
         """
-        payload: dict = {
+        payload: dict[str, Any] = {
             "contents": contents,
             "frequency": frequency,
             "status": status,

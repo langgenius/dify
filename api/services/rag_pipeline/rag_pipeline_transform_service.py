@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import yaml
@@ -154,7 +155,7 @@ class RagPipelineTransformService:
             raise ValueError("Unsupported doc form")
         return pipeline_yaml
 
-    def _deal_file_extensions(self, node: dict):
+    def _deal_file_extensions(self, node: dict[str, Any]):
         file_extensions = node.get("data", {}).get("fileExtensions", [])
         if not file_extensions:
             return node
@@ -167,7 +168,7 @@ class RagPipelineTransformService:
         dataset: Dataset,
         indexing_technique: str | None,
         retrieval_model: RetrievalSetting | None,
-        node: dict,
+        node: dict[str, Any],
     ):
         knowledge_configuration_dict = node.get("data", {})
 
@@ -191,7 +192,7 @@ class RagPipelineTransformService:
 
     def _create_pipeline(
         self,
-        data: dict,
+        data: dict[str, Any],
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
@@ -258,7 +259,7 @@ class RagPipelineTransformService:
         db.session.add(pipeline)
         return pipeline
 
-    def _deal_dependencies(self, pipeline_yaml: dict, tenant_id: str):
+    def _deal_dependencies(self, pipeline_yaml: dict[str, Any], tenant_id: str):
         installer_manager = PluginInstaller()
         installed_plugins = installer_manager.list_plugins(tenant_id)
 

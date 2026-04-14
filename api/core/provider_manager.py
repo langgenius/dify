@@ -856,7 +856,7 @@ class ProviderManager:
         secret_variables: list[str],
         cache_type: ProviderCredentialsCacheType,
         is_provider: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get and decrypt credentials with caching."""
         credentials_cache = ProviderCredentialsCache(
             tenant_id=tenant_id,

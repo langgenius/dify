@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from flask import make_response, request
 from flask_restx import Resource
@@ -103,21 +104,23 @@ class PassportResource(Resource):
         return response
 
 
-def decode_enterprise_webapp_user_id(jwt_token: str | None):
+def decode_enterprise_webapp_user_id(jwt_token: str | None) -> dict[str, Any] | None:
     """
     Decode the enterprise user session from the Authorization header.
     """
     if not jwt_token:
         return None
 
-    decoded = PassportService().verify(jwt_token)
+    decoded: dict[str, Any] = PassportService().verify(jwt_token)
     source = decoded.get("token_source")
     if not source or source != "webapp_login_token":
         raise Unauthorized("Invalid token source. Expected 'webapp_login_token'.")
     return decoded
 
 
-def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded: dict, auth_type: WebAppAuthType):
+def exchange_token_for_existing_web_user(
+    app_code: str, enterprise_user_decoded: dict[str, Any], auth_type: WebAppAuthType
+):
     """
     Exchange a token for an existing web user session.
     """

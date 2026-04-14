@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from sqlalchemy import select
 
@@ -19,7 +20,7 @@ class ApiKeyAuthService:
         return data_source_api_key_bindings
 
     @staticmethod
-    def create_provider_auth(tenant_id: str, args: dict):
+    def create_provider_auth(tenant_id: str, args: dict[str, Any]):
         auth_result = ApiKeyAuthFactory(args["provider"], args["credentials"]).validate_credentials()
         if auth_result:
             # Encrypt the api key

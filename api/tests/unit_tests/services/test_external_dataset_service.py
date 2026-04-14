@@ -1702,7 +1702,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(Exception, match=""):
+        with pytest.raises(ValueError):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
                 "tenant-123", "dataset-123", "query", {"top_k": 5}
             )

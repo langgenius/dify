@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "命令",
   "gotoAnything.groups.knowledgeBases": "知识库",
   "gotoAnything.groups.plugins": "插件",
+  "gotoAnything.groups.recent": "最近",
   "gotoAnything.groups.workflowNodes": "工作流节点",
   "gotoAnything.inScope": "在 {{scope}}s 中",
   "gotoAnything.noMatchingCommands": "未找到匹配的命令",

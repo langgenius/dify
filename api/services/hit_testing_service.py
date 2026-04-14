@@ -44,8 +44,8 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: dict | None,
-        external_retrieval_model: dict,
+        retrieval_model: dict[str, Any] | None,
+        external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
     ):
@@ -125,8 +125,8 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        external_retrieval_model: dict | None = None,
-        metadata_filtering_conditions: dict | None = None,
+        external_retrieval_model: dict[str, Any] | None = None,
+        metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
         if dataset.provider != "external":
             return {

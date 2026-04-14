@@ -1,3 +1,5 @@
+from typing import Any
+
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from pydantic import BaseModel, Field, computed_field, model_validator
 
@@ -40,7 +42,7 @@ class MarketplacePluginDeclaration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def transform_declaration(cls, data: dict):
+    def transform_declaration(cls, data: dict[str, Any]) -> dict[str, Any]:
         if "endpoint" in data and not data["endpoint"]:
             del data["endpoint"]
         if "model" in data and not data["model"]:

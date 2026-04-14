@@ -75,7 +75,7 @@ class TriggerWebhookNode(Node[WebhookData]):
             outputs=outputs,
         )
 
-    def generate_file_var(self, param_name: str, file: dict):
+    def generate_file_var(self, param_name: str, file: dict[str, Any]):
         file_id = resolve_file_record_id(file.get("reference") or file.get("related_id"))
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
@@ -147,7 +147,7 @@ class TriggerWebhookNode(Node[WebhookData]):
                 outputs[param_name] = str(webhook_data.get("body", {}).get("raw", ""))
                 continue
             elif self.node_data.content_type == ContentType.BINARY:
-                raw_data: dict = webhook_data.get("body", {}).get("raw", {})
+                raw_data: dict[str, Any] = webhook_data.get("body", {}).get("raw", {})
                 file_var = self.generate_file_var(param_name, raw_data)
                 if file_var:
                     outputs[param_name] = file_var

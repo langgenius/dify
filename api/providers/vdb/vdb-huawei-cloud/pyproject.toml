@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-huawei-cloud"
+version = "0.0.1"
+
+dependencies = [
+    "elasticsearch==8.14.0",
+]
+description = "Dify vector store backend (dify-vdb-huawei-cloud)."
+
+[project.entry-points."dify.vector_backends"]
+huawei_cloud = "dify_vdb_huawei_cloud.huawei_cloud_vector:HuaweiCloudVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

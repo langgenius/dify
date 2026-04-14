@@ -1,0 +1,15 @@
+[project]
+name = "dify-vdb-analyticdb"
+version = "0.0.1"
+dependencies = [
+    "alibabacloud_gpdb20160503~=5.2.0",
+    "alibabacloud_tea_openapi~=0.4.3",
+    "clickhouse-connect~=0.15.0",
+]
+description = "Dify vector store backend (dify-vdb-analyticdb)."
+
+[project.entry-points."dify.vector_backends"]
+analyticdb = "dify_vdb_analyticdb.analyticdb_vector:AnalyticdbVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

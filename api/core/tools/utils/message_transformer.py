@@ -4,6 +4,7 @@ from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from mimetypes import guess_extension
+from typing import Any
 from uuid import UUID
 
 import numpy as np
@@ -50,7 +51,7 @@ def safe_json_value(v):
         return v
 
 
-def safe_json_dict(d: dict):
+def safe_json_dict(d: dict[str, Any]):
     if not isinstance(d, dict):
         raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}
@@ -196,11 +197,11 @@ class ToolFileMessageTransformer:
 
     @staticmethod
     def _with_tool_file_meta(
-        meta: dict | None,
+        meta: dict[str, Any] | None,
         *,
         tool_file_id: str | None = None,
         url: str | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         normalized_meta = meta.copy() if meta is not None else {}
         resolved_tool_file_id = tool_file_id or ToolFileMessageTransformer._extract_tool_file_id(url)
         if resolved_tool_file_id and "tool_file_id" not in normalized_meta:

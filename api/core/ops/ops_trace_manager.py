@@ -324,7 +324,7 @@ class OpsTraceManager:
 
     @classmethod
     def encrypt_tracing_config(
-        cls, tenant_id: str, tracing_provider: str, tracing_config: dict, current_trace_config=None
+        cls, tenant_id: str, tracing_provider: str, tracing_config: dict[str, Any], current_trace_config=None
     ):
         """
         Encrypt tracing config.
@@ -363,7 +363,7 @@ class OpsTraceManager:
         return encrypted_config.model_dump()
 
     @classmethod
-    def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
+    def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict[str, Any]):
         """
         Decrypt tracing config
         :param tenant_id: tenant id
@@ -408,7 +408,7 @@ class OpsTraceManager:
             return dict(decrypted_config)
 
     @classmethod
-    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict):
+    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict[str, Any]):
         """
         Decrypt tracing config
         :param tracing_provider: tracing provider
@@ -581,7 +581,7 @@ class OpsTraceManager:
         return app_trace_config
 
     @staticmethod
-    def check_trace_config_is_effective(tracing_config: dict, tracing_provider: str):
+    def check_trace_config_is_effective(tracing_config: dict[str, Any], tracing_provider: str):
         """
         Check trace config is effective
         :param tracing_config: tracing config
@@ -596,7 +596,7 @@ class OpsTraceManager:
         return trace_instance(config).api_check()
 
     @staticmethod
-    def get_trace_config_project_key(tracing_config: dict, tracing_provider: str):
+    def get_trace_config_project_key(tracing_config: dict[str, Any], tracing_provider: str):
         """
         get trace config is project key
         :param tracing_config: tracing config
@@ -611,7 +611,7 @@ class OpsTraceManager:
         return trace_instance(config).get_project_key()
 
     @staticmethod
-    def get_trace_config_project_url(tracing_config: dict, tracing_provider: str):
+    def get_trace_config_project_url(tracing_config: dict[str, Any], tracing_provider: str):
         """
         get trace config is project key
         :param tracing_config: tracing config
@@ -1322,8 +1322,8 @@ class TraceTask:
             error=error,
         )
 
-    def node_execution_trace(self, **kwargs) -> WorkflowNodeTraceInfo | dict:
-        node_data: dict = kwargs.get("node_execution_data", {})
+    def node_execution_trace(self, **kwargs) -> WorkflowNodeTraceInfo | dict[str, Any]:
+        node_data: dict[str, Any] = kwargs.get("node_execution_data", {})
         if not node_data:
             return {}
 
@@ -1431,7 +1431,7 @@ class TraceTask:
             return node_trace
         return DraftNodeExecutionTrace(**node_trace.model_dump())
 
-    def _extract_streaming_metrics(self, message_data) -> dict:
+    def _extract_streaming_metrics(self, message_data) -> dict[str, Any]:
         if not message_data.message_metadata:
             return {}
 

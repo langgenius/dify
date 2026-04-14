@@ -54,8 +54,8 @@ class BaseAPIClient:
         self,
         method: str,
         endpoint: str,
-        query_params: dict | None = None,
-        data: dict | None = None,
+        query_params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
         **kwargs,
     ) -> Response:
         stream = kwargs.pop("stream", False)
@@ -66,19 +66,25 @@ class BaseAPIClient:
 
         return self.session.request(method, url, params=query_params, json=data, **kwargs)
 
-    def _get(self, endpoint: str, query_params: dict | None = None, **kwargs):
+    def _get(self, endpoint: str, query_params: dict[str, Any] | None = None, **kwargs):
         return self._request("GET", endpoint, query_params=query_params, **kwargs)
 
-    def _post(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
+    def _post(
+        self, endpoint: str, query_params: dict[str, Any] | None = None, data: dict[str, Any] | None = None, **kwargs
+    ):
         return self._request("POST", endpoint, query_params=query_params, data=data, **kwargs)
 
-    def _put(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
+    def _put(
+        self, endpoint: str, query_params: dict[str, Any] | None = None, data: dict[str, Any] | None = None, **kwargs
+    ):
         return self._request("PUT", endpoint, query_params=query_params, data=data, **kwargs)
 
-    def _delete(self, endpoint: str, query_params: dict | None = None, **kwargs):
+    def _delete(self, endpoint: str, query_params: dict[str, Any] | None = None, **kwargs):
         return self._request("DELETE", endpoint, query_params=query_params, **kwargs)
 
-    def _patch(self, endpoint: str, query_params: dict | None = None, data: dict | None = None, **kwargs):
+    def _patch(
+        self, endpoint: str, query_params: dict[str, Any] | None = None, data: dict[str, Any] | None = None, **kwargs
+    ):
         return self._request("PATCH", endpoint, query_params=query_params, data=data, **kwargs)
 
 
@@ -99,7 +105,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         finally:
             response.close()
 
-    def process_response(self, response: Response) -> dict | bytes | list | None | Generator:
+    def process_response(self, response: Response) -> dict[str, Any] | bytes | list[Any] | None | Generator:
         if response.status_code == 401:
             raise WaterCrawlAuthenticationError(response)
 
@@ -186,7 +192,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         yield from generator
 
     def get_crawl_request_results(
-        self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict | None = None
+        self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict[str, Any] | None = None
     ):
         query_params = query_params or {}
         query_params.update({"page": page or 1, "page_size": page_size or 25})
@@ -210,7 +216,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
             if event_data["type"] == "result":
                 return event_data["data"]
 
-    def download_result(self, result_object: dict):
+    def download_result(self, result_object: dict[str, Any]):
         response = httpx.get(result_object["result"], timeout=None)
         try:
             response.raise_for_status()

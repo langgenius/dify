@@ -120,7 +120,7 @@ class WaterCrawlProvider:
         }
 
     def _get_results(
-        self, crawl_request_id: str, query_params: dict | None = None
+        self, crawl_request_id: str, query_params: dict[str, Any] | None = None
     ) -> Generator[WatercrawlDocumentData, None, None]:
         page = 0
         page_size = 100

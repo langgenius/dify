@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from flask_restx import fields, marshal, marshal_with
 from sqlalchemy import select
@@ -113,12 +113,12 @@ class AppSiteInfo:
             }
 
 
-def serialize_site(site: Site) -> dict:
+def serialize_site(site: Site) -> dict[str, Any]:
     """Serialize Site model using the same schema as AppSiteApi."""
-    return cast(dict, marshal(site, AppSiteApi.site_fields))
+    return cast(dict[str, Any], marshal(site, AppSiteApi.site_fields))
 
 
-def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict:
+def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict[str, Any]:
     can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
     app_site_info = AppSiteInfo(app_model.tenant, app_model, site, end_user_id, can_replace_logo)
-    return cast(dict, marshal(app_site_info, AppSiteApi.app_fields))
+    return cast(dict[str, Any], marshal(app_site_info, AppSiteApi.app_fields))

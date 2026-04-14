@@ -135,7 +135,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
@@ -230,7 +230,7 @@
   },
   "app/(shareLayout)/webapp-signin/normalForm.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 13
+      "count": 11
     }
   },
   "app/(shareLayout)/webapp-signin/page.tsx": {
@@ -240,7 +240,7 @@
   },
   "app/account/(commonLayout)/account-page/AvatarWithEdit.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/account/(commonLayout)/account-page/email-change-modal.tsx": {
@@ -546,7 +546,7 @@
   },
   "app/components/app/app-access-control/access-control-dialog.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/app/app-access-control/add-member-or-group-pop.tsx": {
@@ -625,9 +625,6 @@
   "app/components/app/configuration/base/var-highlight/index.tsx": {
     "react-refresh/only-export-components": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/app/configuration/base/warning-mask/has-not-set-api.tsx": {
@@ -637,7 +634,7 @@
   },
   "app/components/app/configuration/base/warning-mask/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
@@ -649,9 +646,6 @@
     }
   },
   "app/components/app/configuration/config-prompt/confirm-add-var/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
     }
@@ -778,7 +772,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
+      "count": 7
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -1248,7 +1242,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/app/overview/customize/index.tsx": {
@@ -1389,11 +1383,6 @@
       "count": 2
     }
   },
-  "app/components/apps/empty.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/apps/footer.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -1407,7 +1396,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 8
     }
   },
   "app/components/apps/new-app-card.tsx": {
@@ -1479,7 +1468,7 @@
   },
   "app/components/base/alert.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/amplitude/index.ts": {
@@ -1554,7 +1543,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
@@ -1657,7 +1646,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -1993,7 +1982,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/base/content-dialog/index.stories.tsx": {
@@ -2003,7 +1992,7 @@
   },
   "app/components/base/content-dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/copy-feedback/index.tsx": {
@@ -2094,7 +2083,7 @@
   },
   "app/components/base/dialog/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/base/drawer-plus/index.stories.tsx": {
@@ -2109,7 +2098,7 @@
   },
   "app/components/base/drawer/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/base/effect/index.stories.tsx": {
@@ -2224,7 +2213,7 @@
   },
   "app/components/base/features/new-feature-panel/dialog-wrapper.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/base/features/new-feature-panel/feature-bar.tsx": {
@@ -2294,7 +2283,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 8
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -2338,7 +2327,7 @@
   },
   "app/components/base/file-uploader/audio-preview.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/file-uploader/dynamic-pdf-preview.tsx": {
@@ -2349,11 +2338,6 @@
   "app/components/base/file-uploader/file-from-link-or-local/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/base/file-uploader/file-input.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/file-uploader/file-list-in-log.tsx": {
@@ -2377,7 +2361,7 @@
   },
   "app/components/base/file-uploader/file-uploader-in-chat-input/file-image-item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
+      "count": 3
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
@@ -2411,7 +2395,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/base/file-uploader/store.tsx": {
@@ -2431,7 +2415,7 @@
   },
   "app/components/base/file-uploader/video-preview.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/form/components/base/base-field.tsx": {
@@ -2574,7 +2558,7 @@
   },
   "app/components/base/fullscreen-modal/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/base/ga/index.tsx": {
@@ -2588,11 +2572,6 @@
   "app/components/base/grid-mask/index.stories.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    }
-  },
-  "app/components/base/grid-mask/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/base/icons/src/public/avatar/index.ts": {
@@ -2837,7 +2816,7 @@
   },
   "app/components/base/image-uploader/audio-preview.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/image-uploader/chat-image-uploader.tsx": {
@@ -2868,7 +2847,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/base/image-uploader/image-preview.tsx": {
@@ -2876,14 +2855,9 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
+      "count": 6
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/image-uploader/uploader.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -2894,7 +2868,7 @@
   },
   "app/components/base/image-uploader/video-preview.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/inline-delete-confirm/index.stories.tsx": {
@@ -3121,11 +3095,6 @@
   "app/components/base/modal/index.stories.tsx": {
     "react/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "app/components/base/modal/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
     }
   },
   "app/components/base/modal/modal.stories.tsx": {
@@ -3648,7 +3617,7 @@
   },
   "app/components/base/tab-header/index.stories.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/base/tab-header/index.tsx": {
@@ -3792,6 +3761,16 @@
       "count": 1
     }
   },
+  "app/components/base/ui/alert-dialog/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
+  "app/components/base/ui/avatar/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -3810,7 +3789,7 @@
   },
   "app/components/base/voice-input/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/base/voice-input/utils.ts": {
@@ -3862,7 +3841,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/billing/plan/assets/index.tsx": {
@@ -3928,7 +3907,7 @@
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 8
     }
   },
   "app/components/billing/pricing/plans/self-hosted-plan-item/list/item.tsx": {
@@ -3994,7 +3973,7 @@
   },
   "app/components/custom/custom-web-app-brand/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
+      "count": 7
     }
   },
   "app/components/datasets/chunk.tsx": {
@@ -4025,7 +4004,7 @@
   },
   "app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/common/image-list/more.tsx": {
@@ -4038,7 +4017,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
@@ -4053,12 +4032,12 @@
   },
   "app/components/datasets/common/image-uploader/image-uploader-in-chunk/image-input.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/common/image-uploader/image-uploader-in-chunk/image-item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 1
     }
   },
   "app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-input.tsx": {
@@ -4067,11 +4046,6 @@
     }
   },
   "app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    }
-  },
-  "app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -4301,9 +4275,6 @@
   },
   "app/components/datasets/create/step-two/components/inputs.tsx": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -4807,11 +4778,6 @@
       "count": 2
     }
   },
-  "app/components/datasets/documents/detail/completed/common/drawer.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/datasets/documents/detail/completed/common/empty.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 8
@@ -5040,7 +5006,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
+      "count": 8
     }
   },
   "app/components/datasets/external-api/external-api-panel/index.tsx": {
@@ -5487,7 +5453,7 @@
   },
   "app/components/develop/code.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
+      "count": 5
     },
     "ts/no-empty-object-type": {
       "count": 1
@@ -5759,11 +5725,6 @@
       "count": 1
     }
   },
-  "app/components/goto-anything/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-about/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5894,22 +5855,12 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/key-validator/ValidateStatus.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/key-validator/declarations.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/header/account-setting/key-validator/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/header/account-setting/language-page/index.tsx": {
@@ -6314,12 +6265,7 @@
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/quota-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
-    }
-  },
-  "app/components/header/account-setting/model-provider-page/provider-added-card/system-quota-card.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
+      "count": 4
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-icon/index.tsx": {
@@ -6335,11 +6281,6 @@
   "app/components/header/account-setting/model-provider-page/utils.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "app/components/header/account-setting/plugin-page/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/plugin-page/utils.ts": {
@@ -6556,7 +6497,7 @@
   },
   "app/components/plugins/marketplace/empty/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
+      "count": 7
     }
   },
   "app/components/plugins/marketplace/hooks.ts": {
@@ -7141,7 +7082,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
@@ -7208,7 +7149,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/plugins/readme-panel/store.ts": {
@@ -7458,7 +7399,7 @@
   },
   "app/components/rag-pipeline/components/publish-toast.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/rag-pipeline/components/rag-pipeline-children.tsx": {
@@ -7632,7 +7573,7 @@
   },
   "app/components/share/text-generation/text-generation-result-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
+      "count": 6
     }
   },
   "app/components/share/text-generation/text-generation-sidebar.tsx": {
@@ -7651,11 +7592,6 @@
     }
   },
   "app/components/signin/countdown.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/splash.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -7796,7 +7732,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
+      "count": 5
     }
   },
   "app/components/tools/mcp/modal.tsx": {
@@ -7804,7 +7740,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
@@ -8445,7 +8381,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 3
     },
     "ts/no-explicit-any": {
       "count": 11
@@ -8466,14 +8402,9 @@
   },
   "app/components/workflow/nodes/_base/components/before-run-form/panel-wrap.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     },
     "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/code-generator-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -8555,7 +8486,7 @@
   },
   "app/components/workflow/nodes/_base/components/error-handle/error-handle-tip.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/error-handle/error-handle-type-selector.tsx": {
@@ -8640,7 +8571,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -8762,7 +8693,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
+      "count": 4
     },
     "ts/no-explicit-any": {
       "count": 4
@@ -9027,7 +8958,7 @@
   },
   "app/components/workflow/nodes/_base/node.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
+      "count": 4
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -9162,7 +9093,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/code/panel.tsx": {
@@ -10054,11 +9985,6 @@
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/hooks.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/llm/components/prompt-generator-btn.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -11011,11 +10937,6 @@
       "count": 4
     }
   },
-  "app/components/workflow/run/agent-log/agent-result-panel.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/workflow/run/agent-log/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -11049,7 +10970,7 @@
   },
   "app/components/workflow/run/iteration-log/iteration-result-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/workflow/run/loop-log/index.tsx": {
@@ -11065,9 +10986,14 @@
       "count": 1
     }
   },
+  "app/components/workflow/run/loop-log/loop-result-panel.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
+    }
+  },
   "app/components/workflow/run/loop-result-panel.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
+      "count": 3
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
@@ -11107,7 +11033,7 @@
   },
   "app/components/workflow/run/result-text.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
+      "count": 2
     },
     "tailwindcss/no-unnecessary-whitespace": {
       "count": 1
@@ -11201,11 +11127,6 @@
   },
   "app/components/workflow/store/workflow/workflow-slice.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/syncing-data-modal.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
@@ -11432,7 +11353,7 @@
   },
   "app/education-apply/education-apply-page.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 12
+      "count": 11
     }
   },
   "app/education-apply/expire-notice-modal.tsx": {
@@ -11477,7 +11398,7 @@
       "count": 1
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 6
+      "count": 5
     }
   },
   "app/forgot-password/ForgotPasswordForm.spec.tsx": {
@@ -11558,11 +11479,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/signin/normal-form.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 26
     }
   },
   "app/signin/one-more-step.tsx": {

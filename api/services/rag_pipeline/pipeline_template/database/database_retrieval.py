@@ -1,3 +1,5 @@
+from typing import Any
+
 import yaml
 from sqlalchemy import select
 
@@ -12,11 +14,11 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval pipeline   template from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict:
+    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
         result = self.fetch_pipeline_templates_from_db(language)
         return result
 
-    def get_pipeline_template_detail(self, template_id: str):
+    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         result = self.fetch_pipeline_template_detail_from_db(template_id)
         return result
 
@@ -24,7 +26,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.DATABASE
 
     @classmethod
-    def fetch_pipeline_templates_from_db(cls, language: str) -> dict:
+    def fetch_pipeline_templates_from_db(cls, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param language: language
@@ -54,7 +56,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID

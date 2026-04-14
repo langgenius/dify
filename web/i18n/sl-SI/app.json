@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "Ukazi",
   "gotoAnything.groups.knowledgeBases": "Baze znanja",
   "gotoAnything.groups.plugins": "Vtičniki",
+  "gotoAnything.groups.recent": "Nedavno",
   "gotoAnything.groups.workflowNodes": "Vozlišča poteka dela",
   "gotoAnything.inScope": "v {{scope}}s",
   "gotoAnything.noMatchingCommands": "Ujemajoči se ukazi niso našli",

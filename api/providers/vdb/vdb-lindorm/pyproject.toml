@@ -1,0 +1,15 @@
+[project]
+name = "dify-vdb-lindorm"
+version = "0.0.1"
+
+dependencies = [
+    "opensearch-py==3.1.0",
+    "tenacity>=8.0.0",
+]
+description = "Dify vector store backend (dify-vdb-lindorm)."
+
+[project.entry-points."dify.vector_backends"]
+lindorm = "dify_vdb_lindorm.lindorm_vector:LindormVectorStoreFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

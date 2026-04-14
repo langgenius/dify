@@ -1,0 +1,12 @@
+[project]
+name = "dify-vdb-opengauss"
+version = "0.0.1"
+
+dependencies = []
+description = "Dify vector store backend (dify-vdb-opengauss)."
+
+[project.entry-points."dify.vector_backends"]
+opengauss = "dify_vdb_opengauss.opengauss:OpenGaussFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

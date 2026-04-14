@@ -679,7 +679,7 @@ def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
+def _delete_records(query_sql: str, params: dict[str, Any], delete_func: Callable, name: str) -> None:
     while True:
         with session_factory.create_session() as session:
             rs = session.execute(sa.text(query_sql), params)

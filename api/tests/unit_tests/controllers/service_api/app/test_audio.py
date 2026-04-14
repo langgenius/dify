@@ -95,30 +95,6 @@ class TestTextToAudioPayload:
         assert payload.streaming is True
 
 
-# ---------------------------------------------------------------------------
-# AudioService Interface Tests
-# ---------------------------------------------------------------------------
-
-
-class TestAudioServiceInterface:
-    """Test AudioService method interfaces exist."""
-
-    def test_transcript_asr_method_exists(self):
-        """Test that AudioService.transcript_asr exists."""
-        assert hasattr(AudioService, "transcript_asr")
-        assert callable(AudioService.transcript_asr)
-
-    def test_transcript_tts_method_exists(self):
-        """Test that AudioService.transcript_tts exists."""
-        assert hasattr(AudioService, "transcript_tts")
-        assert callable(AudioService.transcript_tts)
-
-
-# ---------------------------------------------------------------------------
-# Audio Service Tests
-# ---------------------------------------------------------------------------
-
-
 class TestAudioServiceInterface:
     """Test suite for AudioService interface methods."""
 

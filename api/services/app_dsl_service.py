@@ -3,7 +3,7 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Mapping
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -400,7 +400,7 @@ class AppDslService:
         self,
         *,
         app: App | None,
-        data: dict,
+        data: dict[str, Any],
         account: Account,
         name: str | None = None,
         description: str | None = None,
@@ -567,7 +567,7 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: str | None = None
+        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str | None = None
     ):
         """
         Append workflow export data
@@ -620,7 +620,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
+    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):
         """
         Append model config export data
         :param export_data: export data

@@ -3,7 +3,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
+from typing import Any, cast
 
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from opik import Opik, Trace
@@ -436,7 +436,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         self.add_span(span_data)
 
-    def add_trace(self, opik_trace_data: dict) -> Trace:
+    def add_trace(self, opik_trace_data: dict[str, Any]) -> Trace:
         try:
             trace = self.opik_client.trace(**opik_trace_data)
             logger.debug("Opik Trace created successfully")
@@ -444,7 +444,7 @@ class OpikDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"Opik Failed to create trace: {str(e)}")
 
-    def add_span(self, opik_span_data: dict):
+    def add_span(self, opik_span_data: dict[str, Any]):
         try:
             self.opik_client.span(**opik_span_data)
             logger.debug("Opik Span created successfully")

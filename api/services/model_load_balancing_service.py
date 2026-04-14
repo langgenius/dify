@@ -502,7 +502,7 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         config_id: str | None = None,
     ):
         """
@@ -561,7 +561,7 @@ class ModelLoadBalancingService:
         provider_configuration: ProviderConfiguration,
         model_type: ModelType,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
         model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,

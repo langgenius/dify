@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "أوامر",
   "gotoAnything.groups.knowledgeBases": "قواعد المعرفة",
   "gotoAnything.groups.plugins": "إضافات",
+  "gotoAnything.groups.recent": "الأخيرة",
   "gotoAnything.groups.workflowNodes": "عقد سير العمل",
   "gotoAnything.inScope": "في {{scope}}",
   "gotoAnything.noMatchingCommands": "لم يتم العثور على أوامر مطابقة",

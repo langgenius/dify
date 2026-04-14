@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "Comenzi",
   "gotoAnything.groups.knowledgeBases": "Baze de cunoștințe",
   "gotoAnything.groups.plugins": "Pluginuri",
+  "gotoAnything.groups.recent": "Recent",
   "gotoAnything.groups.workflowNodes": "Noduri de flux de lucru",
   "gotoAnything.inScope": "în {{scope}}s",
   "gotoAnything.noMatchingCommands": "Nu s-au găsit comenzi potrivite",
