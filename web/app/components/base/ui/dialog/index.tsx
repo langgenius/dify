@@ -83,16 +83,9 @@ export function DialogContent({
   overlayClassName,
   backdropProps,
 }: DialogContentProps) {
-  const backdropContentProps = backdropProps
-    ? (({ className: _className, ...rest }) => rest)(backdropProps)
-    : {}
-
   return (
     <DialogPortal>
-      <DialogBackdrop
-        {...backdropContentProps}
-        className={cn(overlayClassName, backdropProps?.className)}
-      />
+      <DialogBackdrop {...backdropProps} className={cn(overlayClassName, backdropProps?.className)} />
       <DialogPopup
         className={cn(
           'top-1/2 left-1/2 max-h-[80dvh] w-[480px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
