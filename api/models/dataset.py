@@ -164,6 +164,23 @@ class DatasetPermissionEnum(enum.StrEnum):
     PARTIAL_TEAM = "partial_members"
 
 
+def _sql_string_default(value: str) -> sa.TextClause:
+    return sa.text(f"'{value}'")
+
+
+def _sql_bool_default(value: bool) -> sa.TextClause:
+    return sa.text("true" if value else "false")
+
+
+DATASET_PROVIDER_DEFAULT = "vendor"
+DATASET_PERMISSION_DEFAULT = DatasetPermissionEnum.ONLY_ME
+DATASET_KEYWORD_NUMBER_DEFAULT = 10
+DATASET_BUILT_IN_FIELD_ENABLED_DEFAULT = False
+DATASET_RUNTIME_MODE_DEFAULT = DatasetRuntimeMode.GENERAL
+DATASET_ENABLE_API_DEFAULT = True
+DATASET_IS_MULTIMODAL_DEFAULT = False
+
+
 class Dataset(Base):
     __tablename__ = "datasets"
     __table_args__ = (
@@ -173,22 +190,26 @@ class Dataset(Base):
     )
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
-    PROVIDER_LIST = ["vendor", "external", None]
+    PROVIDER_LIST = [DATASET_PROVIDER_DEFAULT, "external", None]
     DOC_FORM_LIST = [member.value for member in IndexStructureType]
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(LongText, nullable=True)
-    provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"), default="vendor")
+    provider: Mapped[str] = mapped_column(
+        String(255),
+        server_default=_sql_string_default(DATASET_PROVIDER_DEFAULT),
+        default=DATASET_PROVIDER_DEFAULT,
+    )
     permission: Mapped[DatasetPermissionEnum] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
-        server_default=sa.text("'only_me'"),
-        default=DatasetPermissionEnum.ONLY_ME,
+        server_default=_sql_string_default(DATASET_PERMISSION_DEFAULT.value),
+        default=DATASET_PERMISSION_DEFAULT,
     )
     # Nullable until the first document defines the source; see DatasetService.save_document_with_dataset_id
     data_source_type: Mapped[DataSourceType | None] = mapped_column(
-        EnumText(DataSourceType, length=255), nullable=True, default=None
+        EnumText(DataSourceType, length=255), nullable=True
     )
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
@@ -200,22 +221,42 @@ class Dataset(Base):
     )
     embedding_model = mapped_column(sa.String(255), nullable=True)
     embedding_model_provider = mapped_column(sa.String(255), nullable=True)
-    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=10)
-    collection_binding_id = mapped_column(StringUUID, nullable=True, default=None)
-    retrieval_model = mapped_column(AdjustedJSON, nullable=True, default=None)
-    summary_index_setting = mapped_column(AdjustedJSON, nullable=True, default=None)
-    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
-    icon_info = mapped_column(AdjustedJSON, nullable=True, default=None)
+    keyword_number = mapped_column(
+        sa.Integer,
+        nullable=True,
+        server_default=sa.text(str(DATASET_KEYWORD_NUMBER_DEFAULT)),
+        default=DATASET_KEYWORD_NUMBER_DEFAULT,
+    )
+    collection_binding_id = mapped_column(StringUUID, nullable=True)
+    retrieval_model = mapped_column(AdjustedJSON, nullable=True)
+    summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
+    built_in_field_enabled = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        server_default=_sql_bool_default(DATASET_BUILT_IN_FIELD_ENABLED_DEFAULT),
+        default=DATASET_BUILT_IN_FIELD_ENABLED_DEFAULT,
+    )
+    icon_info = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode = mapped_column(
         EnumText(DatasetRuntimeMode, length=255),
         nullable=True,
-        server_default=sa.text("'general'"),
-        default=DatasetRuntimeMode.GENERAL,
+        server_default=_sql_string_default(DATASET_RUNTIME_MODE_DEFAULT.value),
+        default=DATASET_RUNTIME_MODE_DEFAULT,
     )
-    pipeline_id = mapped_column(StringUUID, nullable=True, default=None)
-    chunk_structure = mapped_column(sa.String(255), nullable=True, default=None)
-    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
-    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=db.text("false"))
+    pipeline_id = mapped_column(StringUUID, nullable=True)
+    chunk_structure = mapped_column(sa.String(255), nullable=True)
+    enable_api = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        server_default=_sql_bool_default(DATASET_ENABLE_API_DEFAULT),
+        default=DATASET_ENABLE_API_DEFAULT,
+    )
+    is_multimodal = mapped_column(
+        sa.Boolean,
+        default=DATASET_IS_MULTIMODAL_DEFAULT,
+        nullable=False,
+        server_default=_sql_bool_default(DATASET_IS_MULTIMODAL_DEFAULT),
+    )
 
     @property
     def total_documents(self):
