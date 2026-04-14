@@ -1,7 +1,10 @@
-from flask_restx import Resource, fields, marshal_with
+from typing import Any
+
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -10,11 +13,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.app_fields import (
-    app_import_check_dependencies_fields,
-    app_import_fields,
-    leaked_dependency_fields,
-)
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService
@@ -23,21 +22,6 @@ from services.entities.dsl_entities import ImportStatus
 from services.feature_service import FeatureService
 
 from .. import console_ns
-
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register base model first
-leaked_dependency_model = console_ns.model("LeakedDependency", leaked_dependency_fields)
-
-app_import_model = console_ns.model("AppImport", app_import_fields)
-
-# For nested models, need to replace nested dict with registered model
-app_import_check_dependencies_fields_copy = app_import_check_dependencies_fields.copy()
-app_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(fields.Nested(leaked_dependency_model))
-app_import_check_dependencies_model = console_ns.model(
-    "AppImportCheckDependencies", app_import_check_dependencies_fields_copy
-)
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AppImportPayload(BaseModel):
@@ -52,8 +36,32 @@ class AppImportPayload(BaseModel):
     app_id: str | None = Field(None)
 
 
-console_ns.schema_model(
-    AppImportPayload.__name__, AppImportPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+class LeakedDependencyResponse(ResponseModel):
+    type: str
+    value: Any
+    current_identifier: str | None = None
+
+
+class AppImportResponse(ResponseModel):
+    id: str
+    status: ImportStatus
+    app_id: str | None = None
+    app_mode: str | None = None
+    current_dsl_version: str
+    imported_dsl_version: str
+    error: str = ""
+
+
+class AppImportCheckDependenciesResponse(ResponseModel):
+    leaked_dependencies: list[LeakedDependencyResponse] = Field(default_factory=list)
+
+
+register_schema_models(
+    console_ns,
+    AppImportPayload,
+    LeakedDependencyResponse,
+    AppImportResponse,
+    AppImportCheckDependenciesResponse,
 )
 
 
@@ -63,7 +71,9 @@ class AppImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_import_model)
+    @console_ns.response(200, "App imported successfully", console_ns.models[AppImportResponse.__name__])
+    @console_ns.response(202, "App import queued", console_ns.models[AppImportResponse.__name__])
+    @console_ns.response(400, "App import failed", console_ns.models[AppImportResponse.__name__])
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     def post(self):
@@ -95,11 +105,11 @@ class AppImportApi(Resource):
         status = result.status
         match status:
             case ImportStatus.FAILED:
-                return result.model_dump(mode="json"), 400
+                return AppImportResponse.model_validate(result).model_dump(mode="json"), 400
             case ImportStatus.PENDING:
-                return result.model_dump(mode="json"), 202
+                return AppImportResponse.model_validate(result).model_dump(mode="json"), 202
             case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
-                return result.model_dump(mode="json"), 200
+                return AppImportResponse.model_validate(result).model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")
@@ -107,7 +117,8 @@ class AppImportConfirmApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_import_model)
+    @console_ns.response(200, "App import confirmed", console_ns.models[AppImportResponse.__name__])
+    @console_ns.response(400, "App import failed", console_ns.models[AppImportResponse.__name__])
     @edit_permission_required
     def post(self, import_id):
         # Check user role first
@@ -122,8 +133,8 @@ class AppImportConfirmApi(Resource):
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        return result.model_dump(mode="json"), 200
+            return AppImportResponse.model_validate(result).model_dump(mode="json"), 400
+        return AppImportResponse.model_validate(result).model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
@@ -132,11 +143,13 @@ class AppImportCheckDependenciesApi(Resource):
     @login_required
     @get_app_model
     @account_initialization_required
-    @marshal_with(app_import_check_dependencies_model)
+    @console_ns.response(
+        200, "Dependency check completed", console_ns.models[AppImportCheckDependenciesResponse.__name__]
+    )
     @edit_permission_required
     def get(self, app_model: App):
         with sessionmaker(db.engine).begin() as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 
-        return result.model_dump(mode="json"), 200
+        return AppImportCheckDependenciesResponse.model_validate(result).model_dump(mode="json"), 200
