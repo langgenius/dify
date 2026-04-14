@@ -1,6 +1,6 @@
 import re
 from operator import itemgetter
-from typing import cast
+from typing import Callable, cast
 
 
 class JiebaKeywordTableHandler:
@@ -80,12 +80,14 @@ class JiebaKeywordTableHandler:
 
             def extract_tags(self, sentence: str, top_k: int | None = 20, **kwargs):
                 # Basic frequency-based keyword extraction as a fallback when TF-IDF is unavailable.
-                top_k = kwargs.pop("topK", top_k)
+                top_k = cast(int | None, kwargs.pop("topK", top_k))
+                if top_k is None:
+                    top_k = 20
                 cut = getattr(jieba, "cut", None)
                 if self._lcut:
                     tokens = self._lcut(sentence)
                 elif callable(cut):
-                    tokens = list(cut(sentence))
+                    tokens = list(cast(Callable[[str], list[str]], cut)(sentence))
                 else:
                     tokens = re.findall(r"\w+", sentence)
 
@@ -108,7 +110,7 @@ class JiebaKeywordTableHandler:
             sentence=text,
             topK=max_keywords_per_chunk,
         )
-        # jieba.analyse.extract_tags returns list[Any] when withFlag is False by default.
+        # jieba.analyse.extract_tags returns an untyped list when withFlag is False by default.
         keywords = cast(list[str], keywords)
 
         return set(self._expand_tokens_with_subtokens(set(keywords)))
