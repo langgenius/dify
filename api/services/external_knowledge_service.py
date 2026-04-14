@@ -31,7 +31,6 @@ class ExternalRetrievalParameters(TypedDict):
 
 
 class ExternalDatasetService:
-
     @staticmethod
     def get_external_knowledge_apis(
         page, per_page, tenant_id, search=None
