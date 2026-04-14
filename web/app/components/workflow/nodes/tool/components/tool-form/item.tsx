@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
@@ -14,6 +14,45 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
+
+const URL_REGEX = /(https?:\/\/\S+)/g
+
+const renderDescriptionWithLinks = (description: string): ReactNode => {
+  const matches = [...description.matchAll(URL_REGEX)]
+
+  if (!matches.length)
+    return description
+
+  const parts: ReactNode[] = []
+  let currentIndex = 0
+
+  matches.forEach((match, index) => {
+    const [url] = match
+    const start = match.index ?? 0
+
+    if (start > currentIndex)
+      parts.push(description.slice(currentIndex, start))
+
+    parts.push(
+      <a
+        key={`${url}-${index}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-text-accent hover:underline"
+      >
+        {url}
+      </a>,
+    )
+
+    currentIndex = start + url.length
+  })
+
+  if (currentIndex < description.length)
+    parts.push(description.slice(currentIndex))
+
+  return parts
+}
 
 type Props = {
   readOnly: boolean
@@ -87,7 +126,9 @@ const ToolFormItem: FC<Props> = ({
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="body-xs-regular pb-0.5 text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>
+          <div className="body-xs-regular break-words pb-0.5 text-text-tertiary">
+            {renderDescriptionWithLinks(tooltip[language] || tooltip.en_US)}
+          </div>
         )}
       </div>
       <FormInputItem
