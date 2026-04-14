@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 
-import { Button } from '.'
+import { Button, buttonTones, buttonVariantsList } from '.'
 
 const meta = {
   title: 'Base/General/Button',
@@ -13,12 +13,13 @@ const meta = {
     loading: { control: 'boolean' },
     tone: {
       control: 'select',
-      options: ['default', 'destructive'],
+      options: buttonTones,
+      description: 'Destructive tone is only supported by primary, secondary, tertiary, and ghost variants.',
     },
     disabled: { control: 'boolean' },
     variant: {
       control: 'select',
-      options: ['primary', 'secondary', 'secondary-accent', 'ghost', 'ghost-accent', 'tertiary'],
+      options: buttonVariantsList,
     },
     size: {
       control: 'select',
@@ -53,6 +54,13 @@ export const SecondaryAccent: Story = {
     variant: 'secondary-accent',
     children: 'Secondary Accent Button',
   },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Accent variants only support the default tone.',
+      },
+    },
+  },
 }
 
 export const Ghost: Story = {
@@ -66,6 +74,13 @@ export const GhostAccent: Story = {
   args: {
     variant: 'ghost-accent',
     children: 'Ghost Accent Button',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Accent variants only support the default tone.',
+      },
+    },
   },
 }
 

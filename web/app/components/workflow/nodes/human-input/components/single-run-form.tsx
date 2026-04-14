@@ -1,5 +1,4 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/ui/button'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { RiArrowLeftLine } from '@remixicon/react'
@@ -72,7 +71,7 @@ const FormContent = ({
             <Button
               key={action.id}
               disabled={isSubmitting}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+              variant={getButtonStyle(action.button_style)}
               onClick={() => submit(action.id)}
             >
               {action.title}

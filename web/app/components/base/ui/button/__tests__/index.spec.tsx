@@ -1,3 +1,4 @@
+import type { ButtonProps } from '../index'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Button } from '../index'
 
@@ -59,6 +60,12 @@ describe('Button', () => {
     it('applies destructive tone with primary variant', () => {
       render(<Button variant="primary" tone="destructive">Click me</Button>)
       expect(screen.getByRole('button').className).toContain('btn-destructive-primary')
+    })
+
+    it('keeps accent variants on the default tone path', () => {
+      render(<Button variant="secondary-accent">Click me</Button>)
+      expect(screen.getByRole('button').className).toContain('btn-secondary-accent')
+      expect(screen.getByRole('button').className).not.toContain('btn-destructive')
     })
   })
 
@@ -152,3 +159,9 @@ describe('Button', () => {
     })
   })
 })
+
+// @ts-expect-error accent variants do not support destructive tone
+const _invalidSecondaryAccentTone: ButtonProps = { variant: 'secondary-accent', tone: 'destructive' }
+
+// @ts-expect-error accent variants do not support destructive tone
+const _invalidGhostAccentTone: ButtonProps = { variant: 'ghost-accent', tone: 'destructive' }

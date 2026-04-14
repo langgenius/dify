@@ -1,5 +1,5 @@
 import type { Dayjs } from 'dayjs'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import type { ButtonSize, ButtonVariant } from '@/app/components/base/ui/button'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
@@ -9,7 +9,7 @@ import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
+import { Button, isButtonSize, isButtonVariant } from '@/app/components/base/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
 enum DATA_FORMAT {
@@ -47,17 +47,6 @@ function isSafeName(name: unknown): name is string {
     && SAFE_NAME_RE.test(name)
     && !PROTOTYPE_POISON_KEYS.has(name)
 }
-
-const VALID_BUTTON_VARIANTS = new Set<string>([
-  'primary',
-  'warning',
-  'secondary',
-  'secondary-accent',
-  'ghost',
-  'ghost-accent',
-  'tertiary',
-])
-const VALID_BUTTON_SIZES = new Set<string>(['small', 'medium', 'large'])
 
 type HastText = {
   type: 'text'
@@ -364,12 +353,8 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         if (child.tagName === SUPPORTED_TAGS.BUTTON) {
           const rawVariant = str(child.properties.dataVariant)
           const rawSize = str(child.properties.dataSize)
-          const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
-            ? rawVariant as ButtonProps['variant']
-            : undefined
-          const size = VALID_BUTTON_SIZES.has(rawSize)
-            ? rawSize as ButtonProps['size']
-            : undefined
+          const variant: ButtonVariant | undefined = isButtonVariant(rawVariant) ? rawVariant : undefined
+          const size: ButtonSize | undefined = isButtonSize(rawSize) ? rawSize : undefined
 
           return (
             <Button

@@ -1,6 +1,5 @@
 'use client'
 import type { HumanInputFormProps } from './type'
-import type { ButtonProps } from '@/app/components/base/ui/button'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -47,7 +46,7 @@ const HumanInputForm = ({
           <Button
             key={action.id}
             disabled={isSubmitting}
-            variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+            variant={getButtonStyle(action.button_style)}
             onClick={() => submit(formToken, action.id, inputs)}
             data-testid="action-button"
           >

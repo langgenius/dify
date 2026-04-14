@@ -1,3 +1,4 @@
+import type { ButtonVariant } from '@/app/components/base/ui/button'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n-config'
 import dayjs from 'dayjs'
@@ -14,7 +15,7 @@ dayjs.extend(utc)
 dayjs.extend(relativeTime)
 dayjs.extend(isSameOrAfter)
 
-export const getButtonStyle = (style: UserActionButtonType) => {
+export const getButtonStyle = (style: UserActionButtonType): ButtonVariant | undefined => {
   if (style === UserActionButtonType.Primary)
     return 'primary'
   if (style === UserActionButtonType.Default)

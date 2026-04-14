@@ -1,5 +1,4 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/ui/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
@@ -263,7 +262,7 @@ const FormContent = () => {
               <Button
                 key={action.id}
                 disabled={isSubmitting}
-                variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+                variant={getButtonStyle(action.button_style)}
                 onClick={() => submit(action.id)}
               >
                 {action.title}

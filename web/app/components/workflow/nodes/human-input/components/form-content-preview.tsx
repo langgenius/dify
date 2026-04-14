@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
-import type { ButtonProps } from '@/app/components/base/ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -86,7 +85,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           {userActions.map((action: UserAction) => (
             <Button
               key={action.id}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
+              variant={getButtonStyle(action.button_style)}
             >
               {action.title}
             </Button>

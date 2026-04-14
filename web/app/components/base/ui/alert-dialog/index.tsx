@@ -62,8 +62,9 @@ export function AlertDialogActions({ className, ...props }: AlertDialogActionsPr
   )
 }
 
-type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
+type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children' | 'tone'> & {
   children: React.ReactNode
+  tone?: 'default'
   closeProps?: Omit<React.ComponentPropsWithoutRef<typeof BaseAlertDialog.Close>, 'children' | 'render'>
 }
 
@@ -85,14 +86,17 @@ export function AlertDialogCancelButton({
 type AlertDialogConfirmButtonProps = ButtonProps
 
 export function AlertDialogConfirmButton({
-  variant = 'primary',
-  tone = 'destructive',
+  variant,
+  tone,
   ...props
 }: AlertDialogConfirmButtonProps) {
+  if (variant === 'secondary-accent' || variant === 'ghost-accent')
+    return <Button variant={variant} tone="default" {...props} />
+
   return (
     <Button
       variant={variant}
-      tone={tone}
+      tone={tone ?? 'destructive'}
       {...props}
     />
   )

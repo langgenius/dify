@@ -8,7 +8,7 @@ import { TaskStatus } from '@/app/components/plugins/types'
 import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 
-type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
+type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading' | 'variant' | 'tone'> & {
   uniqueIdentifier: string
   extraIdentifiers?: string[]
   onSuccess?: () => void
