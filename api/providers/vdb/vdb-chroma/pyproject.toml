@@ -1,0 +1,13 @@
+[project]
+name = "dify-vdb-chroma"
+version = "0.0.1"
+dependencies = [
+    "chromadb==0.5.20",
+]
+description = "Dify vector store backend (dify-vdb-chroma)."
+
+[project.entry-points."dify.vector_backends"]
+chroma = "dify_vdb_chroma.chroma_vector:ChromaVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

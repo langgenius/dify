@@ -501,6 +501,34 @@ describe('http path', () => {
       expect(onChange).toHaveBeenCalled()
     })
 
+    it('should only append a new key-value row after the last value field receives content', () => {
+      const onChange = vi.fn()
+      const onRemove = vi.fn()
+      const onAdd = vi.fn()
+      render(
+        <KeyValueItem
+          instanceId="kv-append"
+          nodeId="node-1"
+          readonly={false}
+          canRemove
+          payload={{ id: 'kv-append', key: 'name', value: '', type: 'text' } as any}
+          onChange={onChange}
+          onRemove={onRemove}
+          isLastItem
+          onAdd={onAdd}
+        />,
+      )
+
+      const valueInput = screen.getAllByPlaceholderText('workflow.nodes.http.insertVarPlaceholder')[1]!
+
+      fireEvent.click(valueInput)
+      expect(onAdd).not.toHaveBeenCalled()
+
+      fireEvent.change(valueInput, { target: { value: 'alice' } })
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ value: 'alice' }))
+      expect(onAdd).toHaveBeenCalledTimes(1)
+    })
+
     it('should edit key-only rows and select file payload rows', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()

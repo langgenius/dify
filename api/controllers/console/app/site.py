@@ -1,11 +1,12 @@
 from typing import Literal
 
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -15,12 +16,10 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.app_fields import app_site_fields
+from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import Site
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AppSiteUpdatePayload(BaseModel):
@@ -49,13 +48,26 @@ class AppSiteUpdatePayload(BaseModel):
         return supported_language(value)
 
 
-console_ns.schema_model(
-    AppSiteUpdatePayload.__name__,
-    AppSiteUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+class AppSiteResponse(ResponseModel):
+    app_id: str
+    access_token: str | None = Field(default=None, validation_alias="code")
+    code: str | None = None
+    title: str
+    icon: str | None = None
+    icon_background: str | None = None
+    description: str | None = None
+    default_language: str
+    customize_domain: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    customize_token_strategy: str
+    prompt_public: bool
+    show_workflow_steps: bool
+    use_icon_as_answer_icon: bool
 
-# Register model for flask_restx to avoid dict type issues in Swagger
-app_site_model = console_ns.model("AppSite", app_site_fields)
+
+register_schema_models(console_ns, AppSiteUpdatePayload, AppSiteResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site")
@@ -64,7 +76,7 @@ class AppSite(Resource):
     @console_ns.doc(description="Update application site configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppSiteUpdatePayload.__name__])
-    @console_ns.response(200, "Site configuration updated successfully", app_site_model)
+    @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")
     @setup_required
@@ -72,7 +84,6 @@ class AppSite(Resource):
     @edit_permission_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_site_model)
     def post(self, app_model):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         current_user, _ = current_account_with_tenant()
@@ -106,7 +117,7 @@ class AppSite(Resource):
         site.updated_at = naive_utc_now()
         db.session.commit()
 
-        return site
+        return AppSiteResponse.model_validate(site, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
@@ -114,7 +125,7 @@ class AppSiteAccessTokenReset(Resource):
     @console_ns.doc("reset_app_site_access_token")
     @console_ns.doc(description="Reset access token for application site")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Access token reset successfully", app_site_model)
+    @console_ns.response(200, "Access token reset successfully", console_ns.models[AppSiteResponse.__name__])
     @console_ns.response(403, "Insufficient permissions (admin/owner required)")
     @console_ns.response(404, "App or site not found")
     @setup_required
@@ -122,7 +133,6 @@ class AppSiteAccessTokenReset(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_site_model)
     def post(self, app_model):
         current_user, _ = current_account_with_tenant()
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
@@ -135,4 +145,4 @@ class AppSiteAccessTokenReset(Resource):
         site.updated_at = naive_utc_now()
         db.session.commit()
 
-        return site
+        return AppSiteResponse.model_validate(site, from_attributes=True).model_dump(mode="json")

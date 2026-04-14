@@ -91,6 +91,7 @@
   "gotoAnything.groups.commands": "Komutlar",
   "gotoAnything.groups.knowledgeBases": "Bilgi Tabanları",
   "gotoAnything.groups.plugins": "Eklentiler",
+  "gotoAnything.groups.recent": "Son",
   "gotoAnything.groups.workflowNodes": "İş Akışı Düğümleri",
   "gotoAnything.inScope": "{{scope}}s içinde",
   "gotoAnything.noMatchingCommands": "Eşleşen komut bulunamadı",

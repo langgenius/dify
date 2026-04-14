@@ -73,11 +73,6 @@ class TestAsyncWorkflowService:
 
         mock_dispatcher = MagicMock()
         quota_workflow = MagicMock()
-        mock_get_workflow = MagicMock()
-
-        mock_professional_task = MagicMock()
-        mock_team_task = MagicMock()
-        mock_sandbox_task = MagicMock()
 
         with (
             patch.object(
