@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 
 const i18nPrefix = 'autoUpdate.pluginDowngradeWarning'
 
@@ -18,8 +18,8 @@ const DowngradeWarningModal = ({
   return (
     <>
       <div className="flex flex-col items-start gap-2 self-stretch">
-        <div className="text-text-primary title-2xl-semi-bold">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</div>
-        <div className="text-text-secondary system-md-regular">
+        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</div>
+        <div className="system-md-regular text-text-secondary">
           {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
         </div>
       </div>

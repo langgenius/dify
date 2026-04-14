@@ -7,7 +7,7 @@ import {
   useCSVDownloader,
 } from 'react-papaparse'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 type IResDownloadProps = {
