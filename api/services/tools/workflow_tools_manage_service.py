@@ -5,7 +5,7 @@ from typing import Any
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from sqlalchemy import delete, or_, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
