@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import controllers.console.explore.recommended_app as module
-from models.model import IconType
+from models.model import AppMode, IconType
 
 
 def unwrap(func):
@@ -95,12 +95,12 @@ class TestRecommendedAppApi:
 
 class TestRecommendedAppResponseModels:
     def test_recommended_app_info_response_computes_icon_url(self):
-        with patch.object(module.file_helpers, "get_signed_file_url", return_value="https://signed/icon.png"):
+        with patch.object(module, "build_icon_url", return_value="https://signed/icon.png"):
             payload = module.RecommendedAppInfoResponse.model_validate(
                 {
                     "id": "app-1",
                     "name": "App",
-                    "mode": IconType.EMOJI,
+                    "mode": AppMode.CHAT,
                     "icon": "icon.png",
                     "icon_type": IconType.IMAGE,
                     "icon_background": "#fff",

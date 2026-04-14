@@ -2,7 +2,6 @@ from typing import Any
 
 from flask import request
 from flask_restx import Resource
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from constants.languages import languages
@@ -10,22 +9,13 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from fields.base import ResponseModel
+from libs.helper import build_icon_url
 from libs.login import current_user, login_required
-from models.model import IconType
 from services.recommended_app_service import RecommendedAppService
 
 
 class RecommendedAppsQuery(BaseModel):
     language: str | None = Field(default=None)
-
-
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
-    if icon is None or icon_type is None:
-        return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
-        return None
-    return file_helpers.get_signed_file_url(icon)
 
 
 class RecommendedAppInfoResponse(ResponseModel):
@@ -52,7 +42,7 @@ class RecommendedAppInfoResponse(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def icon_url(self) -> str | None:
-        return _build_icon_url(self.icon_type, self.icon)
+        return build_icon_url(self.icon_type, self.icon)
 
 
 class RecommendedAppResponse(ResponseModel):
