@@ -1,8 +1,8 @@
 from collections.abc import Mapping
 from typing import Any, cast
 
-from core.external_data_tool.base import ExternalDataTool
 from core.extension.extensible import ExtensionModule
+from core.external_data_tool.base import ExternalDataTool
 from extensions.ext_code_based_extension import code_based_extension
 
 
