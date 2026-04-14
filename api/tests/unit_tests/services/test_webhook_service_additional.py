@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -36,6 +37,10 @@ class _FakeQuery:
 @pytest.fixture
 def flask_app() -> Flask:
     return Flask(__name__)
+
+
+def _workflow_trigger(**kwargs: Any) -> Any:
+    return SimpleNamespace(**kwargs)
 
 
 class TestWebhookServiceExtractionFallbacks:

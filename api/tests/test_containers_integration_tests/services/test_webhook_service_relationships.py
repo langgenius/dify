@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from models.account import Account, Tenant
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -22,10 +22,6 @@ from services.trigger.webhook_service import WebhookService
 class WebhookServiceRelationshipFactory:
     @staticmethod
     def create_account_and_tenant(db_session_with_containers: Session) -> tuple[Account, Tenant]:
-        tenant = Tenant(name=f"Tenant {uuid4()}", plan="basic", status="normal")
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.flush()
-
         account = Account(
             name=f"Account {uuid4()}",
             email=f"webhook-{uuid4()}@example.com",
@@ -34,9 +30,23 @@ class WebhookServiceRelationshipFactory:
             interface_language="en-US",
             timezone="UTC",
         )
-        account.current_tenant_id = tenant.id
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
+
+        tenant = Tenant(name=f"Tenant {uuid4()}", plan="basic", status="normal")
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
+
+        join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+            current=True,
+        )
+        db_session_with_containers.add(join)
+        db_session_with_containers.commit()
+
+        account.current_tenant = tenant
         return account, tenant
 
     @staticmethod
