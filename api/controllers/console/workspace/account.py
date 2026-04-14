@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 import pytz
 from flask import request
@@ -174,7 +174,7 @@ reg(CheckEmailUniquePayload)
 register_schema_models(console_ns, AccountResponse)
 
 
-def _serialize_account(account) -> dict:
+def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 

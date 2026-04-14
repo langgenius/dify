@@ -354,7 +354,7 @@ function ParameterItem({
                     </span>
                   )}
                 />
-                <TooltipContent popupClassName="mr-1">
+                <TooltipContent className="mr-1">
                   <div className="w-[150px] whitespace-pre-wrap">{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 </TooltipContent>
               </Tooltip>

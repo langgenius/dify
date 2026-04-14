@@ -77,7 +77,7 @@ class ModelInstance:
 
     @staticmethod
     def _get_load_balancing_manager(
-        configuration: ProviderConfiguration, model_type: ModelType, model: str, credentials: dict
+        configuration: ProviderConfiguration, model_type: ModelType, model: str, credentials: dict[str, Any]
     ) -> Optional["LBModelManager"]:
         """
         Get load balancing model credentials
@@ -115,7 +115,7 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, Any] | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: Literal[True] = True,
@@ -126,7 +126,7 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, Any] | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: Literal[False] = False,
@@ -137,7 +137,7 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, Any] | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
@@ -147,7 +147,7 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, Any] | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: Sequence[str] | None = None,
         stream: bool = True,
@@ -528,7 +528,7 @@ class LBModelManager:
         model_type: ModelType,
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
-        managed_credentials: dict | None = None,
+        managed_credentials: dict[str, Any] | None = None,
     ):
         """
         Load balancing model manager
