@@ -8,7 +8,6 @@ and both positive and negative test scenarios.
 
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
-import pytest
 from sqlalchemy import asc, desc
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -330,7 +329,7 @@ class TestConversationServiceHelpers:
 
 class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
- 
+
     @patch("services.conversation_service.session_factory")
     @patch("services.conversation_service.ConversationService.get_conversation")
     @patch("services.conversation_service.dify_config")
