@@ -11,21 +11,25 @@ vi.mock('../../../base/app-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/content-dialog', () => ({
-  default: ({ show, onClose, children, className }: {
-    show: boolean
-    onClose: () => void
+vi.mock('@/app/components/base/ui/dialog', () => ({
+  Dialog: ({ open, onOpenChange, children }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
     children: React.ReactNode
-    className?: string
   }) => (
-    show
+    open
       ? (
-          <div data-testid="content-dialog" className={className}>
-            <button type="button" data-testid="dialog-close" onClick={onClose}>Close</button>
+          <div data-testid="detail-drawer">
+            <button type="button" data-testid="dialog-close" onClick={() => onOpenChange(false)}>Close</button>
             {children}
           </div>
         )
       : null
+  ),
+  DialogPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DialogBackdrop: () => <div data-testid="dialog-backdrop" />,
+  DialogPopup: ({ children, className }: { children: React.ReactNode, className?: string }) => (
+    <div data-testid="dialog-popup" className={className}>{children}</div>
   ),
 }))
 
@@ -96,12 +100,12 @@ describe('AppInfoDetailPanel', () => {
   describe('Rendering', () => {
     it('should not render when show is false', () => {
       render(<AppInfoDetailPanel {...defaultProps} show={false} />)
-      expect(screen.queryByTestId('content-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('detail-drawer')).not.toBeInTheDocument()
     })
 
     it('should render dialog when show is true', () => {
       render(<AppInfoDetailPanel {...defaultProps} />)
-      expect(screen.getByTestId('content-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('detail-drawer')).toBeInTheDocument()
     })
 
     it('should display app name', () => {
