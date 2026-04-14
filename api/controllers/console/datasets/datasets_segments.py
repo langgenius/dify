@@ -10,6 +10,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -80,14 +81,6 @@ class SegmentUpdatePayload(BaseModel):
 
 class BatchImportPayload(BaseModel):
     upload_file_id: str
-
-
-class ChildChunkCreatePayload(BaseModel):
-    content: str
-
-
-class ChildChunkUpdatePayload(BaseModel):
-    content: str
 
 
 class ChildChunkBatchUpdatePayload(BaseModel):

@@ -220,7 +220,6 @@ class TestDeleteRunsWithRelated:
             created_by=test_scope.user_id,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -280,7 +279,6 @@ class TestCountRunsWithRelated:
             created_by=test_scope.user_id,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -544,7 +542,6 @@ class TestPrivateWorkflowPauseEntity:
             status=WorkflowExecutionStatus.RUNNING,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
@@ -574,7 +571,6 @@ class TestPrivateWorkflowPauseEntity:
         )
         state_key = f"workflow-state-{uuid4()}.json"
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=state_key,
@@ -606,7 +602,6 @@ class TestPrivateWorkflowPauseEntity:
         )
         state_key = f"workflow-state-{uuid4()}.json"
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=state_key,
@@ -672,7 +667,6 @@ class TestBuildHumanInputRequiredReason:
             status=WorkflowExecutionStatus.RUNNING,
         )
         pause = WorkflowPause(
-            id=str(uuid4()),
             workflow_id=test_scope.workflow_id,
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
