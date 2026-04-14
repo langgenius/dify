@@ -228,7 +228,7 @@ const NormalForm = () => {
                 <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
-                <div className="inset-0 absolute flex items-center" aria-hidden="true">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true">
                   <div className="h-px w-full bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
                 </div>
               </div>

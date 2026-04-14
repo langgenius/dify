@@ -42,10 +42,10 @@ export default function Modal({
     <Transition appear show={isShow} as={Fragment}>
       <Dialog as="div" className={cn('relative z-60', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose}>
         <TransitionChild>
-          <div className={cn('inset-0 fixed', overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay', 'duration-300 ease-in data-closed:opacity-0', 'data-enter:opacity-100', 'data-leave:opacity-0')} />
+          <div className={cn('fixed inset-0', overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay', 'duration-300 ease-in data-closed:opacity-0', 'data-enter:opacity-100', 'data-leave:opacity-0')} />
         </TransitionChild>
         <div
-          className="inset-0 fixed overflow-y-auto"
+          className="fixed inset-0 overflow-y-auto"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
