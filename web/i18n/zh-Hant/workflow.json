@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "失敗分支",
   "nodes.common.errorHandle.none.desc": "如果發生異常且未得到處理，節點將停止運行",
   "nodes.common.errorHandle.none.title": "沒有",
-  "nodes.common.errorHandle.partialSucceeded.tip": "進程中有 {{num}} 個節點運行異常，請前往 tracing 查看日誌。",
+  "nodes.common.errorHandle.partialSucceeded.tip": "進程中有 {{num}} 個節點運行異常，請前往<tracingLink>tracing</tracingLink>查看日誌。",
   "nodes.common.errorHandle.tip": "異常處理策略，當節點遇到異常時觸發。",
   "nodes.common.errorHandle.title": "錯誤處理",
   "nodes.common.inputVars": "輸入變數",
