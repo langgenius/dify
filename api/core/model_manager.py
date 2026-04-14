@@ -77,7 +77,7 @@ class ModelInstance:
 
     @staticmethod
     def _get_load_balancing_manager(
-        configuration: ProviderConfiguration, model_type: ModelType, model: str, credentials: dict
+        configuration: ProviderConfiguration, model_type: ModelType, model: str, credentials: dict[str, Any]
     ) -> Optional["LBModelManager"]:
         """
         Get load balancing model credentials

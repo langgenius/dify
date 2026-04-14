@@ -145,7 +145,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
 
     id: str
     name: str
-    credentials: dict
+    credentials: dict[str, Any]
     credential_source_type: str | None = None
     credential_id: str | None = None
 

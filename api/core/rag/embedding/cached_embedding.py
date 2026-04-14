@@ -232,7 +232,7 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
-    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]

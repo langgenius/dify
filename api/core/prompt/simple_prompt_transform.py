@@ -96,11 +96,11 @@ class SimplePromptTransform(PromptTransform):
         app_mode: AppMode,
         model_config: ModelConfigWithCredentialsEntity,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str | None = None,
         context: str | None = None,
         histories: str | None = None,
-    ) -> tuple[str, dict]:
+    ) -> tuple[str, dict[str, Any]]:
         # get prompt template
         prompt_template_config = self.get_prompt_template(
             app_mode=app_mode,
@@ -187,7 +187,7 @@ class SimplePromptTransform(PromptTransform):
         self,
         app_mode: AppMode,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str,
         context: str | None,
         files: Sequence["File"],
@@ -234,7 +234,7 @@ class SimplePromptTransform(PromptTransform):
         self,
         app_mode: AppMode,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str,
         context: str | None,
         files: Sequence["File"],
