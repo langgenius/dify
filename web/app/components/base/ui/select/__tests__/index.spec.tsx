@@ -66,6 +66,102 @@ describe('Select wrappers', () => {
       expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
       expect(new FormData(form).get('city')).toBe('seattle')
     })
+
+    it('should forward function inputRef and apply form to the hidden input when name is omitted', () => {
+      const inputRef = vi.fn()
+      const formId = 'profile-form'
+      const { container } = render(
+        <>
+          <form id={formId} />
+          <Select defaultValue="seattle" form={formId} inputRef={inputRef}>
+            <SelectTrigger aria-label="city select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+              <SelectItem value="seattle">Seattle</SelectItem>
+              <SelectItem value="new-york">New York</SelectItem>
+            </SelectContent>
+          </Select>
+        </>,
+      )
+
+      const hiddenInput = container.querySelector('input[aria-hidden="true"]')
+
+      expect(inputRef).toHaveBeenCalledWith(hiddenInput)
+      expect(hiddenInput).toHaveAttribute('form', formId)
+      expect(hiddenInput).not.toHaveAttribute('name')
+    })
+
+    it('should sync the form attribute through an object ref and remove it when form becomes undefined', () => {
+      const formId = 'profile-form'
+      const inputRef: { current: HTMLInputElement | null } = { current: null }
+      const { container, rerender } = render(
+        <>
+          <form id={formId} />
+          <Select defaultValue="seattle" form={formId} inputRef={inputRef}>
+            <SelectTrigger aria-label="city select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+              <SelectItem value="seattle">Seattle</SelectItem>
+              <SelectItem value="new-york">New York</SelectItem>
+            </SelectContent>
+          </Select>
+        </>,
+      )
+
+      const hiddenInput = container.querySelector('input[aria-hidden="true"]')
+
+      expect(inputRef.current).toBe(hiddenInput)
+      expect(hiddenInput).toHaveAttribute('form', formId)
+
+      rerender(
+        <Select defaultValue="seattle" inputRef={inputRef}>
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectItem value="seattle">Seattle</SelectItem>
+            <SelectItem value="new-york">New York</SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      const updatedHiddenInput = container.querySelector('input[aria-hidden="true"]')
+
+      expect(inputRef.current).toBe(updatedHiddenInput)
+      expect(updatedHiddenInput).not.toHaveAttribute('form')
+    })
+
+    it('should propagate the form attribute to every hidden input created by a named multi-select', () => {
+      const formId = 'profile-form'
+      const { container } = render(
+        <>
+          <form id={formId} />
+          <Select
+            multiple
+            defaultValue={['seattle', 'new-york']}
+            name="city"
+            form={formId}
+          >
+            <SelectTrigger aria-label="city select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+              <SelectItem value="seattle">Seattle</SelectItem>
+              <SelectItem value="new-york">New York</SelectItem>
+            </SelectContent>
+          </Select>
+        </>,
+      )
+
+      const hiddenInputs = Array.from(container.querySelectorAll('input[type="hidden"][name="city"]'))
+
+      expect(hiddenInputs).toHaveLength(2)
+      hiddenInputs.forEach((hiddenInput) => {
+        expect(hiddenInput).toHaveAttribute('form', formId)
+      })
+    })
   })
 
   describe('SelectTrigger', () => {
