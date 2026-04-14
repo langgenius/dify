@@ -5,10 +5,10 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -108,7 +108,7 @@ const ConfigCredential: FC<Props> = ({
                         )
                       : null}
                   />
-                  <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')}>
+                  <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex')}>
                     {
                       (collection.is_team_authorization && !isHideRemoveBtn) && (
                         <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>

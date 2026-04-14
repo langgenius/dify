@@ -94,8 +94,8 @@ class TestWorkflowAssociatedDataFactory:
         app_id: str = "app-123",
         version: str = Workflow.VERSION_DRAFT,
         workflow_type: str = WorkflowType.WORKFLOW.value,
-        graph: dict | None = None,
-        features: dict | None = None,
+        graph: dict[str, Any] | None = None,
+        features: dict[str, Any] | None = None,
         unique_hash: str | None = None,
         **kwargs,
     ) -> MagicMock:
@@ -969,8 +969,7 @@ class TestWorkflowService:
         # 1. Workflow exists
         # 2. No app is currently using it
         # 3. Not published as a tool
-        mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
-        mock_session.query.return_value.where.return_value.first.return_value = None  # no tool provider
+        mock_session.scalar.side_effect = [mock_workflow, None, None]  # workflow, no app using it, no tool provider
 
         with patch("services.workflow_service.select") as mock_select:
             mock_stmt = MagicMock()
@@ -1045,8 +1044,7 @@ class TestWorkflowService:
         mock_tool_provider = MagicMock()
 
         mock_session = MagicMock()
-        mock_session.scalar.side_effect = [mock_workflow, None]  # workflow exists, no app using it
-        mock_session.query.return_value.where.return_value.first.return_value = mock_tool_provider
+        mock_session.scalar.side_effect = [mock_workflow, None, mock_tool_provider]  # workflow, no app, tool provider
 
         with patch("services.workflow_service.select") as mock_select:
             mock_stmt = MagicMock()
@@ -1688,7 +1686,7 @@ class TestWorkflowServiceCredentialValidation:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
         workflow = self._make_workflow([])
-        node_data: dict = {}  # no model key
+        node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
         service._validate_load_balancing_credentials(workflow, node_data, "node-1")
@@ -2271,7 +2269,7 @@ class TestRebuildFileForUserInputsInStartNode:
         # Arrange
         file_var = self._make_variable("attachment", VariableEntityType.FILE)
         start_data = self._make_start_node_data([file_var])
-        user_inputs: dict = {}  # attachment not provided
+        user_inputs: dict[str, Any] = {}  # attachment not provided
 
         # Act
         result = _rebuild_file_for_user_inputs_in_start_node(

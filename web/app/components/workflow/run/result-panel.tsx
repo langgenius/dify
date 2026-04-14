@@ -42,6 +42,7 @@ export type ResultPanelProps = {
   execution_metadata?: any
   isListening?: boolean
   workflowRunId?: string
+  onOpenTracingTab?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -69,6 +70,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   execution_metadata,
   isListening = false,
   workflowRunId,
+  onOpenTracingTab,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
@@ -92,6 +94,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           exceptionCounts={exceptionCounts}
           isListening={isListening}
           workflowRunId={workflowRunId}
+          onOpenTracingTab={onOpenTracingTab}
         />
       </div>
       <div className="px-4">

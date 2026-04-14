@@ -277,7 +277,7 @@ class WorkflowTool(Tool):
             session.expunge(app)
             return app
 
-    def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
+    def _transform_args(self, tool_parameters: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
         """
         transform the tool parameters
 
@@ -323,7 +323,7 @@ class WorkflowTool(Tool):
 
         return parameters_result, files
 
-    def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
+    def _extract_files(self, outputs: dict[str, Any]) -> tuple[dict[str, Any], list[File]]:
         """
         extract files from the result
 
@@ -355,7 +355,7 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict):
+    def _update_file_mapping(self, file_dict: dict[str, Any]) -> dict[str, Any]:
         file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
         transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
         match transfer_method:
