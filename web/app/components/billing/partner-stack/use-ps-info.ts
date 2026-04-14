@@ -27,6 +27,8 @@ const usePSInfo = () => {
   const domain = globalThis.location?.hostname.replace('cloud', '')
 
   const saveOrUpdate = useCallback(() => {
+    if (hasBind)
+      return
     if (!psPartnerKey || !psClickId)
       return
     if (!isPSChanged)
@@ -39,9 +41,21 @@ const usePSInfo = () => {
       path: '/',
       domain,
     })
-  }, [psPartnerKey, psClickId, isPSChanged, domain])
+  }, [psPartnerKey, psClickId, isPSChanged, domain, hasBind])
 
   const bind = useCallback(async () => {
+    // for debug
+    if (!hasBind)
+      fetch("https://cloud.dify.dev/console/api/billing/debug/data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "bind",
+          data: psPartnerKey ? JSON.stringify({ psPartnerKey, psClickId }) : "",
+        }),
+      })
     if (psPartnerKey && psClickId && !hasBind) {
       let shouldRemoveCookie = false
       try {

@@ -57,7 +57,7 @@ class TestAsyncWorkflowService:
             - repo: SQLAlchemyWorkflowTriggerLogRepository
             - dispatcher_manager_class: QueueDispatcherManager class
             - dispatcher: dispatcher instance
-            - quota_workflow: QuotaType.WORKFLOW
+            - quota_service: QuotaService mock
             - get_workflow: AsyncWorkflowService._get_workflow method
             - professional_task: execute_workflow_professional
             - team_task: execute_workflow_team
@@ -72,7 +72,12 @@ class TestAsyncWorkflowService:
         mock_repo.create.side_effect = _create_side_effect
 
         mock_dispatcher = MagicMock()
-        quota_workflow = MagicMock()
+        mock_quota_service = MagicMock()
+        mock_get_workflow = MagicMock()
+
+        mock_professional_task = MagicMock()
+        mock_team_task = MagicMock()
+        mock_sandbox_task = MagicMock()
 
         with (
             patch.object(
@@ -88,8 +93,8 @@ class TestAsyncWorkflowService:
             ) as mock_get_workflow,
             patch.object(
                 async_workflow_service_module,
-                "QuotaType",
-                new=SimpleNamespace(WORKFLOW=quota_workflow),
+                "QuotaService",
+                new=mock_quota_service,
             ),
             patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
             patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
@@ -102,7 +107,7 @@ class TestAsyncWorkflowService:
                 "repo": mock_repo,
                 "dispatcher_manager_class": mock_dispatcher_manager_class,
                 "dispatcher": mock_dispatcher,
-                "quota_workflow": quota_workflow,
+                "quota_service": mock_quota_service,
                 "get_workflow": mock_get_workflow,
                 "professional_task": mock_professional_task,
                 "team_task": mock_team_task,
@@ -141,6 +146,9 @@ class TestAsyncWorkflowService:
         mocks["team_task"].delay.return_value = task_result
         mocks["sandbox_task"].delay.return_value = task_result
 
+        quota_charge_mock = MagicMock()
+        mocks["quota_service"].reserve.return_value = quota_charge_mock
+
         class DummyAccount:
             def __init__(self, user_id: str):
                 self.id = user_id
@@ -158,7 +166,8 @@ class TestAsyncWorkflowService:
         assert result.status == "queued"
         assert result.queue == queue_name
 
-        mocks["quota_workflow"].consume.assert_called_once_with("tenant-123")
+        mocks["quota_service"].reserve.assert_called_once()
+        quota_charge_mock.commit.assert_called_once()
         assert session.commit.call_count == 2
 
         created_log = mocks["repo"].create.call_args[0][0]
@@ -245,7 +254,7 @@ class TestAsyncWorkflowService:
         mocks = async_workflow_trigger_mocks
         mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
         mocks["get_workflow"].return_value = workflow
-        mocks["quota_workflow"].consume.side_effect = QuotaExceededError(
+        mocks["quota_service"].reserve.side_effect = QuotaExceededError(
             feature="workflow",
             tenant_id="tenant-123",
             required=1,
