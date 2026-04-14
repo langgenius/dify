@@ -15,6 +15,7 @@ from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource
+from services.external_knowledge_service import ExternalRetrievalParameters
 
 logger = logging.getLogger(__name__)
 
@@ -135,11 +136,18 @@ class HitTestingService:
             }
 
         start = time.perf_counter()
+        typed_external_retrieval_model: ExternalRetrievalParameters | None = None
+        if external_retrieval_model is not None:
+            typed_external_retrieval_model = {
+                "top_k": int(external_retrieval_model.get("top_k", 4)),
+                "score_threshold_enabled": bool(external_retrieval_model.get("score_threshold_enabled", False)),
+                "score_threshold": float(external_retrieval_model.get("score_threshold", 0.0)),
+            }
 
         all_documents = RetrievalService.external_retrieve(
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
-            external_retrieval_model=external_retrieval_model,
+            external_retrieval_model=typed_external_retrieval_model,
             metadata_filtering_conditions=metadata_filtering_conditions,
         )
 
