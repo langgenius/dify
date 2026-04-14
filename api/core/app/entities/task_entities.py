@@ -774,6 +774,34 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
     data: Data
 
 
+class ChatbotAppPausedBlockingResponse(AppBlockingResponse):
+    """
+    ChatbotAppPausedBlockingResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        mode: str
+        conversation_id: str
+        message_id: str
+        workflow_run_id: str
+        answer: str
+        metadata: Mapping[str, object] = Field(default_factory=dict)
+        created_at: int
+        paused_nodes: Sequence[str] = Field(default_factory=list)
+        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
+        status: WorkflowExecutionStatus
+        elapsed_time: float
+        total_tokens: int
+        total_steps: int
+
+    data: Data
+
+
 class CompletionAppBlockingResponse(AppBlockingResponse):
     """
     CompletionAppBlockingResponse entity
@@ -814,6 +842,33 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_steps: int
         created_at: int
         finished_at: int | None
+
+    workflow_run_id: str
+    data: Data
+
+
+class WorkflowAppPausedBlockingResponse(AppBlockingResponse):
+    """
+    WorkflowAppPausedBlockingResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        workflow_id: str
+        status: WorkflowExecutionStatus
+        outputs: Mapping[str, Any] | None = None
+        error: str | None = None
+        elapsed_time: float
+        total_tokens: int
+        total_steps: int
+        created_at: int
+        finished_at: int | None
+        paused_nodes: Sequence[str] = Field(default_factory=list)
+        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
 
     workflow_run_id: str
     data: Data

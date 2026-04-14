@@ -12,11 +12,10 @@ from core.app.entities.task_entities import (
 )
 
 
-class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
-    _blocking_response_type = CompletionAppBlockingResponse
+class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter[CompletionAppBlockingResponse]):
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: CompletionAppBlockingResponse):
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -36,7 +35,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: CompletionAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: CompletionAppBlockingResponse):
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
