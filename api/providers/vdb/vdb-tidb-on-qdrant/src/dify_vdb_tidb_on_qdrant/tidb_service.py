@@ -1,8 +1,11 @@
+import logging
 import time
 import uuid
 from collections.abc import Sequence
 
 import httpx
+
+logger = logging.getLogger(__name__)
 from httpx import DigestAuth
 
 from configs import dify_config
@@ -44,7 +47,7 @@ class TidbService:
             if host:
                 return f"https://qdrant-{host}"
         except Exception:
-            pass
+            logger.exception("Failed to fetch qdrant endpoint for cluster %s", cluster_id)
         return None
 
     @staticmethod
