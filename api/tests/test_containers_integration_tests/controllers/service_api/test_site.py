@@ -101,7 +101,8 @@ class TestAppSiteApi:
         archived_tenant.status = TenantStatus.ARCHIVE
         db_session_with_containers.commit()
 
-        app_model.tenant = archived_tenant
+        app_model = db_session_with_containers.get(App, app_model.id)
+        assert app_model is not None
 
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):
             api = AppSiteApi()
