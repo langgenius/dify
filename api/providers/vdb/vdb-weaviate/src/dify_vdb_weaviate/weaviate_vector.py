@@ -82,7 +82,7 @@ class WeaviateConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validates that required configuration values are present."""
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
