@@ -13,6 +13,7 @@ PYTEST_XDIST_ARGS="${PYTEST_XDIST_ARGS:--n auto}"
 pytest --timeout "${PYTEST_TIMEOUT}" ${PYTEST_XDIST_ARGS} \
   api/tests/unit_tests \
   api/providers/vdb/*/tests/unit_tests \
+  api/providers/trace/*/tests/unit_tests \
   --ignore=api/tests/unit_tests/controllers
 
 # Run controller tests sequentially to avoid import race conditions

@@ -34,12 +34,12 @@ core/external_data_tool/api/api.py
 core/llm_generator/llm_generator.py
 core/llm_generator/output_parser/structured_output.py
 core/mcp/mcp_client.py
-core/ops/aliyun_trace/data_exporter/traceclient.py
-core/ops/arize_phoenix_trace/arize_phoenix_trace.py
-core/ops/mlflow_trace/mlflow_trace.py
+providers/trace/trace-aliyun/src/dify_trace_aliyun/data_exporter/traceclient.py
+providers/trace/trace-arize-phoenix/src/dify_trace_arize_phoenix/arize_phoenix_trace.py
+providers/trace/trace-mlflow/src/dify_trace_mlflow/mlflow_trace.py
 core/ops/ops_trace_manager.py
-core/ops/tencent_trace/client.py
-core/ops/tencent_trace/utils.py
+providers/trace/trace-tencent/src/dify_trace_tencent/client.py
+providers/trace/trace-tencent/src/dify_trace_tencent/utils.py
 core/plugin/backwards_invocation/base.py
 core/plugin/backwards_invocation/model.py
 core/prompt/utils/extract_thread_messages.py
