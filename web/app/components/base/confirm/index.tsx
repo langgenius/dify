@@ -152,7 +152,7 @@ function Confirm({
           </div>
           <div className="flex items-start justify-end gap-2 self-stretch p-6">
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
-            {showConfirm && <Button variant="primary" destructive={type !== 'info'} loading={isLoading} disabled={isConfirmDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
+            {showConfirm && <Button variant="primary" tone={type !== 'info' ? 'destructive' : 'default'} loading={isLoading} disabled={isConfirmDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
           </div>
         </div>
       </div>

@@ -165,10 +165,10 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   </AlertDialogDescription>
                 </div>
                 <AlertDialogActions>
-                  <AlertDialogCancelButton destructive={false}>
+                  <AlertDialogCancelButton tone="default">
                     {t('operation.cancel', { ns: 'common' })}
                   </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton variant="primary" destructive={false} onClick={onConfirmUseGPT4}>
+                  <AlertDialogConfirmButton variant="primary" tone="default" onClick={onConfirmUseGPT4}>
                     {t('operation.confirm', { ns: 'common' })}
                   </AlertDialogConfirmButton>
                 </AlertDialogActions>
