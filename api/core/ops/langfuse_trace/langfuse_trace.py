@@ -59,6 +59,24 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
+    @staticmethod
+    def _get_completion_start_time(
+        start_time: datetime | None, time_to_first_token: float | int | None
+    ) -> datetime | None:
+        """Convert a relative TTFT value in seconds into Langfuse's absolute completion start time."""
+        if start_time is None or time_to_first_token is None:
+            return None
+
+        try:
+            ttft_seconds = float(time_to_first_token)
+        except (TypeError, ValueError):
+            return None
+
+        if ttft_seconds < 0:
+            return None
+
+        return start_time + timedelta(seconds=ttft_seconds)
+
     def trace(self, trace_info: BaseTraceInfo):
         if isinstance(trace_info, WorkflowTraceInfo):
             self.workflow_trace(trace_info)
@@ -189,10 +207,18 @@ class LangFuseDataTrace(BaseTraceInstance):
                 total_token = metadata.get("total_tokens", 0)
                 prompt_tokens = 0
                 completion_tokens = 0
+                completion_start_time = None
                 try:
-                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    usage_data = process_data.get("usage")
+                    if not isinstance(usage_data, dict):
+                        usage_data = outputs.get("usage")
+                    if not isinstance(usage_data, dict):
+                        usage_data = {}
                     prompt_tokens = usage_data.get("prompt_tokens", 0)
                     completion_tokens = usage_data.get("completion_tokens", 0)
+                    completion_start_time = self._get_completion_start_time(
+                        created_at, usage_data.get("time_to_first_token")
+                    )
                 except Exception:
                     logger.error("Failed to extract usage", exc_info=True)
 
@@ -210,6 +236,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     trace_id=trace_id,
                     model=process_data.get("model_name"),
                     start_time=created_at,
+                    completion_start_time=completion_start_time,
                     end_time=finished_at,
                     input=inputs,
                     output=outputs,
@@ -290,11 +317,16 @@ class LangFuseDataTrace(BaseTraceInstance):
             unit=UnitEnum.TOKENS,
             totalCost=message_data.total_price,
         )
+        completion_start_time = self._get_completion_start_time(
+            trace_info.start_time,
+            trace_info.gen_ai_server_time_to_first_token,
+        )
 
         langfuse_generation_data = LangfuseGeneration(
             name="llm",
             trace_id=trace_id,
             start_time=trace_info.start_time,
+            completion_start_time=completion_start_time,
             end_time=trace_info.end_time,
             model=message_data.model_id,
             input=trace_info.inputs,

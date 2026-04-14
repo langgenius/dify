@@ -1,9 +1,13 @@
 import json
+from collections.abc import Generator
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from extensions.ext_redis import redis_client
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.billing_service import BillingService
 
 
@@ -363,3 +367,62 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert ttl_1_new <= 600
             assert ttl_2 > 0
             assert ttl_2 <= 600
+
+
+class TestBillingServiceIsTenantOwnerOrAdmin:
+    """
+    Integration tests for BillingService.is_tenant_owner_or_admin.
+
+    Verifies that non-privileged roles (EDITOR, DATASET_OPERATOR) raise ValueError
+    when checked against real TenantAccountJoin rows in PostgreSQL.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+        yield
+        db_session_with_containers.rollback()
+
+    def _create_account_with_tenant_role(self, db_session: Session, role: TenantAccountRole) -> tuple[Account, Tenant]:
+        tenant = Tenant(name=f"Tenant {uuid4()}")
+        db_session.add(tenant)
+        db_session.flush()
+
+        account = Account(
+            name=f"Account {uuid4()}",
+            email=f"billing_{uuid4()}@example.com",
+            password="hashed-password",
+            password_salt="salt",
+            interface_language="en-US",
+            timezone="UTC",
+        )
+        db_session.add(account)
+        db_session.flush()
+
+        join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=role,
+            current=True,
+        )
+        db_session.add(join)
+        db_session.flush()
+
+        # Wire up in-memory reference so current_tenant_id resolves
+        account._current_tenant = tenant
+        return account, tenant
+
+    def test_is_tenant_owner_or_admin_editor_role_raises_error(self, db_session_with_containers: Session) -> None:
+        """is_tenant_owner_or_admin raises ValueError for EDITOR role."""
+        account, _ = self._create_account_with_tenant_role(db_session_with_containers, TenantAccountRole.EDITOR)
+
+        with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
+            BillingService.is_tenant_owner_or_admin(account)
+
+    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self, db_session_with_containers: Session) -> None:
+        """is_tenant_owner_or_admin raises ValueError for DATASET_OPERATOR role."""
+        account, _ = self._create_account_with_tenant_role(
+            db_session_with_containers, TenantAccountRole.DATASET_OPERATOR
+        )
+
+        with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
+            BillingService.is_tenant_owner_or_admin(account)
