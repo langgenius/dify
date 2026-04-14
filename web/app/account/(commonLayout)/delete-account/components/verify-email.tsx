@@ -53,7 +53,7 @@ export default function VerifyEmail(props: DeleteAccountProps) {
         }}
       />
       <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" disabled={shouldButtonDisabled} loading={isDeleting} variant="primary" destructive onClick={handleConfirm}>{t('account.permanentlyDeleteButton', { ns: 'common' })}</Button>
+        <Button className="w-full" disabled={shouldButtonDisabled} loading={isDeleting} variant="primary" tone="destructive" onClick={handleConfirm}>{t('account.permanentlyDeleteButton', { ns: 'common' })}</Button>
         <Button className="w-full" onClick={props.onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         <Countdown onResend={sendEmail} />
       </div>

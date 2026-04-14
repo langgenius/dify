@@ -45,7 +45,7 @@ const VersionMismatchModal = ({
       </div>
       <div className="flex items-start justify-end gap-2 self-stretch pt-6">
         <Button variant="secondary" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-        <Button variant="primary" destructive onClick={onConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+        <Button variant="primary" tone="destructive" onClick={onConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
       </div>
     </Modal>
   )

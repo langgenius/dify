@@ -86,13 +86,13 @@ type AlertDialogConfirmButtonProps = ButtonProps
 
 export function AlertDialogConfirmButton({
   variant = 'primary',
-  destructive = true,
+  tone = 'destructive',
   ...props
 }: AlertDialogConfirmButtonProps) {
   return (
     <Button
       variant={variant}
-      destructive={destructive}
+      tone={tone}
       {...props}
     />
   )
