@@ -5,7 +5,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { cn } from '@/utils/classnames'
 import { useReplaceDataSourceNode } from './hooks'
@@ -38,7 +38,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
       }}
     >
       <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
-        <div className="system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary">
+        <div className="flex h-5 items-center px-2.5 system-2xs-semibold-uppercase text-text-tertiary">
           {t('blocks.datasource', { ns: 'workflow' })}
         </div>
       </div>
