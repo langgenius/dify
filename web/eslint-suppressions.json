@@ -314,6 +314,11 @@
       "count": 1
     }
   },
+  "app/components/app-sidebar/app-info/app-info-detail-panel.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 5
+    }
+  },
   "app/components/app-sidebar/app-info/app-info-trigger.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
@@ -325,6 +330,9 @@
     },
     "react/set-state-in-effect": {
       "count": 4
+    },
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 5
     }
   },
   "app/components/app-sidebar/app-sidebar-dropdown.tsx": {
@@ -1975,6 +1983,16 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
+    }
+  },
+  "app/components/base/content-dialog/index.stories.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/components/base/content-dialog/index.tsx": {
+    "tailwindcss/enforce-consistent-class-order": {
+      "count": 1
     }
   },
   "app/components/base/copy-feedback/index.tsx": {

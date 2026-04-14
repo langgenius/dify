@@ -1,8 +1,8 @@
 import type { JSX } from 'react'
+import { RiMoreLine } from '@remixicon/react'
 import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 
 export type Operation = {
@@ -133,8 +133,8 @@ const AppOperations = ({
             className="gap-px"
             tabIndex={-1}
           >
-            {cloneElement(operation.icon, { className: cn(operation.icon.props.className, 'h-3.5 w-3.5 text-components-button-secondary-text') })}
-            <span className="system-xs-medium text-components-button-secondary-text">
+            {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
+            <span className="text-components-button-secondary-text system-xs-medium">
               {operation.title}
             </span>
           </Button>
@@ -146,8 +146,8 @@ const AppOperations = ({
           className="gap-px"
           tabIndex={-1}
         >
-          <span className="i-ri-more-line h-3.5 w-3.5 text-components-button-secondary-text" />
-          <span className="system-xs-medium text-components-button-secondary-text">
+          <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
+          <span className="text-components-button-secondary-text system-xs-medium">
             {t('operation.more', { ns: 'common' })}
           </span>
         </Button>
@@ -162,8 +162,8 @@ const AppOperations = ({
             className="gap-px"
             onClick={operation.onClick}
           >
-            {cloneElement(operation.icon, { className: cn(operation.icon.props.className, 'h-3.5 w-3.5 text-components-button-secondary-text') })}
-            <span className="system-xs-medium text-components-button-secondary-text">
+            {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
+            <span className="text-components-button-secondary-text system-xs-medium">
               {operation.title}
             </span>
           </Button>
@@ -181,8 +181,8 @@ const AppOperations = ({
                 variant="secondary"
                 className="gap-px"
               >
-                <span className="i-ri-more-line h-3.5 w-3.5 text-components-button-secondary-text" />
-                <span className="system-xs-medium text-components-button-secondary-text">
+                <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
+                <span className="text-components-button-secondary-text system-xs-medium">
                   {t('operation.more', { ns: 'common' })}
                 </span>
               </Button>
@@ -199,8 +199,8 @@ const AppOperations = ({
                         className="flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover"
                         onClick={item.onClick}
                       >
-                        {cloneElement(item.icon, { className: cn(item.icon.props.className, 'h-4 w-4 text-text-tertiary') })}
-                        <span className="system-md-regular text-text-secondary">{item.title}</span>
+                        {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
+                        <span className="text-text-secondary system-md-regular">{item.title}</span>
                       </div>
                     ))}
               </div>
