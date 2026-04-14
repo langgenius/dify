@@ -185,6 +185,7 @@ def test_update_documents_need_summary_updates_matching_non_qa_documents(db_sess
         need_summary=False,
     )
 
+    db_session_with_containers.expire_all()
     refreshed_paragraph = db_session_with_containers.get(Document, paragraph_doc.id)
     refreshed_qa = db_session_with_containers.get(Document, qa_doc.id)
     assert updated_count == 1
@@ -380,14 +381,17 @@ def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed
     assert mapping[document_b.id].id == upload_file_b.id
 
 
-def test_prepare_document_batch_download_zip_raises_not_found_for_missing_dataset(current_user_mock):
-    with pytest.raises(NotFound, match="Dataset not found"):
-        DocumentService.prepare_document_batch_download_zip(
-            dataset_id=str(uuid4()),
-            document_ids=[str(uuid4())],
-            tenant_id=current_user_mock.current_tenant_id,
-            current_user=current_user_mock,
-        )
+def test_prepare_document_batch_download_zip_raises_not_found_for_missing_dataset(
+    current_user_mock, flask_app_with_containers
+):
+    with flask_app_with_containers.app_context():
+        with pytest.raises(NotFound, match="Dataset not found"):
+            DocumentService.prepare_document_batch_download_zip(
+                dataset_id=str(uuid4()),
+                document_ids=[str(uuid4())],
+                tenant_id=current_user_mock.current_tenant_id,
+                current_user=current_user_mock,
+            )
 
 
 def test_prepare_document_batch_download_zip_translates_permission_error_to_forbidden(
@@ -595,6 +599,8 @@ def test_delete_documents_ignores_empty_input(db_session_with_containers):
 
 def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_with_containers):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset.doc_form = IndexStructureType.PARAGRAPH_INDEX
+    db_session_with_containers.commit()
     upload_file_a = DocumentServiceIntegrationFactory.create_upload_file(
         db_session_with_containers,
         tenant_id=dataset.tenant_id,
