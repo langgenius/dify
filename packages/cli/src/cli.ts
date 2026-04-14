@@ -1,7 +1,6 @@
 import process from 'node:process'
 import { runMigrationCommand } from './no-unchecked-indexed-access/migrate'
 import { runNormalizeCommand } from './no-unchecked-indexed-access/normalize'
-import { runResetCommand } from './no-unchecked-indexed-access/reset'
 import { runBatchMigrationCommand } from './no-unchecked-indexed-access/run'
 
 type CommandHandler = (argv: string[]) => Promise<void>
@@ -9,7 +8,6 @@ type CommandHandler = (argv: string[]) => Promise<void>
 const COMMANDS = new Map<string, CommandHandler>([
   ['migrate', runMigrationCommand],
   ['normalize', runNormalizeCommand],
-  ['reset', runResetCommand],
   ['run', runBatchMigrationCommand],
 ])
 
@@ -17,8 +15,7 @@ function printUsage() {
   console.log(`Usage:
   dify-cli no-unchecked-indexed-access migrate [options]
   dify-cli no-unchecked-indexed-access run [options]
-  dify-cli no-unchecked-indexed-access normalize
-  dify-cli no-unchecked-indexed-access reset`)
+  dify-cli no-unchecked-indexed-access normalize`)
 }
 
 async function main() {
