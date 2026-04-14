@@ -6,7 +6,7 @@ import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
@@ -195,7 +195,7 @@ const Install: FC<Props> = ({
             {canInstall && (
               <div className="flex items-center gap-x-2" onClick={handleClickSelectAll}>
                 <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-                <p className="system-sm-medium cursor-pointer text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
+                <p className="cursor-pointer system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
               </div>
             )}
           </div>

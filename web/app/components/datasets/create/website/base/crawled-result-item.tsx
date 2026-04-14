@@ -4,7 +4,7 @@ import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import { cn } from '@/utils/classnames'
 
@@ -52,7 +52,7 @@ const CrawledResultItem: FC<Props> = ({
         </div>
         <Button
           onClick={onPreview}
-          className="right-0 top-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block"
+          className="top-0 right-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block"
         >
           {t('stepOne.website.preview', { ns: 'datasetCreation' })}
         </Button>

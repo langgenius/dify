@@ -1,7 +1,7 @@
 import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { useState } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

@@ -1,7 +1,7 @@
 'use client'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
@@ -94,7 +94,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
             />
             <div className="min-h-6">
               {hasError && (
-                <p id={errorId} data-testid="edit-workspace-error" className="text-text-destructive system-xs-regular" role="alert">
+                <p id={errorId} data-testid="edit-workspace-error" className="system-xs-regular text-text-destructive" role="alert">
                   {nameErrorMessage}
                 </p>
               )}

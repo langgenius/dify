@@ -11,7 +11,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import Confirm from '@/app/components/base/confirm'
@@ -100,7 +100,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
             imageUrl={appData?.site.icon_url}
           />
         </div>
-        <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
+        <div className={cn('grow truncate system-md-semibold text-text-secondary')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
             <RiExpandRightLine className="h-[18px] w-[18px]" />

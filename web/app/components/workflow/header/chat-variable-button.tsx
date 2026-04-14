@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'

@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { TimePickerFooterProps } from '../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '../../button'
+import { Button } from '../../button'
 
 const Footer: FC<TimePickerFooterProps> = ({
   handleSelectCurrentTime,

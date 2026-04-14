@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useStore } from '@/app/components/workflow/store'

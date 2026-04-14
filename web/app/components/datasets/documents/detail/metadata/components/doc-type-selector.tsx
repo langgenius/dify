@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { DocType } from '@/models/datasets'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Radio from '@/app/components/base/radio'
 import Tooltip from '@/app/components/base/tooltip'
 import { useMetadataMap } from '@/hooks/use-metadata'

@@ -10,7 +10,7 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
@@ -202,7 +202,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       <div className="relative flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
+            <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
             <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('codegen.description', { ns: 'appDebug' })}</div>
           </div>
           <div className="mb-4">
@@ -219,7 +219,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div>
             <div className="text-[0px]">
-              <div className="mb-1.5 text-text-secondary system-sm-semibold-uppercase">{t('codegen.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}

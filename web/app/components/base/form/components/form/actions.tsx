@@ -2,7 +2,7 @@ import type { FormType } from '../..'
 import { useStore } from '@tanstack/react-form'
 import { useTranslation } from 'react-i18next'
 import { useFormContext } from '../..'
-import Button from '../../../button'
+import { Button } from '../../../button'
 
 export type CustomActionsProps = {
   form: FormType

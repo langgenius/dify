@@ -4,7 +4,7 @@ import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
-import Button from '../../base/button'
+import { Button } from '../../base/button'
 
 type Props = {
   className?: string

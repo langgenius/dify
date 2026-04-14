@@ -1,6 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'

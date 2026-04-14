@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'

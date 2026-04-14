@@ -4,7 +4,7 @@ import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import type { Item } from '@/app/components/base/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { PortalSelect } from '@/app/components/base/select'
 import { handleUpload } from '../../hooks'
 

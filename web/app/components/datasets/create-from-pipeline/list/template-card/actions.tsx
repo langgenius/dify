@@ -1,7 +1,7 @@
 import { RiAddLine, RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import CustomPopover from '@/app/components/base/popover'
 import Operations from './operations'
 

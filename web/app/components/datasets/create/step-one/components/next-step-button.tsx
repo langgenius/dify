@@ -2,7 +2,7 @@
 
 import { RiArrowRightLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 
 type NextStepButtonProps = {
   disabled: boolean

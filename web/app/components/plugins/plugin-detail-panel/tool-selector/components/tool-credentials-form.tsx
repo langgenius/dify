@@ -8,7 +8,7 @@ import {
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { toast } from '@/app/components/base/ui/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'

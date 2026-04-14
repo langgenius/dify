@@ -5,7 +5,7 @@ import {
   memo,
   useState,
 } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import ApiKeyModal from './api-key-modal'
 
 export type AddApiKeyButtonProps = {

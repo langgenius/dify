@@ -3,7 +3,7 @@ import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
@@ -82,7 +82,7 @@ const Options = ({
     >
       <div className="flex items-center gap-x-1 px-4 py-2">
         <div
-          className="flex grow cursor-pointer select-none items-center gap-x-0.5"
+          className="flex grow cursor-pointer items-center gap-x-0.5 select-none"
           onClick={foldToggle}
         >
           <span className="system-sm-semibold-uppercase text-text-secondary">
@@ -96,7 +96,6 @@ const Options = ({
           disabled={runDisabled || isRunning}
           loading={isRunning}
           className="shrink-0 gap-x-0.5"
-          spinnerClassName="ml-0!"
         >
           <RiPlayLargeLine className="size-4" />
           <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.running`, { ns: 'datasetCreation' })}</span>

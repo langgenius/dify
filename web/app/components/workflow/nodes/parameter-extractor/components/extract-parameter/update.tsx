@@ -8,7 +8,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import AddButton from '@/app/components/base/button/add-button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
@@ -167,7 +167,7 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}>
                 <>
-                  <div className="mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
+                  <div className="mb-1.5 text-xs leading-[18px] font-normal text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
                   <Switch size="lg" value={param.required ?? false} onChange={handleParamChange('required')} />
                 </>
               </Field>

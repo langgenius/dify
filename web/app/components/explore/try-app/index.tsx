@@ -10,7 +10,7 @@ import Modal from '@/app/components/base/modal/index'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetTryAppInfo } from '@/service/use-try-app'
-import Button from '../../base/button'
+import { Button } from '../../base/button'
 import App from './app'
 import AppInfo from './app-info'
 import Preview from './preview'
@@ -42,7 +42,7 @@ const TryApp: FC<Props> = ({
     <Modal
       isShow
       onClose={onClose}
-      className="h-[calc(100vh-32px)] min-w-[1280px] max-w-[calc(100vw-32px)] overflow-x-auto p-2"
+      className="h-[calc(100vh-32px)] max-w-[calc(100vw-32px)] min-w-[1280px] overflow-x-auto p-2"
     >
       {isLoading ? (
         <div className="flex h-full items-center justify-center">

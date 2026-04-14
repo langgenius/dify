@@ -4,7 +4,7 @@ import type { ButtonProps } from '@/app/components/base/button'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import ContentItem from './content-item'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
 

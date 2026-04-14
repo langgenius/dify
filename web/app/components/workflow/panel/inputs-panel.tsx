@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {
   getProcessedInputs,
@@ -105,7 +105,7 @@ const InputsPanel = ({ onRun }: Props) => {
 
   return (
     <>
-      <div className="px-4 pb-2 pt-3">
+      <div className="px-4 pt-3 pb-2">
         {
           variables.map((variable, index) => (
             <div

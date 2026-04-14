@@ -11,7 +11,7 @@ import {
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import { cn } from '@/utils/classnames'
 

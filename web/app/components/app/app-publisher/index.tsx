@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -224,7 +224,7 @@ const AppPublisher = ({
         <PortalToFollowElemTrigger onClick={handleTrigger}>
           <Button
             variant="primary"
-            className="py-2 pl-3 pr-2"
+            className="py-2 pr-2 pl-3"
             disabled={disabled}
           >
             {t('common.publish', { ns: 'workflow' })}

@@ -5,7 +5,7 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 

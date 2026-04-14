@@ -11,7 +11,7 @@ import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
@@ -155,7 +155,7 @@ const PluginPage = ({
     >
       <div
         className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4',
+          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pt-4 pb-2',
           isExploringMarketplace && 'bg-background-body',
         )}
       >

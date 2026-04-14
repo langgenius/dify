@@ -14,7 +14,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import Modal from '@/app/components/base/modal/modal'
 import { toast } from '@/app/components/base/ui/toast'

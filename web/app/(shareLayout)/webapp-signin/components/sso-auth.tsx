@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { toast } from '@/app/components/base/ui/toast'
 import { useRouter, useSearchParams } from '@/next/navigation'

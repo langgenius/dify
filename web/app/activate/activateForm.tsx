@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
 

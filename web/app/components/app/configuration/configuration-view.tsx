@@ -10,7 +10,7 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Drawer from '@/app/components/base/drawer'
 import { FeaturesProvider } from '@/app/components/base/features'

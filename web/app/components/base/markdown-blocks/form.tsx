@@ -2,7 +2,7 @@ import type { Dayjs } from 'dayjs'
 import type { ButtonProps } from '@/app/components/base/button'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
@@ -240,7 +240,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             <label
               key={key}
               htmlFor={str(child.properties.htmlFor || child.properties.name)}
-              className="my-2 text-text-secondary system-md-semibold"
+              className="my-2 system-md-semibold text-text-secondary"
               data-testid="label-field"
             >
               {getTextContent(child)}

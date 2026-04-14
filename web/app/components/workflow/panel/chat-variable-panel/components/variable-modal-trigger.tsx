@@ -3,7 +3,7 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

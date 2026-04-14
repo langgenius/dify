@@ -3,7 +3,6 @@ import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
-import Spinner from '../spinner'
 
 const buttonVariants = cva(
   'btn',
@@ -36,27 +35,25 @@ const buttonVariants = cva(
 
 export type ButtonProps = {
   loading?: boolean
-  spinnerClassName?: string
   ref?: React.Ref<HTMLButtonElement>
   render?: React.ReactElement
   focusableWhenDisabled?: boolean
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
 
-const Button = ({
+export function Button({
   className,
   variant,
   size,
   destructive,
   loading,
   children,
-  spinnerClassName,
   ref,
   render,
   focusableWhenDisabled,
   disabled,
   type = 'button',
   ...props
-}: ButtonProps) => {
+}: ButtonProps) {
   const isDisabled = disabled || loading
 
   return (
@@ -71,11 +68,12 @@ const Button = ({
       aria-busy={loading || undefined}
     >
       {children}
-      {loading && <Spinner loading={loading} className={cn('ml-1! h-3! w-3! border-2! text-white!', spinnerClassName)} />}
+      {loading && (
+        <i
+          className="ml-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+          aria-hidden="true"
+        />
+      )}
     </BaseButton>
   )
 }
-Button.displayName = 'Button'
-
-export default Button
-export { Button, buttonVariants }

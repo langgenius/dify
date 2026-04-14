@@ -10,7 +10,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { Avatar } from '@/app/components/base/ui/avatar'
@@ -151,7 +151,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
 
       <Dialog open={isShowDeleteConfirm} onOpenChange={open => !open && setIsShowDeleteConfirm(false)}>
         <DialogContent className="w-[362px]! p-6!">
-          <div className="mb-3 text-text-primary title-2xl-semi-bold">{t('avatar.deleteTitle', { ns: 'common' })}</div>
+          <div className="mb-3 title-2xl-semi-bold text-text-primary">{t('avatar.deleteTitle', { ns: 'common' })}</div>
           <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
 
           <div className="flex w-full items-center justify-center gap-2">

@@ -7,7 +7,7 @@ import type { ButtonProps } from '@/app/components/base/button'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -73,17 +73,17 @@ const Modal = ({
           )}
           onClick={e => e.stopPropagation()}
         >
-          <div className="relative shrink-0 p-6 pb-3 pr-14 text-text-primary title-2xl-semi-bold">
+          <div className="relative shrink-0 p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
             {title}
             {
               subTitle && (
-                <div className="mt-1 text-text-tertiary system-xs-regular">
+                <div className="mt-1 system-xs-regular text-text-tertiary">
                   {subTitle}
                 </div>
               )
             }
             <div
-              className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+              className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={onClose}
             >
               <span className="i-ri-close-line h-5 w-5 text-text-tertiary" data-testid="close-icon" />
