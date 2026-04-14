@@ -85,6 +85,7 @@ from .task import CeleryTask, CeleryTaskSet
 from .tools import (
     ApiToolProvider,
     BuiltinToolProvider,
+    ToolBuiltinProviderAllowedAccount,
     ToolConversationVariables,
     ToolFile,
     ToolLabelBinding,
@@ -134,6 +135,7 @@ __all__ = [
     "AppTriggerStatus",
     "AppTriggerType",
     "BuiltinToolProvider",
+    "ToolBuiltinProviderAllowedAccount",
     "CeleryTask",
     "CeleryTaskSet",
     "Conversation",

@@ -199,6 +199,8 @@ const Item = ({
                           ...credential.credentials,
                           __name__: credential.name,
                           __credential_id__: credential.id,
+                          __access_scope__: credential.access_scope ?? 'workspace',
+                          __allowed_account_ids__: credential.allowed_account_ids ?? [],
                         },
                       )
                     }}

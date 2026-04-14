@@ -426,7 +426,10 @@ class ToolTransformService:
 
     @staticmethod
     def convert_builtin_provider_to_credential_entity(
-        provider: BuiltinToolProvider, credentials: dict
+        provider: BuiltinToolProvider,
+        credentials: dict,
+        *,
+        allowed_account_ids: list[str] | None = None,
     ) -> ToolProviderCredentialApiEntity:
         return ToolProviderCredentialApiEntity(
             id=provider.id,
@@ -435,6 +438,8 @@ class ToolTransformService:
             credential_type=provider.credential_type,
             is_default=provider.is_default,
             credentials=credentials,
+            access_scope=provider.access_scope.value,
+            allowed_account_ids=list(allowed_account_ids or []),
         )
 
     @staticmethod

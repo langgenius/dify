@@ -129,6 +129,14 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
     credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
+    access_scope: str = Field(
+        default="workspace",
+        description="workspace: all workspace members; private: creator only; restricted: creator plus allowed_account_ids",
+    )
+    allowed_account_ids: list[str] = Field(
+        default_factory=list,
+        description="When access_scope is restricted, additional workspace accounts that may use this credential",
+    )
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):

@@ -23,6 +23,8 @@ export enum CredentialTypeEnum {
   API_KEY = 'api-key',
 }
 
+export type ToolCredentialAccessScope = 'workspace' | 'private' | 'restricted'
+
 export type Credential = {
   id: string
   name: string
@@ -33,4 +35,6 @@ export type Credential = {
   isWorkspaceDefault?: boolean
   from_enterprise?: boolean
   not_allowed_to_use?: boolean
+  access_scope?: ToolCredentialAccessScope
+  allowed_account_ids?: string[]
 }
