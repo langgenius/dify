@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "شاخه شکست",
   "nodes.common.errorHandle.none.desc": "اگر استثنایی رخ دهد و مدیریت نشود، گره از کار می‌افتد",
   "nodes.common.errorHandle.none.title": "هیچ‌کدام",
-  "nodes.common.errorHandle.partialSucceeded.tip": "{{num}} گره با خطا مواجه شدند؛ برای بررسی لاگ‌ها به ردیابی مراجعه کنید.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "{{num}} گره با خطا مواجه شدند؛ برای بررسی لاگ‌ها به <tracingLink>ردیابی</tracingLink> مراجعه کنید.",
   "nodes.common.errorHandle.tip": "استراتژی مدیریت استثنا؛ زمانی که گره با خطا مواجه شود فعال می‌شود.",
   "nodes.common.errorHandle.title": "مدیریت خطا",
   "nodes.common.inputVars": "متغیرهای ورودی",

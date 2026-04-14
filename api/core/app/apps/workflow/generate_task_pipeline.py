@@ -682,15 +682,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from
-        if invoke_from == InvokeFrom.SERVICE_API:
-            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
-        elif invoke_from == InvokeFrom.EXPLORE:
-            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
-        elif invoke_from == InvokeFrom.WEB_APP:
-            created_from = WorkflowAppLogCreatedFrom.WEB_APP
-        else:
-            # not save log for debugging
-            return
+        match invoke_from:
+            case InvokeFrom.SERVICE_API:
+                created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.EXPLORE:
+                created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+            case InvokeFrom.WEB_APP:
+                created_from = WorkflowAppLogCreatedFrom.WEB_APP
+            case InvokeFrom.DEBUGGER | InvokeFrom.TRIGGER | InvokeFrom.PUBLISHED_PIPELINE | InvokeFrom.VALIDATION:
+                # not save log for debugging
+                return
 
         if not workflow_run_id:
             return

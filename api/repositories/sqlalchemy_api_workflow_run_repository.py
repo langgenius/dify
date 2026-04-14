@@ -41,7 +41,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
-from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
@@ -744,12 +743,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Upload the state file
 
             # Create the pause record
-            pause_model = WorkflowPause()
-            pause_model.id = str(uuidv7())
-            pause_model.workflow_id = workflow_run.workflow_id
-            pause_model.workflow_run_id = workflow_run.id
-            pause_model.state_object_key = state_obj_key
-            pause_model.created_at = naive_utc_now()
+            pause_model = WorkflowPause(
+                workflow_id=workflow_run.workflow_id,
+                workflow_run_id=workflow_run.id,
+                state_object_key=state_obj_key,
+            )
             pause_reason_models = []
             for reason in pause_reasons:
                 if isinstance(reason, HumanInputRequired):

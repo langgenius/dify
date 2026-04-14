@@ -92,6 +92,7 @@ jobs:
             vdb:
               - 'api/core/rag/datasource/**'
               - 'api/tests/integration_tests/vdb/**'
+              - 'api/providers/vdb/*/tests/**'
               - '.github/workflows/vdb-tests.yml'
               - '.github/workflows/expose_service_ports.sh'
               - 'docker/.env.example'

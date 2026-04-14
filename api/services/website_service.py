@@ -91,7 +91,7 @@ class WebsiteCrawlApiRequest:
         return CrawlRequest(url=self.url, provider=self.provider, options=options)
 
     @classmethod
-    def from_args(cls, args: dict) -> WebsiteCrawlApiRequest:
+    def from_args(cls, args: dict[str, Any]) -> WebsiteCrawlApiRequest:
         """Create from Flask-RESTful parsed arguments."""
         provider = args.get("provider")
         url = args.get("url")
@@ -115,7 +115,7 @@ class WebsiteCrawlStatusApiRequest:
     job_id: str
 
     @classmethod
-    def from_args(cls, args: dict, job_id: str) -> WebsiteCrawlStatusApiRequest:
+    def from_args(cls, args: dict[str, Any], job_id: str) -> WebsiteCrawlStatusApiRequest:
         """Create from Flask-RESTful parsed arguments."""
         provider = args.get("provider")
         if not provider:
@@ -163,7 +163,7 @@ class WebsiteService:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def _get_decrypted_api_key(cls, tenant_id: str, config: dict) -> str:
+    def _get_decrypted_api_key(cls, tenant_id: str, config: dict[str, Any]) -> str:
         """Decrypt and return the API key from config."""
         api_key = config.get("api_key")
         if not api_key:
@@ -171,7 +171,7 @@ class WebsiteService:
         return encrypter.decrypt_token(tenant_id=tenant_id, token=api_key)
 
     @classmethod
-    def document_create_args_validate(cls, args: dict):
+    def document_create_args_validate(cls, args: dict[str, Any]):
         """Validate arguments for document creation."""
         try:
             WebsiteCrawlApiRequest.from_args(args)
@@ -195,7 +195,7 @@ class WebsiteService:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def _crawl_with_firecrawl(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
+    def _crawl_with_firecrawl(cls, request: CrawlRequest, api_key: str, config: dict[str, Any]) -> dict[str, Any]:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
 
         params: dict[str, Any]
@@ -225,7 +225,7 @@ class WebsiteService:
         return {"status": "active", "job_id": job_id}
 
     @classmethod
-    def _crawl_with_watercrawl(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
+    def _crawl_with_watercrawl(cls, request: CrawlRequest, api_key: str, config: dict[str, Any]) -> dict[str, Any]:
         # Convert CrawlOptions back to dict format for WaterCrawlProvider
         options = {
             "limit": request.options.limit,
@@ -290,7 +290,7 @@ class WebsiteService:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def _get_firecrawl_status(cls, job_id: str, api_key: str, config: dict) -> CrawlStatusDict:
+    def _get_firecrawl_status(cls, job_id: str, api_key: str, config: dict[str, Any]) -> CrawlStatusDict:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
         result: CrawlStatusResponse = firecrawl_app.check_crawl_status(job_id)
         crawl_status_data: CrawlStatusDict = {
@@ -364,7 +364,9 @@ class WebsiteService:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def _get_firecrawl_url_data(cls, job_id: str, url: str, api_key: str, config: dict) -> dict[str, Any] | None:
+    def _get_firecrawl_url_data(
+        cls, job_id: str, url: str, api_key: str, config: dict[str, Any]
+    ) -> dict[str, Any] | None:
         crawl_data: list[FirecrawlDocumentData] | None = None
         file_key = "website_files/" + job_id + ".txt"
         if storage.exists(file_key):
@@ -438,7 +440,7 @@ class WebsiteService:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def _scrape_with_firecrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
+    def _scrape_with_firecrawl(cls, request: ScrapeRequest, api_key: str, config: dict[str, Any]) -> dict[str, Any]:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
         params = {"onlyMainContent": request.only_main_content}
         return dict(firecrawl_app.scrape_url(url=request.url, params=params))
