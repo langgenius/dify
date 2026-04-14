@@ -439,7 +439,22 @@ class AppDslService:
                 raise ValueError("Current tenant is not set")
 
             # Create new app
-            app = App()
+            app = App(
+                tenant_id=account.current_tenant_id,
+                mode=app_mode.value,
+                name=name or app_data.get("name", ""),
+                description=description or app_data.get("description", ""),
+                icon_type=icon_type,
+                icon=icon,
+                icon_background=icon_background or app_data.get("icon_background", "#FFFFFF"),
+                enable_site=True,
+                enable_api=True,
+                use_icon_as_answer_icon=app_data.get("use_icon_as_answer_icon", False),
+                created_by=account.id,
+                updated_by=account.id,
+                status="normal",
+                max_active_requests=None,
+            )
             app.id = str(uuid4())
             app.tenant_id = account.current_tenant_id
             app.mode = app_mode

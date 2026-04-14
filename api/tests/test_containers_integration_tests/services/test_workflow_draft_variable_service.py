@@ -62,19 +62,20 @@ class TestWorkflowDraftVariableService:
             App: Created test app instance with all required fields populated
         """
         fake = fake or Faker()
-        app = App()
-        app.id = fake.uuid4()
-        app.tenant_id = fake.uuid4()
-        app.name = fake.company()
-        app.description = fake.text()
-        app.mode = "workflow"
-        app.icon_type = "emoji"
-        app.icon = "🤖"
-        app.icon_background = "#FFEAD5"
-        app.enable_site = True
-        app.enable_api = True
-        app.created_by = fake.uuid4()
+        app = App(
+            tenant_id=fake.uuid4(),
+            name=fake.company(),
+            description=fake.text(),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FFEAD5",
+            enable_site=True,
+            enable_api=True,
+            created_by=fake.uuid4(),
+        )
         app.updated_by = app.created_by
+        app.id = fake.uuid4()
 
         db_session_with_containers.add(app)
         db_session_with_containers.commit()
