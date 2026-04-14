@@ -349,7 +349,9 @@ class ExternalDatasetService:
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-        normalized_params = ExternalDatasetService.normalize_external_retrieval_parameters(external_retrieval_parameters)
+        normalized_params = ExternalDatasetService.normalize_external_retrieval_parameters(
+            external_retrieval_parameters
+        )
         score_threshold_enabled = normalized_params["score_threshold_enabled"]
         score_threshold = normalized_params["score_threshold"] if score_threshold_enabled else 0.0
         request_params = {
