@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
+import { Button } from '@/app/components/base/ui/button'
 import Confirm from '.'
-import Button from '../button'
 
 const meta = {
   title: 'Base/Feedback/Confirm',

@@ -3,10 +3,10 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Tooltip,
   TooltipContent,
