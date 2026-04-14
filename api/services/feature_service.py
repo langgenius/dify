@@ -312,7 +312,10 @@ class FeatureService:
             features.apps.limit = billing_info["apps"]["limit"]
 
         if "vector_space" in billing_info:
-            features.vector_space.size = billing_info["vector_space"]["size"]
+            # NOTE (hj24): billing API returns vector_space.size as float (e.g. 0.0)
+            # but LimitationModel.size is int; truncate here for compatibility
+            features.vector_space.size = int(billing_info["vector_space"]["size"])
+            # NOTE END
             features.vector_space.limit = billing_info["vector_space"]["limit"]
 
         if "documents_upload_quota" in billing_info:
@@ -333,7 +336,11 @@ class FeatureService:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
         if "knowledge_rate_limit" in billing_info:
+            # NOTE (hj24):
+            # 1. knowledge_rate_limit size is nullable, currently it's defined but never used, only limit is used.
+            # 2. So be careful if later we decide to use [size], we cannot assume it is always present.
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+            # NOTE END
 
         if "knowledge_pipeline_publish_enabled" in billing_info:
             features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
@@ -379,14 +386,19 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        if is_authenticated and (license_info := enterprise_info.get("License")):
+        # SECURITY NOTE: Only license *status* is exposed to unauthenticated callers
+        # so the login page can detect an expired/inactive license after force-logout.
+        # All other license details (expiry date, workspace usage) remain auth-gated.
+        # This behavior reflects prior internal review of information-leakage risks.
+        if license_info := enterprise_info.get("License"):
             features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-            features.license.expired_at = license_info.get("expiredAt", "")
 
-            if workspaces_info := license_info.get("workspaces"):
-                features.license.workspaces.enabled = workspaces_info.get("enabled", False)
-                features.license.workspaces.limit = workspaces_info.get("limit", 0)
-                features.license.workspaces.size = workspaces_info.get("used", 0)
+            if is_authenticated:
+                features.license.expired_at = license_info.get("expiredAt", "")
+                if workspaces_info := license_info.get("workspaces"):
+                    features.license.workspaces.enabled = workspaces_info.get("enabled", False)
+                    features.license.workspaces.limit = workspaces_info.get("limit", 0)
+                    features.license.workspaces.size = workspaces_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]

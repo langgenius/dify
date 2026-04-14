@@ -21,7 +21,7 @@ const IconButton: FC<{ type: DocType, isChecked: boolean }> = ({ type, isChecked
       <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}
-          className={`group-hover:bg-primary-600 ${isChecked ? '!bg-primary-600' : ''}`}
+          className={`group-hover:bg-primary-600 ${isChecked ? 'bg-primary-600!' : ''}`}
         />
       </button>
     </Tooltip>

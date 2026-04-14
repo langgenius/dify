@@ -1,7 +1,7 @@
 import type { ComponentProps, FC } from 'react'
 import { cn } from '@/utils/classnames'
 
-export type PreviewHeaderProps = Omit<ComponentProps<'div'>, 'title'> & {
+type PreviewHeaderProps = Omit<ComponentProps<'div'>, 'title'> & {
   title: string
 }
 

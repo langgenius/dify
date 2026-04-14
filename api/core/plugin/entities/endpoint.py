@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -31,7 +32,7 @@ class EndpointEntity(BasePluginEntity):
     entity of an endpoint
     """
 
-    settings: dict
+    settings: dict[str, Any]
     tenant_id: str
     plugin_id: str
     expired_at: datetime

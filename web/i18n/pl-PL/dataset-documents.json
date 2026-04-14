@@ -300,7 +300,7 @@
   "segment.collapseChunks": "Zwijanie fragmentów",
   "segment.contentEmpty": "Treść nie może być pusta",
   "segment.contentPlaceholder": "dodaj treść tutaj",
-  "segment.dateTimeFormat": "MM/DD/YYYY h:mm",
+  "segment.dateTimeFormat": "MM/DD/YYYY HH:mm",
   "segment.delete": "Usunąć ten fragment?",
   "segment.editChildChunk": "Edytuj fragment podrzędny",
   "segment.editChunk": "Edytuj fragment",

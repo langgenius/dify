@@ -2,13 +2,14 @@ import time
 import uuid
 from unittest.mock import MagicMock
 
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
-from dify_graph.enums import WorkflowNodeExecutionStatus
-from dify_graph.graph import Graph
-from dify_graph.nodes.answer.answer_node import AnswerNode
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -48,7 +49,7 @@ def test_execute_answer():
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
+        system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -64,7 +65,7 @@ def test_execute_answer():
         graph_runtime_state=graph_runtime_state,
     )
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node_config = {
         "id": "answer",

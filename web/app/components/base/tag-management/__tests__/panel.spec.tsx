@@ -3,37 +3,39 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
-import { ToastContext } from '@/app/components/base/toast/context'
+import * as ReactI18next from 'react-i18next'
 import Panel from '../panel'
 import { useStore as useTagStore } from '../store'
 
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
+
 // Hoisted mocks
-const { createTag, bindTag, unBindTag, contextOverrides } = vi.hoisted(() => ({
+const { createTag, bindTag, unBindTag } = vi.hoisted(() => ({
   createTag: vi.fn(),
   bindTag: vi.fn(),
   unBindTag: vi.fn(),
-  contextOverrides: new Map<object, unknown>(),
 }))
-
-const mockNotify = vi.fn()
 
 vi.mock('@/service/tag', () => ({
   createTag,
   bindTag,
   unBindTag,
-}))
-
-// Mock use-context-selector with context-aware values and toast notify override.
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: <T,>(context: React.Context<T>) => {
-    const contextValue = React.useContext(context)
-    const override = contextOverrides.get(context as unknown as object)
-    if (override)
-      return override as T
-
-    return contextValue
-  },
 }))
 
 // i18n mock renders "ns.key" format (dot-separated)
@@ -69,11 +71,6 @@ const defaultProps = {
 describe('Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    contextOverrides.clear()
-    contextOverrides.set(ToastContext as unknown as object, {
-      notify: mockNotify,
-      close: vi.fn(),
-    })
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
@@ -93,6 +90,20 @@ describe('Panel', () => {
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       expect(input).toBeInTheDocument()
       expect(input.tagName).toBe('INPUT')
+    })
+
+    it('should fallback to empty placeholder when translation is empty', () => {
+      const mockedTranslation = {
+        t: vi.fn().mockReturnValue(''),
+        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
+        ready: true,
+      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
+
+      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
+
+      render(<Panel {...defaultProps} />)
+
+      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
     })
 
     it('should render selected tags from selectedTags prop', () => {
@@ -457,7 +468,7 @@ describe('Panel', () => {
 
       unmount()
 
-      await act(async () => {})
+      await act(async () => { })
       expect(bindTag).not.toHaveBeenCalled()
       expect(unBindTag).not.toHaveBeenCalled()
     })
@@ -473,6 +484,20 @@ describe('Panel', () => {
       await waitFor(() => {
         expect(defaultProps.onChange).toHaveBeenCalled()
       })
+    })
+
+    it('should skip onChange callback when onChange prop is undefined', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const { unmount } = render(<Panel {...defaultProps} onChange={undefined} />)
+
+      await user.click(screen.getByText('Backend'))
+      unmount()
+
+      await waitFor(() => {
+        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
+      })
+      expect(onChange).not.toHaveBeenCalled()
     })
 
     it('should show success notification after successful bind', async () => {

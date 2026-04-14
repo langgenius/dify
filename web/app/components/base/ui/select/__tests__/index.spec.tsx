@@ -41,6 +41,30 @@ const renderOpenSelect = ({
 }
 
 describe('Select wrappers', () => {
+  describe('Select root integration', () => {
+    it('should submit the hidden input value and preserve autocomplete hints inside a form', () => {
+      const { container } = render(
+        <form aria-label="profile form">
+          <Select defaultValue="seattle" name="city" autoComplete="address-level2">
+            <SelectTrigger aria-label="city select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+              <SelectItem value="seattle">Seattle</SelectItem>
+              <SelectItem value="new-york">New York</SelectItem>
+            </SelectContent>
+          </Select>
+        </form>,
+      )
+
+      const hiddenInput = container.querySelector('input[name="city"]')
+      const form = screen.getByRole('form', { name: 'profile form' }) as HTMLFormElement
+
+      expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
+      expect(new FormData(form).get('city')).toBe('seattle')
+    })
+  })
+
   describe('SelectTrigger', () => {
     it('should render clear button when clearable is true and loading is false', () => {
       renderOpenSelect({
@@ -146,7 +170,7 @@ describe('Select wrappers', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
       expect(trigger).toHaveAttribute('data-disabled')
-      expect(trigger.className).toContain('data-[disabled]:bg-components-input-bg-disabled')
+      expect(trigger.className).toContain('data-disabled:bg-components-input-bg-disabled')
     })
 
     it('should apply disabled placeholder color class for compound state', () => {
@@ -155,7 +179,7 @@ describe('Select wrappers', () => {
       })
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('data-[disabled]:data-[placeholder]:text-components-input-text-disabled')
+      expect(trigger.className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
     })
 
     it('should show error icon and apply destructive styling when variant is destructive', () => {
@@ -185,7 +209,7 @@ describe('Select wrappers', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
       expect(trigger).toHaveAttribute('data-readonly')
-      expect(trigger.className).toContain('data-[readonly]:bg-transparent')
+      expect(trigger.className).toContain('data-readonly:bg-transparent')
     })
 
     it('should hide arrow icon via CSS when Root is readOnly', () => {
@@ -194,7 +218,7 @@ describe('Select wrappers', () => {
       })
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
-      const iconWrapper = trigger.querySelector('[class*="group-data-[readonly]:hidden"]')
+      const iconWrapper = trigger.querySelector('[class*="group-data-readonly:hidden"]')
       expect(iconWrapper).toBeInTheDocument()
     })
 
@@ -210,7 +234,7 @@ describe('Select wrappers', () => {
       renderOpenSelect()
 
       const trigger = screen.getByRole('combobox', { name: 'city select' })
-      expect(trigger.className).toContain('data-[placeholder]:text-components-input-text-placeholder')
+      expect(trigger.className).toContain('data-placeholder:text-components-input-text-placeholder')
     })
   })
 

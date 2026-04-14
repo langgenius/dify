@@ -7,10 +7,15 @@ const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
 }))
 
-vi.mock('next/dynamic', () => ({
-  default: () => (props: { latexContent: string }) => {
-    mockReactMarkdownWrapper(props)
-    return <div data-testid="react-markdown-wrapper">{props.latexContent}</div>
+vi.mock('@/next/dynamic', () => ({
+  default: () => {
+    const MockStreamdownWrapper = (props: { latexContent: string }) => {
+      mockReactMarkdownWrapper(props)
+      return <div data-testid="react-markdown-wrapper">{props.latexContent}</div>
+    }
+
+    MockStreamdownWrapper.displayName = 'MockStreamdownWrapper'
+    return MockStreamdownWrapper
   },
 }))
 
@@ -43,13 +48,13 @@ describe('Markdown', () => {
   it('should apply default classes', () => {
     const { container } = render(<Markdown content="Test" />)
     const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv).toHaveClass('markdown-body', '!text-text-primary')
+    expect(markdownDiv).toHaveClass('markdown-body', 'text-text-primary!')
   })
 
   it('should merge custom className with default classes', () => {
     const { container } = render(<Markdown content="Test" className="custom another" />)
     const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv).toHaveClass('markdown-body', '!text-text-primary', 'custom', 'another')
+    expect(markdownDiv).toHaveClass('markdown-body', 'text-text-primary!', 'custom', 'another')
   })
 
   it('should not include undefined in className', () => {

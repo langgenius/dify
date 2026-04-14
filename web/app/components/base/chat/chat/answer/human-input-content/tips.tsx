@@ -19,7 +19,7 @@ const Tips = ({
 
   return (
     <>
-      <Divider className="!my-2 w-[30px]" />
+      <Divider className="my-2! w-[30px]" />
       <div className="space-y-1 pt-1" data-testid="tips">
         {showEmailTip && !isEmailDebugMode && (
           <div className="text-text-secondary system-xs-regular">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>

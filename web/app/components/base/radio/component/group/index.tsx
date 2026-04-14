@@ -3,7 +3,7 @@ import { cn } from '@/utils/classnames'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
 
-export type TRadioGroupProps = {
+type TRadioGroupProps = {
   children?: ReactNode | ReactNode[]
   value?: string | number | boolean
   className?: string

@@ -14,7 +14,7 @@ import { cn } from '@/utils/classnames'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
-export type IItemOperationProps = {
+type IItemOperationProps = {
   className?: string
   isItemHovering?: boolean
   isPinned: boolean
@@ -54,7 +54,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
         onClick={() => setOpen(v => !v)}
       >
         <div
-          className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} !bg-components-actionbar-bg !shadow-none`)}
+          className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
           data-testid="item-operation-trigger"
         >
         </div>

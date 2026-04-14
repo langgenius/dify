@@ -7,7 +7,7 @@ import ExternalKnowledgeBaseConnector from '../index'
 
 const mockRouterBack = vi.fn()
 const mockReplace = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     back: mockRouterBack,
     replace: mockReplace,
@@ -21,12 +21,19 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
 }))
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
-}))
+const mockToastSuccess = vi.hoisted(() => vi.fn())
+const mockToastError = vi.hoisted(() => vi.fn())
+vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+  return {
+    ...actual,
+    toast: {
+      ...actual.toast,
+      success: mockToastSuccess,
+      error: mockToastError,
+    },
+  }
+})
 
 // Mock modal context
 vi.mock('@/context/modal-context', () => ({
@@ -162,10 +169,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       })
 
       // Verify success notification
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'External Knowledge Base Connected Successfully',
-      })
+      expect(mockToastSuccess).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedSuccess')
 
       // Verify navigation back
       expect(mockRouterBack).toHaveBeenCalledTimes(1)
@@ -204,10 +208,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Verify error notification
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Failed to connect External Knowledge Base',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedFailed')
       })
 
       // Verify no navigation
@@ -226,10 +227,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await fillFormAndSubmit(user)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'Failed to connect External Knowledge Base',
-        })
+        expect(mockToastError).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedFailed')
       })
 
       expect(mockRouterBack).not.toHaveBeenCalled()
@@ -272,10 +270,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       resolvePromise({ id: 'new-id' })
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'External Knowledge Base Connected Successfully',
-        })
+        expect(mockToastSuccess).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedSuccess')
       })
     })
   })

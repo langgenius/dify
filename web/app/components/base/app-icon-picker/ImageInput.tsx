@@ -42,6 +42,7 @@ const ImageInput: FC<UploaderProps> = ({
   const [zoom, setZoom] = useState(1)
 
   const onCropComplete = async (_: Area, croppedAreaPixels: Area) => {
+    /* v8 ignore next -- unreachable guard when Cropper is rendered @preserve */
     if (!inputImage)
       return
     onImageInput?.(true, inputImage.url, croppedAreaPixels, inputImage.file.name)

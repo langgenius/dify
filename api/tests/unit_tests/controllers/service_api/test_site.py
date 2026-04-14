@@ -88,7 +88,7 @@ class TestAppSiteApi:
         mock_app_model.tenant = mock_tenant
 
         # Mock wraps.db for authentication
-        mock_wraps_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_wraps_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -98,7 +98,7 @@ class TestAppSiteApi:
         setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         # Mock site.db for site query
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_site
+        mock_db.session.scalar.return_value = mock_site
 
         # Act
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -109,7 +109,7 @@ class TestAppSiteApi:
         assert response["title"] == "Test Site"
         assert response["icon"] == "icon-url"
         assert response["description"] == "Site description"
-        mock_db.session.query.assert_called_once_with(Site)
+        mock_db.session.scalar.assert_called_once()
 
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.app.site.db")
@@ -140,7 +140,7 @@ class TestAppSiteApi:
         mock_tenant.status = TenantStatus.NORMAL
         mock_app_model.tenant = mock_tenant
 
-        mock_wraps_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_wraps_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -150,7 +150,7 @@ class TestAppSiteApi:
         setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         # Mock site query to return None
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -187,7 +187,7 @@ class TestAppSiteApi:
         mock_tenant = Mock()
         mock_tenant.status = TenantStatus.NORMAL
 
-        mock_wraps_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_wraps_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -197,7 +197,7 @@ class TestAppSiteApi:
         setup_mock_tenant_account_query(mock_wraps_db, mock_tenant, mock_account)
 
         # Mock site query
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_site
+        mock_db.session.scalar.return_value = mock_site
 
         # Set tenant status to archived AFTER authentication
         mock_app_model.tenant.status = TenantStatus.ARCHIVE
@@ -230,7 +230,7 @@ class TestAppSiteApi:
         mock_tenant.status = TenantStatus.NORMAL
         mock_app_model.tenant = mock_tenant
 
-        mock_wraps_db.session.query.return_value.where.return_value.first.side_effect = [
+        mock_wraps_db.session.get.side_effect = [
             mock_app_model,
             mock_tenant,
         ]
@@ -258,7 +258,7 @@ class TestAppSiteApi:
         mock_site.icon_type = "image"
         mock_site.created_at = "2024-01-01T00:00:00"
         mock_site.updated_at = "2024-01-01T00:00:00"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_site
+        mock_db.session.scalar.return_value = mock_site
 
         # Act
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test_token"}):
@@ -267,4 +267,4 @@ class TestAppSiteApi:
 
         # Assert
         # The query was executed successfully (site returned), which validates the correct query was made
-        mock_db.session.query.assert_called_once_with(Site)
+        mock_db.session.scalar.assert_called_once()

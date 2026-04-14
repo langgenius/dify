@@ -1,12 +1,29 @@
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import type { BinaryStream, DifyStream, Headers, StreamEvent } from "../types/common";
+import type {
+  BinaryStream,
+  DifyStream,
+  Headers,
+  JsonValue,
+  StreamEvent,
+} from "../types/common";
+import { isRecord } from "../internal/type-guards";
+
+const toBufferChunk = (chunk: unknown): Buffer => {
+  if (Buffer.isBuffer(chunk)) {
+    return chunk;
+  }
+  if (chunk instanceof Uint8Array) {
+    return Buffer.from(chunk);
+  }
+  return Buffer.from(String(chunk));
+};
 
 const readLines = async function* (stream: Readable): AsyncIterable<string> {
   const decoder = new StringDecoder("utf8");
   let buffered = "";
   for await (const chunk of stream) {
-    buffered += decoder.write(chunk as Buffer);
+    buffered += decoder.write(toBufferChunk(chunk));
     let index = buffered.indexOf("\n");
     while (index >= 0) {
       let line = buffered.slice(0, index);
@@ -24,12 +41,12 @@ const readLines = async function* (stream: Readable): AsyncIterable<string> {
   }
 };
 
-const parseMaybeJson = (value: string): unknown => {
+const parseMaybeJson = (value: string): JsonValue | string | null => {
   if (!value) {
     return null;
   }
   try {
-    return JSON.parse(value);
+    return JSON.parse(value) as JsonValue;
   } catch {
     return value;
   }
@@ -81,18 +98,17 @@ const extractTextFromEvent = (data: unknown): string => {
   if (typeof data === "string") {
     return data;
   }
-  if (!data || typeof data !== "object") {
+  if (!isRecord(data)) {
     return "";
   }
-  const record = data as Record<string, unknown>;
-  if (typeof record.answer === "string") {
-    return record.answer;
+  if (typeof data.answer === "string") {
+    return data.answer;
   }
-  if (typeof record.text === "string") {
-    return record.text;
+  if (typeof data.text === "string") {
+    return data.text;
   }
-  if (typeof record.delta === "string") {
-    return record.delta;
+  if (typeof data.delta === "string") {
+    return data.delta;
   }
   return "";
 };

@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import Image from 'next/image'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -10,13 +9,13 @@ import SearchMenu from '@/assets/search-menu.svg'
 import { cn } from '@/utils/classnames'
 import Button from '../button'
 
-export type CheckboxListOption = {
+type CheckboxListOption = {
   label: string
   value: string
   disabled?: boolean
 }
 
-export type CheckboxListProps = {
+type CheckboxListProps = {
   title?: string
   label?: string
   description?: string
@@ -161,6 +160,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
         <div
           className="p-1"
           style={maxHeight ? { maxHeight, overflowY: 'auto' } : {}}
+          data-testid="options-container"
         >
           {!filteredOptions.length
             ? (
@@ -168,7 +168,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   {searchQuery
                     ? (
                         <div className="flex flex-col items-center justify-center gap-2">
-                          <Image alt="search menu" src={SearchMenu} width={32} />
+                          <img alt="search menu" src={SearchMenu.src} width={32} />
                           <span className="text-text-secondary system-sm-regular">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
                           <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
                         </div>
@@ -183,6 +183,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   return (
                     <div
                       key={option.value}
+                      data-testid="option-item"
                       className={cn(
                         'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
                         option.disabled && 'cursor-not-allowed opacity-50',

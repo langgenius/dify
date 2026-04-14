@@ -90,8 +90,8 @@ class TestPluginListLatestVersionsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDebuggingKeyApi:
@@ -120,8 +120,8 @@ class TestPluginDebuggingKeyApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginListApi:
@@ -200,9 +200,13 @@ class TestPluginUploadFromPkgApi:
             app.test_request_context("/", data=data, content_type="multipart/form-data"),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 0),
+            patch("controllers.console.workspace.plugin.PluginService.upload_pkg") as upload_pkg_mock,
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError) as exc_info:
                 method(api)
+            assert "File size exceeds the maximum allowed size" in str(exc_info.value)
+
+        upload_pkg_mock.assert_not_called()
 
 
 class TestPluginInstallFromPkgApi:
@@ -362,8 +366,8 @@ class TestPluginListInstallationsFromIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUploadFromGithubApi:
@@ -398,8 +402,8 @@ class TestPluginUploadFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUploadFromBundleApi:
@@ -444,9 +448,13 @@ class TestPluginUploadFromBundleApi:
             ),
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(None, "t1")),
             patch("controllers.console.workspace.plugin.dify_config.PLUGIN_MAX_BUNDLE_SIZE", 0),
+            patch("controllers.console.workspace.plugin.PluginService.upload_bundle") as upload_bundle_mock,
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError) as exc_info:
                 method(api)
+            assert "File size exceeds the maximum allowed size" in str(exc_info.value)
+
+        upload_bundle_mock.assert_not_called()
 
 
 class TestPluginInstallFromGithubApi:
@@ -489,8 +497,8 @@ class TestPluginInstallFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginInstallFromMarketplaceApi:
@@ -526,8 +534,8 @@ class TestPluginInstallFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchMarketplacePkgApi:
@@ -556,8 +564,8 @@ class TestPluginFetchMarketplacePkgApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchManifestApi:
@@ -589,8 +597,8 @@ class TestPluginFetchManifestApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchInstallTasksApi:
@@ -619,8 +627,8 @@ class TestPluginFetchInstallTasksApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchInstallTaskApi:
@@ -649,8 +657,8 @@ class TestPluginFetchInstallTaskApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api, "t")
+            result = method(api, "t")
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDeleteInstallTaskApi:
@@ -679,8 +687,8 @@ class TestPluginDeleteInstallTaskApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api, "t")
+            result = method(api, "t")
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDeleteAllInstallTaskItemsApi:
@@ -711,8 +719,8 @@ class TestPluginDeleteAllInstallTaskItemsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginDeleteInstallTaskItemApi:
@@ -741,8 +749,8 @@ class TestPluginDeleteInstallTaskItemApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api, "task1", "item1")
+            result = method(api, "task1", "item1")
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUpgradeFromMarketplaceApi:
@@ -784,8 +792,8 @@ class TestPluginUpgradeFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUpgradeFromGithubApi:
@@ -833,8 +841,8 @@ class TestPluginUpgradeFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
@@ -888,8 +896,8 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            with pytest.raises(ValueError):
-                method(api)
+            result = method(api)
+            assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginChangePreferencesApi:

@@ -97,7 +97,7 @@ const ConditionWrap: FC<Props> = ({
             <div key={item.case_id}>
               <div
                 className={cn(
-                  'group relative rounded-[10px] bg-components-panel-bg',
+                  'group relative radius-lg bg-components-panel-bg',
                   willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
                   !isSubVariable && 'min-h-[40px] px-3 py-1 ',
                   isSubVariable && 'px-1 py-2',

@@ -134,19 +134,24 @@ function useOutputVarList<T>({
       return
     }
 
+    const newOutputKeyOrders = outputKeyOrders.filter((_, i) => i !== index)
     const newInputs = produce(inputs, (draft: any) => {
-      delete draft[varKey][key]
+      // Only delete from outputs when no remaining entry shares this name
+      if (!newOutputKeyOrders.includes(key))
+        delete draft[varKey][key]
 
       if ((inputs as CodeNodeType).type === BlockEnum.Code && (inputs as CodeNodeType).error_strategy === ErrorHandleTypeEnum.defaultValue && varKey === 'outputs')
         draft.default_value = getDefaultValue(draft as any)
     })
     setInputs(newInputs)
-    onOutputKeyOrdersChange(outputKeyOrders.filter((_, i) => i !== index))
-    const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
-      return varItem.name === key
-    })?.id
-    if (varId)
-      deleteInspectVar(id, varId)
+    onOutputKeyOrdersChange(newOutputKeyOrders)
+    if (!newOutputKeyOrders.includes(key)) {
+      const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
+        return varItem.name === key
+      })?.id
+      if (varId)
+        deleteInspectVar(id, varId)
+    }
   }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, nodesWithInspectVars, deleteInspectVar, showRemoveVarConfirm, varKey])
 
   return {

@@ -1,4 +1,5 @@
 import re
+from collections.abc import Mapping
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
@@ -20,10 +21,18 @@ class InterfaceDict(TypedDict):
     operation: dict[str, Any]
 
 
+class OpenAPISpecDict(TypedDict):
+    openapi: str
+    info: dict[str, str]
+    servers: list[dict[str, Any]]
+    paths: dict[str, Any]
+    components: dict[str, Any]
+
+
 class ApiBasedToolSchemaParser:
     @staticmethod
     def parse_openapi_to_tool_bundle(
-        openapi: dict, extra_info: dict | None = None, warning: dict | None = None
+        openapi: Mapping[str, Any], extra_info: dict[str, Any] | None = None, warning: dict[str, Any] | None = None
     ) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
@@ -227,7 +236,7 @@ class ApiBasedToolSchemaParser:
         return value
 
     @staticmethod
-    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
+    def _get_tool_parameter_type(parameter: dict[str, Any]) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
         typ: str | None = None
         if parameter.get("format") == "binary":
@@ -256,7 +265,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(
-        yaml: str, extra_info: dict | None = None, warning: dict | None = None
+        yaml: str, extra_info: dict[str, Any] | None = None, warning: dict[str, Any] | None = None
     ) -> list[ApiToolBundle]:
         """
         parse openapi yaml to tool bundle
@@ -269,15 +278,15 @@ class ApiBasedToolSchemaParser:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
 
-        openapi: dict = safe_load(yaml)
+        openapi: dict[str, Any] = safe_load(yaml)
         if openapi is None:
             raise ToolApiSchemaError("Invalid openapi yaml.")
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
     def parse_swagger_to_openapi(
-        swagger: dict, extra_info: dict | None = None, warning: dict | None = None
-    ) -> dict[str, Any]:
+        swagger: dict[str, Any], extra_info: dict[str, Any] | None = None, warning: dict[str, Any] | None = None
+    ) -> OpenAPISpecDict:
         warning = warning or {}
         """
         parse swagger to openapi
@@ -293,7 +302,7 @@ class ApiBasedToolSchemaParser:
         if len(servers) == 0:
             raise ToolApiSchemaError("No server found in the swagger yaml.")
 
-        converted_openapi: dict[str, Any] = {
+        converted_openapi: OpenAPISpecDict = {
             "openapi": "3.0.0",
             "info": {
                 "title": info.get("title", "Swagger"),
@@ -342,7 +351,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(
-        json: str, extra_info: dict | None = None, warning: dict | None = None
+        json: str, extra_info: dict[str, Any] | None = None, warning: dict[str, Any] | None = None
     ) -> list[ApiToolBundle]:
         """
         parse openapi plugin yaml to tool bundle
@@ -383,7 +392,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def auto_parse_to_tool_bundle(
-        content: str, extra_info: dict | None = None, warning: dict | None = None
+        content: str, extra_info: dict[str, Any] | None = None, warning: dict[str, Any] | None = None
     ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         auto parse to tool bundle

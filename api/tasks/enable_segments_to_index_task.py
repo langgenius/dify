@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -30,12 +30,12 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
     """
     start_at = time.perf_counter()
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
             return
 
-        dataset_document = session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
+        dataset_document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1))
 
         if not dataset_document:
             logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
@@ -123,17 +123,14 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         except Exception as e:
             logger.exception("enable segments to index failed")
             # update segment error msg
-            session.query(DocumentSegment).where(
-                DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset_id,
-                DocumentSegment.document_id == document_id,
-            ).update(
-                {
-                    "error": str(e),
-                    "status": "error",
-                    "disabled_at": naive_utc_now(),
-                    "enabled": False,
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.document_id == document_id,
+                )
+                .values(error=str(e), status="error", disabled_at=naive_utc_now(), enabled=False)
             )
             session.commit()
         finally:

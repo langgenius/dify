@@ -26,7 +26,7 @@ vi.mock('@/config', () => ({
 }))
 
 // Mock next/headers
-vi.mock('next/headers', () => ({
+vi.mock('@/next/headers', () => ({
   headers: vi.fn(() => ({
     get: vi.fn((name: string) => {
       if (name === 'x-nonce')
@@ -44,7 +44,7 @@ type ScriptProps = {
   'nonce'?: string
   'data-testid'?: string
 }
-vi.mock('next/script', () => ({
+vi.mock('@/next/script', () => ({
   __esModule: true,
   default: vi.fn(({ children, id, src, nonce, 'data-testid': testId }: ScriptProps) => (
     <div data-testid={testId} id={id} data-src={src} data-nonce={nonce}>
