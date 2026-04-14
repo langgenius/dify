@@ -222,7 +222,6 @@ function ToastViewport() {
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
       className={cn(
-        // During overlay migration, toast must stay above legacy highPriority modals (z-[1100]).
         'inset-0 group/toast-viewport pointer-events-none fixed z-1101 overflow-visible',
       )}
     >
