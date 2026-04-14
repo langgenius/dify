@@ -1,7 +1,7 @@
 import threading
 import time
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -30,7 +30,7 @@ class FakeStreamsRedis:
         self._dollar_snapshots: dict[str, int] = {}
 
     # Publisher API
-    def xadd(self, key: str, fields: dict, *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
         """Append entry to stream; accept optional maxlen for API compatibility.
 
         The test double ignores maxlen trimming semantics; only records the entry.
@@ -45,7 +45,7 @@ class FakeStreamsRedis:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
     # Consumer API
-    def xread(self, streams: dict, block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         # Expect a single key
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
@@ -80,7 +80,7 @@ class BlockingRedis:
     def __init__(self) -> None:
         self._release = threading.Event()
 
-    def xread(self, streams: dict, block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         self._release.wait(timeout=block / 1000.0 if block else None)
         return []
 
@@ -245,7 +245,7 @@ class TestStreamsSubscription:
                 self._fields = fields
                 self._calls = 0
 
-            def xread(self, streams: dict, block: int | None = None, count: int | None = None):
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
                 self._calls += 1
                 if self._calls == 1:
                     key = next(iter(streams))
