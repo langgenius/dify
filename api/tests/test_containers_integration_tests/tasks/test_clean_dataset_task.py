@@ -328,7 +328,9 @@ class TestCleanDatasetTask:
         ).all()
         assert len(process_rules) == 0
 
-        queries = db_session_with_containers.scalars(select(DatasetQuery).where(DatasetQuery.dataset_id == dataset.id)).all()
+        queries = db_session_with_containers.scalars(
+            select(DatasetQuery).where(DatasetQuery.dataset_id == dataset.id)
+        ).all()
         assert len(queries) == 0
 
         # Check that app dataset joins were cleaned up
@@ -437,7 +439,9 @@ class TestCleanDatasetTask:
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        ).all()
         assert len(remaining_files) == 0
 
         # Check that metadata and bindings were cleaned up
@@ -777,7 +781,9 @@ class TestCleanDatasetTask:
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        ).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata and bindings were deleted
@@ -859,7 +865,9 @@ class TestCleanDatasetTask:
         # Check that upload file was still deleted from database despite storage failure
         # Note: When storage operations fail, the upload file may not be deleted
         # This demonstrates that the cleanup process continues even with storage errors
-        remaining_files = db_session_with_containers.scalars(select(UploadFile).where(UploadFile.id == upload_file.id)).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id == upload_file.id)
+        ).all()
         # The upload file should still be deleted from the database even if storage cleanup fails
         # However, this depends on the specific implementation of clean_dataset_task
         if len(remaining_files) > 0:
@@ -1021,7 +1029,9 @@ class TestCleanDatasetTask:
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.scalars(select(UploadFile).where(UploadFile.id == upload_file_id)).all()
+        remaining_files = db_session_with_containers.scalars(
+            select(UploadFile).where(UploadFile.id == upload_file_id)
+        ).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata was deleted
