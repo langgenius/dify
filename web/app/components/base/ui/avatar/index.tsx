@@ -24,7 +24,7 @@ export type AvatarProps = {
   onLoadingStatusChange?: (status: ImageLoadingStatus) => void
 }
 
-export type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
+type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
   size?: AvatarSize
 }
 
@@ -45,7 +45,7 @@ export function AvatarRoot({
   )
 }
 
-export type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
+type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
   size?: AvatarSize
 }
 
@@ -66,7 +66,7 @@ export function AvatarFallback({
   )
 }
 
-export type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
+type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
 
 export function AvatarImage({
   className,
@@ -74,7 +74,7 @@ export function AvatarImage({
 }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
-      className={cn('inset-0 absolute size-full object-cover', className)}
+      className={cn('absolute inset-0 size-full object-cover', className)}
       {...props}
     />
   )
