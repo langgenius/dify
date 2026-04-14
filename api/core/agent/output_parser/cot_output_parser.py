@@ -1,7 +1,7 @@
 import json
 import re
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Union
 
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 
@@ -11,7 +11,7 @@ from core.agent.entities import AgentScratchpadUnit
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict
+        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict[str, Any]
     ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
         def parse_action(action) -> Union[str, AgentScratchpadUnit.Action]:
             action_name = None
