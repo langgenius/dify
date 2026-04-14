@@ -5,9 +5,11 @@ Web App Human Input Form APIs.
 import json
 import logging
 from datetime import datetime
+from typing import Any, NotRequired, TypedDict
 
 from flask import Response, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -22,6 +24,12 @@ from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
+
+
+class HumanInputFormSubmitPayload(BaseModel):
+    inputs: dict
+    action: str
+
 
 _FORM_SUBMIT_RATE_LIMITER = RateLimiter(
     prefix="web_form_submit_rate_limit",
@@ -51,10 +59,19 @@ def _to_timestamp(value: datetime) -> int:
     return int(value.timestamp())
 
 
+class FormDefinitionPayload(TypedDict):
+    form_content: Any
+    inputs: Any
+    resolved_default_values: dict[str, str]
+    user_actions: Any
+    expiration_time: int
+    site: NotRequired[dict]
+
+
 def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
     """Return the form payload (optionally with site) as a JSON response."""
     definition_payload = form.get_definition().model_dump()
-    payload = {
+    payload: FormDefinitionPayload = {
         "form_content": definition_payload["rendered_content"],
         "inputs": definition_payload["inputs"],
         "resolved_default_values": _stringify_default_values(definition_payload["default_values"]),
@@ -85,7 +102,7 @@ class HumanInputFormApi(Resource):
         _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        # TODO(QuantumGhost): forbid submision for form tokens
+        # TODO(QuantumGhost): forbid submission for form tokens
         # that are only for console.
         form = service.get_form_by_token(form_token)
 
@@ -112,10 +129,7 @@ class HumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("action", type=str, required=True, location="json")
-        args = parser.parse_args()
+        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
 
         ip_address = extract_remote_ip(request)
         if _FORM_SUBMIT_RATE_LIMITER.is_rate_limited(ip_address):
@@ -135,8 +149,8 @@ class HumanInputFormApi(Resource):
             service.submit_form_by_token(
                 recipient_type=recipient_type,
                 form_token=form_token,
-                selected_action_id=args["action"],
-                form_data=args["inputs"],
+                selected_action_id=payload.action,
+                form_data=payload.inputs,
                 submission_end_user_id=None,
                 # submission_end_user_id=_end_user.id,
             )

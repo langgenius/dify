@@ -32,7 +32,7 @@ class TestDeleteCustomOauthClientParams:
         result = BuiltinToolManageService.delete_custom_oauth_client_params("tenant-1", "google")
 
         assert result == {"result": "success"}
-        session.query.return_value.filter_by.return_value.delete.assert_called_once()
+        session.execute.assert_called_once()
 
 
 class TestListBuiltinToolProviderTools:
@@ -111,7 +111,7 @@ class TestIsOauthSystemClientExists:
     @patch(f"{MODULE}.db")
     def test_true_when_exists(self, mock_db, mock_session_cls):
         session = _mock_session(mock_session_cls)
-        session.query.return_value.filter_by.return_value.first.return_value = MagicMock()
+        session.scalar.return_value = MagicMock()
 
         assert BuiltinToolManageService.is_oauth_system_client_exists("google") is True
 
@@ -119,7 +119,7 @@ class TestIsOauthSystemClientExists:
     @patch(f"{MODULE}.db")
     def test_false_when_missing(self, mock_db, mock_session_cls):
         session = _mock_session(mock_session_cls)
-        session.query.return_value.filter_by.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         assert BuiltinToolManageService.is_oauth_system_client_exists("google") is False
 
@@ -129,7 +129,7 @@ class TestIsOauthCustomClientEnabled:
     @patch(f"{MODULE}.db")
     def test_true_when_enabled(self, mock_db, mock_session_cls):
         session = _mock_session(mock_session_cls)
-        session.query.return_value.filter_by.return_value.first.return_value = MagicMock(enabled=True)
+        session.scalar.return_value = MagicMock(enabled=True)
 
         assert BuiltinToolManageService.is_oauth_custom_client_enabled("t", "g") is True
 
@@ -137,7 +137,7 @@ class TestIsOauthCustomClientEnabled:
     @patch(f"{MODULE}.db")
     def test_false_when_none(self, mock_db, mock_session_cls):
         session = _mock_session(mock_session_cls)
-        session.query.return_value.filter_by.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         assert BuiltinToolManageService.is_oauth_custom_client_enabled("t", "g") is False
 
@@ -149,7 +149,7 @@ class TestDeleteBuiltinToolProvider:
     @patch(f"{MODULE}.db")
     def test_raises_when_not_found(self, mock_db, mock_sm_cls, mock_tm, mock_enc):
         session = _mock_sessionmaker(mock_sm_cls)
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="you have not added provider"):
             BuiltinToolManageService.delete_builtin_tool_provider("t", "p", "id")
@@ -161,7 +161,7 @@ class TestDeleteBuiltinToolProvider:
     def test_deletes_provider_and_clears_cache(self, mock_db, mock_sm_cls, mock_tm, mock_enc):
         session = _mock_sessionmaker(mock_sm_cls)
         db_provider = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = db_provider
+        session.scalar.return_value = db_provider
         mock_cache = MagicMock()
         mock_enc.return_value = (MagicMock(), mock_cache)
 
@@ -177,7 +177,7 @@ class TestSetDefaultProvider:
     @patch(f"{MODULE}.db")
     def test_raises_when_not_found(self, mock_db, mock_sm_cls):
         session = _mock_sessionmaker(mock_sm_cls)
-        session.query.return_value.filter_by.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="provider not found"):
             BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
@@ -187,7 +187,7 @@ class TestSetDefaultProvider:
     def test_sets_default_and_clears_old(self, mock_db, mock_sm_cls):
         session = _mock_sessionmaker(mock_sm_cls)
         target = MagicMock()
-        session.query.return_value.filter_by.return_value.first.return_value = target
+        session.scalar.return_value = target
 
         result = BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
 
@@ -200,7 +200,7 @@ class TestUpdateBuiltinToolProvider:
     @patch(f"{MODULE}.db")
     def test_raises_when_provider_not_exists(self, mock_db, mock_sm_cls):
         session = _mock_sessionmaker(mock_sm_cls)
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="you have not added provider"):
             BuiltinToolManageService.update_builtin_tool_provider("u", "t", "p", "c")
@@ -213,7 +213,7 @@ class TestUpdateBuiltinToolProvider:
     def test_updates_credentials_and_commits(self, mock_db, mock_sm_cls, mock_tm, mock_cred_type, mock_enc):
         session = _mock_sessionmaker(mock_sm_cls)
         db_provider = MagicMock(credential_type="api_key", credentials="{}")
-        session.query.return_value.where.return_value.first.return_value = db_provider
+        session.scalar.return_value = db_provider
 
         mock_cred_instance = MagicMock()
         mock_cred_instance.is_editable.return_value = True
@@ -274,7 +274,7 @@ class TestGetOauthClient:
         mock_create_enc.return_value = (mock_encrypter, MagicMock())
 
         user_client = MagicMock(oauth_params='{"encrypted": "data"}')
-        session.query.return_value.filter_by.return_value.first.return_value = user_client
+        session.scalar.return_value = user_client
 
         result = BuiltinToolManageService.get_oauth_client("t", "google")
 
@@ -297,10 +297,7 @@ class TestGetOauthClient:
         mock_create_enc.return_value = (MagicMock(), MagicMock())
 
         system_client = MagicMock(encrypted_oauth_params="enc")
-        session.query.return_value.filter_by.return_value.first.side_effect = [
-            None,  # user client
-            system_client,  # system client
-        ]
+        session.scalar.side_effect = [None, system_client]
 
         result = BuiltinToolManageService.get_oauth_client("t", "google")
 
@@ -325,7 +322,7 @@ class TestGetCustomOauthClientParams:
     @patch(f"{MODULE}.db")
     def test_returns_empty_when_none(self, mock_db, mock_session_cls):
         session = _mock_session(mock_session_cls)
-        session.query.return_value.filter_by.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         result = BuiltinToolManageService.get_custom_oauth_client_params("t", "p")
 
@@ -391,7 +388,7 @@ class TestGetBuiltinProvider:
         session = _mock_session(mock_session_cls)
         mock_prov_id.return_value.provider_name = "google"
         mock_prov_id.return_value.organization = "langgenius"
-        session.query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         result = BuiltinToolManageService.get_builtin_provider("google", "t")
 
@@ -417,7 +414,7 @@ class TestGetBuiltinProvider:
             return m
 
         mock_prov_id.side_effect = prov_id_side_effect
-        session.query.return_value.where.return_value.order_by.return_value.first.return_value = db_provider
+        session.scalar.return_value = db_provider
 
         result = BuiltinToolManageService.get_builtin_provider("google", "t")
 
@@ -439,7 +436,7 @@ class TestGetBuiltinProvider:
 
         mock_prov_id.side_effect = prov_id_side_effect
         db_provider = MagicMock(provider="third-party/custom/custom-tool")
-        session.query.return_value.where.return_value.order_by.return_value.first.return_value = db_provider
+        session.scalar.return_value = db_provider
 
         result = BuiltinToolManageService.get_builtin_provider("third-party/custom/custom-tool", "t")
 
@@ -452,7 +449,7 @@ class TestGetBuiltinProvider:
         session = _mock_session(mock_session_cls)
         mock_prov_id.side_effect = Exception("parse error")
         fallback = MagicMock()
-        session.query.return_value.where.return_value.order_by.return_value.first.return_value = fallback
+        session.scalar.return_value = fallback
 
         result = BuiltinToolManageService.get_builtin_provider("old-provider", "t")
 

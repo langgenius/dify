@@ -92,7 +92,7 @@ class ApiToolManageService:
 
     @staticmethod
     def convert_schema_to_tool_bundles(
-        schema: str, extra_info: dict | None = None
+        schema: str, extra_info: dict[str, Any] | None = None
     ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
@@ -109,8 +109,8 @@ class ApiToolManageService:
         user_id: str,
         tenant_id: str,
         provider_name: str,
-        icon: dict,
-        credentials: dict,
+        icon: dict[str, Any],
+        credentials: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
@@ -244,8 +244,8 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         original_provider: str,
-        icon: dict,
-        credentials: dict,
+        icon: dict[str, Any],
+        credentials: dict[str, Any],
         _schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str | None,
@@ -356,8 +356,8 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         tool_name: str,
-        credentials: dict,
-        parameters: dict,
+        credentials: dict[str, Any],
+        parameters: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
     ):

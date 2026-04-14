@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -62,7 +63,7 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     return node
 
 
-def build_webhook_variable_pool(inputs: dict) -> VariablePool:
+def build_webhook_variable_pool(inputs: dict[str, Any]) -> VariablePool:
     return build_test_variable_pool(
         variables=default_system_variables(),
         node_id="1",

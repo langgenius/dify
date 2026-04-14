@@ -6,7 +6,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import AppListContext from '@/context/app-list-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
@@ -34,7 +34,7 @@ const AppCard = ({
     }
   }, [setShowTryAppPanel, app.category])
   return (
-    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4  shadow-xs hover:shadow-lg')}>
+    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg')}>
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
           <AppIcon
@@ -57,13 +57,13 @@ const AppCard = ({
           <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={app.app.mode} />
         </div>
       </div>
-      <div className="system-xs-regular py-1 text-text-tertiary">
+      <div className="py-1 system-xs-regular text-text-tertiary">
         <div className="line-clamp-3">
           {app.description}
         </div>
       </div>
       {(canCreate || isTrialApp) && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
+        <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
           <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', canCreate && 'grid-cols-2')}>
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>
