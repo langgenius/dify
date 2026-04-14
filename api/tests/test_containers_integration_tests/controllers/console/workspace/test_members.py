@@ -45,7 +45,7 @@ class WorkspaceMembersIntegrationFactory:
             timezone="UTC",
         )
         db_session_with_containers.add(account)
-        db_session_with_containers.flush()
+        db_session_with_containers.commit()
 
         if tenant is not None:
             join = TenantAccountJoin(
@@ -55,10 +55,8 @@ class WorkspaceMembersIntegrationFactory:
                 current=current,
             )
             db_session_with_containers.add(join)
-            db_session_with_containers.flush()
+            db_session_with_containers.commit()
             account.current_tenant = tenant
-
-        db_session_with_containers.commit()
         return account
 
 
