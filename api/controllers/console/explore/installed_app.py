@@ -49,7 +49,7 @@ def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str |
 
 
 def _safe_primitive(value: Any) -> Any:
-    if value is None or isinstance(value, str | int | float | bool | datetime):
+    if value is None or isinstance(value, (str, int, float, bool, datetime)):
         return value
     return None
 
