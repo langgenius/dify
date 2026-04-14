@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import queue
 from collections.abc import Sequence

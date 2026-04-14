@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -59,10 +60,8 @@ class ChatMessagesQuery(BaseModel):
         return uuid_value(value)
 
 
-class MessageFeedbackPayload(BaseModel):
+class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
     message_id: str = Field(..., description="Message ID")
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
-    content: str | None = Field(default=None, description="Feedback content")
 
     @field_validator("message_id")
     @classmethod

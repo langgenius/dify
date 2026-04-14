@@ -50,7 +50,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       description={t(`${prefixCustomize}.explanation`, { ns: 'appOverview' })}
       isShow={isShow}
       onClose={onClose}
-      className="w-[640px] !max-w-2xl"
+      className="w-[640px] max-w-2xl!"
       closable={true}
     >
       <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
@@ -80,7 +80,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`, { ns: 'appOverview' })}</div>
             <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer">
               <Button>
-                <div className="mr-1.5 border-b-[12px] border-l-[7px] border-r-[7px] border-t-0 border-solid border-text-primary border-l-transparent border-r-transparent border-t-transparent"></div>
+                <div className="mr-1.5 border-b-12 border-l-[7px] border-r-[7px] border-t-0 border-solid border-text-primary border-l-transparent border-r-transparent border-t-transparent"></div>
                 <span>{t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })}</span>
               </Button>
             </a>

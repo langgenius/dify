@@ -6,13 +6,13 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import current_app
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem, QaPreview
+from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 
 from .index_processor_factory import IndexProcessorFactory
@@ -35,7 +35,10 @@ class IndexProcessor:
         if "parent_mode" in preview:
             data.parent_mode = preview["parent_mode"]
 
-        for item in preview["preview"]:
+        # Different index processors return different preview shapes:
+        # - paragraph/parent-child processors: {"preview": [...]}
+        # - QA processor: {"qa_preview": [...]} (no "preview" key)
+        for item in preview.get("preview", []):
             if "content" in item and "child_chunks" in item:
                 data.preview.append(
                     PreviewItem(content=item["content"], child_chunks=item["child_chunks"], summary=None)
@@ -44,6 +47,10 @@ class IndexProcessor:
                 data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
             elif "content" in item:
                 data.preview.append(PreviewItem(content=item["content"], child_chunks=None, summary=None))
+
+        for item in preview.get("qa_preview", []):
+            if "question" in item and "answer" in item:
+                data.qa_preview.append(QaPreview(question=item["question"], answer=item["answer"]))
         return data
 
     def index_and_clean(
@@ -54,13 +61,13 @@ class IndexProcessor:
         chunks: Mapping[str, Any],
         batch: Any,
         summary_index_setting: SummaryIndexSettingDict | None = None,
-    ):
+    ) -> IndexingResultDict:
         with session_factory.create_session() as session:
-            document = session.query(Document).filter_by(id=document_id).first()
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not document:
                 raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
 
-            dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
@@ -97,12 +104,12 @@ class IndexProcessor:
             document.indexing_status = "completed"
             document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             document.word_count = (
-                session.query(func.sum(DocumentSegment.word_count))
-                .where(
-                    DocumentSegment.document_id == document_id,
-                    DocumentSegment.dataset_id == dataset_id,
+                session.scalar(
+                    select(func.sum(DocumentSegment.word_count)).where(
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.dataset_id == dataset_id,
+                    )
                 )
-                .scalar()
             ) or 0
             # Update need_summary based on dataset's summary_index_setting
             if summary_index_setting and summary_index_setting.get("enable") is True:
@@ -111,18 +118,20 @@ class IndexProcessor:
                 document.need_summary = False
             session.add(document)
             # update document segment status
-            session.query(DocumentSegment).where(
-                DocumentSegment.document_id == document_id,
-                DocumentSegment.dataset_id == dataset_id,
-            ).update(
-                {
-                    DocumentSegment.status: "completed",
-                    DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                }
+            session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                )
+                .values(
+                    status="completed",
+                    enabled=True,
+                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                )
             )
 
-        return {
+        result: IndexingResultDict = {
             "dataset_id": dataset_id,
             "dataset_name": dataset_name_value,
             "batch": batch,
@@ -131,6 +140,7 @@ class IndexProcessor:
             "created_at": created_at_value.timestamp(),
             "display_status": "completed",
         }
+        return result
 
     def get_preview_output(
         self,
@@ -143,11 +153,11 @@ class IndexProcessor:
         doc_language = None
         with session_factory.create_session() as session:
             if document_id:
-                document = session.query(Document).filter_by(id=document_id).first()
+                document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             else:
                 document = None
 
-            dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 

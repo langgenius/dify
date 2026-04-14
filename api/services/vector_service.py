@@ -1,10 +1,12 @@
 import logging
 
 from graphon.model_runtime.entities.model_entities import ModelType
+from sqlalchemy import delete, select
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -14,7 +16,6 @@ from extensions.ext_database import db
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class VectorService:
 
         for segment in segments:
             if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
+                dataset_document = db.session.get(DatasetDocument, segment.document_id)
                 if not dataset_document:
                     logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
@@ -38,11 +39,7 @@ class VectorService:
                     )
                     continue
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
-                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
-                )
+                processing_rule = db.session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance
@@ -271,8 +268,8 @@ class VectorService:
                     vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
-            db.session.query(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id).delete(
-                synchronize_session=False
+            db.session.execute(
+                delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id)
             )
 
             if not attachment_ids:
@@ -280,7 +277,7 @@ class VectorService:
                 return
 
             # Bulk fetch upload files - only fetch needed fields
-            upload_file_list = db.session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).all()
+            upload_file_list = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
 
             if not upload_file_list:
                 db.session.commit()

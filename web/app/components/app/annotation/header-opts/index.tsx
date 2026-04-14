@@ -97,7 +97,7 @@ const HeaderOptions: FC<Props> = ({
       <div className="w-full py-1">
         <button
           type="button"
-          className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50"
+          className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50"
           onClick={() => {
             setShowBulkImportModal(true)
           }}
@@ -106,7 +106,7 @@ const HeaderOptions: FC<Props> = ({
           <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
         </button>
         <Menu as="div" className="relative h-full w-full">
-          <MenuButton className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+          <MenuButton className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
             <FileDownload02 className="h-4 w-4 text-text-tertiary" />
             <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
             <ChevronRight className="h-[14px] w-[14px] shrink-0 text-text-tertiary" />
@@ -122,7 +122,7 @@ const HeaderOptions: FC<Props> = ({
           >
             <MenuItems
               className={cn(
-                'absolute left-1 top-[1px] z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
+                'absolute left-1 top-px z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
               )}
             >
               <CSVDownloader
@@ -134,11 +134,11 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button type="button" disabled={annotationUnavailable} className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+                <button type="button" disabled={annotationUnavailable} className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
                   <span className="system-sm-regular grow text-left text-text-secondary">CSV</span>
                 </button>
               </CSVDownloader>
-              <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
+              <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', 'border-0!')} onClick={JSONLOutput}>
                 <span className="system-sm-regular grow text-left text-text-secondary">JSONL</span>
               </button>
             </MenuItems>
@@ -147,7 +147,7 @@ const HeaderOptions: FC<Props> = ({
         <button
           type="button"
           onClick={handleClearAll}
-          className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+          className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
         >
           <RiDeleteBinLine className="h-4 w-4" />
           <span className="system-sm-regular grow text-left">
@@ -174,8 +174,8 @@ const HeaderOptions: FC<Props> = ({
           <RiMoreFill className="h-4 w-4" />
         }
         btnClassName="btn btn-secondary btn-medium w-8 p-0"
-        className="!z-20 h-fit !w-[155px]"
-        popupClassName="!w-full !overflow-visible"
+        className="z-20! h-fit w-[155px]!"
+        popupClassName="w-full! overflow-visible!"
         manualClose
       />
       {showAddModal && (

@@ -52,7 +52,7 @@ const Dropdown = ({
           <RiMoreFill className="size-4 text-text-tertiary" />
         </button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <Menu
           breadcrumbs={breadcrumbs}
           startIndex={startIndex}

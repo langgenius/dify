@@ -10,9 +10,9 @@ import {
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import { Avatar } from '@/app/components/base/ui/avatar'
 import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
@@ -118,14 +118,14 @@ export default function OAuthAuthorize() {
     <div className="bg-background-default-subtle">
       {authAppInfo?.app_icon && (
         <div className="w-max rounded-2xl border-[0.5px] border-components-panel-border bg-text-primary-on-surface p-3 shadow-lg">
-          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded" />
+          <img src={authAppInfo.app_icon} alt="app icon" className="h-10 w-10 rounded-sm" />
         </div>
       )}
 
       <div className={`mb-4 mt-5 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
           {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
-          <div className="text-[var(--color-saas-dify-blue-inverted)]">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
+          <div className="text-(--color-saas-dify-blue-inverted)">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
           {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
         </div>
         <div className="text-text-secondary body-md-regular">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>

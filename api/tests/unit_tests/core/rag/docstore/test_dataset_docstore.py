@@ -167,7 +167,7 @@ class TestDatasetDocumentStoreAddDocuments:
         ):
             mock_session = MagicMock()
             mock_db.session = mock_session
-            mock_db.session.query.return_value.where.return_value.scalar.return_value = None
+            mock_db.session.scalar.return_value = None
 
             mock_manager = MagicMock()
             mock_manager.get_model_instance.return_value = mock_model_instance
@@ -211,7 +211,7 @@ class TestDatasetDocumentStoreAddDocuments:
         with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
             mock_session = MagicMock()
             mock_db.session = mock_session
-            mock_db.session.query.return_value.where.return_value.scalar.return_value = 5
+            mock_db.session.scalar.return_value = 5
 
             with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
                 with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
@@ -276,7 +276,7 @@ class TestDatasetDocumentStoreAddDocuments:
         with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
             mock_session = MagicMock()
             mock_db.session = mock_session
-            mock_db.session.query.return_value.where.return_value.scalar.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
                 with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
@@ -353,7 +353,7 @@ class TestDatasetDocumentStoreAddDocuments:
         with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
             mock_session = MagicMock()
             mock_db.session = mock_session
-            mock_db.session.query.return_value.where.return_value.scalar.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
                 with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
@@ -721,6 +721,30 @@ class TestDatasetDocumentStoreMultimodelBinding:
 
             mock_db.session.add.assert_not_called()
 
+    def test_add_multimodel_documents_binding_with_none_document_id(self):
+        """Test that no bindings are added when document_id is None."""
+
+        mock_dataset = MagicMock(spec=Dataset)
+        mock_dataset.id = "test-dataset-id"
+        mock_dataset.tenant_id = "tenant-1"
+
+        mock_attachment = MagicMock(spec=AttachmentDocument)
+        mock_attachment.metadata = {"doc_id": "attachment-1"}
+
+        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
+            mock_session = MagicMock()
+            mock_db.session = mock_session
+
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+                document_id=None,
+            )
+
+            store.add_multimodel_documents_binding("seg-1", [mock_attachment])
+
+            mock_db.session.add.assert_not_called()
+
 
 class TestDatasetDocumentStoreAddDocumentsUpdateChild:
     """Tests for add_documents when updating existing documents with children."""
@@ -755,7 +779,7 @@ class TestDatasetDocumentStoreAddDocumentsUpdateChild:
         with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
             mock_session = MagicMock()
             mock_db.session = mock_session
-            mock_db.session.query.return_value.where.return_value.scalar.return_value = 5
+            mock_db.session.scalar.return_value = 5
 
             with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
                 with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
@@ -767,7 +791,7 @@ class TestDatasetDocumentStoreAddDocumentsUpdateChild:
 
                     store.add_documents([mock_doc], save_child=True)
 
-                    mock_db.session.query.return_value.where.return_value.delete.assert_called()
+                    mock_db.session.execute.assert_called()
                     mock_db.session.commit.assert_called()
 
 
@@ -798,7 +822,7 @@ class TestDatasetDocumentStoreAddDocumentsUpdateAnswer:
         with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
             mock_session = MagicMock()
             mock_db.session = mock_session
-            mock_db.session.query.return_value.where.return_value.scalar.return_value = 5
+            mock_db.session.scalar.return_value = 5
 
             with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
                 with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):

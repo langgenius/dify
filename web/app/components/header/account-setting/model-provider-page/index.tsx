@@ -158,8 +158,8 @@ const ModelProviderPage = ({ searchText }: Props) => {
       </div>
       {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {!filteredConfiguredProviders?.length && (
-        <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
+        <div className="mb-2 radius-lg bg-workflow-process-bg p-4">
+          <div className="flex h-10 w-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
             <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
           </div>
           <div className="mt-2 text-text-secondary system-sm-medium">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>

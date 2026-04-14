@@ -141,7 +141,7 @@ const CodeEditor: FC<Props> = ({
     <>
       {/* https://www.npmjs.com/package/@monaco-editor/react */}
       <Editor
-        // className='min-h-[100%]' // h-full
+        // className='min-h-full' // h-full
         // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
         language={languageMap[language] || 'javascript'}
         theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme

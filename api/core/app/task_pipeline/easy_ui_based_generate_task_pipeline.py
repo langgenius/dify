@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Generator
 from threading import Thread
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -12,7 +12,7 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -72,14 +72,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     """
 
     _task_state: EasyUITaskState
-    _application_generate_entity: Union[ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity]
+    _application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
     _precomputed_event_type: StreamEvent | None = None
 
     def __init__(
         self,
-        application_generate_entity: Union[
-            ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity
-        ],
+        application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
@@ -117,11 +115,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
     def process(
         self,
-    ) -> Union[
-        ChatbotAppBlockingResponse,
-        CompletionAppBlockingResponse,
-        Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None],
-    ]:
+    ) -> (
+        ChatbotAppBlockingResponse
+        | CompletionAppBlockingResponse
+        | Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse, None, None]
+    ):
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
             self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
@@ -136,7 +134,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse, None, None]
-    ) -> Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]:
+    ) -> ChatbotAppBlockingResponse | CompletionAppBlockingResponse:
         """
         Process blocking response.
         :return:
@@ -148,7 +146,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 extras = {"usage": self._task_state.llm_result.usage.model_dump()}
                 if self._task_state.metadata:
                     extras["metadata"] = self._task_state.metadata.model_dump()
-                response: Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]
+                response: ChatbotAppBlockingResponse | CompletionAppBlockingResponse
                 if self._conversation_mode == AppMode.COMPLETION:
                     response = CompletionAppBlockingResponse(
                         task_id=self._application_generate_entity.task_id,
@@ -183,7 +181,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
-    ) -> Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]:
+    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse, None, None]:
         """
         To stream response.
         :return:
@@ -268,9 +266,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                with Session(db.engine) as session:
+                with sessionmaker(bind=db.engine).begin() as session:
                     err = self.handle_error(event=event, session=session, message_id=self._message_id)
-                    session.commit()
                 yield self.error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
@@ -290,10 +287,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                         answer=output_moderation_answer
                     )
 
-                with Session(db.engine) as session:
+                with sessionmaker(bind=db.engine).begin() as session:
                     # Save message
                     self._save_message(session=session, trace_manager=trace_manager)
-                    session.commit()
                 message_end_resp = self._message_end_to_stream_response()
                 yield message_end_resp
             elif isinstance(event, QueueRetrieverResourcesEvent):
@@ -511,8 +507,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :return:
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            agent_thought: MessageAgentThought | None = (
-                session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
+            agent_thought: MessageAgentThought | None = session.scalar(
+                select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).limit(1)
             )
 
         if agent_thought:

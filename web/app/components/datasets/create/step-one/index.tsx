@@ -182,7 +182,7 @@ const StepOne = ({
                 <>
                   <FileUploader
                     fileList={files}
-                    titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg' : undefined}
+                    titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] mb-[44px]! text-lg!' : undefined}
                     prepareFileList={updateFileList}
                     onFileListUpdate={updateFileList}
                     onFileUpdate={updateFile}

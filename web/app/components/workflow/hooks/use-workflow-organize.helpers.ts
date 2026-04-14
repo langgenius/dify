@@ -1,5 +1,5 @@
 import type { Node } from '../types'
-import type { LayoutResult } from '../utils'
+import type { LayoutResult } from '../utils/elk-layout'
 import { produce } from 'immer'
 import {
   CUSTOM_NODE,

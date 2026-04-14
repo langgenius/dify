@@ -12,8 +12,8 @@ import Drawer from '@/app/components/base/drawer'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { toast } from '@/app/components/base/ui/toast'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { cn } from '@/utils/classnames'
 import { getIcon } from '../utils/get-icon'
@@ -135,10 +135,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const handleAdd = useCallback(async (data: MetadataItemWithValueLength) => {
     await onAdd(data)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setOpen(false)
   }, [onAdd, t])
 
@@ -149,10 +146,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
         ...item,
         name: templeName,
       })
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
     }
     setIsShowRenameModal(false)
   }, [userMetadata, currPayload?.id, onRename, templeName, t])
@@ -160,10 +154,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
     return async () => {
       await onRemove(payload.id)
-      Toast.notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
     }
   }, [onRemove, t])
 
@@ -174,7 +165,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       showClose
       title={t('metadata.metadata', { ns: 'dataset' })}
       footer={null}
-      panelClassName="px-4 block !max-w-[420px] my-2 rounded-l-2xl"
+      panelClassName="px-4 block max-w-[420px]! my-2 rounded-l-2xl"
     >
       <div className="h-full overflow-y-auto">
         <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>

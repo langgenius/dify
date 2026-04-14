@@ -15,7 +15,7 @@ import ResultPanel from './result-panel'
 import StatusPanel from './status'
 import TracingPanel from './tracing-panel'
 
-export type RunProps = {
+type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
@@ -117,7 +117,7 @@ const RunPanel: FC<RunProps> = ({
           <div
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
-              currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+              currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
           >
@@ -127,7 +127,7 @@ const RunPanel: FC<RunProps> = ({
         <div
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
-            currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+            currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
         >
@@ -136,7 +136,7 @@ const RunPanel: FC<RunProps> = ({
         <div
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
-            currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
+            currentTab === 'TRACING' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
         >
@@ -174,6 +174,7 @@ const RunPanel: FC<RunProps> = ({
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
             workflowRunId={runDetail.id}
+            onOpenTracingTab={() => switchTab('TRACING')}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (

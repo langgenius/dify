@@ -314,8 +314,8 @@ class TestLLMGenerator:
         assert "An unexpected error occurred" in result["error"]
 
     def test_instruction_modify_legacy_no_last_run(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
 
             # Mock __instruction_modify_common call via invoke_llm
             mock_response = MagicMock()
@@ -328,12 +328,12 @@ class TestLLMGenerator:
             assert result == {"modified": "prompt"}
 
     def test_instruction_modify_legacy_with_last_run(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
             last_run = MagicMock()
             last_run.query = "q"
             last_run.answer = "a"
             last_run.error = "e"
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = last_run
+            mock_scalar.return_value = last_run
 
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '{"modified": "prompt"}'
@@ -346,13 +346,13 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_app_not_found(self):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = None
+            mock_session.return_value.scalar.return_value = None
             with pytest.raises(ValueError, match="App not found."):
                 LLMGenerator.instruction_modify_workflow("t", "f", "n", "c", "i", MagicMock(), "o", MagicMock())
 
     def test_instruction_modify_workflow_no_workflow(self):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow_service = MagicMock()
             workflow_service.get_draft_workflow.return_value = None
             with pytest.raises(ValueError, match="Workflow not found for the given app model."):
@@ -360,7 +360,7 @@ class TestLLMGenerator:
 
     def test_instruction_modify_workflow_success(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.query.return_value.where.return_value.first.return_value = MagicMock()
+            mock_session.return_value.scalar.return_value = MagicMock()
             workflow = MagicMock()
             workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
 
@@ -483,8 +483,8 @@ class TestLLMGenerator:
 
     def test_instruction_modify_common_placeholders(self, mock_model_instance, model_config_entity):
         # Testing placeholders replacement via instruction_modify_legacy for convenience
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
 
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '{"ok": true}'
@@ -504,8 +504,8 @@ class TestLLMGenerator:
             assert "current_val" in user_msg_dict["instruction"]
 
     def test_instruction_modify_common_no_braces(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = "No braces here"
             mock_model_instance.invoke_llm.return_value = mock_response
@@ -516,8 +516,8 @@ class TestLLMGenerator:
             assert "Could not find a valid JSON object" in result["error"]
 
     def test_instruction_modify_common_not_dict(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = "[1, 2, 3]"
             mock_model_instance.invoke_llm.return_value = mock_response
@@ -556,8 +556,8 @@ class TestLLMGenerator:
                 )
 
     def test_instruction_modify_common_invoke_error(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke Failed")
 
             result = LLMGenerator.instruction_modify_legacy(
@@ -566,8 +566,8 @@ class TestLLMGenerator:
             assert "Failed to generate code" in result["error"]
 
     def test_instruction_modify_common_exception(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
             mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
             result = LLMGenerator.instruction_modify_legacy(
@@ -576,8 +576,8 @@ class TestLLMGenerator:
             assert "An unexpected error occurred" in result["error"]
 
     def test_instruction_modify_common_json_error(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.query") as mock_query:
-            mock_query.return_value.where.return_value.order_by.return_value.first.return_value = None
+        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
+            mock_scalar.return_value = None
 
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = "No JSON here"

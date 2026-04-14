@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
-from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 
 class TestParentChildIndexProcessor:
@@ -208,11 +208,7 @@ class TestParentChildIndexProcessor:
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
 
     def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        delete_query = Mock()
-        where_query = Mock()
-        where_query.delete.return_value = 2
         session = Mock()
-        session.query.return_value.where.return_value = where_query
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -227,16 +223,16 @@ class TestParentChildIndexProcessor:
             )
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
-        where_query.delete.assert_called_once_with(synchronize_session=False)
+        session.execute.assert_called()
         session.commit.assert_called_once()
 
     def test_clean_queries_child_ids_when_not_precomputed(
         self, processor: ParentChildIndexProcessor, dataset: Mock
     ) -> None:
-        child_query = Mock()
-        child_query.join.return_value.where.return_value.all.return_value = [("child-1",), (None,), ("child-2",)]
+        execute_result = Mock()
+        execute_result.all.return_value = [("child-1",), (None,), ("child-2",)]
         session = Mock()
-        session.query.return_value = child_query
+        session.execute.return_value = execute_result
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -248,10 +244,7 @@ class TestParentChildIndexProcessor:
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
 
     def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        where_query = Mock()
-        where_query.delete.return_value = 3
         session = Mock()
-        session.query.return_value.where.return_value = where_query
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -261,14 +254,14 @@ class TestParentChildIndexProcessor:
             processor.clean(dataset, None, delete_child_chunks=True)
 
         vector.delete.assert_called_once()
-        where_query.delete.assert_called_once_with(synchronize_session=False)
+        session.execute.assert_called()
         session.commit.assert_called_once()
 
     def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        segment_query = Mock()
-        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.query.return_value = segment_query
+        session.scalars.return_value = scalars_result
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False

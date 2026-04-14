@@ -1,15 +1,15 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import helpers as file_helpers
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -26,25 +26,25 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
-from services.app_dsl_service import AppDslService, ImportMode
+from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.dsl_entities import ImportMode
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     RerankingModel,
-    Rule,
-    Segmentation,
     WebsiteInfo,
     WeightKeywordSetting,
     WeightModel,
@@ -152,17 +152,7 @@ class AppTracePayload(BaseModel):
         return value
 
 
-JSONValue: TypeAlias = Any
-
-
-class ResponseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="ignore",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
+type JSONValue = Any
 
 
 def _to_timestamp(value: datetime | int | None) -> int | None:
@@ -642,7 +632,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -655,7 +645,6 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
-            session.commit()
 
             # Inherit web app permission from original app
             if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:

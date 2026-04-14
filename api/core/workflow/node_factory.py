@@ -1,8 +1,9 @@
 import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, TypeAlias, cast, final
+from typing import TYPE_CHECKING, Any, cast, final, override
 
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -22,7 +23,6 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from typing_extensions import override
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
@@ -66,6 +66,31 @@ LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
     (BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES)
 )
+
+
+@dataclass(frozen=True, slots=True)
+class DifyGraphInitContext:
+    """Explicit graph-init values owned by the workflow layer.
+
+    Dify is gradually removing direct `GraphInitParams` construction from its
+    production call sites. Keep the translation here until `graphon` exposes an
+    equivalent explicit API.
+    """
+
+    workflow_id: str
+    graph_config: Mapping[str, Any]
+    run_context: Mapping[str, Any]
+    call_depth: int
+
+    def to_graph_init_params(self) -> "GraphInitParams":
+        from graphon.entities import GraphInitParams
+
+        return GraphInitParams(
+            workflow_id=self.workflow_id,
+            graph_config=self.graph_config,
+            run_context=self.run_context,
+            call_depth=self.call_depth,
+        )
 
 
 def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] = frozenset()) -> None:
@@ -192,7 +217,7 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
 NODE_TYPE_CLASSES_MAPPING: MutableMapping[NodeType, Mapping[str, type[Node]]] = _LazyNodeTypeClassesMapping()
 
 
-LLMCompatibleNodeData: TypeAlias = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
+type LLMCompatibleNodeData = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
 
 
 def fetch_memory(
@@ -237,6 +262,19 @@ class DifyNodeFactory(NodeFactory):
     """
     Default implementation of NodeFactory that resolves node classes from the live registry.
     """
+
+    @classmethod
+    def from_graph_init_context(
+        cls,
+        *,
+        graph_init_context: DifyGraphInitContext,
+        graph_runtime_state: "GraphRuntimeState",
+    ) -> "DifyNodeFactory":
+        """Bridge Dify's explicit init context into the current `graphon` API."""
+        return cls(
+            graph_init_params=graph_init_context.to_graph_init_params(),
+            graph_runtime_state=graph_runtime_state,
+        )
 
     def __init__(
         self,

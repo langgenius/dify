@@ -16,7 +16,7 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/modal'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {
@@ -45,7 +45,6 @@ const ApiKeyModal = ({
   formSchemas: formSchemasFromProps = [],
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -113,10 +112,7 @@ const ApiKeyModal = ({
           name: __name__ || '',
         })
       }
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
 
       onClose?.()
       onUpdate?.()
@@ -124,7 +120,7 @@ const ApiKeyModal = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
 
   return (
     <Modal
@@ -142,7 +138,7 @@ const ApiKeyModal = ({
       onExtraButtonClick={onRemove}
       disabled={disabled || isLoading || doingAction}
       clickOutsideNotClose={true}
-      wrapperClassName="!z-[1002]"
+      wrapperClassName="z-1002!"
     >
       {pluginPayload.detail && (
         <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />

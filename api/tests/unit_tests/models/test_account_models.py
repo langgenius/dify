@@ -12,7 +12,6 @@ This test suite covers:
 import base64
 import secrets
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -310,90 +309,6 @@ class TestAccountStatusTransitions:
 class TestTenantRelationshipIntegrity:
     """Test suite for tenant relationship integrity."""
 
-    @patch("models.account.db")
-    def test_account_current_tenant_property(self, mock_db):
-        """Test the current_tenant property getter."""
-        # Arrange
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-        )
-        account.id = str(uuid4())
-
-        tenant = Tenant(name="Test Tenant")
-        tenant.id = str(uuid4())
-
-        account._current_tenant = tenant
-
-        # Act
-        result = account.current_tenant
-
-        # Assert
-        assert result == tenant
-
-    @patch("models.account.Session")
-    @patch("models.account.db")
-    def test_account_current_tenant_setter_with_valid_tenant(self, mock_db, mock_session_class):
-        """Test setting current_tenant with a valid tenant relationship."""
-        # Arrange
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-        )
-        account.id = str(uuid4())
-
-        tenant = Tenant(name="Test Tenant")
-        tenant.id = str(uuid4())
-
-        # Mock the session and queries
-        mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
-
-        # Mock TenantAccountJoin query result
-        tenant_join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.OWNER,
-        )
-        mock_session.scalar.return_value = tenant_join
-
-        # Mock Tenant query result
-        mock_session.scalars.return_value.one.return_value = tenant
-
-        # Act
-        account.current_tenant = tenant
-
-        # Assert
-        assert account._current_tenant == tenant
-        assert account.role == TenantAccountRole.OWNER
-
-    @patch("models.account.Session")
-    @patch("models.account.db")
-    def test_account_current_tenant_setter_without_relationship(self, mock_db, mock_session_class):
-        """Test setting current_tenant when no relationship exists."""
-        # Arrange
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-        )
-        account.id = str(uuid4())
-
-        tenant = Tenant(name="Test Tenant")
-        tenant.id = str(uuid4())
-
-        # Mock the session and queries
-        mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
-
-        # Mock no TenantAccountJoin found
-        mock_session.scalar.return_value = None
-
-        # Act
-        account.current_tenant = tenant
-
-        # Assert
-        assert account._current_tenant is None
-
     def test_account_current_tenant_id_property(self):
         """Test the current_tenant_id property."""
         # Arrange
@@ -417,61 +332,6 @@ class TestTenantRelationshipIntegrity:
 
         # Assert
         assert tenant_id_none is None
-
-    @patch("models.account.Session")
-    @patch("models.account.db")
-    def test_account_set_tenant_id_method(self, mock_db, mock_session_class):
-        """Test the set_tenant_id method."""
-        # Arrange
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-        )
-        account.id = str(uuid4())
-
-        tenant = Tenant(name="Test Tenant")
-        tenant.id = str(uuid4())
-
-        tenant_join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.ADMIN,
-        )
-
-        # Mock the session and queries
-        mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.execute.return_value.first.return_value = (tenant, tenant_join)
-
-        # Act
-        account.set_tenant_id(tenant.id)
-
-        # Assert
-        assert account._current_tenant == tenant
-        assert account.role == TenantAccountRole.ADMIN
-
-    @patch("models.account.Session")
-    @patch("models.account.db")
-    def test_account_set_tenant_id_with_no_relationship(self, mock_db, mock_session_class):
-        """Test set_tenant_id when no relationship exists."""
-        # Arrange
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-        )
-        account.id = str(uuid4())
-        tenant_id = str(uuid4())
-
-        # Mock the session and queries
-        mock_session = MagicMock()
-        mock_session_class.return_value.__enter__.return_value = mock_session
-        mock_session.execute.return_value.first.return_value = None
-
-        # Act
-        account.set_tenant_id(tenant_id)
-
-        # Assert - should not set tenant when no relationship exists
-        # The method returns early without setting _current_tenant
 
 
 class TestAccountRolePermissions:
@@ -605,51 +465,6 @@ class TestAccountRolePermissions:
         assert current_role == TenantAccountRole.EDITOR
 
 
-class TestAccountGetByOpenId:
-    """Test suite for get_by_openid class method."""
-
-    @patch("models.account.db")
-    def test_get_by_openid_success(self, mock_db):
-        """Test successful retrieval of account by OpenID."""
-        # Arrange
-        provider = "google"
-        open_id = "google_user_123"
-        account_id = str(uuid4())
-
-        mock_account_integrate = MagicMock()
-        mock_account_integrate.account_id = account_id
-
-        mock_account = Account(name="Test User", email="test@example.com")
-        mock_account.id = account_id
-
-        # Mock db.session.execute().scalar_one_or_none() for AccountIntegrate lookup
-        mock_db.session.execute.return_value.scalar_one_or_none.return_value = mock_account_integrate
-        # Mock db.session.scalar() for Account lookup
-        mock_db.session.scalar.return_value = mock_account
-
-        # Act
-        result = Account.get_by_openid(provider, open_id)
-
-        # Assert
-        assert result == mock_account
-
-    @patch("models.account.db")
-    def test_get_by_openid_not_found(self, mock_db):
-        """Test get_by_openid when account integrate doesn't exist."""
-        # Arrange
-        provider = "github"
-        open_id = "github_user_456"
-
-        # Mock db.session.execute().scalar_one_or_none() to return None
-        mock_db.session.execute.return_value.scalar_one_or_none.return_value = None
-
-        # Act
-        result = Account.get_by_openid(provider, open_id)
-
-        # Assert
-        assert result is None
-
-
 class TestTenantAccountJoinModel:
     """Test suite for TenantAccountJoin model."""
 
@@ -759,31 +574,6 @@ class TestTenantModel:
 
         # Assert
         assert tenant.custom_config == '{"feature1": true, "feature2": "value"}'
-
-    @patch("models.account.db")
-    def test_tenant_get_accounts(self, mock_db):
-        """Test getting accounts associated with a tenant."""
-        # Arrange
-        tenant = Tenant(name="Test Workspace")
-        tenant.id = str(uuid4())
-
-        account1 = Account(name="User 1", email="user1@example.com")
-        account1.id = str(uuid4())
-        account2 = Account(name="User 2", email="user2@example.com")
-        account2.id = str(uuid4())
-
-        # Mock the query chain
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = [account1, account2]
-        mock_db.session.scalars.return_value = mock_scalars
-
-        # Act
-        accounts = tenant.get_accounts()
-
-        # Assert
-        assert len(accounts) == 2
-        assert account1 in accounts
-        assert account2 in accounts
 
 
 class TestTenantStatusEnum:

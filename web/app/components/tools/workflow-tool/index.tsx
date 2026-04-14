@@ -17,9 +17,14 @@ import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
-import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import { buildWorkflowOutputParameters } from './utils'
+import {
+  buildWorkflowToolRequestPayload,
+  getReservedWorkflowOutputParameters,
+  getWorkflowOutputParameters,
+  hasReservedWorkflowOutputConflict,
+  isWorkflowToolNameValid,
+} from './helpers'
 
 export type WorkflowToolModalPayload = {
   icon: Emoji
@@ -67,27 +72,14 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
   const rawOutputParameters = payload.outputParameters
   const outputSchema = payload.tool?.output_schema
-  const outputParameters = useMemo<WorkflowToolProviderOutputParameter[]>(() => buildWorkflowOutputParameters(rawOutputParameters, outputSchema), [rawOutputParameters, outputSchema])
-  const reservedOutputParameters: WorkflowToolProviderOutputParameter[] = [
-    {
-      name: 'text',
-      description: t('nodes.tool.outputVars.text', { ns: 'workflow' }),
-      type: VarType.string,
-      reserved: true,
-    },
-    {
-      name: 'files',
-      description: t('nodes.tool.outputVars.files.title', { ns: 'workflow' }),
-      type: VarType.arrayFile,
-      reserved: true,
-    },
-    {
-      name: 'json',
-      description: t('nodes.tool.outputVars.json', { ns: 'workflow' }),
-      type: VarType.arrayObject,
-      reserved: true,
-    },
-  ]
+  const outputParameters = useMemo<WorkflowToolProviderOutputParameter[]>(
+    () => getWorkflowOutputParameters(rawOutputParameters, outputSchema),
+    [rawOutputParameters, outputSchema],
+  )
+  const reservedOutputParameters = useMemo(
+    () => getReservedWorkflowOutputParameters(t),
+    [t],
+  )
 
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
@@ -105,18 +97,6 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
   const [showModal, setShowModal] = useState(false)
 
-  const isNameValid = (name: string) => {
-    // when the user has not input anything, no need for a warning
-    if (name === '')
-      return true
-
-    return /^\w+$/.test(name)
-  }
-
-  const isOutputParameterReserved = (name: string) => {
-    return reservedOutputParameters.find(p => p.name === name)
-  }
-
   const onConfirm = () => {
     let errorMessage = ''
     if (!label)
@@ -125,7 +105,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     if (!name)
       errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.nameForToolCall', { ns: 'tools' }) })
 
-    if (!isNameValid(name))
+    if (!isWorkflowToolNameValid(name))
       errorMessage = t('createTool.nameForToolCall', { ns: 'tools' }) + t('createTool.nameForToolCallTip', { ns: 'tools' })
 
     if (errorMessage) {
@@ -133,19 +113,15 @@ const WorkflowToolAsModal: FC<Props> = ({
       return
     }
 
-    const requestParams = {
+    const requestParams = buildWorkflowToolRequestPayload({
       name,
       description,
-      icon: emoji,
+      emoji,
       label,
-      parameters: parameters.map(item => ({
-        name: item.name,
-        description: item.description,
-        form: item.form,
-      })),
+      parameters,
       labels,
-      privacy_policy: privacyPolicy,
-    }
+      privacyPolicy,
+    })
     if (!isAdd) {
       onSave?.({
         ...requestParams,
@@ -166,8 +142,8 @@ const WorkflowToolAsModal: FC<Props> = ({
         isShow
         onHide={onHide}
         title={t('common.workflowAsTool', { ns: 'workflow' })!}
-        panelClassName="mt-2 !w-[640px]"
-        maxWidthClassName="!max-w-[640px]"
+        panelClassName="mt-2 w-[640px]!"
+        maxWidthClassName="max-w-[640px]!"
         height="calc(100vh - 16px)"
         headerClassName="!border-b-divider"
         body={(
@@ -175,7 +151,7 @@ const WorkflowToolAsModal: FC<Props> = ({
             <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
               {/* name & icon */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">
+                <div className="py-2 system-sm-medium text-text-primary">
                   {t('createTool.name', { ns: 'tools' })}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
@@ -192,7 +168,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* name for tool call */}
               <div>
-                <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                <div className="flex items-center py-2 system-sm-medium text-text-primary">
                   {t('createTool.nameForToolCall', { ns: 'tools' })}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
@@ -210,13 +186,13 @@ const WorkflowToolAsModal: FC<Props> = ({
                   value={name}
                   onChange={e => setName(e.target.value)}
                 />
-                {!isNameValid(name) && (
+                {!isWorkflowToolNameValid(name) && (
                   <div className="text-xs leading-[18px] text-red-500">{t('createTool.nameForToolCallTip', { ns: 'tools' })}</div>
                 )}
               </div>
               {/* description */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
                 <Textarea
                   placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
                   value={description}
@@ -225,10 +201,10 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tool Input  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                  <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
-                    <thead className="uppercase text-text-tertiary">
+                  <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
+                    <thead className="text-text-tertiary uppercase">
                       <tr className="border-b border-divider-regular">
                         <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.toolInput.name', { ns: 'tools' })}</th>
                         <th className="w-[102px] p-2 pl-3 font-medium">{t('createTool.toolInput.method', { ns: 'tools' })}</th>
@@ -265,7 +241,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                           <td className="w-[236px] p-2 pl-3 text-text-tertiary">
                             <input
                               type="text"
-                              className="w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary"
+                              className="w-full appearance-none bg-transparent text-[13px] leading-[18px] font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
                               placeholder={t('createTool.toolInput.descriptionPlaceholder', { ns: 'tools' })!}
                               value={item.description}
                               onChange={e => handleParameterChange('description', e.target.value, index)}
@@ -279,10 +255,10 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tool Output  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
-                  <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
-                    <thead className="uppercase text-text-tertiary">
+                  <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
+                    <thead className="text-text-tertiary uppercase">
                       <tr className="border-b border-divider-regular">
                         <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.name', { ns: 'tools' })}</th>
                         <th className="p-2 pl-3 font-medium">{t('createTool.toolOutput.description', { ns: 'tools' })}</th>
@@ -297,7 +273,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                                 <span className="truncate font-medium text-text-primary">{item.name}</span>
                                 <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('createTool.toolOutput.reserved', { ns: 'tools' }) : ''}</span>
                                 {
-                                  !item.reserved && isOutputParameterReserved(item.name)
+                                  !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
                                     ? (
                                         <Tooltip
                                           popupContent={(
@@ -316,7 +292,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                             </div>
                           </td>
                           <td className="w-[236px] p-2 pl-3 text-text-tertiary">
-                            <span className="text-[13px] font-normal leading-[18px] text-text-secondary">{item.description}</span>
+                            <span className="text-[13px] leading-[18px] font-normal text-text-secondary">{item.description}</span>
                           </td>
                         </tr>
                       ))}
@@ -326,12 +302,12 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tags */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
               {/* Privacy Policy */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+                <div className="py-2 system-sm-medium text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
                 <Input
                   className="h-10"
                   value={privacyPolicy}
@@ -344,7 +320,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {!isAdd && onRemove && (
                 <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
               )}
-              <div className="flex space-x-2 ">
+              <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                 <Button
                   variant="primary"

@@ -70,7 +70,7 @@ const TagFilter: FC<TagFilterProps> = ({
                 !!value.length && 'pr-6 shadow-xs',
               )}
             >
-              <div className="p-[1px]">
+              <div className="p-px">
                 <Tag01 className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
               </div>
               <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-secondary">
@@ -81,7 +81,7 @@ const TagFilter: FC<TagFilterProps> = ({
                 <div className="shrink-0 text-xs font-medium leading-[18px] text-text-tertiary">{`+${value.length - 1}`}</div>
               )}
               {!value.length && (
-                <div className="shrink-0 p-[1px]">
+                <div className="shrink-0 p-px">
                   <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
                 </div>
               )}
@@ -91,7 +91,7 @@ const TagFilter: FC<TagFilterProps> = ({
         {!!value.length && (
           <button
             type="button"
-            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-[1px]"
+            className="group/clear absolute right-2 top-1/2 -translate-y-1/2 p-px"
             onClick={() => onChange([])}
             data-testid="tag-filter-clear-button"
           >

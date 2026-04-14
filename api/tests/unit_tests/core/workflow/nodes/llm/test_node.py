@@ -1,4 +1,5 @@
 import base64
+import logging
 import uuid
 from collections.abc import Sequence
 from unittest import mock
@@ -1261,6 +1262,10 @@ def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
 
 
 class TestSaveMultimodalOutputAndConvertResultToMarkdown:
+    class _UnknownItem:
+        def __str__(self) -> str:
+            return "<unknown-item>"
+
     def test_str_content(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
@@ -1330,18 +1335,23 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
     def test_unknown_content_type(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=frozenset(["hello world"]), file_saver=mock_file_saver, file_outputs=[]
+            contents=frozenset(("hello world",)), file_saver=mock_file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
         llm_node, mock_file_saver = llm_node_for_multimodal
-        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=[frozenset(["hello world"])], file_saver=mock_file_saver, file_outputs=[]
-        )
-        assert list(gen) == ["frozenset({'hello world'})"]
+        unknown_item = self._UnknownItem()
+
+        with caplog.at_level(logging.WARNING, logger="graphon.nodes.llm.node"):
+            gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
+                contents=[unknown_item], file_saver=mock_file_saver, file_outputs=[]
+            )
+            assert list(gen) == [str(unknown_item)]
+
+        assert "unknown item type encountered" in caplog.text
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 

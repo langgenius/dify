@@ -1,11 +1,10 @@
 import json
 import logging
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
-from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -93,7 +92,7 @@ class ApiToolManageService:
 
     @staticmethod
     def convert_schema_to_tool_bundles(
-        schema: str, extra_info: dict | None = None
+        schema: str, extra_info: dict[str, Any] | None = None
     ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
@@ -110,8 +109,8 @@ class ApiToolManageService:
         user_id: str,
         tenant_id: str,
         provider_name: str,
-        icon: dict,
-        credentials: dict,
+        icon: dict[str, Any],
+        credentials: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
@@ -124,13 +123,13 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is not None:
@@ -215,13 +214,13 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
+        provider: ApiToolProvider | None = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -245,8 +244,8 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         original_provider: str,
-        icon: dict,
-        credentials: dict,
+        icon: dict[str, Any],
+        credentials: dict[str, Any],
         _schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str | None,
@@ -259,13 +258,13 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == original_provider,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -328,13 +327,13 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider = (
-            db.session.query(ApiToolProvider)
+        provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if provider is None:
@@ -357,8 +356,8 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         tool_name: str,
-        credentials: dict,
-        parameters: dict,
+        credentials: dict[str, Any],
+        parameters: dict[str, Any],
         schema_type: ApiProviderSchemaType,
         schema: str,
     ):
@@ -378,13 +377,13 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider = (
-            db.session.query(ApiToolProvider)
+        db_provider = db.session.scalar(
+            select(ApiToolProvider)
             .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
-            .first()
+            .limit(1)
         )
 
         if not db_provider:

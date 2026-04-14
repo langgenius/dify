@@ -59,8 +59,11 @@ vi.mock('../../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 vi.mock('@/context/event-emitter', () => ({

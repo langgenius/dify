@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
-import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
+import type { ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import {
   HandThumbDownIcon,
@@ -12,8 +12,8 @@ import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { get } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
+import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,20 +24,16 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
-import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Drawer from '@/app/components/base/drawer'
-import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import { ToastContext } from '@/app/components/base/toast/context'
 import Tooltip from '@/app/components/base/tooltip'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
@@ -45,6 +41,20 @@ import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import PromptLogModal from '../../base/prompt-log-modal'
 import Indicator from '../../header/indicator'
+import {
+  applyAnnotationAdded,
+  applyAnnotationEdited,
+  applyAnnotationRemoved,
+  buildChatThreadState,
+  getCompletionMessageFiles,
+  getConversationRowValues,
+  getDetailVarList,
+  getFormattedChatList,
+  getThreadChatItems,
+  isNearTopLoadMore,
+  mergePaginatedChatItems,
+  mergeUniqueChatItems,
+} from './list-utils'
 import VarPanel from './var-panel'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
@@ -132,85 +142,6 @@ const statusTdRender = (statusCount: StatusCount) => {
   }
 }
 
-const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
-  const newChatList: IChatItem[] = []
-  try {
-    messages.forEach((item: ChatMessage) => {
-      const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
-      newChatList.push({
-        id: `question-${item.id}`,
-        content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
-        isAnswer: false,
-        message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-        parentMessageId: item.parent_message_id || undefined,
-      })
-
-      const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
-      newChatList.push({
-        id: item.id,
-        content: item.answer,
-        agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-        feedback: item.feedbacks?.find(item => item.from_source === 'user'), // user feedback
-        adminFeedback: item.feedbacks?.find(item => item.from_source === 'admin'), // admin feedback
-        feedbackDisabled: false,
-        isAnswer: true,
-        message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-        log: [
-          ...(item.message ?? []),
-          ...(item.message?.[item.message.length - 1]?.role !== 'assistant'
-            ? [
-                {
-                  role: 'assistant',
-                  text: item.answer,
-                  files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-                },
-              ]
-            : []),
-        ] as IChatItem['log'],
-        workflow_run_id: item.workflow_run_id,
-        conversationId,
-        input: {
-          inputs: item.inputs,
-          query: item.query,
-        },
-        more: {
-          time: dayjs.unix(item.created_at).tz(timezone).format(format),
-          tokens: item.answer_tokens + item.message_tokens,
-          latency: (item.provider_response_latency ?? 0).toFixed(2),
-        },
-        citation: item.metadata?.retriever_resources,
-        annotation: (() => {
-          if (item.annotation_hit_history) {
-            return {
-              id: item.annotation_hit_history.annotation_id,
-              authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
-              created_at: item.annotation_hit_history.created_at,
-            }
-          }
-
-          if (item.annotation) {
-            return {
-              id: item.annotation.id,
-              authorName: item.annotation.account.name,
-              logAnnotation: item.annotation,
-              created_at: 0,
-            }
-          }
-
-          return undefined
-        })(),
-        parentMessageId: `question-${item.id}`,
-      })
-    })
-
-    return newChatList
-  }
-  catch (error) {
-    console.error('getFormattedChatList processing failed:', error)
-    throw error
-  }
-}
-
 type IDetailPanel = {
   detail: any
   onFeedback: FeedbackFunc
@@ -223,7 +154,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -289,11 +219,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       const newItems = getFormattedChatList(messageRes.data, detail.id, timezone!, t('dateTimeFormat', { ns: 'appLog' }) as string)
 
       // Use functional update to avoid stale state issues
-      setAllChatItems((prevItems: IChatItem[]) => {
-        const existingIds = new Set(prevItems.map(item => item.id))
-        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
-        return [...uniqueNewItems, ...prevItems]
-      })
+      setAllChatItems((prevItems: IChatItem[]) => mergeUniqueChatItems(prevItems, newItems))
     }
     catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError')
@@ -312,86 +238,26 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     if (allChatItems.length === 0)
       return
 
-    let tree = buildChatItemTree(allChatItems)
-    if (!hasMore && detail?.model_config?.configs?.introduction) {
-      tree = [{
-        id: 'introduction',
-        isAnswer: true,
-        isOpeningStatement: true,
-        content: detail?.model_config?.configs?.introduction ?? 'hello',
-        feedbackDisabled: true,
-        children: tree,
-      }]
-    }
-    setChatItemTree(tree)
-
-    const lastMessageId = allChatItems.length > 0 ? allChatItems[allChatItems.length - 1].id : undefined
-    setThreadChatItems(getThreadMessages(tree, lastMessageId))
-
-    // Update pagination anchor ref with the oldest answer ID
-    const answerItems = allChatItems.filter(item => item.isAnswer)
-    const oldestAnswer = answerItems[0]
-    if (oldestAnswer?.id)
-      oldestAnswerIdRef.current = oldestAnswer.id
+    const nextThreadState = buildChatThreadState({
+      allChatItems,
+      hasMore,
+      introduction: detail?.model_config?.configs?.introduction,
+    })
+    setChatItemTree(nextThreadState.chatItemTree)
+    setThreadChatItems(nextThreadState.threadChatItems)
+    if (nextThreadState.oldestAnswerId)
+      oldestAnswerIdRef.current = nextThreadState.oldestAnswerId
   }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
 
   const switchSibling = useCallback((siblingMessageId: string) => {
-    const newThreadChatItems = getThreadMessages(chatItemTree, siblingMessageId)
-    setThreadChatItems(newThreadChatItems)
+    setThreadChatItems(getThreadChatItems(chatItemTree, siblingMessageId))
   }, [chatItemTree])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    setAllChatItems(allChatItems.map((item, i) => {
-      if (i === index - 1) {
-        return {
-          ...item,
-          content: query,
-        }
-      }
-      if (i === index) {
-        return {
-          ...item,
-          annotation: {
-            ...item.annotation,
-            logAnnotation: {
-              ...item.annotation?.logAnnotation,
-              content: answer,
-            },
-          } as any,
-        }
-      }
-      return item
-    }))
+    setAllChatItems(applyAnnotationEdited(allChatItems, query, answer, index))
   }, [allChatItems])
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    setAllChatItems(allChatItems.map((item, i) => {
-      if (i === index - 1) {
-        return {
-          ...item,
-          content: query,
-        }
-      }
-      if (i === index) {
-        const answerItem = {
-          ...item,
-          content: item.content,
-          annotation: {
-            id: annotationId,
-            authorName,
-            logAnnotation: {
-              content: answer,
-              account: {
-                id: '',
-                name: authorName,
-                email: '',
-              },
-            },
-          } as Annotation,
-        }
-        return answerItem
-      }
-      return item
-    }))
+    setAllChatItems(applyAnnotationAdded(allChatItems, annotationId, authorName, query, answer, index))
   }, [allChatItems])
   const handleAnnotationRemoved = useCallback(async (index: number): Promise<boolean> => {
     const annotation = allChatItems[index]?.annotation
@@ -402,25 +268,16 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         await delAnnotation(appDetail?.id || '', annotation.id)
       }
 
-      setAllChatItems(allChatItems.map((item, i) => {
-        if (i === index) {
-          return {
-            ...item,
-            content: item.content,
-            annotation: undefined,
-          }
-        }
-        return item
-      }))
+      setAllChatItems(applyAnnotationRemoved(allChatItems, index))
 
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
-  }, [allChatItems, appDetail?.id, notify, t])
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
@@ -486,23 +343,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
       // Use functional update to get latest state and avoid stale closures
       setAllChatItems((prevItems: IChatItem[]) => {
-        const existingIds = new Set(prevItems.map(item => item.id))
-        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
-
-        // If no unique items and we haven't exceeded retry limit, signal retry needed
-        if (uniqueNewItems.length === 0) {
-          if (retryCountRef.current < MAX_RETRY_COUNT && prevItems.length > 1) {
-            retryCountRef.current++
-            return prevItems
-          }
-          else {
-            retryCountRef.current = 0
-            return prevItems
-          }
-        }
-
-        retryCountRef.current = 0
-        return [...uniqueNewItems, ...prevItems]
+        const nextItems = mergePaginatedChatItems({
+          maxRetryCount: MAX_RETRY_COUNT,
+          newItems,
+          prevItems,
+          retryCount: retryCountRef.current,
+        })
+        retryCountRef.current = nextItems.retryCount
+        return nextItems.items
       })
     }
     catch (error) {
@@ -523,7 +371,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     const scrollHeight = scrollableDiv.scrollHeight
     const currentScrollTop = scrollableDiv.scrollTop
     // currentScrollTop is negative due to column-reverse flex direction
-    const isNearTop = Math.abs(currentScrollTop) > scrollHeight - clientHeight - 40
+    const isNearTop = isNearTopLoadMore({
+      clientHeight,
+      scrollHeight,
+      scrollTop: currentScrollTop,
+    })
 
     if (isNearTop && hasMore && !isLoading) {
       loadMoreMessages()
@@ -533,16 +385,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 
-  const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
-    const itemContent = item[Object.keys(item)[0]]
-    return {
-      label: itemContent.variable,
-      value: varValues[itemContent.variable] || detail.message?.inputs?.[itemContent.variable],
-    }
-  }) || []
-  const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
-    ? detail.message.message_files.map((item: any) => item.url)
-    : []
+  const varList = getDetailVarList(detail, varValues)
+  const message_files = getCompletionMessageFiles(detail, isChatMode)
 
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -734,7 +578,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } = useCompletionConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -744,11 +587,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -757,11 +600,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -783,7 +626,6 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
  */
 const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
-  const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
@@ -792,11 +634,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -804,11 +646,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
       return false
     }
   }
@@ -831,10 +673,7 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const conversationIdInUrl = searchParams.get('conversation_id') ?? undefined
+  const [conversationIdInUrl, setConversationIdInUrl] = useQueryState('conversation_id', parseAsString)
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -854,17 +693,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   const activeConversationId = conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 
-  const buildUrlWithConversation = useCallback((conversationId?: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (conversationId)
-      params.set('conversation_id', conversationId)
-    else
-      params.delete('conversation_id')
-
-    const queryString = params.toString()
-    return queryString ? `${pathname}?${queryString}` : pathname
-  }, [pathname, searchParams])
-
   const handleRowClick = useCallback((log: ConversationListItem) => {
     if (conversationIdInUrl === log.id) {
       if (!showDrawer)
@@ -883,8 +711,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     if (currentConversation?.id !== log.id)
       setCurrentConversation(undefined)
 
-    router.push(buildUrlWithConversation(log.id), { scroll: false })
-  }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
+    void setConversationIdInUrl(log.id, { history: 'push' })
+  }, [conversationIdInUrl, currentConversation, setConversationIdInUrl, showDrawer])
 
   const currentConversationId = currentConversation?.id
 
@@ -921,7 +749,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
     if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
       pendingConversationCacheRef.current = undefined
-  }, [conversationIdInUrl, currentConversation, isChatMode, logs?.data, showDrawer])
+  }, [conversationIdInUrl, currentConversation, currentConversationId, logs?.data, showDrawer])
 
   const onCloseDrawer = useCallback(() => {
     onRefresh()
@@ -935,8 +763,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     closingConversationIdRef.current = conversationIdInUrl ?? null
 
     if (conversationIdInUrl)
-      router.replace(buildUrlWithConversation(), { scroll: false })
-  }, [buildUrlWithConversation, conversationIdInUrl, onRefresh, router, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
+      void setConversationIdInUrl(null, { history: 'replace' })
+  }, [conversationIdInUrl, onRefresh, setConversationIdInUrl, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
@@ -948,7 +776,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         )}
-        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
+        popupClassName={(isHighlight && !isChatMode) ? '' : 'hidden!'}
       >
         <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular')}>
           {value || '-'}
@@ -978,9 +806,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </thead>
         <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: any) => {
-            const endUser = log.from_end_user_session_id || log.from_account_name
-            const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
-            const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
+            const { endUser, isLeftEmpty, isRightEmpty, leftValue, rightValue } = getConversationRowValues({
+              isChatMode,
+              log,
+              noChatLabel: t('table.empty.noChat', { ns: 'appLog' }),
+              noOutputLabel: t('table.empty.noOutput', { ns: 'appLog' }),
+            })
             return (
               <tr
                 key={log.id}
@@ -990,12 +821,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="h-4">
                   {!log.read_at && (
                     <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500"></span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-sm bg-util-colors-blue-blue-500"></span>
                     </div>
                   )}
                 </td>
                 <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                  {renderTdValue(leftValue || t('table.empty.noChat', { ns: 'appLog' }), !leftValue, isChatMode && log.annotated)}
+                  {renderTdValue(leftValue, isLeftEmpty, isChatMode && log.annotated)}
                 </td>
                 <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                 {isChatflow && (
@@ -1004,7 +835,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </td>
                 )}
                 <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
-                  {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('table.empty.noOutput', { ns: 'appLog' })), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
+                  {renderTdValue(rightValue, isRightEmpty, !isChatMode && !!log.annotation?.content, log.annotation)}
                 </td>
                 <td className="p-3 pr-2">
                   {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
@@ -1038,7 +869,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg"
+        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 p-0! max-w-[640px]! rounded-xl bg-components-panel-bg"
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

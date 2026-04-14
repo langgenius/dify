@@ -47,19 +47,36 @@ const KeyValueItem: FC<Props> = ({
   insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
+  const hasValuePayload = payload.type === 'file'
+    ? !!payload.file?.length
+    : !!payload.value
 
   const handleChange = useCallback((key: string) => {
     return (value: string | ValueSelector) => {
+      const shouldAddNextItem = isLastItem
+        && (
+          (key === 'value' && !payload.value && !!value)
+          || (key === 'file' && (!payload.file || payload.file.length === 0) && Array.isArray(value) && value.length > 0)
+        )
+
       const newPayload = produce(payload, (draft: any) => {
         draft[key] = value
       })
       onChange(newPayload)
+
+      if (shouldAddNextItem)
+        onAdd()
     }
-  }, [onChange, payload])
+  }, [isLastItem, onAdd, onChange, payload])
 
   const filterOnlyFileVariable = (varPayload: Var) => {
     return [VarType.file, VarType.arrayFile].includes(varPayload.type)
   }
+
+  const handleValueContainerClick = useCallback(() => {
+    if (isLastItem && hasValuePayload)
+      onAdd()
+  }, [hasValuePayload, isLastItem, onAdd])
 
   return (
     // group class name is for hover row show remove button
@@ -80,7 +97,7 @@ const KeyValueItem: FC<Props> = ({
             )
           : (
               <input
-                className="system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-transparent outline-none hover:bg-components-input-bg-hover focus:ring-0"
+                className="system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-transparent outline-hidden hover:bg-components-input-bg-hover focus:ring-0"
                 value={payload.key}
                 onChange={e => handleChange('key')(e.target.value)}
               />
@@ -102,7 +119,10 @@ const KeyValueItem: FC<Props> = ({
           />
         </div>
       )}
-      <div className={cn(isSupportFile ? 'grow' : 'w-1/2')} onClick={() => isLastItem && onAdd()}>
+      <div
+        className={cn(isSupportFile ? 'grow' : 'w-1/2')}
+        onClick={handleValueContainerClick}
+      >
         {(isSupportFile && payload.type === 'file')
           ? (
               <VarReferencePicker

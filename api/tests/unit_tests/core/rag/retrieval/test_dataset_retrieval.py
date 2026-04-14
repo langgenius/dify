@@ -8,11 +8,7 @@ import pytest
 from flask import Flask, current_app
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from sqlalchemy import column
 
-from core.app.app_config.entities import (
-    Condition as AppCondition,
-)
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -29,6 +25,7 @@ from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.rag.data_post_processor.data_post_processor import WeightsDict
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities import Condition as AppCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
@@ -3971,11 +3968,10 @@ class TestDatasetRetrievalAdditionalHelpers:
                 )
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval) -> None:
-        db_query = Mock()
-        db_query.where.return_value = db_query
-        db_query.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             mapping, condition = retrieval.get_metadata_filter_condition(
                 dataset_ids=["d1"],
                 query="python",
@@ -3991,7 +3987,7 @@ class TestDatasetRetrievalAdditionalHelpers:
 
         automatic_filters = [{"condition": "contains", "metadata_name": "author", "value": "Alice"}]
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query),
+            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result),
             patch.object(retrieval, "_automatic_metadata_filter_func", return_value=automatic_filters),
         ):
             mapping, condition = retrieval.get_metadata_filter_condition(
@@ -4012,7 +4008,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             logical_operator="and",
             conditions=[AppCondition(name="author", comparison_operator="contains", value="{{name}}")],
         )
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             mapping, condition = retrieval.get_metadata_filter_condition(
                 dataset_ids=["d1"],
                 query="python",
@@ -4027,7 +4023,7 @@ class TestDatasetRetrievalAdditionalHelpers:
         assert condition is not None
         assert condition.conditions[0].value == "Alice"
 
-        with patch("core.rag.retrieval.dataset_retrieval.db.session.query", return_value=db_query):
+        with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             with pytest.raises(ValueError, match="Invalid metadata filtering mode"):
                 retrieval.get_metadata_filter_condition(
                     dataset_ids=["d1"],
@@ -4042,21 +4038,9 @@ class TestDatasetRetrievalAdditionalHelpers:
 
     def test_get_available_datasets(self, retrieval: DatasetRetrieval) -> None:
         session = Mock()
-        subquery_query = Mock()
-        subquery_query.where.return_value = subquery_query
-        subquery_query.group_by.return_value = subquery_query
-        subquery_query.having.return_value = subquery_query
-        subquery_query.subquery.return_value = SimpleNamespace(
-            c=SimpleNamespace(
-                dataset_id=column("dataset_id"), available_document_count=column("available_document_count")
-            )
-        )
-
-        dataset_query = Mock()
-        dataset_query.outerjoin.return_value = dataset_query
-        dataset_query.where.return_value = dataset_query
-        dataset_query.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
-        session.query.side_effect = [subquery_query, dataset_query]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="d1"), None, SimpleNamespace(id="d2")]
+        session.scalars.return_value = scalars_result
 
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
@@ -4905,22 +4889,21 @@ class TestInternalHooksCoverage:
             _scalars(segments),
             _scalars(bindings),
         ]
-        query = Mock()
-        query.where.return_value = query
-        session.query.return_value = query
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False
 
+        sessionmaker_ctx = MagicMock()
+        sessionmaker_ctx.begin.return_value = session_ctx
+
         with (
             patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.retrieval.dataset_retrieval.Session", return_value=session_ctx),
+            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=sessionmaker_ctx),
             patch.object(retrieval, "_send_trace_task") as mock_trace,
         ):
             retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
 
-        query.update.assert_called_once()
-        session.commit.assert_called_once()
+        session.execute.assert_called_once()
         mock_trace.assert_called_once()
 
     def test_retriever_variants(self, retrieval: DatasetRetrieval) -> None:
