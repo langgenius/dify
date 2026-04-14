@@ -45,7 +45,7 @@ class MilvusConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.
@@ -302,7 +302,10 @@ class MilvusVector(BaseVector):
         )
 
     def create_collection(
-        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
+        self,
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, Any]] | None = None,
+        index_params: dict[str, Any] | None = None,
     ):
         """
         Create a new collection in Milvus with the specified schema and index parameters.
