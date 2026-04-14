@@ -130,7 +130,7 @@ const BatchAction: FC<IBatchActionProps> = ({
         )}
         <Button
           variant="ghost"
-          destructive
+          tone="destructive"
           className="gap-x-0.5 px-3"
           onClick={showDeleteConfirm}
         >
