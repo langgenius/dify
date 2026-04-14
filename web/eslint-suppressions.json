@@ -1362,11 +1362,6 @@
       "count": 1
     }
   },
-  "app/components/base/button/index.stories.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/carousel/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -5077,9 +5072,6 @@
   "app/components/header/account-dropdown/compliance.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/header/account-dropdown/index.tsx": {
@@ -5291,9 +5283,6 @@
   },
   "app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }
   },
@@ -6074,9 +6063,6 @@
     },
     "no-restricted-imports": {
       "count": 3
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
