@@ -7,12 +7,20 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import CustomPopover from '@/app/components/base/popover'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
@@ -158,7 +166,7 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                 </Tooltip>
               )
             : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
-          <Divider className="!ml-4 !mr-2 !h-3" type="vertical" />
+          <Divider className="!mr-2 !ml-4 !h-3" type="vertical" />
         </>
       )}
       {embeddingAvailable && (
@@ -280,8 +288,24 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
           />
         </>
       )}
-      {showModal
-        && (<Confirm isShow={showModal} isLoading={deleting} isDisabled={deleting} title={t('list.delete.title', { ns: 'datasetDocuments' })} content={t('list.delete.content', { ns: 'datasetDocuments' })} confirmText={t('operation.sure', { ns: 'common' })} onConfirm={() => onOperate('delete')} onCancel={() => setShowModal(false)} />)}
+      <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('list.delete.content', { ns: 'datasetDocuments' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={() => onOperate('delete')}>
+              {t('operation.sure', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {isShowRenameModal && currDocument && (<RenameModal datasetId={datasetId} documentId={currDocument.id} name={currDocument.name} onClose={setShowRenameModalFalse} onSaved={handleRenamed} />)}
     </div>

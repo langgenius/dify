@@ -41,6 +41,30 @@ const renderOpenSelect = ({
 }
 
 describe('Select wrappers', () => {
+  describe('Select root integration', () => {
+    it('should submit the hidden input value and preserve autocomplete hints inside a form', () => {
+      const { container } = render(
+        <form aria-label="profile form">
+          <Select defaultValue="seattle" name="city" autoComplete="address-level2">
+            <SelectTrigger aria-label="city select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+              <SelectItem value="seattle">Seattle</SelectItem>
+              <SelectItem value="new-york">New York</SelectItem>
+            </SelectContent>
+          </Select>
+        </form>,
+      )
+
+      const hiddenInput = container.querySelector('input[name="city"]')
+      const form = screen.getByRole('form', { name: 'profile form' }) as HTMLFormElement
+
+      expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
+      expect(new FormData(form).get('city')).toBe('seattle')
+    })
+  })
+
   describe('SelectTrigger', () => {
     it('should render clear button when clearable is true and loading is false', () => {
       renderOpenSelect({

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict, Union
+from typing import Any, TypedDict
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -502,7 +502,7 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         config_id: str | None = None,
     ):
         """
@@ -561,7 +561,7 @@ class ModelLoadBalancingService:
         provider_configuration: ProviderConfiguration,
         model_type: ModelType,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
         model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,
@@ -626,7 +626,7 @@ class ModelLoadBalancingService:
 
     def _get_credential_schema(
         self, provider_configuration: ProviderConfiguration
-    ) -> Union[ModelCredentialSchema, ProviderCredentialSchema]:
+    ) -> ModelCredentialSchema | ProviderCredentialSchema:
         """Get form schemas."""
         if provider_configuration.provider.model_credential_schema:
             return provider_configuration.provider.model_credential_schema

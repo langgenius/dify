@@ -3,7 +3,7 @@ from datetime import datetime
 import flask_restx
 from flask_restx import Resource
 from flask_restx._http import HTTPStatus
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
@@ -27,9 +27,9 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
     return value
 
 
-class ApiKeyItemResponse(ResponseModel):
+class ApiKeyItem(ResponseModel):
     id: str
-    type: ApiTokenType
+    type: str
     token: str
     last_used_at: int | None = None
     created_at: int | None = None
@@ -40,11 +40,11 @@ class ApiKeyItemResponse(ResponseModel):
         return _to_timestamp(value)
 
 
-class ApiKeyListResponse(ResponseModel):
-    data: list[ApiKeyItemResponse] = Field(validation_alias="items")
+class ApiKeyList(ResponseModel):
+    data: list[ApiKeyItem]
 
 
-register_schema_models(console_ns, ApiKeyItemResponse, ApiKeyListResponse)
+register_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
@@ -79,7 +79,7 @@ class BaseApiKeyListResource(Resource):
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
             )
         ).all()
-        return ApiKeyListResponse.model_validate({"items": keys}).model_dump(mode="json")
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
     @edit_permission_required
     def post(self, resource_id):
@@ -112,7 +112,7 @@ class BaseApiKeyListResource(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return ApiKeyItemResponse.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 201
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 201
 
 
 class BaseApiKeyResource(Resource):
@@ -159,7 +159,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_app_api_keys")
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(200, "Success", console_ns.models[ApiKeyListResponse.__name__])
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for an app"""
         return super().get(resource_id)
@@ -167,7 +167,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("create_app_api_key")
     @console_ns.doc(description="Create a new API key for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItemResponse.__name__])
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
@@ -199,7 +199,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(200, "Success", console_ns.models[ApiKeyListResponse.__name__])
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for a dataset"""
         return super().get(resource_id)
@@ -207,7 +207,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("create_dataset_api_key")
     @console_ns.doc(description="Create a new API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItemResponse.__name__])
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""

@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import { Button } from '@/app/components/base/ui/button'
 import { useStore } from '@/app/components/workflow/store'
 
 const InputFieldButton = () => {

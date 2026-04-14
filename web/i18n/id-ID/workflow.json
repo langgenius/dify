@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Cabang Gagal",
   "nodes.common.errorHandle.none.desc": "Node akan berhenti berjalan jika pengecualian terjadi dan tidak ditangani",
   "nodes.common.errorHandle.none.title": "Tidak",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Ada {{num}} node dalam proses yang berjalan tidak normal, silakan pergi ke tracing untuk memeriksa log.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Ada {{num}} node dalam proses yang berjalan tidak normal, silakan pergi ke <tracingLink>tracing</tracingLink> untuk memeriksa log.",
   "nodes.common.errorHandle.tip": "Strategi penanganan pengecualian, dipicu ketika simpul menemukan pengecualian.",
   "nodes.common.errorHandle.title": "Penanganan Kesalahan",
   "nodes.common.inputVars": "Variabel Masukan",

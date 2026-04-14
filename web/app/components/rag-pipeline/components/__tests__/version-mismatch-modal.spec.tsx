@@ -101,7 +101,7 @@ describe('VersionMismatchModal', () => {
 
       const confirmBtn = screen.getByRole('button', { name: /app\.newApp\.Confirm/ })
       expect(confirmBtn).toHaveClass('btn-primary')
-      expect(confirmBtn).toHaveClass('btn-destructive')
+      expect(confirmBtn).toHaveClass('btn-destructive-primary')
     })
   })
 
