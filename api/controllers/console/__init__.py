@@ -203,6 +203,7 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "socketio_workflow",
     "spec",
     "statistic",
     "tags",
