@@ -24,11 +24,13 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 from services.errors.dataset import DatasetNameDuplicateError
 
 
+class ExternalRetrievalParameters(TypedDict):
+    top_k: int
+    score_threshold_enabled: bool
+    score_threshold: float
+
+
 class ExternalDatasetService:
-    class ExternalRetrievalParameters(TypedDict, total=False):
-        top_k: int
-        score_threshold_enabled: bool
-        score_threshold: float
 
     @staticmethod
     def get_external_knowledge_apis(
@@ -311,7 +313,7 @@ class ExternalDatasetService:
         tenant_id: str,
         dataset_id: str,
         query: str,
-        external_retrieval_parameters: dict[str, Any],
+        external_retrieval_parameters: ExternalRetrievalParameters,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalar(
@@ -337,11 +339,11 @@ class ExternalDatasetService:
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
-        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
+        score_threshold_enabled = external_retrieval_parameters["score_threshold_enabled"]
+        score_threshold = external_retrieval_parameters["score_threshold"] if score_threshold_enabled else 0.0
         request_params = {
             "retrieval_setting": {
-                "top_k": external_retrieval_parameters.get("top_k"),
+                "top_k": external_retrieval_parameters["top_k"],
                 "score_threshold": score_threshold,
             },
             "query": query,
