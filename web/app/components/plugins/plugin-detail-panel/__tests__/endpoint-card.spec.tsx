@@ -1,5 +1,5 @@
 import type { EndpointListItem, PluginDetail } from '../../types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointCard from '../endpoint-card'
 
@@ -284,8 +284,7 @@ describe('EndpointCard', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      // Confirm should be hidden
-      expect(screen.queryByText('plugin.detailPanel.endpointDisableTip')).not.toBeInTheDocument()
+      expect(screen.getByRole('alertdialog')).toHaveAttribute('data-closed')
     })
 
     it('should hide delete confirm when cancel clicked', () => {
@@ -297,7 +296,7 @@ describe('EndpointCard', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.queryByText('plugin.detailPanel.endpointDeleteTip')).not.toBeInTheDocument()
+      expect(screen.getByRole('alertdialog')).toHaveAttribute('data-closed')
     })
 
     it('should hide edit modal when cancel clicked', () => {

@@ -702,7 +702,7 @@ describe('ProviderDetail', () => {
       fireEvent.click(screen.getByTestId('edit-remove'))
       expect(screen.getByText('tools.createTool.deleteToolConfirmTitle')).toBeInTheDocument()
       fireEvent.click(getDeleteCancelButton())
-      expect(screen.queryByText('tools.createTool.deleteToolConfirmTitle')).not.toBeInTheDocument()
+      expect(screen.getByRole('alertdialog')).toHaveAttribute('data-closed')
     })
   })
 })
