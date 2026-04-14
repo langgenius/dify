@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import func, select
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
@@ -145,11 +146,16 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.id.in_(document_ids)).count() == 3
         assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(document_ids))
-            .count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(Document).where(Document.id.in_(document_ids))
+            )
+            == 3
+        )
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
+            )
             == 6
         )
 
@@ -158,9 +164,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify segments are deleted
         assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(document_ids))
-            .count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))
+            )
             == 0
         )
 
@@ -323,9 +329,9 @@ class TestCleanNotionDocumentTask:
 
             # Verify segments are deleted
             assert (
-                db_session_with_containers.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == document.id)
-                .count()
+                db_session_with_containers.scalar(
+                    select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+                )
                 == 0
             )
 
@@ -411,7 +417,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify segments are deleted
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            )
             == 0
         )
 
@@ -499,9 +507,16 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify all data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.dataset_id == dataset.id).count() == 5
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(Document).where(Document.dataset_id == dataset.id)
+            )
+            == 5
+        )
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+            )
             == 10
         )
 
@@ -514,19 +529,26 @@ class TestCleanNotionDocumentTask:
 
         # Verify only specified documents' segments are deleted
         assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(documents_to_clean))
-            .count()
+            db_session_with_containers.scalar(
+                select(func.count())
+                .select_from(DocumentSegment)
+                .where(DocumentSegment.document_id.in_(documents_to_clean))
+            )
             == 0
         )
 
         # Verify remaining documents and segments are intact
         remaining_docs = [doc.id for doc in documents[3:]]
-        assert db_session_with_containers.query(Document).filter(Document.id.in_(remaining_docs)).count() == 2
         assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(remaining_docs))
-            .count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(Document).where(Document.id.in_(remaining_docs))
+            )
+            == 2
+        )
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id.in_(remaining_docs))
+            )
             == 4
         )
 
@@ -613,7 +635,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify all segments exist before cleanup
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            )
             == 4
         )
 
@@ -622,7 +646,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify all segments are deleted regardless of status
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            )
             == 0
         )
 
@@ -795,11 +821,15 @@ class TestCleanNotionDocumentTask:
 
         # Verify all data exists before cleanup
         assert (
-            db_session_with_containers.query(Document).filter(Document.dataset_id == dataset.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(Document).where(Document.dataset_id == dataset.id)
+            )
             == num_documents
         )
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+            )
             == num_documents * num_segments_per_doc
         )
 
@@ -809,7 +839,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify all segments are deleted
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+            )
             == 0
         )
 
@@ -906,8 +938,8 @@ class TestCleanNotionDocumentTask:
 
         # Verify all data exists before cleanup
         # Note: There may be documents from previous tests, so we check for at least 3
-        assert db_session_with_containers.query(Document).count() >= 3
-        assert db_session_with_containers.query(DocumentSegment).count() >= 9
+        assert db_session_with_containers.scalar(select(func.count()).select_from(Document)) >= 3
+        assert db_session_with_containers.scalar(select(func.count()).select_from(DocumentSegment)) >= 9
 
         # Clean up documents from only the first dataset
         target_dataset = datasets[0]
@@ -919,19 +951,26 @@ class TestCleanNotionDocumentTask:
 
         # Verify only documents' segments from target dataset are deleted
         assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == target_document.id)
-            .count()
+            db_session_with_containers.scalar(
+                select(func.count())
+                .select_from(DocumentSegment)
+                .where(DocumentSegment.document_id == target_document.id)
+            )
             == 0
         )
 
         # Verify documents from other datasets remain intact
         remaining_docs = [doc.id for doc in all_documents[1:]]
-        assert db_session_with_containers.query(Document).filter(Document.id.in_(remaining_docs)).count() == 2
         assert (
-            db_session_with_containers.query(DocumentSegment)
-            .filter(DocumentSegment.document_id.in_(remaining_docs))
-            .count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(Document).where(Document.id.in_(remaining_docs))
+            )
+            == 2
+        )
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id.in_(remaining_docs))
+            )
             == 6
         )
 
@@ -1028,11 +1067,13 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify all data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.dataset_id == dataset.id).count() == len(
-            document_statuses
-        )
+        assert db_session_with_containers.scalar(
+            select(func.count()).select_from(Document).where(Document.dataset_id == dataset.id)
+        ) == len(document_statuses)
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+            )
             == len(document_statuses) * 2
         )
 
@@ -1042,7 +1083,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify all segments are deleted regardless of status
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+            )
             == 0
         )
 
@@ -1142,9 +1185,16 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.commit()
 
         # Verify data exists before cleanup
-        assert db_session_with_containers.query(Document).filter(Document.id == document.id).count() == 1
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(Document).where(Document.id == document.id)
+            )
+            == 1
+        )
+        assert (
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            )
             == 3
         )
 
@@ -1153,7 +1203,9 @@ class TestCleanNotionDocumentTask:
 
         # Verify segments are deleted
         assert (
-            db_session_with_containers.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).count()
+            db_session_with_containers.scalar(
+                select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            )
             == 0
         )
 
