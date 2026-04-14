@@ -78,6 +78,7 @@ describe('tool/tool-form/item', () => {
     mockUseLanguage.mockReturnValue('en_US')
   })
 
+  // Text input fields render their descriptions inline above the input.
   it('should render text input labels and forward props to form input item', () => {
     const handleChange = vi.fn()
     const handleManageInputField = vi.fn()
@@ -121,6 +122,31 @@ describe('tool/tool-form/item', () => {
     })
   })
 
+  // URL fragments inside descriptions should be rendered as external links.
+  it('should render URLs in descriptions as external links', () => {
+    render(
+      <ToolFormItem
+        readOnly={false}
+        nodeId="tool-node"
+        schema={createSchema({
+          tooltip: {
+            en_US: 'Visit https://docs.dify.ai/tools for docs',
+            zh_Hans: 'Visit https://docs.dify.ai/tools for docs',
+          },
+        })}
+        value={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const link = screen.getByRole('link', { name: 'https://docs.dify.ai/tools' })
+    expect(link).toHaveAttribute('href', 'https://docs.dify.ai/tools')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link.parentElement).toHaveTextContent('Visit https://docs.dify.ai/tools for docs')
+  })
+
+  // Non-text fields keep their descriptions inside the tooltip and support JSON schema preview.
   it('should show tooltip for non-description fields and open the schema modal', () => {
     const objectSchema = createSchema({
       name: 'tool_config',
