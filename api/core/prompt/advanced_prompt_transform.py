@@ -19,6 +19,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
+from core.prompt.utils.image_detail_config import image_detail_config_for_prompt_file
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 
 
@@ -133,7 +134,10 @@ class AdvancedPromptTransform(PromptTransform):
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in files:
                 prompt_message_contents.append(
-                    file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                    file_manager.to_prompt_message_content(
+                        file,
+                        image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                    )
                 )
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
@@ -215,7 +219,10 @@ class AdvancedPromptTransform(PromptTransform):
             if files and query is not None:
                 for file in files:
                     prompt_message_contents.append(
-                        file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                        file_manager.to_prompt_message_content(
+                            file,
+                            image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                        )
                     )
                 prompt_message_contents.append(TextPromptMessageContent(data=query))
 
@@ -230,7 +237,10 @@ class AdvancedPromptTransform(PromptTransform):
                     # get last user message content and add files
                     for file in files:
                         prompt_message_contents.append(
-                            file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                            file_manager.to_prompt_message_content(
+                                file,
+                                image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                            )
                         )
                     prompt_message_contents.append(TextPromptMessageContent(data=cast(str, last_message.content)))
 
@@ -238,7 +248,10 @@ class AdvancedPromptTransform(PromptTransform):
                 else:
                     for file in files:
                         prompt_message_contents.append(
-                            file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                            file_manager.to_prompt_message_content(
+                                file,
+                                image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                            )
                         )
                     prompt_message_contents.append(TextPromptMessageContent(data=""))
 
@@ -246,7 +259,10 @@ class AdvancedPromptTransform(PromptTransform):
             else:
                 for file in files:
                     prompt_message_contents.append(
-                        file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                        file_manager.to_prompt_message_content(
+                            file,
+                            image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                        )
                     )
                 prompt_message_contents.append(TextPromptMessageContent(data=query))
 
