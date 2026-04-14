@@ -414,11 +414,6 @@
       "count": 2
     }
   },
-  "app/components/app/annotation/batch-action.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    }
-  },
   "app/components/app/annotation/batch-add-annotation-modal/csv-downloader.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 7
@@ -684,9 +679,6 @@
   "app/components/app/configuration/config-var/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/app/configuration/config-var/input-type-icon.tsx": {
@@ -816,9 +808,6 @@
     "react/set-state-in-effect": {
       "count": 4
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -886,9 +875,6 @@
     },
     "react/set-state-in-effect": {
       "count": 4
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 2
@@ -4710,11 +4696,6 @@
       "count": 4
     }
   },
-  "app/components/datasets/documents/detail/completed/common/batch-action.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -5248,12 +5229,6 @@
   "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
     "no-restricted-imports": {
       "count": 2
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
     }
   },
   "app/components/datasets/metadata/metadata-dataset/field.tsx": {
@@ -6676,9 +6651,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 5
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -6802,11 +6774,6 @@
   "app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
     }
   },
   "app/components/plugins/plugin-detail-panel/subscription-list/edit/apikey-edit-modal.tsx": {
@@ -7171,11 +7138,6 @@
   "app/components/rag-pipeline/components/chunk-card-list/q-a-item.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
-    }
-  },
-  "app/components/rag-pipeline/components/conversion.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
     }
   },
   "app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
@@ -7593,9 +7555,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 9
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -7664,12 +7623,6 @@
     }
   },
   "app/components/tools/mcp/provider-card.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 7
-    },
-    "tailwindcss/no-unnecessary-whitespace": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
