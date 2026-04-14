@@ -36,7 +36,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       <div className="flex items-center justify-end pt-6">
         <div className="flex items-center">
           <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" destructive onClick={onConfirm}>{t('operation.confirm', { ns: 'common' })}</Button>
+          <Button variant="primary" tone="destructive" onClick={onConfirm}>{t('operation.confirm', { ns: 'common' })}</Button>
         </div>
       </div>
     </Modal>

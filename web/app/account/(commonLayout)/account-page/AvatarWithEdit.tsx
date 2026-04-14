@@ -159,7 +159,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
               {t('operation.cancel', { ns: 'common' })}
             </Button>
 
-            <Button variant="primary" destructive className="w-full" onClick={handleDeleteAvatar}>
+            <Button variant="primary" tone="destructive" className="w-full" onClick={handleDeleteAvatar}>
               {t('operation.delete', { ns: 'common' })}
             </Button>
           </div>

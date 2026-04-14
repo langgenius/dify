@@ -318,7 +318,7 @@ const WorkflowToolAsModal: FC<Props> = ({
             </div>
             <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {!isAdd && onRemove && (
-                <Button variant="primary" destructive onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+                <Button variant="primary" tone="destructive" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
               )}
               <div className="flex space-x-2">
                 <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>

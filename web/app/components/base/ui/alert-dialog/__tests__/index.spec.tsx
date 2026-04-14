@@ -110,7 +110,7 @@ describe('AlertDialog wrapper', () => {
       expect(screen.getByTestId('actions')).toHaveClass('flex', 'items-start', 'justify-end', 'gap-2', 'self-stretch', 'p-6', 'custom-actions')
       const confirmButton = screen.getByRole('button', { name: 'Confirm' })
       expect(confirmButton).toHaveClass('btn-primary')
-      expect(confirmButton).toHaveClass('btn-destructive')
+      expect(confirmButton).toHaveClass('btn-destructive-primary')
     })
 
     it('should keep dialog open after confirm click and close via cancel helper', async () => {

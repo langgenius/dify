@@ -43,7 +43,7 @@ const DSLConfirmModal = ({
       </div>
       <div className="flex items-start justify-end gap-2 self-stretch pt-6">
         <Button variant="secondary" onClick={() => onCancel()}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-        <Button variant="primary" destructive onClick={onConfirm} disabled={confirmDisabled}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+        <Button variant="primary" tone="destructive" onClick={onConfirm} disabled={confirmDisabled}>{t('newApp.Confirm', { ns: 'app' })}</Button>
       </div>
     </Modal>
   )

@@ -322,7 +322,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         </div>
         <div className="flex items-start justify-end gap-2 self-stretch pt-6">
           <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" destructive onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+          <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

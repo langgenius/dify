@@ -91,7 +91,7 @@ const UpdateDSLModal = ({
           <Button
             disabled={!currentFile || loading}
             variant="primary"
-            destructive
+            tone="destructive"
             onClick={handleImport}
             loading={loading}
           >

@@ -51,9 +51,14 @@ describe('Button', () => {
       expect(screen.getByRole('button').className).toContain(`btn-${variant}`)
     })
 
-    it('applies destructive modifier', () => {
-      render(<Button destructive>Click me</Button>)
-      expect(screen.getByRole('button').className).toContain('btn-destructive')
+    it('applies destructive tone with default variant', () => {
+      render(<Button tone="destructive">Click me</Button>)
+      expect(screen.getByRole('button').className).toContain('btn-destructive-secondary')
+    })
+
+    it('applies destructive tone with primary variant', () => {
+      render(<Button variant="primary" tone="destructive">Click me</Button>)
+      expect(screen.getByRole('button').className).toContain('btn-destructive-primary')
     })
   })
 

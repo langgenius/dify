@@ -21,13 +21,21 @@ const buttonVariants = cva(
         medium: 'btn-medium',
         large: 'btn-large',
       },
-      destructive: {
-        true: 'btn-destructive',
+      tone: {
+        default: '',
+        destructive: '',
       },
     },
+    compoundVariants: [
+      { variant: 'primary', tone: 'destructive', class: 'btn-destructive-primary' },
+      { variant: 'secondary', tone: 'destructive', class: 'btn-destructive-secondary' },
+      { variant: 'tertiary', tone: 'destructive', class: 'btn-destructive-tertiary' },
+      { variant: 'ghost', tone: 'destructive', class: 'btn-destructive-ghost' },
+    ],
     defaultVariants: {
       variant: 'secondary',
       size: 'medium',
+      tone: 'default',
     },
   },
 )
@@ -43,7 +51,7 @@ export function Button({
   className,
   variant,
   size,
-  destructive,
+  tone,
   loading,
   disabled,
   type = 'button',
@@ -53,7 +61,7 @@ export function Button({
   return (
     <BaseButton
       type={type}
-      className={cn(buttonVariants({ variant, size, destructive, className }))}
+      className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}

@@ -93,7 +93,7 @@ describe('InlineDeleteConfirm', () => {
       )
 
       const confirmButton = getByText('Yes').closest('button')
-      expect(confirmButton?.className).toContain('btn-destructive')
+      expect(confirmButton?.className).toContain('btn-destructive-primary')
     })
 
     it('should render without destructive class for warning variant', () => {
@@ -108,7 +108,7 @@ describe('InlineDeleteConfirm', () => {
       )
 
       const confirmButton = getByText('Yes').closest('button')
-      expect(confirmButton?.className).not.toContain('btn-destructive')
+      expect(confirmButton?.className).not.toContain('btn-destructive-primary')
     })
 
     it('should render without destructive class for info variant', () => {
@@ -123,7 +123,7 @@ describe('InlineDeleteConfirm', () => {
       )
 
       const confirmButton = getByText('Yes').closest('button')
-      expect(confirmButton?.className).not.toContain('btn-destructive')
+      expect(confirmButton?.className).not.toContain('btn-destructive-primary')
     })
   })
 

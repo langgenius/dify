@@ -152,7 +152,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           </div>
           <div className="flex items-center">
             <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" destructive onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
           </div>
         </div>
       </Modal>
