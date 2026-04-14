@@ -247,7 +247,7 @@ const UpdateDSLModal = ({
           <Button
             disabled={!currentFile || loading}
             variant="primary"
-            destructive
+            tone="destructive"
             onClick={handleImport}
             loading={loading}
           >
@@ -278,7 +278,7 @@ const UpdateDSLModal = ({
         </div>
         <div className="flex items-start justify-end gap-2 self-stretch pt-6">
           <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" destructive onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+          <Button variant="primary" tone="destructive" onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

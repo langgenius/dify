@@ -12,8 +12,16 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -286,30 +294,42 @@ const MCPDetailContent: FC<Props> = ({
           onHide={hideUpdateModal}
         />
       )}
-      {isShowDeleteConfirm && (
-        <Confirm
-          isShow
-          title={t('mcp.delete', { ns: 'tools' })}
-          content={(
-            <div>
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('mcp.delete', { ns: 'tools' })}
+            </AlertDialogTitle>
+            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: detail.name })}
             </div>
-          )}
-          onCancel={hideDeleteConfirm}
-          onConfirm={handleDelete}
-          isLoading={deleting}
-          isDisabled={deleting}
-        />
-      )}
-      {isShowUpdateConfirm && (
-        <Confirm
-          isShow
-          title={t('mcp.toolUpdateConfirmTitle', { ns: 'tools' })}
-          content={t('mcp.toolUpdateConfirmContent', { ns: 'tools' })}
-          onCancel={hideUpdateConfirm}
-          onConfirm={handleUpdateTools}
-        />
-      )}
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={isShowUpdateConfirm} onOpenChange={open => !open && hideUpdateConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('mcp.toolUpdateConfirmTitle', { ns: 'tools' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('mcp.toolUpdateConfirmContent', { ns: 'tools' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleUpdateTools}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

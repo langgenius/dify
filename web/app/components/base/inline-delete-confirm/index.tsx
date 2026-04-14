@@ -62,7 +62,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
         <Button
           size="small"
           variant="primary"
-          destructive={variant === 'delete'}
+          tone={variant === 'delete' ? 'destructive' : 'default'}
           onClick={onConfirm}
           aria-label={confirmTxt}
           className="flex-1"
