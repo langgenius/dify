@@ -1,4 +1,5 @@
 from typing import Any
+
 import pytest
 
 from core.extension.extensible import ExtensionModule
