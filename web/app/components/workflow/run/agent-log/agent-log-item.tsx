@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -57,7 +57,7 @@ const AgentLogItem = ({
     <div className="radius-lg border-[0.5px] border-components-panel-border bg-background-default">
       <div
         className={cn(
-          'flex cursor-pointer items-center pb-2 pl-1.5 pr-3 pt-2',
+          'flex cursor-pointer items-center pt-2 pr-3 pb-2 pl-1.5',
           expanded && 'pb-1',
         )}
         onClick={() => setExpanded(!expanded)}
@@ -73,14 +73,14 @@ const AgentLogItem = ({
           toolIcon={toolIcon}
         />
         <div
-          className="system-sm-semibold-uppercase grow truncate text-text-secondary"
+          className="grow truncate system-sm-semibold-uppercase text-text-secondary"
           title={label}
         >
           {label}
         </div>
         {
           !!metadata?.elapsed_time && (
-            <div className="system-xs-regular mr-2 shrink-0 text-text-tertiary">
+            <div className="mr-2 shrink-0 system-xs-regular text-text-tertiary">
               {metadata?.elapsed_time?.toFixed(3)}
               s
             </div>

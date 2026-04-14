@@ -33,6 +33,22 @@ describe('DelimiterInput', () => {
     // Tooltip triggers render; component mounts without error
     expect(screen.getByText(`${ns}.stepTwo.separator`)).toBeInTheDocument()
   })
+
+  it('should suppress onChange during IME composition', () => {
+    const onChange = vi.fn()
+    const finalValue = 'wu'
+    render(<DelimiterInput value="" onChange={onChange} />)
+    const input = screen.getByPlaceholderText(`${ns}.stepTwo.separatorPlaceholder`)
+
+    fireEvent.compositionStart(input)
+    fireEvent.change(input, { target: { value: 'w' } })
+    fireEvent.change(input, { target: { value: finalValue } })
+    expect(onChange).not.toHaveBeenCalled()
+
+    fireEvent.compositionEnd(input)
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0][0].target.value).toBe(finalValue)
+  })
 })
 
 describe('MaxLengthInput', () => {

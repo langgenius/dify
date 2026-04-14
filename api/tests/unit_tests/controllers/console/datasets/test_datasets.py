@@ -1555,7 +1555,17 @@ class TestDatasetApiKeyApi:
         method = unwrap(api.get)
 
         mock_key_1 = MagicMock(spec=ApiToken)
+        mock_key_1.id = "key-1"
+        mock_key_1.type = "dataset"
+        mock_key_1.token = "ds-abc"
+        mock_key_1.last_used_at = None
+        mock_key_1.created_at = None
         mock_key_2 = MagicMock(spec=ApiToken)
+        mock_key_2.id = "key-2"
+        mock_key_2.type = "dataset"
+        mock_key_2.token = "ds-def"
+        mock_key_2.last_used_at = None
+        mock_key_2.created_at = None
 
         with (
             app.test_request_context("/"),
@@ -1570,12 +1580,25 @@ class TestDatasetApiKeyApi:
         ):
             response = method(api)
 
-        assert "items" in response
-        assert response["items"] == [mock_key_1, mock_key_2]
+        assert "data" in response
+        assert len(response["data"]) == 2
+        assert response["data"][0]["id"] == "key-1"
+        assert response["data"][0]["token"] == "ds-abc"
+        assert response["data"][1]["id"] == "key-2"
+        assert response["data"][1]["token"] == "ds-def"
 
     def test_post_create_api_key_success(self, app):
         api = DatasetApiKeyApi()
         method = unwrap(api.post)
+
+        mock_token = MagicMock()
+        mock_token.id = "new-key-id"
+        mock_token.last_used_at = None
+        mock_token.created_at = datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC)
+
+        mock_api_token_cls = MagicMock()
+        mock_api_token_cls.return_value = mock_token
+        mock_api_token_cls.generate_api_key.return_value = "dataset-abc123"
 
         with (
             app.test_request_context("/"),
@@ -1588,8 +1611,8 @@ class TestDatasetApiKeyApi:
                 return_value=3,
             ),
             patch(
-                "controllers.console.datasets.datasets.ApiToken.generate_api_key",
-                return_value="dataset-abc123",
+                "controllers.console.datasets.datasets.ApiToken",
+                mock_api_token_cls,
             ),
             patch(
                 "controllers.console.datasets.datasets.db.session.add",
@@ -1603,9 +1626,11 @@ class TestDatasetApiKeyApi:
             response, status = method(api)
 
         assert status == 200
-        assert isinstance(response, ApiToken)
-        assert response.token == "dataset-abc123"
-        assert response.type == "dataset"
+        assert isinstance(response, dict)
+        assert response["id"] == "new-key-id"
+        assert response["token"] == "dataset-abc123"
+        assert response["type"] == "dataset"
+        assert response["created_at"] is not None
 
     def test_post_exceed_max_keys(self, app):
         api = DatasetApiKeyApi()
