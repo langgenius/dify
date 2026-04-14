@@ -6,7 +6,6 @@ import type { AppSSO } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
@@ -21,6 +20,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { useDocLink } from '@/context/i18n'

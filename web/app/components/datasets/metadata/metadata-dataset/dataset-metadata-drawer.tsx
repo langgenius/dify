@@ -6,12 +6,12 @@ import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,

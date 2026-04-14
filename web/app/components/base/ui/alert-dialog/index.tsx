@@ -1,9 +1,9 @@
 'use client'
 
-import type { ButtonProps } from '@/app/components/base/button'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import * as React from 'react'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 export const AlertDialog = BaseAlertDialog.Root

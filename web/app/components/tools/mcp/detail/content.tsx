@@ -12,7 +12,6 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   AlertDialog,
@@ -23,6 +22,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'

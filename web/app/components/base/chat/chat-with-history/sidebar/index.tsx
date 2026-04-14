@@ -11,10 +11,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,

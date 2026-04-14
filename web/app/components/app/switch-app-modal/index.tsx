@@ -7,11 +7,11 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -168,7 +168,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           </div>
           <div className="flex items-center">
             <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button className="border-red-700" disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" destructive onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
           </div>
         </div>
       </Modal>

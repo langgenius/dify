@@ -1,7 +1,6 @@
 import type { Credential, CustomConfigurationModelFixedFields, ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import {
@@ -12,6 +11,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'

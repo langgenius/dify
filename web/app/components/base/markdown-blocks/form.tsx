@@ -1,8 +1,7 @@
 import type { Dayjs } from 'dayjs'
-import type { ButtonProps } from '@/app/components/base/button'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import Button from '@/app/components/base/button'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
@@ -10,6 +9,7 @@ import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
+import { Button } from '@/app/components/base/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 
 enum DATA_FORMAT {
@@ -240,7 +240,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             <label
               key={key}
               htmlFor={str(child.properties.htmlFor || child.properties.name)}
-              className="my-2 text-text-secondary system-md-semibold"
+              className="my-2 system-md-semibold text-text-secondary"
               data-testid="label-field"
             >
               {getTextContent(child)}

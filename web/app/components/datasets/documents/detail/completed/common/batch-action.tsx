@@ -3,9 +3,9 @@ import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLin
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
+import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,

@@ -5,7 +5,6 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
@@ -13,6 +12,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -629,7 +629,7 @@ const ProviderConfigModal: FC<Props> = ({
                       </div>
                       <div className="my-8 flex h-8 items-center justify-between">
                         <a
-                          className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-[#155EEF]"
+                          className="flex items-center space-x-1 text-xs leading-[18px] font-normal text-[#155EEF]"
                           target="_blank"
                           href={docURL[type]}
                         >

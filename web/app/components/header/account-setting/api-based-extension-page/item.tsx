@@ -6,7 +6,6 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,6 +14,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 
