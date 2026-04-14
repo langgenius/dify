@@ -419,7 +419,9 @@ class TestWebhookServiceRelationshipSyncWithContainers:
             version=Workflow.VERSION_DRAFT,
         )
 
-        with patch("services.trigger.webhook_service.WebhookService.generate_webhook_id", return_value="new-webhook-id-000001"):
+        with patch(
+            "services.trigger.webhook_service.WebhookService.generate_webhook_id", return_value="new-webhook-id-000001"
+        ):
             WebhookService.sync_webhook_relationships(app, workflow)
 
         db_session_with_containers.expire_all()
@@ -447,7 +449,9 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         )
         cache_key = f"{WebhookService.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:node-cache"
 
-        with patch("services.trigger.webhook_service.WebhookService.generate_webhook_id", return_value="cache-webhook-id-00001"):
+        with patch(
+            "services.trigger.webhook_service.WebhookService.generate_webhook_id", return_value="cache-webhook-id-00001"
+        ):
             WebhookService.sync_webhook_relationships(app, workflow)
 
         cached_payload = WebhookServiceRelationshipFactory._read_cache(cache_key)
