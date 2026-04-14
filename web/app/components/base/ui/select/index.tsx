@@ -8,7 +8,46 @@ import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
-export const Select = BaseSelect.Root
+type SelectProps<Value, Multiple extends boolean | undefined = false>
+  = BaseSelect.Root.Props<Value, Multiple> & {
+    form?: string
+  }
+
+function setRef<T>(ref: React.Ref<T | null> | undefined, value: T | null) {
+  if (!ref)
+    return
+
+  if (typeof ref === 'function') {
+    ref(value)
+    return
+  }
+
+  ;(ref as React.MutableRefObject<T | null>).current = value
+}
+
+export function Select<Value, Multiple extends boolean | undefined = false>({
+  form,
+  inputRef,
+  ...props
+}: SelectProps<Value, Multiple>) {
+  const mergedInputRef = React.useCallback((node: HTMLInputElement | null) => {
+    if (node) {
+      if (form)
+        node.setAttribute('form', form)
+      else
+        node.removeAttribute('form')
+    }
+
+    setRef(inputRef, node)
+  }, [form, inputRef])
+
+  return (
+    <BaseSelect.Root
+      {...props}
+      inputRef={mergedInputRef}
+    />
+  )
+}
 export const SelectValue = BaseSelect.Value
 /** @public */
 export const SelectGroup = BaseSelect.Group

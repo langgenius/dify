@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Ramificação com falha",
   "nodes.common.errorHandle.none.desc": "O nó deixará de ser executado se ocorrer uma exceção e não for tratada",
   "nodes.common.errorHandle.none.title": "Nenhum",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Existem {{num}} nós no processo em execução anormal, vá para rastreamento para verificar os logs.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Existem {{num}} nós no processo em execução anormal, vá para <tracingLink>rastreamento</tracingLink> para verificar os logs.",
   "nodes.common.errorHandle.tip": "Estratégia de tratamento de exceções, disparada quando um nó encontra uma exceção.",
   "nodes.common.errorHandle.title": "Tratamento de erros",
   "nodes.common.inputVars": "Variáveis de entrada",
