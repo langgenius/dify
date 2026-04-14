@@ -4,8 +4,6 @@ import uuid
 from collections.abc import Sequence
 
 import httpx
-
-logger = logging.getLogger(__name__)
 from httpx import DigestAuth
 
 from configs import dify_config
@@ -14,6 +12,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
+
+logger = logging.getLogger(__name__)
 
 # Reuse a pooled HTTP client for all TiDB Cloud requests to minimize connection churn
 _tidb_http_client: httpx.Client = get_pooled_http_client(

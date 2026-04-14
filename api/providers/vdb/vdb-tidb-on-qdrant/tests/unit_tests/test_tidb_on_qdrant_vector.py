@@ -114,14 +114,12 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
         assert exc_info.value.status_code == 500
 
-    def test_delete_by_ids_with_large_batch(self, vector_instance):
-        """Test deletion with a large batch of IDs."""
-        # Create 1000 IDs
+    def test_delete_by_ids_with_exactly_1000(self, vector_instance):
+        """Test deletion with exactly 1000 IDs triggers a single batch."""
         ids = [f"doc_{i}" for i in range(1000)]
 
         vector_instance.delete_by_ids(ids)
 
-        # Verify single delete call with all IDs
         vector_instance._client.delete.assert_called_once()
         call_args = vector_instance._client.delete.call_args
 
@@ -129,10 +127,27 @@ class TestTidbOnQdrantVectorDeleteByIds:
         filter_obj = filter_selector.filter
         field_condition = filter_obj.must[0]
 
-        # Verify all 1000 IDs are in the batch
         assert len(field_condition.match.any) == 1000
         assert "doc_0" in field_condition.match.any
         assert "doc_999" in field_condition.match.any
+
+    def test_delete_by_ids_splits_into_batches(self, vector_instance):
+        """Test deletion with >1000 IDs triggers multiple batched calls."""
+        ids = [f"doc_{i}" for i in range(2500)]
+
+        vector_instance.delete_by_ids(ids)
+
+        assert vector_instance._client.delete.call_count == 3
+
+        batches = []
+        for call in vector_instance._client.delete.call_args_list:
+            filter_selector = call[1]["points_selector"]
+            field_condition = filter_selector.filter.must[0]
+            batches.append(field_condition.match.any)
+
+        assert len(batches[0]) == 1000
+        assert len(batches[1]) == 1000
+        assert len(batches[2]) == 500
 
     def test_delete_by_ids_filter_structure(self, vector_instance):
         """Test that the filter structure is correctly constructed."""
