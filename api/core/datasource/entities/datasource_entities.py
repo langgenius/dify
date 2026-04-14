@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 from enum import StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from yarl import URL
@@ -129,7 +129,7 @@ class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
-    output_schema: dict | None = None
+    output_schema: dict[str, Any] | None = None
 
     @field_validator("parameters", mode="before")
     @classmethod
@@ -179,6 +179,12 @@ class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
     datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
+class DatasourceInvokeMetaDict(TypedDict):
+    time_cost: float
+    error: str | None
+    tool_config: dict[str, Any] | None
+
+
 class DatasourceInvokeMeta(BaseModel):
     """
     Datasource invoke meta
@@ -186,7 +192,7 @@ class DatasourceInvokeMeta(BaseModel):
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
-    tool_config: dict | None = None
+    tool_config: dict[str, Any] | None = None
 
     @classmethod
     def empty(cls) -> DatasourceInvokeMeta:
@@ -202,12 +208,13 @@ class DatasourceInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self) -> DatasourceInvokeMetaDict:
+        result: DatasourceInvokeMetaDict = {
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
         }
+        return result
 
 
 class DatasourceLabel(BaseModel):
@@ -235,7 +242,7 @@ class OnlineDocumentPage(BaseModel):
 
     page_id: str = Field(..., description="The page id")
     page_name: str = Field(..., description="The page title")
-    page_icon: dict | None = Field(None, description="The page icon")
+    page_icon: dict[str, Any] | None = Field(None, description="The page icon")
     type: str = Field(..., description="The type of the page")
     last_edited_time: str = Field(..., description="The last edited time")
     parent_id: str | None = Field(None, description="The parent page id")
@@ -294,7 +301,7 @@ class GetWebsiteCrawlRequest(BaseModel):
     Get website crawl request
     """
 
-    crawl_parameters: dict = Field(..., description="The crawl parameters")
+    crawl_parameters: dict[str, Any] = Field(..., description="The crawl parameters")
 
 
 class WebSiteInfoDetail(BaseModel):
@@ -351,7 +358,7 @@ class OnlineDriveFileBucket(BaseModel):
     bucket: str | None = Field(None, description="The file bucket")
     files: list[OnlineDriveFile] = Field(..., description="The file list")
     is_truncated: bool = Field(False, description="Whether the result is truncated")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesRequest(BaseModel):
@@ -362,7 +369,7 @@ class OnlineDriveBrowseFilesRequest(BaseModel):
     bucket: str | None = Field(None, description="The file bucket")
     prefix: str = Field(..., description="The parent folder ID")
     max_keys: int = Field(20, description="Page size for pagination")
-    next_page_parameters: dict | None = Field(None, description="Parameters for fetching the next page")
+    next_page_parameters: dict[str, Any] | None = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesResponse(BaseModel):
