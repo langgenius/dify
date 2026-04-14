@@ -8,7 +8,14 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import {
   ApiKeyModal,
   usePluginAuthAction,
@@ -165,13 +172,21 @@ const Card = ({
       }
       {
         deleteCredentialId && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            isDisabled={doingAction}
-            onCancel={closeConfirm}
-            onConfirm={handleConfirm}
-          />
+          <AlertDialog open onOpenChange={open => !open && closeConfirm()}>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t('list.delete.title', { ns: 'datasetDocuments' })}
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirm}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         )
       }
       {

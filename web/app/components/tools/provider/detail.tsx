@@ -9,10 +9,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Indicator from '@/app/components/header/indicator'
@@ -402,13 +410,24 @@ const ProviderDetail = ({
           />
         )}
         {showConfirmDelete && (
-          <Confirm
-            title={t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
-            content={t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
-            isShow={showConfirmDelete}
-            onConfirm={handleConfirmDelete}
-            onCancel={() => setShowConfirmDelete(false)}
-          />
+          <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
     </Drawer>

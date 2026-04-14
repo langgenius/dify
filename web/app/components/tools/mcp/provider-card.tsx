@@ -4,7 +4,14 @@ import { RiHammerFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
@@ -132,19 +139,24 @@ const MCPCard = ({
         />
       )}
       {isShowDeleteConfirm && (
-        <Confirm
-          isShow
-          title={t('mcp.delete', { ns: 'tools' })}
-          content={(
-            <div>
-              {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: data.name })}
+        <AlertDialog open onOpenChange={open => !open && hideDeleteConfirm()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('mcp.delete', { ns: 'tools' })}
+              </AlertDialogTitle>
+              <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: data.name })}
+              </div>
             </div>
-          )}
-          onCancel={hideDeleteConfirm}
-          onConfirm={handleDelete}
-          isLoading={deleting}
-          isDisabled={deleting}
-        />
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )

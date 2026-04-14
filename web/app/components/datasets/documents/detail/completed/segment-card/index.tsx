@@ -5,10 +5,17 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
 import { cn } from '@/utils/classnames'
@@ -278,13 +285,21 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       }
       {showModal
         && (
-          <Confirm
-            isShow={showModal}
-            title={t('segment.delete', { ns: 'datasetDocuments' })}
-            confirmText={t('operation.sure', { ns: 'common' })}
-            onConfirm={async () => { await onDelete?.(id) }}
-            onCancel={() => setShowModal(false)}
-          />
+          <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t('segment.delete', { ns: 'datasetDocuments' })}
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton onClick={async () => { await onDelete?.(id) }}>
+                  {t('operation.sure', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
     </div>
   )

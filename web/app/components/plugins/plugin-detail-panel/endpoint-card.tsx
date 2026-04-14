@@ -6,10 +6,17 @@ import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -122,6 +129,14 @@ const EndpointCard = ({
     setIsCopied(true)
   }
 
+  const handleDisableConfirmOpenChange = (open: boolean) => {
+    if (open)
+      return
+
+    hideDisableConfirm()
+    setActive(true)
+  }
+
   useEffect(() => {
     if (isCopied) {
       const timer = setTimeout(() => {
@@ -187,25 +202,49 @@ const EndpointCard = ({
         />
       </div>
       {isShowDisableConfirm && (
-        <Confirm
-          isShow
-          title={t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
-          content={<div>{t('detailPanel.endpointDisableContent', { ns: 'plugin', name: data.name })}</div>}
-          onCancel={() => {
-            hideDisableConfirm()
-            setActive(true)
-          }}
-          onConfirm={() => disableEndpoint(endpointID)}
-        />
+        <AlertDialog
+          open
+          onOpenChange={handleDisableConfirmOpenChange}
+        >
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
+              </AlertDialogTitle>
+              <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('detailPanel.endpointDisableContent', { ns: 'plugin', name: data.name })}
+              </div>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={() => disableEndpoint(endpointID)}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {isShowDeleteConfirm && (
-        <Confirm
-          isShow
-          title={t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}
-          content={<div>{t('detailPanel.endpointDeleteContent', { ns: 'plugin', name: data.name })}</div>}
-          onCancel={hideDeleteConfirm}
-          onConfirm={() => deleteEndpoint(endpointID)}
-        />
+        <AlertDialog open onOpenChange={open => !open && hideDeleteConfirm()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}
+              </AlertDialogTitle>
+              <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('detailPanel.endpointDeleteContent', { ns: 'plugin', name: data.name })}
+              </div>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={() => deleteEndpoint(endpointID)}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
       {isShowEndpointModal && (
         <EndpointModal

@@ -7,7 +7,14 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
 
@@ -60,13 +67,21 @@ const Item: FC<ItemProps> = ({
       {
         showDeleteConfirm
         && (
-          <Confirm
-            isShow={showDeleteConfirm}
-            onCancel={() => setShowDeleteConfirm(false)}
-            title={`${t('operation.delete', { ns: 'common' })} “${data.name}”?`}
-            onConfirm={handleDeleteApiBasedExtension}
-            confirmText={t('operation.delete', { ns: 'common' }) || ''}
-          />
+          <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {`${t('operation.delete', { ns: 'common' })} “${data.name}”?`}
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton onClick={handleDeleteApiBasedExtension}>
+                  {t('operation.delete', { ns: 'common' }) || ''}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         )
       }
     </div>

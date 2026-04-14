@@ -3,8 +3,15 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
@@ -62,15 +69,26 @@ const BatchAction: FC<IBatchActionProps> = ({
       </div>
       {
         isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'appAnnotation' })}
-            confirmText={t('operation.delete', { ns: 'common' })}
-            onConfirm={handleBatchDelete}
-            onCancel={hideDeleteConfirm}
-            isLoading={isDeleting}
-            isDisabled={isDeleting}
-          />
+          <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle
+                  title={t('list.delete.title', { ns: 'appAnnotation' })}
+                  className="w-full truncate title-2xl-semi-bold text-text-primary"
+                >
+                  {t('list.delete.title', { ns: 'appAnnotation' })}
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>
+                  {t('operation.cancel', { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
+                  {t('operation.delete', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
         )
       }
     </div>
