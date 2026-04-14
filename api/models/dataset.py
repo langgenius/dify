@@ -204,9 +204,7 @@ class Dataset(Base):
     collection_binding_id = mapped_column(StringUUID, nullable=True, default=None)
     retrieval_model = mapped_column(AdjustedJSON, nullable=True, default=None)
     summary_index_setting = mapped_column(AdjustedJSON, nullable=True, default=None)
-    built_in_field_enabled = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
-    )
+    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     icon_info = mapped_column(AdjustedJSON, nullable=True, default=None)
     runtime_mode = mapped_column(
         EnumText(DatasetRuntimeMode, length=255),
