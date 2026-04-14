@@ -8,65 +8,7 @@ import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 import { cn } from '@/utils/classnames'
 
-type SelectRootProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<Value, Multiple> & {
-  form?: string
-}
-
-export function Select<Value, Multiple extends boolean | undefined = false>({
-  form,
-  inputRef,
-  name,
-  ...props
-}: SelectRootProps<Value, Multiple>) {
-  const hiddenInputRef = React.useRef<HTMLInputElement | null>(null)
-
-  const handleInputRef = React.useCallback((node: HTMLInputElement | null) => {
-    hiddenInputRef.current = node
-
-    if (!inputRef)
-      return
-
-    if (typeof inputRef === 'function') {
-      inputRef(node)
-      return
-    }
-
-    inputRef.current = node
-  }, [inputRef])
-
-  React.useLayoutEffect(() => {
-    const hiddenInput = hiddenInputRef.current
-    if (!hiddenInput)
-      return
-
-    const syncFormAttribute = (node: HTMLInputElement) => {
-      if (form === undefined)
-        node.removeAttribute('form')
-      else
-        node.setAttribute('form', form)
-    }
-
-    syncFormAttribute(hiddenInput)
-
-    if (!name)
-      return
-
-    let sibling = hiddenInput.nextElementSibling
-    while (sibling instanceof HTMLInputElement && sibling.type === 'hidden' && sibling.name === name) {
-      syncFormAttribute(sibling)
-      sibling = sibling.nextElementSibling
-    }
-  }, [form, name])
-
-  return (
-    <BaseSelect.Root
-      {...props}
-      name={name}
-      inputRef={handleInputRef}
-    />
-  )
-}
-
+export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
 /** @public */
 export const SelectGroup = BaseSelect.Group
