@@ -5,6 +5,7 @@ Web App Human Input Form APIs.
 import json
 import logging
 from datetime import datetime
+from typing import Any, NotRequired, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource
@@ -58,10 +59,19 @@ def _to_timestamp(value: datetime) -> int:
     return int(value.timestamp())
 
 
+class FormDefinitionPayload(TypedDict):
+    form_content: Any
+    inputs: Any
+    resolved_default_values: dict[str, str]
+    user_actions: Any
+    expiration_time: int
+    site: NotRequired[dict]
+
+
 def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
     """Return the form payload (optionally with site) as a JSON response."""
     definition_payload = form.get_definition().model_dump()
-    payload = {
+    payload: FormDefinitionPayload = {
         "form_content": definition_payload["rendered_content"],
         "inputs": definition_payload["inputs"],
         "resolved_default_values": _stringify_default_values(definition_payload["default_values"]),
@@ -92,7 +102,7 @@ class HumanInputFormApi(Resource):
         _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        # TODO(QuantumGhost): forbid submision for form tokens
+        # TODO(QuantumGhost): forbid submission for form tokens
         # that are only for console.
         form = service.get_form_by_token(form_token)
 

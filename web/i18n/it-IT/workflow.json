@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Ramo fallito",
   "nodes.common.errorHandle.none.desc": "L'esecuzione del nodo verrà interrotta se si verifica un'eccezione e non viene gestita",
   "nodes.common.errorHandle.none.title": "Nessuno",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Ci sono {{num}} nodi nel processo che funzionano in modo anomalo, si prega di andare su tracing per controllare i log.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Ci sono {{num}} nodi nel processo che funzionano in modo anomalo, si prega di andare su <tracingLink>tracing</tracingLink> per controllare i log.",
   "nodes.common.errorHandle.tip": "Strategia di gestione delle eccezioni, attivata quando un nodo rileva un'eccezione.",
   "nodes.common.errorHandle.title": "Gestione degli errori",
   "nodes.common.inputVars": "Variabili di input",
