@@ -4376,9 +4376,6 @@
     "no-restricted-imports": {
       "count": 2
     },
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
