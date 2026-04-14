@@ -11481,11 +11481,6 @@
       "count": 1
     }
   },
-  "app/signin/normal-form.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 25
-    }
-  },
   "app/signin/one-more-step.tsx": {
     "no-restricted-imports": {
       "count": 2
