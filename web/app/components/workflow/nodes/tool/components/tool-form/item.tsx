@@ -15,14 +15,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
-const URL_REGEX = /((?:https?:\/\/|www\.)\S+)/g
-
-const normalizeUrl = (url: string) => {
-  if (url.startsWith('http://') || url.startsWith('https://'))
-    return url
-
-  return `https://${url}`
-}
+const URL_REGEX = /(https?:\/\/\S+)/g
 
 const renderDescriptionWithLinks = (description: string): ReactNode => {
   const matches = [...description.matchAll(URL_REGEX)]
@@ -43,7 +36,7 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
     parts.push(
       <a
         key={`${url}-${index}`}
-        href={normalizeUrl(url)}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
         className="text-text-accent hover:underline"
