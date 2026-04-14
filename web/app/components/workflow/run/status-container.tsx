@@ -39,13 +39,6 @@ const StatusContainer: FC<Props> = ({
         status === 'running' && theme === Theme.dark && 'shadow-[inset_2px_2px_0_0_rgba(255,255,255,0.12),inset_0_1px_3px_0_rgba(0,0,0,0.4),inset_0_2px_24px_0_rgba(11,165,236,0.25),0_1px_2px_0_rgba(0,0,0,0.1),0_0_0_1px_rgba(24,24,27,0.95)]',
       )}
     >
-      <div className={cn(
-        'absolute left-0 top-0 h-[50px] w-[65%] bg-no-repeat',
-        theme === Theme.light && 'bg-[url(~@/app/components/workflow/run/assets/highlight.svg)]',
-        theme === Theme.dark && 'bg-[url(~@/app/components/workflow/run/assets/highlight-dark.svg)]',
-      )}
-      >
-      </div>
       {children}
     </div>
   )
