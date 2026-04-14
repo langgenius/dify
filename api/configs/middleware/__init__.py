@@ -160,6 +160,16 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
+    DB_TIMEZONE: str = Field(
+        description=(
+            "PostgreSQL session timezone injected via startup options."
+            " Default is 'UTC' for out-of-the-box consistency."
+            " Set to empty string to disable app-level timezone injection, for example when using RDS Proxy"
+            " together with a database-side default timezone."
+        ),
+        default="UTC",
+    )
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI_SCHEME(self) -> str:
@@ -227,12 +237,13 @@ class DatabaseConfig(BaseSettings):
         connect_args: dict[str, str] = {}
         # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
         if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
-            timezone_opt = "-c timezone=UTC"
-            if options:
-                merged_options = f"{options} {timezone_opt}"
-            else:
-                merged_options = timezone_opt
-            connect_args = {"options": merged_options}
+            merged_options = options.strip()
+            db_timezone = self.DB_TIMEZONE.strip()
+            if db_timezone:
+                timezone_opt = f"-c timezone={db_timezone}"
+                merged_options = f"{merged_options} {timezone_opt}".strip() if merged_options else timezone_opt
+            if merged_options:
+                connect_args = {"options": merged_options}
 
         result: SQLAlchemyEngineOptionsDict = {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
