@@ -20,7 +20,7 @@ const InputHasSetMultipleValue: FC<Props> = ({
       <div className={cn('inline-flex h-5 items-center space-x-0.5 rounded-[5px] border-[0.5px] border-components-panel-border bg-components-badge-white-to-dark pl-1.5 pr-0.5 shadow-xs', readOnly && 'pr-1.5')}>
         <div className="system-xs-regular text-text-secondary">{t('metadata.batchEditMetadata.multipleValue', { ns: 'dataset' })}</div>
         {!readOnly && (
-          <div className="cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary">
+          <div className="cursor-pointer radius-xs p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary">
             <RiCloseLine
               className="size-3.5 "
               onClick={onClear}

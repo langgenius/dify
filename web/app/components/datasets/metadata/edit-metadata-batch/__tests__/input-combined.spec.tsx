@@ -43,8 +43,9 @@ describe('InputCombined', () => {
       render(
         <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
-      const input = screen.getByDisplayValue('42')
+      const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
+      expect(input).toHaveValue('42')
     })
 
     it('should render date picker for time type', () => {
@@ -96,10 +97,22 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '123' } })
 
       expect(handleChange).toHaveBeenCalled()
+    })
+
+    it('should reset cleared number input to 0', () => {
+      const handleChange = vi.fn()
+      render(
+        <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
+      )
+
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: '' } })
+
+      expect(handleChange).toHaveBeenCalledWith(0)
     })
 
     it('should display current value for number type', () => {
@@ -108,7 +121,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={999} onChange={handleChange} />,
       )
 
-      expect(screen.getByDisplayValue('999')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveValue('999')
     })
 
     it('should apply readOnly prop to number input', () => {
@@ -117,7 +130,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={42} onChange={handleChange} readOnly />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveAttribute('readonly')
     })
   })
@@ -186,7 +199,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={null} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
     })
   })
@@ -208,7 +221,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('spinbutton')
+      const input = screen.getByRole('textbox')
       expect(input).toHaveClass('rounded-l-md')
     })
   })
@@ -230,7 +243,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      expect(screen.getByDisplayValue('0')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveValue('0')
     })
 
     it('should handle negative number', () => {
@@ -239,7 +252,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={-100} onChange={handleChange} />,
       )
 
-      expect(screen.getByDisplayValue('-100')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveValue('-100')
     })
 
     it('should handle special characters in string', () => {
@@ -263,7 +276,7 @@ describe('InputCombined', () => {
         <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 })

@@ -11,7 +11,7 @@ import MethodSelector from '../method-selector'
 
 // Mock Next.js navigation
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: vi.fn(),
@@ -49,9 +49,12 @@ vi.mock('@/service/use-tools', () => ({
 
 // Mock Toast - need to verify notification calls
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (options: { type: string, message: string }) => mockToastNotify(options),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 

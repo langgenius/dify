@@ -4,11 +4,11 @@ import type { BasicPlan } from '../../../type'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
 import { Plan } from '../../../type'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -66,11 +66,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       return
 
     if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
-        className: 'z-[1001]',
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     setLoading(true)
@@ -83,7 +79,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           throw new Error('Failed to open billing page')
         }, {
           onError: (err) => {
-            Toast.notify({ type: 'error', message: err.message || String(err) })
+            toast.error(err.message || String(err))
           },
         })
         return
@@ -111,34 +107,34 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
               {
                 isMostPopularPlan && (
                   <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
-                    <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
+                    <span className="text-text-primary-on-surface system-2xs-semibold-uppercase">
                       {t('plansCommon.mostPopular', { ns: 'billing' })}
                     </span>
                   </div>
                 )
               }
             </div>
-            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
+            <div className="text-text-secondary system-sm-regular">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
           {isFreePlan && (
-            <span className="title-4xl-semi-bold text-text-primary">{t('plansCommon.free', { ns: 'billing' })}</span>
+            <span className="text-text-primary title-4xl-semi-bold">{t('plansCommon.free', { ns: 'billing' })}</span>
           )}
           {!isFreePlan && (
             <>
               {isYear && (
-                <span className="title-4xl-semi-bold text-text-quaternary line-through">
+                <span className="text-text-quaternary line-through title-4xl-semi-bold">
                   $
                   {planInfo.price * 12}
                 </span>
               )}
-              <span className="title-4xl-semi-bold text-text-primary">
+              <span className="text-text-primary title-4xl-semi-bold">
                 $
                 {isYear ? planInfo.price * 10 : planInfo.price}
               </span>
-              <span className="system-md-regular pb-0.5 text-text-tertiary">
+              <span className="pb-0.5 text-text-tertiary system-md-regular">
                 {t('plansCommon.priceTip', { ns: 'billing' })}
                 {t(`plansCommon.${!isYear ? 'month' : 'year'}`, { ns: 'billing' })}
               </span>

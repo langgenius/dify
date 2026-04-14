@@ -119,7 +119,7 @@ const PluginTasks = () => {
             onClick={() => {}}
           />
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[11]">
+        <PortalToFollowElemContent className="z-11">
           <PluginTaskList
             runningPlugins={runningPlugins}
             successPlugins={successPlugins}

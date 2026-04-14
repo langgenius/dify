@@ -13,9 +13,12 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
@@ -113,7 +116,7 @@ class TestBatchCleanDocumentTask:
             tenant_id=account.current_tenant.id,
             name=fake.word(),
             description=fake.sentence(),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=account.id,
             embedding_model="text-embedding-ada-002",
             embedding_model_provider="openai",
@@ -144,13 +147,13 @@ class TestBatchCleanDocumentTask:
             dataset_id=dataset.id,
             position=0,
             name=fake.word(),
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             data_source_info=json.dumps({"upload_file_id": str(uuid.uuid4())}),
             batch="test_batch",
-            created_from="test",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=account.id,
-            indexing_status="completed",
-            doc_form="text_model",
+            indexing_status=IndexingStatus.COMPLETED,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
 
         db_session_with_containers.add(document)
@@ -183,7 +186,7 @@ class TestBatchCleanDocumentTask:
             tokens=50,
             index_node_id=str(uuid.uuid4()),
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
         )
 
         db_session_with_containers.add(segment)
@@ -208,7 +211,7 @@ class TestBatchCleanDocumentTask:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"test_files/{fake.file_name()}",
             name=fake.file_name(),
             size=1024,
@@ -297,7 +300,7 @@ class TestBatchCleanDocumentTask:
             tokens=50,
             index_node_id=str(uuid.uuid4()),
             created_by=account.id,
-            status="completed",
+            status=SegmentStatus.COMPLETED,
         )
 
         db_session_with_containers.add(segment)
@@ -390,7 +393,12 @@ class TestBatchCleanDocumentTask:
         db_session_with_containers.commit()
 
         # Execute the task with non-existent dataset
-        batch_clean_document_task(document_ids=[document_id], dataset_id=dataset_id, doc_form="text_model", file_ids=[])
+        batch_clean_document_task(
+            document_ids=[document_id],
+            dataset_id=dataset_id,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            file_ids=[],
+        )
 
         # Verify that no index processing occurred
         mock_external_service_dependencies["index_processor"].clean.assert_not_called()
@@ -523,7 +531,11 @@ class TestBatchCleanDocumentTask:
         account = self._create_test_account(db_session_with_containers)
 
         # Test different doc_form types
-        doc_forms = ["text_model", "qa_model", "hierarchical_model"]
+        doc_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in doc_forms:
             dataset = self._create_test_dataset(db_session_with_containers, account)
@@ -671,7 +683,7 @@ class TestBatchCleanDocumentTask:
                 tokens=25 + i * 5,
                 index_node_id=str(uuid.uuid4()),
                 created_by=account.id,
-                status="completed",
+                status=SegmentStatus.COMPLETED,
             )
             segments.append(segment)
 

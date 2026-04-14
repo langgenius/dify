@@ -10,19 +10,20 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Protocol, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast
 from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from pydantic import BaseModel, TypeAdapter
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from dify_graph.file import helpers as file_helpers
-from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
@@ -30,6 +31,22 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+class _TokenData(TypedDict, total=False):
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
+
+
+def _stream_with_request_context(response: object) -> Any:
+    """Bridge Flask's loosely-typed streaming helper without leaking casts into callers."""
+    return cast(Any, stream_with_context)(response)
 
 
 def escape_like_pattern(pattern: str) -> str:
@@ -64,7 +81,7 @@ def escape_like_pattern(pattern: str) -> str:
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+def extract_tenant_id(user: "Account | EndUser") -> str | None:
     """
     Extract tenant_id from Account or EndUser object.
 
@@ -147,7 +164,10 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value: Any) -> str:
+def uuid_value(value: str | UUID) -> str:
+    if isinstance(value, UUID):
+        return str(value)
+
     if value == "":
         return str(value)
 
@@ -167,6 +187,18 @@ def normalize_uuid(value: str | UUID) -> str:
         return uuid_value(value)
     except ValueError as exc:
         raise ValueError("must be a valid UUID") from exc
+
+
+def parse_uuid_str_or_none(value: str | None) -> str | None:
+    """
+    Return None for missing/empty UUID-like values.
+
+    Keep non-empty values unchanged to avoid changing behavior in paths that
+    currently pass placeholder IDs in tests/mocks.
+    """
+    if value is None or not str(value).strip():
+        return None
+    return str(value)
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
@@ -286,22 +318,32 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
-    if isinstance(response, dict):
+def compact_generate_response(
+    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+) -> Response:
+    if isinstance(response, Mapping):
         return Response(
             response=json.dumps(jsonable_encoder(response)),
             status=200,
             content_type="application/json; charset=utf-8",
         )
     else:
+        stream_response = response
 
-        def generate() -> Generator:
-            yield from response
+        def generate() -> Generator[str, None, None]:
+            yield from stream_response
 
-        return Response(stream_with_context(generate()), status=200, mimetype="text/event-stream")
+        return Response(
+            _stream_with_request_context(generate()),
+            status=200,
+            mimetype="text/event-stream",
+        )
 
 
-def length_prefixed_response(magic_number: int, response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
+def length_prefixed_response(
+    magic_number: int,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+) -> Response:
     """
     This function is used to return a response with a length prefix.
     Magic number is a one byte number that indicates the type of the response.
@@ -332,7 +374,7 @@ def length_prefixed_response(magic_number: int, response: Union[Mapping, Generat
         # | Magic Number 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
         return struct.pack("<BBHI", magic_number, 0, header_length, data_length) + b"\x00" * 6 + response
 
-    if isinstance(response, dict):
+    if isinstance(response, Mapping):
         return Response(
             response=pack_response_with_length_prefix(json.dumps(jsonable_encoder(response)).encode("utf-8")),
             status=200,
@@ -345,14 +387,20 @@ def length_prefixed_response(magic_number: int, response: Union[Mapping, Generat
             mimetype="application/json",
         )
 
-    def generate() -> Generator:
-        for chunk in response:
+    stream_response = response
+
+    def generate() -> Generator[bytes, None, None]:
+        for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
             else:
                 yield pack_response_with_length_prefix(chunk)
 
-    return Response(stream_with_context(generate()), status=200, mimetype="text/event-stream")
+    return Response(
+        _stream_with_request_context(generate()),
+        status=200,
+        mimetype="text/event-stream",
+    )
 
 
 class TokenManager:
@@ -360,9 +408,9 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional["Account"] = None,
+        account: "Account | None" = None,
         email: str | None = None,
-        additional_data: dict | None = None,
+        additional_data: dict[str, Any] | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")
@@ -410,7 +458,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: dict[str, Any] | None = json.loads(token_data_json)
+        token_data = dict(_token_data_adapter.validate_json(token_data_json))
         return token_data
 
     @classmethod
@@ -420,9 +468,7 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
-    ):
+    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_minutes: int | float):
         key = cls._get_account_token_key(account_id, token_type)
         expiry_seconds = int(expiry_minutes * 60)
         redis_client.setex(key, expiry_seconds, token)

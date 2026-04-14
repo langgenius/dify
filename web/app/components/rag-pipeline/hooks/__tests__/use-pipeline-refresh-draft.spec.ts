@@ -35,6 +35,7 @@ describe('usePipelineRefreshDraft', () => {
   const mockSetIsSyncingWorkflowDraft = vi.fn()
   const mockSetEnvironmentVariables = vi.fn()
   const mockSetEnvSecrets = vi.fn()
+  const mockSetRagPipelineVariables = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,6 +46,7 @@ describe('usePipelineRefreshDraft', () => {
       setIsSyncingWorkflowDraft: mockSetIsSyncingWorkflowDraft,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
+      setRagPipelineVariables: mockSetRagPipelineVariables,
     })
 
     mockFetchWorkflowDraft.mockResolvedValue({
@@ -55,6 +57,7 @@ describe('usePipelineRefreshDraft', () => {
       },
       hash: 'new-hash',
       environment_variables: [],
+      rag_pipeline_variables: [],
     })
   })
 
@@ -113,6 +116,29 @@ describe('usePipelineRefreshDraft', () => {
 
       await waitFor(() => {
         expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+      })
+    })
+
+    it('should update rag pipeline variables after fetch', async () => {
+      mockFetchWorkflowDraft.mockResolvedValue({
+        graph: {
+          nodes: [],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        hash: 'new-hash',
+        environment_variables: [],
+        rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
+      })
+
+      const { result } = renderHook(() => usePipelineRefreshDraft())
+
+      act(() => {
+        result.current.handleRefreshWorkflowDraft()
+      })
+
+      await waitFor(() => {
+        expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ variable: 'query', type: 'text-input' }])
       })
     })
 

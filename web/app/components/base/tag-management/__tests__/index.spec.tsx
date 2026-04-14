@@ -3,8 +3,27 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
+import * as ReactI18next from 'react-i18next'
 import TagManagementModal from '../index'
 import { useStore as useTagStore } from '../store'
+
+const { mockNotify, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockToast }
+})
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
+}))
 
 // Hoisted mocks
 const { fetchTagList, createTag } = vi.hoisted(() => ({
@@ -12,19 +31,9 @@ const { fetchTagList, createTag } = vi.hoisted(() => ({
   createTag: vi.fn(),
 }))
 
-const mockNotify = vi.fn()
-
 vi.mock('@/service/tag', () => ({
   fetchTagList,
   createTag,
-}))
-
-// Mock use-context-selector for ToastContext
-vi.mock('use-context-selector', () => ({
-  createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: mockNotify,
-  }),
 }))
 
 const mockTags: Tag[] = [
@@ -71,6 +80,19 @@ describe('TagManagementModal', () => {
     it('should render the new tag input with placeholder', () => {
       render(<TagManagementModal {...defaultProps} />)
       expect(screen.getByPlaceholderText(i18n.addNew)).toBeInTheDocument()
+    })
+
+    it('should fallback to empty placeholder when translation returns empty', () => {
+      const mockedTranslation = {
+        t: vi.fn().mockReturnValue(''),
+        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
+        ready: true,
+      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
+
+      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
+
+      render(<TagManagementModal {...defaultProps} />)
+      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
     })
 
     it('should render existing tags from the store', () => {
@@ -201,7 +223,7 @@ describe('TagManagementModal', () => {
       })
     })
 
-    it('should create a tag on input blur', async () => {
+    it('should create a tag on input blur-sm', async () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
 

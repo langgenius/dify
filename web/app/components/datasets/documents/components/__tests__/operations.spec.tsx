@@ -4,23 +4,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Operations from '../operations'
 
 const mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-  },
-}))
+const { mockToast } = vi.hoisted(() => {
+  const mockToast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockToast }
+})
 
-vi.mock('use-context-selector', () => ({
-  useContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: mockToast,
 }))
 
 // Mock document service hooks
@@ -117,9 +121,8 @@ describe('Operations', () => {
 
     it('should render disabled switch when embeddingAvailable is false in list scene', () => {
       render(<Operations {...defaultProps} embeddingAvailable={false} scene="list" />)
-      // Switch component uses opacity-50 class when disabled
-      const disabledSwitch = document.querySelector('.\\!opacity-50')
-      expect(disabledSwitch).toBeInTheDocument()
+      const disabledSwitch = screen.getByRole('switch')
+      expect(disabledSwitch).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -491,10 +494,7 @@ describe('Operations', () => {
         fireEvent.click(archiveButton)
       })
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
     })
 
@@ -512,10 +512,7 @@ describe('Operations', () => {
         fireEvent.click(downloadButton)
       })
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.downloadUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
       })
     })
 
@@ -533,10 +530,7 @@ describe('Operations', () => {
         fireEvent.click(downloadButton)
       })
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.downloadUnsuccessfully',
-        })
+        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.downloadUnsuccessfully')
       })
     })
   })

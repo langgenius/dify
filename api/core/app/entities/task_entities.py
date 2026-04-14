@@ -2,14 +2,14 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.nodes.human_input.entities import FormInput, UserAction
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from dify_graph.entities import AgentNodeStrategyInit
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
+from core.app.entities.agent_strategy import AgentStrategyInfo
+from core.rag.entities import RetrievalSourceMetadata
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -349,7 +349,7 @@ class NodeStartStreamResponse(StreamResponse):
         extras: dict[str, object] = Field(default_factory=dict)
         iteration_id: str | None = None
         loop_id: str | None = None
-        agent_strategy: AgentNodeStrategyInit | None = None
+        agent_strategy: AgentStrategyInfo | None = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -521,7 +521,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
@@ -547,7 +547,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         title: str
         index: int
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str
@@ -571,7 +571,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict | None = None
+        extras: dict[str, Any] | None = None
         inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
@@ -602,7 +602,7 @@ class LoopNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
@@ -653,7 +653,7 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict | None = None
+        extras: dict[str, Any] | None = None
         inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus

@@ -13,6 +13,7 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/popover`
   - `@/app/components/base/dropdown`
   - `@/app/components/base/dialog`
+  - `@/app/components/base/toast` (including `context`)
 - Replacement primitives:
   - `@/app/components/base/ui/tooltip`
   - `@/app/components/base/ui/dropdown-menu`
@@ -21,7 +22,8 @@ This document tracks the migration away from legacy overlay APIs.
   - `@/app/components/base/ui/dialog`
   - `@/app/components/base/ui/alert-dialog`
   - `@/app/components/base/ui/select`
-- Tracking issue: https://github.com/langgenius/dify/issues/32767
+  - `@/app/components/base/ui/toast`
+- Tracking issue: <https://github.com/langgenius/dify/issues/32767>
 
 ## ESLint policy
 
@@ -42,6 +44,12 @@ This document tracks the migration away from legacy overlay APIs.
    - Remove remaining allowlist entries.
    - Remove legacy overlay implementations when import count reaches zero.
 
+## Toast migration strategy
+
+- `@/app/components/base/toast` has been replaced by `@/app/components/base/ui/toast`.
+- All new toast usage must go through `@/app/components/base/ui/toast`.
+- When a file with legacy toast usage is touched, prefer migrating that call site in the same change; full-repo toast cleanup is not required in one PR.
+
 ## Allowlist maintenance
 
 - After each migration batch, run:
@@ -55,43 +63,47 @@ pnpm -C web lint:fix --prune-suppressions <changed-files>
 
 ## z-index strategy
 
-All new overlay primitives in `base/ui/` share a single z-index value: **`z-[1002]`**.
+All new overlay primitives in `base/ui/` share a single z-index value:
+**`z-1002`**, except Toast which stays one layer above at **`z-1003`**.
 
 ### Why z-[1002]?
 
 During the migration period, legacy and new overlays coexist. Legacy overlays
 portal to `document.body` with explicit z-index values:
 
-| Layer | z-index | Components |
-|-------|---------|------------|
-| Legacy Drawer | `z-[30]` | `base/drawer` |
-| Legacy Modal | `z-[60]` | `base/modal` (default) |
-| Legacy PortalToFollowElem callers | up to `z-[1001]` | various business components |
-| **New UI primitives** | **`z-[1002]`** | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Legacy Modal (highPriority) | `z-[1100]` | `base/modal` (`highPriority={true}`) |
-| Toast | `z-[9999]` | `base/toast` |
+| Layer                             | z-index        | Components                                   |
+| --------------------------------- | -------------- | -------------------------------------------- |
+| Legacy Drawer                     | `z-30`         | `base/drawer`                                |
+| Legacy Modal                      | `z-60`         | `base/modal` (default)                       |
+| Legacy PortalToFollowElem callers | up to `z-1001` | various business components                  |
+| **New UI primitives**             | **`z-1002`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
+| Toast                             | `z-1003`       | `base/ui/toast`                              |
 
-`z-[1002]` sits above all common legacy overlays, so new primitives always
+`z-1002` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
 new primitives share the same z-index and rely on **DOM order** for stacking
 (later portal = on top).
 
+Toast stays one layer above the overlay primitives so notifications remain
+visible above dialogs, popovers, and other portalled surfaces without falling
+back to `z-9999`.
+
 ### Rules
 
-- **Do NOT add z-index overrides** (e.g. `className="z-[1003]"`) on new
+- **Do NOT add z-index overrides** (e.g. `className="z-1003"`) on new
   `base/ui/*` components. If you find yourself needing one, the parent legacy
   overlay should be migrated instead.
 - When migrating a legacy overlay that has a high z-index, remove the z-index
-  entirely — the new primitive's default `z-[1002]` handles it.
-- `portalToFollowElemContentClassName` with z-index values (e.g. `z-[1000]`)
+  entirely — the new primitive's default `z-1002` handles it.
+- `portalToFollowElemContentClassName` with z-index values (e.g. `z-1000`)
   should be deleted when the surrounding legacy container is migrated.
 
 ### Post-migration cleanup
 
 Once all legacy overlays are removed:
 
-1. Reduce `z-[1002]` back to `z-50` across all `base/ui/` primitives.
-1. Reduce Toast from `z-[9999]` to `z-[99]`.
+1. Reduce `z-1002` back to `z-50` across all `base/ui/` primitives.
+1. Reduce Toast from `z-1003` to `z-51`.
 1. Remove this section from the migration guide.
 
 ## React Refresh policy for base UI primitives

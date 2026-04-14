@@ -200,7 +200,7 @@ const Panel: FC = () => {
           'w-60 shrink-0 border-r border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
-              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
+              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
               : 'hidden'
             : 'block',
         )}

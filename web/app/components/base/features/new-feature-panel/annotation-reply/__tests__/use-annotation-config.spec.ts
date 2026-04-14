@@ -1,5 +1,7 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { act, renderHook } from '@testing-library/react'
+import { queryAnnotationJobStatus } from '@/service/annotation'
+import { sleep } from '@/utils'
 import useAnnotationConfig from '../use-annotation-config'
 
 let mockIsAnnotationFull = false
@@ -237,5 +239,32 @@ describe('useAnnotationConfig', () => {
     const updatedConfig = setAnnotationConfig.mock.calls[0][0]
     expect(updatedConfig.enabled).toBe(true)
     expect(updatedConfig.score_threshold).toBeDefined()
+  })
+
+  it('should poll job status until completed when enabling annotation', async () => {
+    const setAnnotationConfig = vi.fn()
+    const queryJobStatusMock = vi.mocked(queryAnnotationJobStatus)
+    const sleepMock = vi.mocked(sleep)
+
+    queryJobStatusMock
+      .mockResolvedValueOnce({ job_status: 'pending' } as unknown as Awaited<ReturnType<typeof queryAnnotationJobStatus>>)
+      .mockResolvedValueOnce({ job_status: 'completed' } as unknown as Awaited<ReturnType<typeof queryAnnotationJobStatus>>)
+
+    const { result } = renderHook(() => useAnnotationConfig({
+      appId: 'test-app',
+      annotationConfig: defaultConfig,
+      setAnnotationConfig,
+    }))
+
+    await act(async () => {
+      await result.current.handleEnableAnnotation({
+        embedding_provider_name: 'openai',
+        embedding_model_name: 'text-embedding-3-small',
+      }, 0.95)
+    })
+
+    expect(queryJobStatusMock).toHaveBeenCalledTimes(2)
+    expect(sleepMock).toHaveBeenCalledWith(2000)
+    expect(setAnnotationConfig).toHaveBeenCalled()
   })
 })

@@ -5,9 +5,21 @@ import { renameDocumentName } from '@/service/datasets'
 
 import RenameModal from '../rename-modal'
 
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
+
 // Mock the service
 vi.mock('@/service/datasets', () => ({
   renameDocumentName: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mockToastError,
+  },
 }))
 
 const mockRenameDocumentName = vi.mocked(renameDocumentName)
@@ -118,6 +130,7 @@ describe('RenameModal', () => {
       await waitFor(() => {
         expect(handleSaved).toHaveBeenCalledTimes(1)
         expect(handleClose).toHaveBeenCalledTimes(1)
+        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -163,6 +176,7 @@ describe('RenameModal', () => {
         // onSaved and onClose should not be called on error
         expect(handleSaved).not.toHaveBeenCalled()
         expect(handleClose).not.toHaveBeenCalled()
+        expect(mockToastError).toHaveBeenCalledWith('Error: API Error')
       })
     })
   })

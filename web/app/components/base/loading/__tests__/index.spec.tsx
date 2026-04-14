@@ -25,4 +25,9 @@ describe('Loading Component', () => {
     const svgElement = container.querySelector('svg')
     expect(svgElement).toHaveClass('spin-animation')
   })
+
+  it('handles undefined props correctly', () => {
+    const { container } = render(Loading() as unknown as React.ReactElement)
+    expect(container.firstChild).toHaveClass('flex w-full items-center justify-center')
+  })
 })

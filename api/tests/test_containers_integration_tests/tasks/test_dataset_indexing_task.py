@@ -8,9 +8,11 @@ import pytest
 from faker import Faker
 
 from core.indexing_runner import DocumentIsPausedError
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -139,8 +141,8 @@ class TestDatasetIndexingTaskIntegration:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -155,12 +157,12 @@ class TestDatasetIndexingTaskIntegration:
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=position,
-                data_source_type="upload_file",
+                data_source_type=DataSourceType.UPLOAD_FILE,
                 batch="test_batch",
                 name=f"doc-{position}.txt",
-                created_from="upload_file",
+                created_from=DocumentCreatedFrom.WEB,
                 created_by=account.id,
-                indexing_status="waiting",
+                indexing_status=IndexingStatus.WAITING,
                 enabled=True,
             )
             db_session_with_containers.add(document)
@@ -181,7 +183,7 @@ class TestDatasetIndexingTaskIntegration:
         for document_id in document_ids:
             updated = self._query_document(db_session_with_containers, document_id)
             assert updated is not None
-            assert updated.indexing_status == "parsing"
+            assert updated.indexing_status == IndexingStatus.PARSING
             assert updated.processing_started_at is not None
 
     def _assert_documents_error_contains(
@@ -195,7 +197,7 @@ class TestDatasetIndexingTaskIntegration:
         for document_id in document_ids:
             updated = self._query_document(db_session_with_containers, document_id)
             assert updated is not None
-            assert updated.indexing_status == "error"
+            assert updated.indexing_status == IndexingStatus.ERROR
             assert updated.error is not None
             assert expected_error_substring in updated.error
             assert updated.stopped_at is not None

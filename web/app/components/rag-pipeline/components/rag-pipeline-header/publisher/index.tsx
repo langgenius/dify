@@ -44,7 +44,7 @@ const Publisher = () => {
           <RiArrowDownSLine className="h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <Popup />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

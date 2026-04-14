@@ -1,3 +1,7 @@
+from typing import Any
+
+from sqlalchemy import select
+
 from configs import dify_config
 from extensions.ext_database import db
 from models.model import AccountTrialAppRecord, TrialApp
@@ -27,7 +31,7 @@ class RecommendedAppService:
             apps = result["recommended_apps"]
             for app in apps:
                 app_id = app["app_id"]
-                trial_app_model = db.session.query(TrialApp).where(TrialApp.app_id == app_id).first()
+                trial_app_model = db.session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
                 if trial_app_model:
                     app["can_trial"] = True
                 else:
@@ -35,7 +39,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def get_recommend_app_detail(cls, app_id: str) -> dict | None:
+    def get_recommend_app_detail(cls, app_id: str) -> dict[str, Any] | None:
         """
         Get recommend app detail.
         :param app_id: app id
@@ -43,10 +47,10 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result: dict = retrieval_instance.get_recommend_app_detail(app_id)
+        result: dict[str, Any] = retrieval_instance.get_recommend_app_detail(app_id)
         if FeatureService.get_system_features().enable_trial_app:
             app_id = result["id"]
-            trial_app_model = db.session.query(TrialApp).where(TrialApp.app_id == app_id).first()
+            trial_app_model = db.session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
             if trial_app_model:
                 result["can_trial"] = True
             else:
@@ -60,10 +64,10 @@ class RecommendedAppService:
         :param app_id: app id
         :return:
         """
-        account_trial_app_record = (
-            db.session.query(AccountTrialAppRecord)
+        account_trial_app_record = db.session.scalar(
+            select(AccountTrialAppRecord)
             .where(AccountTrialAppRecord.app_id == app_id, AccountTrialAppRecord.account_id == account_id)
-            .first()
+            .limit(1)
         )
         if account_trial_app_record:
             account_trial_app_record.count += 1
