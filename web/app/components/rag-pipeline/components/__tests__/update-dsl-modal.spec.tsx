@@ -324,11 +324,11 @@ describe('UpdateDSLModal', () => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
-    it('should render import button with warning variant', () => {
+    it('should render import button with primary destructive variant', () => {
       render(<UpdateDSLModal {...defaultProps} />)
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).toHaveAttribute('data-variant', 'warning')
+      expect(importButton).toHaveAttribute('data-variant', 'primary')
     })
 
     it('should render backup button with secondary variant', () => {
