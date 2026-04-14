@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
+import { Button } from '@/app/components/base/ui/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useToolIcon } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -28,11 +28,11 @@ const Connect = ({
         />
       </div>
       <div className="flex flex-col gap-y-1">
-        <div className="flex flex-col gap-y-1 pb-3 pt-1">
+        <div className="flex flex-col gap-y-1 pt-1 pb-3">
           <div className="system-md-semibold text-text-secondary">
             <span className="relative">
               {t('onlineDrive.notConnected', { ns: 'datasetPipeline', name: nodeData.title })}
-              <Icon3Dots className="absolute -right-2.5 -top-1.5 size-4 text-text-secondary" />
+              <Icon3Dots className="absolute -top-1.5 -right-2.5 size-4 text-text-secondary" />
             </span>
           </div>
           <div className="system-sm-regular text-text-tertiary">
