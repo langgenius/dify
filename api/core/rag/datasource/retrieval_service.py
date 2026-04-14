@@ -196,7 +196,9 @@ class RetrievalService:
             dataset.tenant_id,
             dataset_id,
             query,
-            external_retrieval_model or default_external_retrieval_model,
+            ExternalDatasetService.normalize_external_retrieval_parameters(
+                external_retrieval_model or default_external_retrieval_model
+            ),
             metadata_condition=metadata_condition,
         )
         return all_documents
