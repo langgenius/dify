@@ -36,7 +36,7 @@ def register_external_error_handlers(api: Api):
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
         # Use headers on the exception if present; otherwise none.
-        headers = {}
+        headers: dict[str, Any] = {}
         exc_headers = getattr(e, "headers", None)
         if exc_headers:
             headers.update(exc_headers)

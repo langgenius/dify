@@ -48,7 +48,7 @@ def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P,
 
 def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if dify_config.EDITION != "CLOUD":
             abort(404)
 
@@ -59,7 +59,7 @@ def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.ENTERPRISE_ENABLED:
             abort(404)
 
@@ -70,7 +70,7 @@ def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if dify_config.EDITION != "SELF_HOSTED":
             abort(404)
 
@@ -94,7 +94,7 @@ def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R
 def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
@@ -138,7 +138,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
@@ -161,7 +161,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
 def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs):
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             if resource == "knowledge":
                 _, current_tenant_id = current_account_with_tenant()
                 knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
@@ -196,7 +196,7 @@ def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[C
 
 def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         with contextlib.suppress(Exception):
             _, current_tenant_id = current_account_with_tenant()
             features = FeatureService.get_features(current_tenant_id)
@@ -229,7 +229,7 @@ def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         settings = FeatureService.get_system_features()
         if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
@@ -241,7 +241,7 @@ def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         features = FeatureService.get_system_features()
         if features.enable_email_password_login:
             return view(*args, **kwargs)
@@ -267,7 +267,7 @@ def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         features = FeatureService.get_system_features()
         if features.enable_change_email:
             return view(*args, **kwargs)
@@ -280,7 +280,7 @@ def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 def is_allow_transfer_owner[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         from libs.workspace_permission import check_workspace_owner_transfer_permission
 
         _, current_tenant_id = current_account_with_tenant()
