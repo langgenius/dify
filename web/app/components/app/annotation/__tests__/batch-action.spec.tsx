@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import BatchAction from '../batch-action'
 
@@ -29,11 +29,10 @@ describe('BatchAction', () => {
     render(<BatchAction {...baseProps} onBatchDelete={onBatchDelete} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
-    await screen.findByText('appAnnotation.list.delete.title')
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText('appAnnotation.list.delete.title')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1])
-    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
     await waitFor(() => {
       expect(onBatchDelete).toHaveBeenCalledTimes(1)
