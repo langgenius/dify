@@ -210,7 +210,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       <div className="relative flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
+            <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
             <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('codegen.description', { ns: 'appDebug' })}</div>
           </div>
           <div className="mb-4">
@@ -227,7 +227,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div>
             <div className="text-[0px]">
-              <div className="mb-1.5 text-text-secondary system-sm-semibold-uppercase">{t('codegen.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}
@@ -271,31 +271,29 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
         )}
       </div>
-      {isShowConfirmOverwrite && (
-        <AlertDialog open={isShowConfirmOverwrite} onOpenChange={open => !open && hideShowConfirmOverwrite()}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                onClick={() => {
-                  hideShowConfirmOverwrite()
-                  onFinished(current!)
-                }}
-              >
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={isShowConfirmOverwrite} onOpenChange={open => !open && hideShowConfirmOverwrite()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                hideShowConfirmOverwrite()
+                onFinished(current!)
+              }}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </Modal>
   )
 }

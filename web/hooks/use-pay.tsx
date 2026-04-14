@@ -111,7 +111,7 @@ export const CheckModal = () => {
     <AlertDialog open={showPayStatusModal} onOpenChange={open => !open && handleCancelShowPayStatusModal()}>
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle title={confirmInfo.title} className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
             {confirmInfo.title}
           </AlertDialogTitle>
           {description && (

@@ -70,7 +70,7 @@ const TryLabel: FC<{
 }> = ({ Icon, text, onClick }) => {
   return (
     <div
-      className="mr-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
+      className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
       <Icon className="h-4 w-4 text-text-tertiary"></Icon>
@@ -291,7 +291,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
+            <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
             <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('generate.description', { ns: 'appDebug' })}</div>
           </div>
           <div>
@@ -309,7 +309,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {isBasicMode && (
             <div className="mt-4">
               <div className="flex items-center">
-                <div className="mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary">{t('generate.tryIt', { ns: 'appDebug' })}</div>
+                <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">{t('generate.tryIt', { ns: 'appDebug' })}</div>
                 <div
                   className="h-px grow"
                   style={{
@@ -334,7 +334,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {/* inputs */}
           <div className="mt-4">
             <div>
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
+              <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
               {isBasicMode
                 ? (
                     <InstructionEditorInBasic
@@ -395,31 +395,29 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         )}
         {isLoading && renderLoading}
         {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
-        {isShowConfirmOverwrite && (
-          <AlertDialog open={isShowConfirmOverwrite} onOpenChange={open => !open && hideShowConfirmOverwrite()}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('generate.overwriteTitle', { ns: 'appDebug' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('generate.overwriteMessage', { ns: 'appDebug' })}
-                </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  onClick={() => {
-                    hideShowConfirmOverwrite()
-                    onFinished(current!)
-                  }}
-                >
-                  {t('operation.confirm', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+        <AlertDialog open={isShowConfirmOverwrite} onOpenChange={open => !open && hideShowConfirmOverwrite()}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('generate.overwriteTitle', { ns: 'appDebug' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('generate.overwriteMessage', { ns: 'appDebug' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                onClick={() => {
+                  hideShowConfirmOverwrite()
+                  onFinished(current!)
+                }}
+              >
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Modal>
   )

@@ -71,7 +71,7 @@ const Conversion = () => {
             </span>
           </div>
         </div>
-        <div className="pb-8 pl-[25px] pr-0 pt-6">
+        <div className="pt-6 pr-0 pb-8 pl-[25px]">
           <div className="rounded-l-xl border border-effects-highlight bg-background-default p-1 shadow-md shadow-shadow-shadow-5 backdrop-blur-[5px]">
             <div className="overflow-hidden rounded-l-lg">
               <PipelineScreenShot />
@@ -82,7 +82,7 @@ const Conversion = () => {
       <AlertDialog open={showConfirmModal} onOpenChange={open => !open && handleCancelConversion()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle title={confirmTitle} className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {confirmTitle}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

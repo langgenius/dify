@@ -272,7 +272,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     >
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
-          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('notSetVar', { ns: 'appDebug' })}</div>
+          <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('notSetVar', { ns: 'appDebug' })}</div>
         </div>
       )}
       {hasVar && (
@@ -321,31 +321,29 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         />
       )}
 
-      {isShowDeleteContextVarModal && (
-        <AlertDialog open={isShowDeleteContextVarModal} onOpenChange={open => !open && hideDeleteContextVarModal()}>
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('feature.dataSet.queryVariable.deleteContextVarTitle', { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('feature.dataSet.queryVariable.deleteContextVarTip', { ns: 'appDebug' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                onClick={() => {
-                  didRemoveVar(removeIndex as number)
-                  hideDeleteContextVarModal()
-                }}
-              >
-                {t('operation.confirm', { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={isShowDeleteContextVarModal} onOpenChange={open => !open && hideDeleteContextVarModal()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('feature.dataSet.queryVariable.deleteContextVarTitle', { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('feature.dataSet.queryVariable.deleteContextVarTip', { ns: 'appDebug' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                didRemoveVar(removeIndex as number)
+                hideDeleteContextVarModal()
+              }}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </Panel>
   )

@@ -63,8 +63,8 @@ const BatchAction: FC<IBatchActionProps> = ({
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
       <div className="pointer-events-auto flex items-center gap-x-1 radius-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
-        <div className="inline-flex items-center gap-x-2 py-1 pl-2 pr-3">
-          <span className="system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface">
+        <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}
           </span>
           <span className="system-sm-semibold text-text-accent">{t(`${i18nPrefix}.selected`, { ns: 'dataset' })}</span>
@@ -155,28 +155,24 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="px-0.5">{t(`${i18nPrefix}.cancel`, { ns: 'dataset' })}</span>
         </Button>
       </div>
-      {
-        isShowDeleteConfirm && (
-          <AlertDialog open onOpenChange={open => !open && hideDeleteConfirm()}>
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('list.delete.title', { ns: 'datasetDocuments' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('list.delete.content', { ns: 'datasetDocuments' })}
-                </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-                <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
-                  {t('operation.sure', { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
-        )
-      }
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('list.delete.content', { ns: 'datasetDocuments' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
+              {t('operation.sure', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
