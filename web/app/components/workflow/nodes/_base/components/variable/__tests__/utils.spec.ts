@@ -3,6 +3,7 @@ import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-i
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
+import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { getNodeUsedVars, updateNodeVars } from '../utils'
@@ -20,26 +21,37 @@ const createPromptItem = (overrides: Partial<PromptItem> = {}): PromptItem => ({
   ...overrides,
 })
 
+const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
+  type: BlockEnum.LLM,
+  title: 'LLM',
+  desc: '',
+  model: {
+    provider: 'provider',
+    name: 'model',
+    mode: AppModeEnum.CHAT,
+    completion_params: {},
+  },
+  prompt_template: promptTemplate,
+  context: {
+    enabled: false,
+    variable_selector: [],
+  },
+  vision: {
+    enabled: false,
+  },
+})
+
 describe('variable utils', () => {
   describe('getNodeUsedVars', () => {
     it('should read variables from llm jinja prompt text', () => {
-      const node = createNode<LLMNodeType>({
-        type: BlockEnum.LLM,
-        title: 'LLM',
-        desc: '',
-        model: {
-          provider: 'provider',
-          name: 'model',
-          mode: AppModeEnum.CHAT,
-          completion_params: {},
-        },
-        prompt_template: [
+      const node = createNode<LLMNodeType>(
+        createLLMNodeData([
           createPromptItem({
             edition_type: EditionType.jinja2,
             jinja2_text: 'Hello {{#env.API_KEY#}}',
           }),
-        ],
-      })
+        ]),
+      )
 
       expect(getNodeUsedVars(node)).toContainEqual(['env', 'API_KEY'])
     })
@@ -57,7 +69,7 @@ describe('variable utils', () => {
         delivery_methods: [
           {
             id: 'email',
-            type: 'email',
+            type: DeliveryMethodType.Email,
             enabled: true,
             config: {
               recipients: { whole_workspace: true, items: [] },
@@ -93,24 +105,15 @@ describe('variable utils', () => {
     })
 
     it('should replace llm jinja prompt references', () => {
-      const node = createNode<LLMNodeType>({
-        type: BlockEnum.LLM,
-        title: 'LLM',
-        desc: '',
-        model: {
-          provider: 'provider',
-          name: 'model',
-          mode: AppModeEnum.CHAT,
-          completion_params: {},
-        },
-        prompt_template: [
+      const node = createNode<LLMNodeType>(
+        createLLMNodeData([
           createPromptItem({
             text: '{{#env.API_KEY#}}',
             edition_type: EditionType.jinja2,
             jinja2_text: 'Hello {{#env.API_KEY#}}',
           }),
-        ],
-      })
+        ]),
+      )
 
       const updatedNode = updateNodeVars(node, ['env', 'API_KEY'], ['env', 'RENAMED_KEY'])
 
@@ -133,7 +136,7 @@ describe('variable utils', () => {
         delivery_methods: [
           {
             id: 'email',
-            type: 'email',
+            type: DeliveryMethodType.Email,
             enabled: true,
             config: {
               recipients: { whole_workspace: true, items: [] },
