@@ -169,7 +169,9 @@ class ModelProviderService:
             model_name=model,
         )
 
-    def get_provider_credential(self, tenant_id: str, provider: str, credential_id: str | None = None) -> dict[str, Any] | None:
+    def get_provider_credential(
+        self, tenant_id: str, provider: str, credential_id: str | None = None
+    ) -> dict[str, Any] | None:
         """
         get provider credentials.
 
@@ -271,7 +273,9 @@ class ModelProviderService:
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
-    def validate_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict[str, Any]):
+    def validate_model_credentials(
+        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict[str, Any]
+    ):
         """
         validate model credentials.
 
@@ -288,7 +292,13 @@ class ModelProviderService:
         )
 
     def create_model_credential(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict[str, Any], credential_name: str | None
+        self,
+        tenant_id: str,
+        provider: str,
+        model_type: str,
+        model: str,
+        credentials: dict[str, Any],
+        credential_name: str | None,
     ) -> None:
         """
         create and save model credentials.
