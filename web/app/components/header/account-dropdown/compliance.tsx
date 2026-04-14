@@ -11,7 +11,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import Gdpr from '../../base/icons/src/public/common/Gdpr'
 import Iso from '../../base/icons/src/public/common/Iso'
