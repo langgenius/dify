@@ -12,7 +12,7 @@ vi.mock('react-i18next', () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
       if (fullKey === 'workflow.nodes.common.errorHandle.partialSucceeded.tip')
-        return 'There are {{num}} nodes in the process running abnormally, please go to TRACTING to check the logs.'
+        return 'There are {{num}} nodes in the process running abnormally, please go to TRACING to check the logs.'
 
       const params = { ...options }
       delete params.ns
@@ -36,8 +36,8 @@ vi.mock('react-i18next', () => ({
 
     const tracingLink = components?.tracingLink
     const tracingNode = isValidElement(tracingLink)
-      ? cloneElement(tracingLink, undefined, 'TRACTING')
-      : 'TRACTING'
+      ? cloneElement(tracingLink, undefined, 'TRACING')
+      : 'TRACING'
 
     return (
       <span>
@@ -113,22 +113,22 @@ describe('Status', () => {
 
     expect(screen.getByText('FAIL')).toBeInTheDocument()
     expect(screen.getByText('Something broke')).toBeInTheDocument()
-    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 2 nodes in the process running abnormally, please go to TRACTING to check the logs.')).toHaveLength(2)
+    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 2 nodes in the process running abnormally, please go to TRACING to check the logs.')).toHaveLength(2)
   })
 
   it('renders the partial-succeeded warning summary', () => {
     render(<Status status="partial-succeeded" exceptionCounts={3} />)
 
     expect(screen.getByText('PARTIAL SUCCESS')).toBeInTheDocument()
-    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 3 nodes in the process running abnormally, please go to TRACTING to check the logs.')).toHaveLength(2)
+    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 3 nodes in the process running abnormally, please go to TRACING to check the logs.')).toHaveLength(2)
   })
 
-  it('opens the tracing tab when clicking the TRACTING link', () => {
+  it('opens the tracing tab when clicking the TRACING link', () => {
     const onOpenTracingTab = vi.fn()
 
     render(<Status status="partial-succeeded" exceptionCounts={3} onOpenTracingTab={onOpenTracingTab} />)
 
-    fireEvent.click(screen.getByRole('link', { name: 'TRACTING' }))
+    fireEvent.click(screen.getByRole('link', { name: 'TRACING' }))
 
     expect(onOpenTracingTab).toHaveBeenCalledTimes(1)
   })
