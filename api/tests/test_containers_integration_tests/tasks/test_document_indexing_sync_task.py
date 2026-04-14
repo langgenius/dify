@@ -299,7 +299,9 @@ class TestDocumentIndexingSyncTask:
             select(Document).where(Document.id == context["document"].id).limit(1)
         )
         remaining_segments = db_session_with_containers.scalar(
-            select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == context["document"].id)
+            select(func.count())
+            .select_from(DocumentSegment)
+            .where(DocumentSegment.document_id == context["document"].id)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
@@ -322,7 +324,9 @@ class TestDocumentIndexingSyncTask:
             select(Document).where(Document.id == context["document"].id).limit(1)
         )
         remaining_segments = db_session_with_containers.scalar(
-            select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == context["document"].id)
+            select(func.count())
+            .select_from(DocumentSegment)
+            .where(DocumentSegment.document_id == context["document"].id)
         )
 
         assert updated_document is not None
@@ -387,7 +391,9 @@ class TestDocumentIndexingSyncTask:
             select(Document).where(Document.id == context["document"].id).limit(1)
         )
         remaining_segments = db_session_with_containers.scalar(
-            select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == context["document"].id)
+            select(func.count())
+            .select_from(DocumentSegment)
+            .where(DocumentSegment.document_id == context["document"].id)
         )
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING

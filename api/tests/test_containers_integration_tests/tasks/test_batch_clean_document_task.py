@@ -726,7 +726,10 @@ class TestBatchCleanDocumentTask:
             )
             == 3
         )
-        assert db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == upload_file.id).limit(1)) is not None
+        assert (
+            db_session_with_containers.scalar(select(UploadFile).where(UploadFile.id == upload_file.id).limit(1))
+            is not None
+        )
 
         # Store original IDs for verification
         document_id = document.id

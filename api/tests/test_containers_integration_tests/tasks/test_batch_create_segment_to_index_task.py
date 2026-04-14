@@ -294,9 +294,7 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Check that segments were created
         segments = db_session_with_containers.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.document_id == document.id)
-            .order_by(DocumentSegment.position)
+            select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
         ).all()
         assert len(segments) == 3
 
@@ -687,9 +685,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Verify results
         # Check that new segments were created with correct positions
         all_segments = db_session_with_containers.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.document_id == document.id)
-            .order_by(DocumentSegment.position)
+            select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
         ).all()
         assert len(all_segments) == 6  # 3 existing + 3 new
 
