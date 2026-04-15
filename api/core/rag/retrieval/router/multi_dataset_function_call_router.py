@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Any
 
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessageTool, SystemPromptMessage, UserPromptMessage
@@ -14,7 +14,7 @@ class FunctionCallMultiDatasetRouter:
         dataset_tools: list[PromptMessageTool],
         model_config: ModelConfigWithCredentialsEntity,
         model_instance: ModelInstance,
-    ) -> tuple[Union[str, None], LLMUsage]:
+    ) -> tuple[str | None, LLMUsage]:
         """Given input, decided what to do.
         Returns:
             Action specifying what tool to use.
@@ -29,12 +29,13 @@ class FunctionCallMultiDatasetRouter:
                 SystemPromptMessage(content="You are a helpful AI assistant."),
                 UserPromptMessage(content=query),
             ]
-            result: LLMResult = model_instance.invoke_llm(
+            result: Any = getattr(model_instance, "invoke_llm")(
                 prompt_messages=prompt_messages,
                 tools=dataset_tools,
                 stream=False,
                 model_parameters={"temperature": 0.2, "top_p": 0.3, "max_tokens": 1500},
             )
+            result = LLMResult.model_validate(result) if not isinstance(result, LLMResult) else result
             usage = result.usage or LLMUsage.empty_usage()
             if result.message.tool_calls:
                 # get retrieval model config

@@ -105,6 +105,8 @@ class WaterCrawlProvider:
 
     def scrape_url(self, url: str) -> WatercrawlDocumentData:
         response = self.client.scrape_url(url=url, sync=True, prefetched=True)
+        if response is None:
+            raise ValueError("Scrape returned no result")
         return self._structure_data(response)
 
     def _structure_data(self, result_object: dict[str, Any]) -> WatercrawlDocumentData:
