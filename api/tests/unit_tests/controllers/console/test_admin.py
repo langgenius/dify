@@ -20,7 +20,7 @@ from models.model import App, InstalledApp, RecommendedApp
 
 @pytest.fixture(autouse=True)
 def _patch_db_engine():
-    with patch.object(admin_module.db, "engine", MagicMock()):
+    with patch.object(type(admin_module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()):
         yield
 
 

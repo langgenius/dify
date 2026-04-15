@@ -9,7 +9,7 @@ import controllers.console.explore.installed_app as module
 
 @pytest.fixture(autouse=True)
 def _patch_db_engine():
-    with patch.object(module.db, "engine", MagicMock()):
+    with patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()):
         yield
 
 
