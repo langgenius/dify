@@ -15,6 +15,7 @@ from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource
+from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: dict[str, Any] | None,
+        retrieval_model: RetrievalModel | dict[str, Any] | None,
         external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
@@ -53,22 +54,25 @@ class HitTestingService:
 
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
-            retrieval_model = dataset.retrieval_model or default_retrieval_model
-        assert isinstance(retrieval_model, dict)
+            retrieval_model_dict = dataset.retrieval_model or default_retrieval_model
+            retrieval_model = RetrievalModel.model_validate(retrieval_model_dict)
+        elif isinstance(retrieval_model, dict):
+            retrieval_model = RetrievalModel.model_validate(retrieval_model)
+
         document_ids_filter = None
-        metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
+        metadata_filtering_conditions = retrieval_model.metadata_filtering_conditions or {}
         if metadata_filtering_conditions and query:
             dataset_retrieval = DatasetRetrieval()
 
             from core.rag.entities import MetadataFilteringCondition
 
-            metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            metadata_filtering_conditions_obj = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],
                 query=query,
                 metadata_filtering_mode="manual",
-                metadata_filtering_conditions=metadata_filtering_conditions,
+                metadata_filtering_conditions=metadata_filtering_conditions_obj,
                 inputs={},
                 tenant_id="",
                 user_id="",
@@ -79,19 +83,15 @@ class HitTestingService:
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [])
         all_documents = RetrievalService.retrieve(
-            retrieval_method=RetrievalMethod(retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
+            retrieval_method=RetrievalMethod(retrieval_model.search_method or RetrievalMethod.SEMANTIC_SEARCH),
             dataset_id=dataset.id,
             query=query,
             attachment_ids=attachment_ids,
-            top_k=retrieval_model.get("top_k", 4),
-            score_threshold=retrieval_model.get("score_threshold", 0.0)
-            if retrieval_model["score_threshold_enabled"]
-            else 0.0,
-            reranking_model=retrieval_model.get("reranking_model", None)
-            if retrieval_model["reranking_enable"]
-            else None,
-            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
-            weights=retrieval_model.get("weights", None),
+            top_k=retrieval_model.top_k,
+            score_threshold=retrieval_model.score_threshold if retrieval_model.score_threshold_enabled else 0.0,
+            reranking_model=retrieval_model.reranking_model.model_dump() if retrieval_model.reranking_enable and retrieval_model.reranking_model else None,
+            reranking_mode=retrieval_model.reranking_mode or "reranking_model",
+            weights=retrieval_model.weights.model_dump() if retrieval_model.weights else None,
             document_ids_filter=document_ids_filter,
         )
 
