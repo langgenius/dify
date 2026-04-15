@@ -26,7 +26,7 @@ export default function FullScreenModal({
 }: IModal) {
   return (
     <Transition show={open} appear>
-      <Dialog as="div" className={cn('modal-dialog', wrapperClassName)} onClose={onClose}>
+      <Dialog as="div" className={cn('relative z-50', wrapperClassName)} onClose={onClose}>
         <TransitionChild>
           <div className={cn('fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]', 'duration-300 ease-in data-closed:opacity-0', 'data-enter:opacity-100', 'data-leave:opacity-0')} />
         </TransitionChild>
