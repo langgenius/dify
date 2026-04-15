@@ -29,6 +29,10 @@ type ExternalCreateAppAttribution = {
   utmCampaign?: string
 }
 
+const serializeBootstrapValue = (value: unknown) => {
+  return JSON.stringify(value).replace(/</g, '\\u003c')
+}
+
 const normalizeString = (value?: string | null) => {
   const trimmed = value?.trim()
   return trimmed || undefined
@@ -85,6 +89,65 @@ const mapOriginalCreateAppMode = (appMode: AppModeEnum): OriginalCreateAppMode =
   return 'chatflow'
 }
 
+export const runCreateAppAttributionBootstrap = (
+  sourceMap = EXTERNAL_UTM_SOURCE_MAP,
+  storageKey = CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY,
+  queryKeys = CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS,
+) => {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage)
+      return
+
+    const searchParams = new URLSearchParams(window.location.search)
+    const rawSource = searchParams.get('utm_source')
+
+    if (!rawSource)
+      return
+
+    const normalizedSource = rawSource.trim().toLowerCase()
+    const mappedSource = sourceMap[normalizedSource as keyof typeof sourceMap]
+
+    if (!mappedSource)
+      return
+
+    const normalizedSlug = searchParams.get('slug')?.trim()
+    const normalizedCampaign = searchParams.get('utm_campaign')?.trim()
+    const utmCampaign = normalizedSlug || normalizedCampaign
+    const attribution = utmCampaign
+      ? { utmSource: mappedSource, utmCampaign }
+      : { utmSource: mappedSource }
+
+    window.sessionStorage.setItem(storageKey, JSON.stringify(attribution))
+
+    const nextSearchParams = new URLSearchParams(window.location.search)
+    let hasChanges = false
+
+    queryKeys.forEach((key) => {
+      if (!nextSearchParams.has(key))
+        return
+
+      nextSearchParams.delete(key)
+      hasChanges = true
+    })
+
+    if (!hasChanges)
+      return
+
+    const nextSearch = nextSearchParams.toString()
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
+
+    try {
+      window.history.replaceState(window.history.state, '', nextUrl)
+    }
+    catch {}
+  }
+  catch {}
+}
+
+export const buildCreateAppAttributionBootstrapScript = () => {
+  return `(${runCreateAppAttributionBootstrap.toString()})(${serializeBootstrapValue(EXTERNAL_UTM_SOURCE_MAP)}, ${serializeBootstrapValue(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)}, ${serializeBootstrapValue(CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS)});`
+}
+
 export const extractExternalCreateAppAttribution = ({
   searchParams,
   utmInfo,
@@ -119,31 +182,6 @@ const writeRememberedExternalCreateAppAttribution = (attribution: ExternalCreate
 
 const clearRememberedExternalCreateAppAttribution = () => {
   window.sessionStorage.removeItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)
-}
-
-export const clearCreateAppExternalAttributionSearchParams = () => {
-  if (typeof window === 'undefined')
-    return false
-
-  const nextSearchParams = new URLSearchParams(window.location.search)
-  let hasChanges = false
-
-  CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS.forEach((key) => {
-    if (!nextSearchParams.has(key))
-      return
-
-    nextSearchParams.delete(key)
-    hasChanges = true
-  })
-
-  if (!hasChanges)
-    return false
-
-  const nextSearch = nextSearchParams.toString()
-  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
-  window.history.replaceState(window.history.state, '', nextUrl)
-
-  return true
 }
 
 export const rememberCreateAppExternalAttribution = ({

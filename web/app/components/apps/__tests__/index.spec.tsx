@@ -121,8 +121,11 @@ vi.mock('../../explore/create-app-modal', () => ({
 }))
 
 vi.mock('../../app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm }: { onConfirm: () => void }) => (
-    <button data-testid="confirm-dsl" onClick={onConfirm}>Confirm DSL</button>
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+    <div data-testid="dsl-confirm-modal">
+      <button data-testid="confirm-dsl" onClick={onConfirm}>Confirm DSL</button>
+      <button data-testid="cancel-dsl" onClick={onCancel}>Cancel DSL</button>
+    </div>
   ),
 }))
 
@@ -241,6 +244,63 @@ describe('Apps', () => {
           appMode: AppModeEnum.CHAT,
         })
       })
+    })
+
+    it('should track template preview creation after confirming a pending import', async () => {
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
+        options.onPending?.()
+      })
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
+        options.onSuccess?.()
+      })
+
+      renderWithClient(<Apps />)
+
+      fireEvent.click(screen.getByTestId('open-preview'))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      fireEvent.click(await screen.findByTestId('confirm-dsl'))
+
+      await waitFor(() => {
+        expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          appMode: AppModeEnum.CHAT,
+        })
+      })
+    })
+
+    it('should close the dsl confirm modal when the pending import is canceled', async () => {
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
+        options.onPending?.()
+      })
+
+      renderWithClient(<Apps />)
+
+      fireEvent.click(screen.getByTestId('open-preview'))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      fireEvent.click(await screen.findByTestId('cancel-dsl'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('dsl-confirm-modal')).not.toBeInTheDocument()
+      })
+      expect(mockTrackCreateApp).not.toHaveBeenCalled()
+    })
+
+    it('should hide the create modal without tracking when the modal closes', async () => {
+      renderWithClient(<Apps />)
+
+      fireEvent.click(screen.getByTestId('open-preview'))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+
+      fireEvent.click(await screen.findByTestId('hide-create'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+      })
+      expect(mockTrackCreateApp).not.toHaveBeenCalled()
     })
   })
 

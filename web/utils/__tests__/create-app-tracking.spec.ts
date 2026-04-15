@@ -4,7 +4,6 @@ import * as amplitude from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 import {
   buildCreateAppEventPayload,
-  clearCreateAppExternalAttributionSearchParams,
   extractExternalCreateAppAttribution,
   rememberCreateAppExternalAttribution,
   trackCreateApp,
@@ -162,46 +161,6 @@ describe('create-app-tracking', () => {
       })
     })
 
-    it('should clear consumed attribution params from the url while preserving unrelated params', () => {
-      window.history.replaceState({}, '', '/apps?action=showSettings&utm_source=linkedin&slug=agent-launch&utm_campaign=spring-launch#preview')
-
-      rememberCreateAppExternalAttribution({
-        searchParams: new URLSearchParams(window.location.search),
-      })
-      clearCreateAppExternalAttributionSearchParams()
-
-      expect(window.location.pathname).toBe('/apps')
-      expect(window.location.search).toBe('?action=showSettings')
-      expect(window.location.hash).toBe('#preview')
-
-      trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
-
-      expect(amplitude.trackEvent).toHaveBeenNthCalledWith(1, 'create_app', {
-        source: 'external',
-        utm_source: 'linkedin',
-        utm_campaign: 'agent-launch',
-      })
-
-      expect(rememberCreateAppExternalAttribution({
-        searchParams: new URLSearchParams(window.location.search),
-      })).toBeNull()
-
-      trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
-
-      expect(amplitude.trackEvent).toHaveBeenNthCalledWith(2, 'create_app', {
-        source: 'original',
-        app_mode: 'workflow',
-        time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
-      })
-    })
-
-    it('should return false when there are no attribution params to clear', () => {
-      window.history.replaceState({}, '', '/apps?action=showSettings')
-
-      expect(clearCreateAppExternalAttributionSearchParams()).toBe(false)
-      expect(window.location.search).toBe('?action=showSettings')
-    })
-
     it('should fall back to the original payload when window is unavailable', () => {
       const originalWindow = globalThis.window
 
@@ -210,8 +169,6 @@ describe('create-app-tracking', () => {
           configurable: true,
           value: undefined,
         })
-
-        expect(clearCreateAppExternalAttributionSearchParams()).toBe(false)
 
         trackCreateApp({ appMode: AppModeEnum.AGENT_CHAT })
 

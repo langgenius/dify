@@ -1,33 +1,25 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { useQueryState } from 'nuqs'
+import { screen, waitFor } from '@testing-library/react'
+import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from '@/app/education-apply/constants'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import {
-  clearCreateAppExternalAttributionSearchParams,
-  extractExternalCreateAppAttribution,
-  rememberCreateAppExternalAttribution,
-} from '@/utils/create-app-tracking'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { AppInitializer } from '../app-initializer'
 
-vi.mock('nuqs', () => ({
-  parseAsBoolean: {
-    withOptions: vi.fn(() => ({})),
-  },
-  useQueryState: vi.fn(),
+const { mockSendGAEvent, mockTrackEvent } = vi.hoisted(() => ({
+  mockSendGAEvent: vi.fn(),
+  mockTrackEvent: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(),
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
-}))
-
-vi.mock('@/utils/create-app-tracking', () => ({
-  extractExternalCreateAppAttribution: vi.fn(),
-  rememberCreateAppExternalAttribution: vi.fn(),
-  clearCreateAppExternalAttributionSearchParams: vi.fn(),
 }))
 
 vi.mock('@/utils/setup-status', () => ({
@@ -39,20 +31,16 @@ vi.mock('@/app/signin/utils/post-login-redirect', () => ({
 }))
 
 vi.mock('@/utils/gtag', () => ({
-  sendGAEvent: vi.fn(),
+  sendGAEvent: (...args: unknown[]) => mockSendGAEvent(...args),
 }))
 
 vi.mock('../base/amplitude', () => ({
-  trackEvent: vi.fn(),
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-const mockUseQueryState = vi.mocked(useQueryState)
 const mockUsePathname = vi.mocked(usePathname)
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
-const mockExtractExternalCreateAppAttribution = vi.mocked(extractExternalCreateAppAttribution)
-const mockRememberCreateAppExternalAttribution = vi.mocked(rememberCreateAppExternalAttribution)
-const mockClearCreateAppExternalAttributionSearchParams = vi.mocked(clearCreateAppExternalAttributionSearchParams)
 const mockFetchSetupStatusWithCache = vi.mocked(fetchSetupStatusWithCache)
 const mockResolvePostLoginRedirect = vi.mocked(resolvePostLoginRedirect)
 const mockReplace = vi.fn()
@@ -60,22 +48,20 @@ const mockReplace = vi.fn()
 describe('AppInitializer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
+    window.localStorage.clear()
+    window.sessionStorage.clear()
+    Cookies.remove('utm_info')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     mockUsePathname.mockReturnValue('/apps')
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<typeof useRouter>)
-    mockUseQueryState.mockReturnValue([null, vi.fn()] as ReturnType<typeof useQueryState>)
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>)
     mockFetchSetupStatusWithCache.mockResolvedValue({ step: 'finished' })
     mockResolvePostLoginRedirect.mockReturnValue(null)
   })
 
-  it('should remember and clear external attribution params when the current url contains them', async () => {
-    const searchParams = new URLSearchParams('utm_source=linkedin&slug=agent-launch&action=keep')
-    mockUseSearchParams.mockReturnValue(searchParams as unknown as ReturnType<typeof useSearchParams>)
-    mockExtractExternalCreateAppAttribution.mockReturnValue({
-      utmSource: 'linkedin',
-      utmCampaign: 'agent-launch',
-    })
-
-    render(
+  it('renders children after setup checks finish', async () => {
+    renderWithNuqs(
       <AppInitializer>
         <div>ready</div>
       </AppInitializer>,
@@ -83,20 +69,25 @@ describe('AppInitializer', () => {
 
     await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
 
-    expect(mockExtractExternalCreateAppAttribution).toHaveBeenCalledWith({
-      searchParams,
-      utmInfo: null,
-    })
-    expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledWith({ searchParams })
-    expect(mockClearCreateAppExternalAttributionSearchParams).toHaveBeenCalledTimes(1)
+    expect(mockFetchSetupStatusWithCache).toHaveBeenCalledTimes(1)
+    expect(mockReplace).not.toHaveBeenCalledWith('/signin')
   })
 
-  it('should skip url cleanup when no external attribution is present', async () => {
-    const searchParams = new URLSearchParams('action=keep')
-    mockUseSearchParams.mockReturnValue(searchParams as unknown as ReturnType<typeof useSearchParams>)
-    mockExtractExternalCreateAppAttribution.mockReturnValue(null)
+  it('redirects to install when setup status loading fails', async () => {
+    mockFetchSetupStatusWithCache.mockRejectedValue(new Error('unauthorized'))
 
-    render(
+    renderWithNuqs(
+      <AppInitializer>
+        <div>ready</div>
+      </AppInitializer>,
+    )
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/install'))
+    expect(screen.queryByText('ready')).not.toBeInTheDocument()
+  })
+
+  it('does not persist create app attribution from the url anymore', async () => {
+    renderWithNuqs(
       <AppInitializer>
         <div>ready</div>
       </AppInitializer>,
@@ -104,7 +95,103 @@ describe('AppInitializer', () => {
 
     await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
 
-    expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledWith({ searchParams })
-    expect(mockClearCreateAppExternalAttributionSearchParams).not.toHaveBeenCalled()
+    expect(window.sessionStorage.getItem('create_app_external_attribution')).toBeNull()
+  })
+
+  it('tracks oauth registration with utm info and clears the cookie', async () => {
+    Cookies.set('utm_info', JSON.stringify({
+      utm_source: 'linkedin',
+      slug: 'agent-launch',
+    }))
+
+    renderWithNuqs(
+      <AppInitializer>
+        <div>ready</div>
+      </AppInitializer>,
+      { searchParams: 'oauth_new_user=true' },
+    )
+
+    await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
+
+    expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
+      method: 'oauth',
+      utm_source: 'linkedin',
+      slug: 'agent-launch',
+    })
+    expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
+      method: 'oauth',
+      utm_source: 'linkedin',
+      slug: 'agent-launch',
+    })
+    expect(mockReplace).toHaveBeenCalledWith('/apps')
+    expect(Cookies.get('utm_info')).toBeUndefined()
+  })
+
+  it('falls back to the base registration event when the oauth utm cookie is invalid', async () => {
+    Cookies.set('utm_info', '{invalid-json')
+
+    renderWithNuqs(
+      <AppInitializer>
+        <div>ready</div>
+      </AppInitializer>,
+      { searchParams: 'oauth_new_user=true' },
+    )
+
+    await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
+
+    expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', {
+      method: 'oauth',
+    })
+    expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success', {
+      method: 'oauth',
+    })
+    expect(console.error).toHaveBeenCalled()
+    expect(Cookies.get('utm_info')).toBeUndefined()
+  })
+
+  it('stores the education verification flag in localStorage', async () => {
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams(`action=${EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION}`) as unknown as ReturnType<typeof useSearchParams>,
+    )
+
+    renderWithNuqs(
+      <AppInitializer>
+        <div>ready</div>
+      </AppInitializer>,
+    )
+
+    await waitFor(() => expect(screen.getByText('ready')).toBeInTheDocument())
+
+    expect(window.localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)).toBe('yes')
+  })
+
+  it('redirects to the resolved post-login url when one exists', async () => {
+    const mockLocationReplace = vi.fn()
+    vi.stubGlobal('location', { ...window.location, replace: mockLocationReplace })
+    mockResolvePostLoginRedirect.mockReturnValue('/explore')
+
+    renderWithNuqs(
+      <AppInitializer>
+        <div>ready</div>
+      </AppInitializer>,
+    )
+
+    await waitFor(() => expect(mockLocationReplace).toHaveBeenCalledWith('/explore'))
+    expect(screen.queryByText('ready')).not.toBeInTheDocument()
+  })
+
+  it('redirects to signin when redirect resolution throws', async () => {
+    mockResolvePostLoginRedirect.mockImplementation(() => {
+      throw new Error('redirect resolution failed')
+    })
+
+    renderWithNuqs(
+      <AppInitializer>
+        <div>ready</div>
+      </AppInitializer>,
+    )
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/signin'))
+    expect(screen.queryByText('ready')).not.toBeInTheDocument()
   })
 })
