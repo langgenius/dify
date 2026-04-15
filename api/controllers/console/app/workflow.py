@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal, marshal_with
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.graph_engine.manager import GraphEngineManager
@@ -942,7 +942,6 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_pagination_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -970,9 +969,10 @@ class PublishedAllWorkflowApi(Resource):
                 user_id=user_id,
                 named_only=named_only,
             )
+            serialized_workflows = marshal(workflows, workflow_fields_copy)
 
             return {
-                "items": workflows,
+                "items": serialized_workflows,
                 "page": page,
                 "limit": limit,
                 "has_more": has_more,

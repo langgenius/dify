@@ -258,6 +258,63 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     assert exc.value.description == "invalid workflow graph"
 
 
+def test_get_published_workflows_marshals_items_before_session_closes(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = workflow_module.PublishedAllWorkflowApi()
+    handler = _unwrap(api.get)
+
+    session_state = {"open": False}
+
+    class _SessionContext:
+        def __enter__(self):
+            session_state["open"] = True
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            session_state["open"] = False
+            return False
+
+    class _SessionMaker:
+        def begin(self):
+            return _SessionContext()
+
+    class _Workflow:
+        @property
+        def id(self):
+            assert session_state["open"] is True
+            return "w1"
+
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(workflow_module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(
+            get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False),
+        ),
+    )
+
+    def _fake_marshal(items, fields):
+        assert session_state["open"] is True
+        return [{"id": item.id} for item in items]
+
+    monkeypatch.setattr(workflow_module, "marshal", _fake_marshal)
+
+    with app.test_request_context(
+        "/apps/app/workflows",
+        method="GET",
+        query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
+    ):
+        response = handler(api, app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
+
+    assert response == {
+        "items": [{"id": "w1"}],
+        "page": 1,
+        "limit": 10,
+        "has_more": False,
+    }
+
+
 def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         workflow_module, "WorkflowService", lambda: SimpleNamespace(get_draft_workflow=lambda **_k: None)
