@@ -3453,11 +3453,6 @@
       "count": 1
     }
   },
-  "app/components/billing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 4
-    }
-  },
   "app/components/billing/upgrade-btn/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -7884,9 +7879,6 @@
     }
   },
   "app/components/workflow/nodes/agent/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
