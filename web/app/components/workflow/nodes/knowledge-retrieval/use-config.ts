@@ -38,6 +38,17 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     doSetInputs,
   })
 
+  const handleDatasetIdVarChange = useCallback((newVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.dataset_id_variable_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const filterStringOrArrayStringVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.string || varPayload.type === VarType.arrayString
+  }, [])
+
   const {
     currentProvider,
     currentModel,
@@ -120,7 +131,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     inputs,
     handleQueryVarChange,
     handleQueryAttachmentChange,
+    handleDatasetIdVarChange,
     filterStringVar: metadataConfig.filterStringVar,
+    filterStringOrArrayStringVar,
     filterFileVar: metadataConfig.filterFileVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,

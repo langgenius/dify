@@ -2,16 +2,20 @@ import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
+import { RiDatabase2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   data,
 }) => {
+  const { t } = useTranslation()
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+  const hasDynamicDatasets = data.dataset_id_variable_selector && data.dataset_id_variable_selector.length > 0
 
   useEffect(() => {
     if (data.dataset_ids?.length > 0) {
@@ -27,12 +31,20 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
     }
   }, [data.dataset_ids, datasetsDetail])
 
-  if (!selectedDatasets.length)
+  if (!selectedDatasets.length && !hasDynamicDatasets)
     return null
 
   return (
     <div className="mb-1 px-3 py-1">
       <div className="space-y-0.5">
+        {hasDynamicDatasets && (
+          <div className="flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1">
+            <RiDatabase2Line className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+            <div className="w-0 grow truncate system-xs-regular text-text-secondary">
+              {t('nodes.knowledgeRetrieval.datasetIdVariable', { ns: 'workflow' })}
+            </div>
+          </div>
+        )}
         {selectedDatasets.map(({ id, name, icon_info }) => {
           const iconInfo = icon_info || {
             icon: '📙',
@@ -50,7 +62,7 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
                 imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
                 className="shrink-0"
               />
-              <div className="system-xs-regular w-0 grow truncate text-text-secondary">
+              <div className="w-0 grow truncate system-xs-regular text-text-secondary">
                 {name}
               </div>
             </div>

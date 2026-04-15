@@ -703,6 +703,8 @@
   "nodes.knowledgeBase.rerankingModelIsInvalid": "无效的 Reranking 模型",
   "nodes.knowledgeBase.rerankingModelIsRequired": "Reranking 模型是必需的",
   "nodes.knowledgeBase.retrievalSettingIsRequired": "检索设置是必需的",
+  "nodes.knowledgeRetrieval.datasetIdVariable": "知识库变量",
+  "nodes.knowledgeRetrieval.datasetIdVariableTip": "通过变量动态提供知识库 ID（字符串或字符串数组）。解析后的 ID 将与下方静态选择的知识库合并使用。",
   "nodes.knowledgeRetrieval.knowledge": "知识库",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "根据 Query Variable 自动生成元数据过滤条件",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "根据用户查询自动生成元数据过滤条件",
