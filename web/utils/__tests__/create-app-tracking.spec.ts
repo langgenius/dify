@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
@@ -40,6 +41,17 @@ describe('create-app-tracking', () => {
         utmSource: 'blog',
         utmCampaign: 'launch-week',
       })
+    })
+  })
+
+  describe('rememberCreateAppExternalAttribution', () => {
+    it('should ignore malformed utm cookies', () => {
+      vi.spyOn(Cookies, 'get').mockImplementation(((key?: string) => {
+        return key ? 'not-json' : {}
+      }) as typeof Cookies.get)
+
+      expect(rememberCreateAppExternalAttribution()).toBeNull()
+      expect(window.sessionStorage.getItem('create_app_external_attribution')).toBeNull()
     })
   })
 
@@ -181,6 +193,40 @@ describe('create-app-tracking', () => {
         app_mode: 'workflow',
         time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
       })
+    })
+
+    it('should return false when there are no attribution params to clear', () => {
+      window.history.replaceState({}, '', '/apps?action=showSettings')
+
+      expect(clearCreateAppExternalAttributionSearchParams()).toBe(false)
+      expect(window.location.search).toBe('?action=showSettings')
+    })
+
+    it('should fall back to the original payload when window is unavailable', () => {
+      const originalWindow = globalThis.window
+
+      try {
+        Object.defineProperty(globalThis, 'window', {
+          configurable: true,
+          value: undefined,
+        })
+
+        expect(clearCreateAppExternalAttributionSearchParams()).toBe(false)
+
+        trackCreateApp({ appMode: AppModeEnum.AGENT_CHAT })
+
+        expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
+          source: 'original',
+          app_mode: 'agent',
+          time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
+        })
+      }
+      finally {
+        Object.defineProperty(globalThis, 'window', {
+          configurable: true,
+          value: originalWindow,
+        })
+      }
     })
   })
 })

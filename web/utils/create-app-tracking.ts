@@ -110,23 +110,14 @@ export const extractExternalCreateAppAttribution = ({
 }
 
 const readRememberedExternalCreateAppAttribution = (): ExternalCreateAppAttribution | null => {
-  if (typeof window === 'undefined')
-    return null
-
   return parseJSONRecord(window.sessionStorage.getItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)) as ExternalCreateAppAttribution | null
 }
 
 const writeRememberedExternalCreateAppAttribution = (attribution: ExternalCreateAppAttribution) => {
-  if (typeof window === 'undefined')
-    return
-
   window.sessionStorage.setItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY, JSON.stringify(attribution))
 }
 
 const clearRememberedExternalCreateAppAttribution = () => {
-  if (typeof window === 'undefined')
-    return
-
   window.sessionStorage.removeItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)
 }
 
@@ -167,7 +158,7 @@ export const rememberCreateAppExternalAttribution = ({
     utmInfo: utmInfo ?? getCookieUtmInfo(),
   })
 
-  if (attribution)
+  if (attribution && typeof window !== 'undefined')
     writeRememberedExternalCreateAppAttribution(attribution)
 
   return attribution
