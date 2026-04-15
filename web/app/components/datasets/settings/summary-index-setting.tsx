@@ -63,7 +63,7 @@ const SummaryIndexSetting = ({
     return (
       <div>
         <div className="flex h-6 items-center justify-between">
-          <div className="flex items-center text-text-secondary system-sm-semibold-uppercase">
+          <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
             {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
             <Tooltip
               triggerClassName="ml-1 h-4 w-4 shrink-0"
@@ -72,15 +72,15 @@ const SummaryIndexSetting = ({
             </Tooltip>
           </div>
           <Switch
-            value={summaryIndexSetting?.enable ?? false}
-            onChange={handleSummaryIndexEnableChange}
+            checked={summaryIndexSetting?.enable ?? false}
+            onCheckedChange={handleSummaryIndexEnableChange}
             size="md"
           />
         </div>
         {
           summaryIndexSetting?.enable && (
             <div>
-              <div className="mb-1.5 mt-2 flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
+              <div className="mt-2 mb-1.5 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
                 {t('form.summaryModel', { ns: 'datasetSettings' })}
               </div>
               <ModelSelector
@@ -90,7 +90,7 @@ const SummaryIndexSetting = ({
                 readonly={readonly}
                 showDeprecatedWarnIcon
               />
-              <div className="mt-3 flex h-6 items-center text-text-tertiary system-xs-medium-uppercase">
+              <div className="mt-3 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
@@ -111,23 +111,23 @@ const SummaryIndexSetting = ({
       <div className="space-y-4">
         <div className="flex gap-x-1">
           <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
-            <div className="text-text-secondary system-sm-semibold">
+            <div className="system-sm-semibold text-text-secondary">
               {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="py-1.5">
-            <div className="flex items-center text-text-secondary system-sm-semibold">
+            <div className="flex items-center system-sm-semibold text-text-secondary">
               <Switch
                 className="mr-2"
-                value={summaryIndexSetting?.enable ?? false}
-                onChange={handleSummaryIndexEnableChange}
+                checked={summaryIndexSetting?.enable ?? false}
+                onCheckedChange={handleSummaryIndexEnableChange}
                 size="md"
               />
               {
                 summaryIndexSetting?.enable ? t('list.status.enabled', { ns: 'datasetDocuments' }) : t('list.status.disabled', { ns: 'datasetDocuments' })
               }
             </div>
-            <div className="mt-2 text-text-tertiary system-sm-regular">
+            <div className="mt-2 system-sm-regular text-text-tertiary">
               {
                 summaryIndexSetting?.enable && t('form.summaryAutoGenTip', { ns: 'datasetSettings' })
               }
@@ -142,7 +142,7 @@ const SummaryIndexSetting = ({
             <>
               <div className="flex gap-x-1">
                 <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
-                  <div className="text-text-tertiary system-sm-medium">
+                  <div className="system-sm-medium text-text-tertiary">
                     {t('form.summaryModel', { ns: 'datasetSettings' })}
                   </div>
                 </div>
@@ -159,7 +159,7 @@ const SummaryIndexSetting = ({
               </div>
               <div className="flex">
                 <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
-                  <div className="text-text-tertiary system-sm-medium">
+                  <div className="system-sm-medium text-text-tertiary">
                     {t('form.summaryInstructions', { ns: 'datasetSettings' })}
                   </div>
                 </div>
@@ -184,11 +184,11 @@ const SummaryIndexSetting = ({
       <div className="flex h-6 items-center">
         <Switch
           className="mr-2"
-          value={summaryIndexSetting?.enable ?? false}
-          onChange={handleSummaryIndexEnableChange}
+          checked={summaryIndexSetting?.enable ?? false}
+          onCheckedChange={handleSummaryIndexEnableChange}
           size="md"
         />
-        <div className="text-text-secondary system-sm-semibold">
+        <div className="system-sm-semibold text-text-secondary">
           {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
         </div>
       </div>
@@ -196,7 +196,7 @@ const SummaryIndexSetting = ({
         summaryIndexSetting?.enable && (
           <>
             <div>
-              <div className="mb-1.5 flex h-6 items-center text-text-secondary system-sm-medium">
+              <div className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary">
                 {t('form.summaryModel', { ns: 'datasetSettings' })}
               </div>
               <ModelSelector
@@ -209,7 +209,7 @@ const SummaryIndexSetting = ({
               />
             </div>
             <div>
-              <div className="mb-1.5 flex h-6 items-center text-text-secondary system-sm-medium">
+              <div className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary">
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea

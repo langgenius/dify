@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -28,7 +29,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
@@ -179,14 +179,14 @@ const Prompt: FC<ISimplePromptInput> = ({
     <div className={cn('relative rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
       <div className="rounded-xl bg-background-section-burn">
         {!noTitle && (
-          <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
+          <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="h2 text-text-secondary system-sm-semibold-uppercase">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
+              <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
-                      <span className="i-ri-question-line ml-1 h-4 w-4 shrink-0 text-text-quaternary" />
+                      <span className="ml-1 i-ri-question-line h-4 w-4 shrink-0 text-text-quaternary" />
                     )}
                   />
                   <TooltipContent>

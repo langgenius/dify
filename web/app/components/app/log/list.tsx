@@ -8,6 +8,7 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -38,7 +39,6 @@ import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbac
 import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import PromptLogModal from '../../base/prompt-log-modal'
 import Indicator from '../../header/indicator'
 import {
@@ -404,11 +404,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   return (
     <div ref={ref} className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
       {/* Panel Header */}
-      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
+      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 text-text-primary system-xs-semibold-uppercase">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
+          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
           {isChatMode && (
-            <div className="flex items-center text-text-secondary system-2xs-regular-uppercase">
+            <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
               <Tooltip
                 popupContent={detail.id}
               >
@@ -418,7 +418,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="text-text-secondary system-2xs-regular-uppercase">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
@@ -444,7 +444,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="text-text-tertiary system-xs-semibold-uppercase">{t('table.header.output', { ns: 'appLog' })}</div>
+                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -536,7 +536,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               </div>
               {hasMore && (
                 <div className="py-3 text-center">
-                  <div className="text-text-tertiary system-xs-regular">
+                  <div className="system-xs-regular text-text-tertiary">
                     {t('detail.loading', { ns: 'appLog' })}
                     ...
                   </div>
@@ -778,7 +778,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         )}
         popupClassName={(isHighlight && !isChatMode) ? '' : 'hidden!'}
       >
-        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular')}>
+        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden system-sm-regular text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -791,20 +791,20 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   return (
     <div className="relative mt-2 grow overflow-x-auto">
       <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-        <thead className="text-text-tertiary system-xs-medium-uppercase">
+        <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
-            <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.endUser', { ns: 'appLog' })}</td>
-            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>}
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.userRate', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.adminRate', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.time', { ns: 'appLog' })}</td>
+            <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.endUser', { ns: 'appLog' })}</td>
+            {isChatflow && <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>}
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.userRate', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.adminRate', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
+            <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.time', { ns: 'appLog' })}</td>
           </tr>
         </thead>
-        <tbody className="text-text-secondary system-sm-regular">
+        <tbody className="system-sm-regular text-text-secondary">
           {logs.data.map((log: any) => {
             const { endUser, isLeftEmpty, isRightEmpty, leftValue, rightValue } = getConversationRowValues({
               isChatMode,

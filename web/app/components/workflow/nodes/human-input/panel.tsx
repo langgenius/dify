@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiClipboardLine,
@@ -23,7 +24,6 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import DeliveryMethod from './components/delivery-method'
 import FormContent from './components/form-content'
 import FormContentPreview from './components/form-content-preview'
@@ -179,7 +179,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           )}
         </div>
         {!inputs.user_actions.length && (
-          <div className="flex items-center justify-center radius-lg bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
+          <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">

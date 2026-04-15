@@ -6,7 +6,7 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string> | string) => typeof obj === 'string' ? obj : obj?.en_US || '',
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 

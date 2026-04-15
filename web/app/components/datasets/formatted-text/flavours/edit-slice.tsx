@@ -2,10 +2,10 @@ import type { OffsetOptions } from '@floating-ui/react'
 import type { FC, ReactNode } from 'react'
 import type { SliceProps } from './type'
 import { autoUpdate, flip, FloatingFocusManager, offset, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import { cn } from '@/utils/classnames'
 import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
 
 type EditSliceProps = SliceProps<{

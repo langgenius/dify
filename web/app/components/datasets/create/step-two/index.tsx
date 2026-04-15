@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import type { StepTwoProps } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -13,7 +14,6 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
-import { cn } from '@/utils/classnames'
 import { GeneralChunkingOptions, IndexingModeSection, ParentChildOptions, PreviewPanel, StepTwoFooter } from './components'
 import { IndexingType, MAXIMUM_CHUNK_TOKEN_LENGTH, useDocumentCreation, useIndexingConfig, useIndexingEstimate, usePreviewState, useSegmentationState } from './hooks'
 
@@ -197,7 +197,7 @@ const StepTwo: FC<StepTwoProps> = ({
   return (
     <div className="flex h-full w-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
-        <div className="system-md-semibold mb-1 text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
+        <div className="mb-1 system-md-semibold text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
         {showGeneralOption && (
           <GeneralChunkingOptions
             segmentIdentifier={segmentation.segmentIdentifier}

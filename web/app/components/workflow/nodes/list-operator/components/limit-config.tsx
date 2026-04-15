@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { Limit } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { cn } from '@/utils/classnames'
 import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
 
 const i18nPrefix = 'nodes.listFilter'
@@ -56,8 +56,8 @@ const LimitConfig: FC<Props> = ({
         title={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
         operations={(
           <Switch
-            value={payload.enabled}
-            onChange={handleLimitEnabledChange}
+            checked={payload.enabled}
+            onCheckedChange={handleLimitEnabledChange}
             size="md"
             disabled={readonly}
           />
