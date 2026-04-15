@@ -3,6 +3,7 @@ import time
 import click
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
@@ -20,10 +21,10 @@ def create_tidb_serverless_task():
     start_at = time.perf_counter()
     while True:
         try:
-            # check the number of idle tidb serverless
-            idle_tidb_serverless_number = (
-                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
-            )
+            with Session(db.engine) as session:
+                idle_tidb_serverless_number = (
+                    session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
+                )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
@@ -50,17 +51,18 @@ def create_clusters(batch_size):
             private_key=dify_config.TIDB_PRIVATE_KEY or "",
             region=dify_config.TIDB_REGION or "",
         )
-        for new_cluster in new_clusters:
-            tidb_auth_binding = TidbAuthBinding(
-                tenant_id=None,
-                cluster_id=new_cluster["cluster_id"],
-                cluster_name=new_cluster["cluster_name"],
-                account=new_cluster["account"],
-                password=new_cluster["password"],
-                active=False,
-                status=TidbAuthBindingStatus.CREATING,
-            )
-            db.session.add(tidb_auth_binding)
-        db.session.commit()
+        with Session(db.engine) as session:
+            for new_cluster in new_clusters:
+                tidb_auth_binding = TidbAuthBinding(
+                    tenant_id=None,
+                    cluster_id=new_cluster["cluster_id"],
+                    cluster_name=new_cluster["cluster_name"],
+                    account=new_cluster["account"],
+                    password=new_cluster["password"],
+                    active=False,
+                    status=TidbAuthBindingStatus.CREATING,
+                )
+                session.add(tidb_auth_binding)
+            session.commit()
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

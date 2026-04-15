@@ -4,6 +4,7 @@ from collections.abc import Sequence
 import click
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
@@ -17,17 +18,17 @@ def update_tidb_serverless_status_task():
     click.echo(click.style("Update tidb serverless status task.", fg="green"))
     start_at = time.perf_counter()
     try:
-        # check the number of idle tidb serverless
-        tidb_serverless_list = db.session.scalars(
-            select(TidbAuthBinding).where(
-                TidbAuthBinding.active == False,
-                TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
-            )
-        ).all()
-        if len(tidb_serverless_list) == 0:
-            return
-        # update tidb serverless status
-        update_clusters(tidb_serverless_list)
+        with Session(db.engine) as session:
+            tidb_serverless_list = session.scalars(
+                select(TidbAuthBinding).where(
+                    TidbAuthBinding.active == False,
+                    TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
+                )
+            ).all()
+            if len(tidb_serverless_list) == 0:
+                return
+            # update tidb serverless status
+            update_clusters(tidb_serverless_list)
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
