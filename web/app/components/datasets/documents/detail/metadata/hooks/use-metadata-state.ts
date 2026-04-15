@@ -75,7 +75,7 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
     setEditStatus(true)
   }
   const cancelEdit = () => {
-    setMetadataParams({ documentType: docType || '', metadata: { ...(docDetail?.doc_metadata || {}) } })
+    setMetadataParams({ documentType: docType || '', metadata: { ...docDetail?.doc_metadata } })
     setEditStatus(!docType)
     if (!docType)
       setShowDocTypes(true)

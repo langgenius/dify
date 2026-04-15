@@ -67,7 +67,7 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button data-testid="code-editor" onClick={() => onChange('{\"foo\":\"bar\"}')}>
+    <button data-testid="code-editor" onClick={() => onChange('{"foo":"bar"}')}>
       Update JSON
     </button>
   ),

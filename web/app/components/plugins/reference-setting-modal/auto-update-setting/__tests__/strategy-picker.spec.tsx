@@ -14,7 +14,7 @@ vi.mock('@/app/components/base/ui/button', () => ({
 }))
 
 vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
+  const _React = await import('react')
   return {
     PortalToFollowElem: ({
       open,
