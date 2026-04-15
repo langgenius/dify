@@ -118,12 +118,12 @@ const List: FC<Props> = ({
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="i-ri-apps-2-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="i-ri-exchange-2-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="i-ri-robot-3-line mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="i-ri-file-4-line mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -198,8 +198,15 @@ const List: FC<Props> = ({
   }, [pages])
 
   const refreshWorkflowOnlineUsers = useCallback(async () => {
-    if (!appIds.length)
+    if (!systemFeatures.enable_collaboration_mode) {
+      setWorkflowOnlineUsersMap({})
       return
+    }
+
+    if (!appIds.length) {
+      setWorkflowOnlineUsersMap({})
+      return
+    }
 
     try {
       const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds })
@@ -208,20 +215,23 @@ const List: FC<Props> = ({
     catch {
       setWorkflowOnlineUsersMap({})
     }
-  }, [appIds])
+  }, [appIds, systemFeatures.enable_collaboration_mode])
 
   useEffect(() => {
     void refreshWorkflowOnlineUsers()
   }, [refreshWorkflowOnlineUsers])
 
   useEffect(() => {
+    if (!systemFeatures.enable_collaboration_mode)
+      return
+
     const timer = window.setInterval(() => {
       void refetch()
       void refreshWorkflowOnlineUsers()
     }, 10000)
 
     return () => window.clearInterval(timer)
-  }, [refetch, refreshWorkflowOnlineUsers])
+  }, [refetch, refreshWorkflowOnlineUsers, systemFeatures.enable_collaboration_mode])
 
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   // Show skeleton during initial load or when refetching with no previous data
@@ -231,11 +241,11 @@ const List: FC<Props> = ({
     <>
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
+          <div className="inset-0 absolute z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <TabSliderNew
             value={activeTab}
             onChange={(nextValue) => {
@@ -263,7 +273,7 @@ const List: FC<Props> = ({
           </div>
         </div>
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
           !hasAnyApp && 'overflow-hidden',
         )}
         >
