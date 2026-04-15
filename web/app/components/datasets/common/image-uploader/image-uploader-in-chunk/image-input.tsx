@@ -32,11 +32,11 @@ const ImageUploader = () => {
       <div
         ref={dropRef}
         className={cn(
-          'relative flex h-16 flex-col items-center justify-center gap-1 radius-lg border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-tertiary',
+          'relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-tertiary',
           dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >
-        <div className="system-sm-medium flex items-center justify-center gap-x-2 text-text-secondary">
+        <div className="flex items-center justify-center gap-x-2 system-sm-medium text-text-secondary">
           <RiUploadCloud2Line className="size-5 text-text-tertiary" />
           <div>
             <span>{t('imageUploader.button', { ns: 'dataset' })}</span>

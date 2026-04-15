@@ -89,7 +89,7 @@ const ClassList: FC<Props> = ({
   return (
     <>
       <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
-        <div className="flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary">
+        <div className="flex cursor-pointer items-center text-xs font-semibold text-text-secondary uppercase">
           {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
@@ -130,7 +130,7 @@ const ClassList: FC<Props> = ({
                   <div
                     key={item.id}
                     className={cn(
-                      'group relative radius-lg bg-components-panel-bg',
+                      'group relative rounded-lg bg-components-panel-bg',
                       `-ml-${HANDLE_SIDE_WIDTH} min-h-[40px] px-0 py-0`,
                     )}
                     style={{
@@ -141,7 +141,7 @@ const ClassList: FC<Props> = ({
                     <div>
                       {canDrag && (
                         <RiDraggable className={cn(
-                          'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'handle absolute top-3 left-2 hidden h-3 w-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
                         )}
                         />

@@ -30,7 +30,7 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 
   if (hasLoadError) {
     return (
-      <div className="flex size-5 items-center justify-center overflow-hidden radius-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+      <div className="flex size-5 items-center justify-center overflow-hidden rounded-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         <div className="i-custom-public-other-default-tool-icon size-3 text-text-tertiary" />
       </div>
     )

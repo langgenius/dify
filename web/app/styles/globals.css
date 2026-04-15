@@ -7,7 +7,6 @@
 
 @import '../components/base/action-button/index.css';
 @import '../components/base/badge/index.css';
-@import '../components/base/modal/index.css' layer(base);
 @import '../components/base/premium-badge/index.css';
 @import '../components/base/segmented-control/index.css';
 
@@ -46,13 +45,6 @@
     transition: none !important;
   }
 
-  .h2 {
-    font-size: 14px;
-    font-weight: 500;
-    color: #111928;
-    line-height: 1.5;
-  }
-
   [class*='code-'] {
     @apply font-mono;
   }
@@ -65,12 +57,6 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     text-fill-color: transparent;
-  }
-
-  /* TODO: verify at runtime whether third-party pagination component still injects this class */
-  [class*='style_paginatio'] li .text-primary-600 {
-    color: rgb(28 100 242);
-    background-color: rgb(235 245 255);
   }
 
   [data-theme='dark'] [data-hide-on-theme='dark'],

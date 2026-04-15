@@ -149,7 +149,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                         <TypeSelector
                           noLeft
                           trigger={(
-                            <div className="flex h-8 items-center radius-md bg-components-input-bg-normal px-2">
+                            <div className="flex h-8 items-center rounded-md bg-components-input-bg-normal px-2">
                               <div className="mr-1 system-sm-regular text-components-input-text-filled">{varKindTypes.find(item => item.value === varKindType)?.label}</div>
                               <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
                             </div>

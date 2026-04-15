@@ -31,7 +31,7 @@ type FormContentProps = {
 }
 
 const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
-  return <span className={cn('system-kbd mx-0.5 inline-flex size-4 items-center justify-center radius-xs bg-components-kbd-bg-gray text-text-placeholder ', className)}>{children}</span>
+  return <span className={cn('mx-0.5 inline-flex size-4 items-center justify-center rounded-xs bg-components-kbd-bg-gray system-kbd text-text-placeholder', className)}>{children}</span>
 }
 
 const CtrlKey: FC = () => {
@@ -107,7 +107,7 @@ const FormContent: FC<FormContentProps> = ({
   return (
     <div
       className={cn(
-        'flex grow flex-col radius-lg border border-components-input-bg-normal bg-components-input-bg-normal pt-1',
+        'flex grow flex-col rounded-lg border border-components-input-bg-normal bg-components-input-bg-normal pt-1',
         isFocus && 'border-components-input-border-active bg-components-input-bg-active',
         !isFocus && 'pb-[32px]',
         readonly && 'pointer-events-none',
@@ -118,7 +118,7 @@ const FormContent: FC<FormContentProps> = ({
           key={editorKey}
           value={value}
           onChange={onChange}
-          className={cn('min-h-[80px] ', isExpand && 'h-full')}
+          className={cn('min-h-[80px]', isExpand && 'h-full')}
           onFocus={setFocus}
           onBlur={setBlur}
           placeholder={t('nodes.humanInput.formContent.placeholder', { ns: 'workflow' })}
@@ -156,7 +156,7 @@ const FormContent: FC<FormContentProps> = ({
         />
       </div>
       {isFocus && (
-        <div className="system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder">
+        <div className="flex h-8 shrink-0 items-center px-3 system-xs-regular text-components-input-text-placeholder">
           <Trans
             i18nKey="nodes.humanInput.formContent.hotkeyTip"
             ns="workflow"

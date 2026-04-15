@@ -95,12 +95,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
       >
         <div className="flex items-center gap-1.5">
           {method.type === DeliveryMethodType.WebApp && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+            <div className="rounded-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
               <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
           {method.type === DeliveryMethodType.Email && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+            <div className="rounded-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
               <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}

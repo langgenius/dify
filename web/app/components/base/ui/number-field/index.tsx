@@ -21,8 +21,8 @@ export const numberFieldGroupVariants = cva(
   {
     variants: {
       size: {
-        regular: 'radius-md',
-        large: 'radius-lg',
+        regular: 'rounded-md',
+        large: 'rounded-lg',
       },
     },
     defaultVariants: {

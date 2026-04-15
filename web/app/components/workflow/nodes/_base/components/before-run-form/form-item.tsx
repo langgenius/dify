@@ -124,19 +124,19 @@ const FormItem: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
-        <div className="mb-1 flex h-6 items-center gap-1 text-text-secondary system-sm-semibold">
+        <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
           <div className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true
             ? (
-                <span className="text-text-tertiary system-xs-regular">
+                <span className="system-xs-regular text-text-tertiary">
                   {t('panel.optional_and_hidden', { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
-                  <span className="text-text-tertiary system-xs-regular">
+                  <span className="system-xs-regular text-text-tertiary">
                     {t('panel.optional', { ns: 'workflow' })}
                   </span>
                 )
@@ -215,7 +215,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+            className="bg h-[80px] overflow-y-auto rounded-lg bg-components-input-bg-normal p-1"
             placeholder={
               <div className="whitespace-pre">{jsonSchemaPlaceholder}</div>
             }

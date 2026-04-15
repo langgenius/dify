@@ -133,12 +133,6 @@
   line-height: 20px;
 }
 
-@utility system-xl-regular {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
-}
-
 @utility system-xl-medium {
   font-size: 16px;
   font-weight: 500;
@@ -157,12 +151,6 @@
   line-height: 1.5;
 }
 
-@utility code-xs-semibold {
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
 @utility code-sm-regular {
   font-size: 13px;
   font-weight: 400;
@@ -175,24 +163,6 @@
   line-height: 1.5;
 }
 
-@utility code-md-regular {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-@utility code-md-semibold {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-@utility body-xs-light {
-  font-size: 12px;
-  font-weight: 300;
-  line-height: 16px;
-}
-
 @utility body-xs-regular {
   font-size: 12px;
   font-weight: 400;
@@ -202,12 +172,6 @@
 @utility body-xs-medium {
   font-size: 12px;
   font-weight: 500;
-  line-height: 16px;
-}
-
-@utility body-sm-light {
-  font-size: 13px;
-  font-weight: 300;
   line-height: 16px;
 }
 
@@ -223,12 +187,6 @@
   line-height: 16px;
 }
 
-@utility body-md-light {
-  font-size: 14px;
-  font-weight: 300;
-  line-height: 20px;
-}
-
 @utility body-md-regular {
   font-size: 14px;
   font-weight: 400;
@@ -241,57 +199,15 @@
   line-height: 20px;
 }
 
-@utility body-lg-light {
-  font-size: 15px;
-  font-weight: 300;
-  line-height: 20px;
-}
-
 @utility body-lg-regular {
   font-size: 15px;
   font-weight: 400;
   line-height: 20px;
 }
 
-@utility body-lg-medium {
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 20px;
-}
-
-@utility body-xl-regular {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
-}
-
-@utility body-xl-medium {
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 24px;
-}
-
-@utility body-xl-light {
-  font-size: 16px;
-  font-weight: 300;
-  line-height: 24px;
-}
-
-@utility body-2xl-light {
-  font-size: 18px;
-  font-weight: 300;
-  line-height: 1.5;
-}
-
 @utility body-2xl-regular {
   font-size: 18px;
   font-weight: 400;
-  line-height: 1.5;
-}
-
-@utility body-2xl-medium {
-  font-size: 18px;
-  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -301,21 +217,9 @@
   line-height: 16px;
 }
 
-@utility title-xs-bold {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-}
-
 @utility title-sm-semi-bold {
   font-size: 13px;
   font-weight: 600;
-  line-height: 16px;
-}
-
-@utility title-sm-bold {
-  font-size: 13px;
-  font-weight: 700;
   line-height: 16px;
 }
 
@@ -323,18 +227,6 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
-}
-
-@utility title-md-bold {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 20px;
-}
-
-@utility title-lg-semi-bold {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
 }
 
 @utility title-lg-bold {
@@ -349,21 +241,9 @@
   line-height: 1.2;
 }
 
-@utility title-xl-bold {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
 @utility title-2xl-semi-bold {
   font-size: 18px;
   font-weight: 600;
-  line-height: 1.2;
-}
-
-@utility title-2xl-bold {
-  font-size: 18px;
-  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -385,128 +265,8 @@
   line-height: 1.2;
 }
 
-@utility title-4xl-bold {
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-@utility title-5xl-semi-bold {
-  font-size: 30px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
 @utility title-5xl-bold {
   font-size: 30px;
   font-weight: 700;
   line-height: 1.2;
-}
-
-@utility title-6xl-semi-bold {
-  font-size: 36px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-@utility title-6xl-bold {
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-@utility title-7xl-semi-bold {
-  font-size: 48px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-@utility title-7xl-bold {
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-@utility title-8xl-semi-bold {
-  font-size: 60px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-@utility title-8xl-bold {
-  font-size: 60px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-@utility radius-2xs {
-  border-radius: 2px;
-}
-
-@utility radius-xs {
-  border-radius: 4px;
-}
-
-@utility radius-sm {
-  border-radius: 6px;
-}
-
-@utility radius-md {
-  border-radius: 8px;
-}
-
-@utility radius-lg {
-  border-radius: 10px;
-}
-
-@utility radius-xl {
-  border-radius: 12px;
-}
-
-@utility radius-2xl {
-  border-radius: 16px;
-}
-
-@utility radius-3xl {
-  border-radius: 20px;
-}
-
-@utility radius-4xl {
-  border-radius: 24px;
-}
-
-@utility radius-5xl {
-  border-radius: 24px;
-}
-
-@utility radius-6xl {
-  border-radius: 28px;
-}
-
-@utility radius-7xl {
-  border-radius: 32px;
-}
-
-@utility radius-8xl {
-  border-radius: 40px;
-}
-
-@utility radius-9xl {
-  border-radius: 48px;
-}
-
-@utility radius-full {
-  border-radius: 64px;
-}
-
-@utility no-spinner {
-  &::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  -moz-appearance: textfield;
 }

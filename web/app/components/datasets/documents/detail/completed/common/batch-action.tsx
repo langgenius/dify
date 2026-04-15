@@ -5,7 +5,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
-import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,6 +14,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import { IS_CE_EDITION } from '@/config'
 import { cn } from '@/utils/classnames'
 
@@ -62,7 +62,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
-      <div className="pointer-events-auto flex items-center gap-x-1 radius-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+      <div className="pointer-events-auto flex items-center gap-x-1 rounded-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
         <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}

@@ -18,8 +18,8 @@ export default function AppBack({ curApp }: IAppBackProps) {
   return (
     <div
       className={cn(`
-        flex h-7 cursor-pointer items-center radius-lg
-        pl-2.5 pr-2 font-semibold
+        flex h-7 cursor-pointer items-center rounded-lg
+        pr-2 pl-2.5 font-semibold
         text-[#1C64F2]
         ${curApp && 'hover:bg-[#EBF5FF]'}
       `)}

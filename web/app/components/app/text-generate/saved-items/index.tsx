@@ -48,15 +48,15 @@ const SavedItems: FC<ISavedItemsProps> = ({
                   >
                     <Markdown content={answer} />
                   </div>
-                  <div className="system-xs-regular mt-1 h-4 px-4 text-text-quaternary">
+                  <div className="mt-1 h-4 px-4 system-xs-regular text-text-quaternary">
                     <span>
                       {answer.length}
                       {' '}
                       {t('unit.char', { ns: 'common' })}
                     </span>
                   </div>
-                  <div className="absolute bottom-1 right-2">
-                    <div className="ml-1 flex items-center gap-0.5 radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+                  <div className="absolute right-2 bottom-1">
+                    <div className="ml-1 flex items-center gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                       {isShowTextToSpeech && <NewAudioButton value={answer} />}
                       <ActionButton onClick={() => {
                         copy(answer)

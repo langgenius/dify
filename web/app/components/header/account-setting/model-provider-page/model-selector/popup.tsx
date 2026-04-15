@@ -237,8 +237,8 @@ const Popup: FC<PopupProps> = ({
           ))
         }
         {!filteredModelList.length && !installedModelList.length && (
-          <div className="flex flex-col gap-2 radius-lg bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
-            <div className="flex h-10 w-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
+          <div className="flex flex-col gap-2 rounded-lg bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
               <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
             </div>
             <div className="flex flex-col gap-1">

@@ -61,8 +61,8 @@ const Recipient = ({
 
   return (
     <div className="space-y-1">
-      <div className="radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs">
-        <div className="flex h-10 items-center justify-between pl-3 pr-1">
+      <div className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs">
+        <div className="flex h-10 items-center justify-between pr-1 pl-3">
           <div className="flex grow items-center gap-2">
             <RiGroupLine className="h-4 w-4 text-text-secondary" />
             <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`, { ns: 'workflow' })}</div>
@@ -85,11 +85,11 @@ const Recipient = ({
           onAdd={handleEmailAdd}
         />
       </div>
-      <div className="flex h-10 items-center gap-2 radius-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pl-2.5 pr-3 shadow-xs">
+      <div className="flex h-10 items-center gap-2 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs">
         <div className="flex h-5 w-5 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[14px]">
-          <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold uppercase text-shadow-shadow-1 opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
+          <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
         </div>
-        <div className={cn('system-sm-medium grow text-text-secondary')}>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`, { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
+        <div className={cn('grow system-sm-medium text-text-secondary')}>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`, { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
         <Switch
           value={data.whole_workspace}
           onChange={checked => onChange({ ...data, whole_workspace: checked })}

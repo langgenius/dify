@@ -33,7 +33,7 @@ const scrollAreaScrollbarClassName = cn(
 )
 
 const scrollAreaThumbClassName = cn(
-  'shrink-0 radius-xs bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
+  'shrink-0 rounded-xs bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
 )

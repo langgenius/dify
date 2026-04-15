@@ -45,7 +45,7 @@ const InstructionEditor: FC<Props> = ({
   const isCode = generatorType === 'code'
   const placeholder = isCode
     ? (
-        <div className="system-sm-regular whitespace-break-spaces leading-6! text-text-placeholder">
+        <div className="system-sm-regular leading-6! whitespace-break-spaces text-text-placeholder">
           {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`, { ns: 'appDebug' })}
         </div>
       )
@@ -67,7 +67,7 @@ const InstructionEditor: FC<Props> = ({
   return (
     <div className="relative">
       <PromptEditor
-        wrapperClassName="border border-components-input-bg-normal! bg-components-input-bg-normal hover:border-components-input-bg-hover! radius-lg px-4 pt-3"
+        wrapperClassName="border border-components-input-bg-normal! bg-components-input-bg-normal hover:border-components-input-bg-hover! rounded-lg px-4 pt-3"
         key={editorKey}
         instanceId={editorKey}
         placeholder={placeholder}
@@ -109,9 +109,9 @@ const InstructionEditor: FC<Props> = ({
         editable
         isSupportFileVar={false}
       />
-      <div className="system-xs-regular absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 text-components-input-text-placeholder">
+      <div className="absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 system-xs-regular text-components-input-text-placeholder">
         <span>{t('generate.press', { ns: 'appDebug' })}</span>
-        <span className="system-kbd flex h-4 w-3.5 items-center justify-center radius-xs bg-components-kbd-bg-gray text-text-placeholder">/</span>
+        <span className="flex h-4 w-3.5 items-center justify-center rounded-xs bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</span>
         <span>{t('generate.to', { ns: 'appDebug' })}</span>
         <span onClick={handleInsertVariable} className="ml-1! cursor-pointer hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary">{t('generate.insertContext', { ns: 'appDebug' })}</span>
       </div>
