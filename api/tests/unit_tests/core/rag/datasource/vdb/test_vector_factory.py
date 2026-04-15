@@ -98,6 +98,7 @@ def test_gen_index_struct_dict(vector_factory_module):
         ),
         ("MATRIXONE", "dify_vdb_matrixone.matrixone_vector", "MatrixoneVectorFactory"),
         ("CLICKZETTA", "dify_vdb_clickzetta.clickzetta_vector", "ClickzettaVectorFactory"),
+        ("VALKEY", "dify_vdb_valkey.valkey_vector", "ValkeyVectorFactory"),
         ("IRIS", "dify_vdb_iris.iris_vector", "IrisVectorFactory"),
         ("HOLOGRES", "dify_vdb_hologres.hologres_vector", "HologresVectorFactory"),
     ],

@@ -73,6 +73,7 @@ jobs:
             qdrant
             pgvector
             chroma
+            valkey
 
       - name: setup test config
         run: |
@@ -89,4 +90,5 @@ jobs:
             api/providers/vdb/vdb-chroma/tests/integration_tests \
             api/providers/vdb/vdb-pgvector/tests/integration_tests \
             api/providers/vdb/vdb-qdrant/tests/integration_tests \
+            api/providers/vdb/vdb-valkey/tests/integration_tests \
             api/providers/vdb/vdb-weaviate/tests/integration_tests
