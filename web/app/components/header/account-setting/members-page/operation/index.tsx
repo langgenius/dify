@@ -1,13 +1,13 @@
 'use client'
 import type { Member } from '@/models/common'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
-import { cn } from '@/utils/classnames'
 
 type IOperationProps = {
   member: Member
@@ -76,7 +76,7 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
   return (
     <PortalToFollowElem open={open} onOpenChange={setOpen} placement="bottom-end" offset={{ mainAxis: 4 }}>
       <PortalToFollowElemTrigger asChild onClick={() => setOpen(prev => !prev)}>
-        <div className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary system-sm-regular hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+        <div className={cn('group flex h-full w-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
           {RoleMap[member.role] || RoleMap.normal}
           <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
         </div>
@@ -87,21 +87,21 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
             {roleList.map(role => (
               <div key={role} className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={() => handleUpdateMemberRole(role)}>
                 {role === member.role
-                  ? <CheckIcon className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
-                  : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />}
+                  ? <CheckIcon className="mt-[2px] mr-1 h-4 w-4 text-text-accent" />
+                  : <div className="mt-[2px] mr-1 h-4 w-4 text-text-accent" />}
                 <div>
-                  <div className="whitespace-nowrap text-text-secondary system-sm-semibold">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
-                  <div className="whitespace-nowrap text-text-tertiary system-xs-regular">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
+                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
+                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
                 </div>
               </div>
             ))}
           </div>
           <div className="border-t border-divider-subtle p-1">
             <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
-              <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
+              <div className="mt-[2px] mr-1 h-4 w-4 text-text-accent" />
               <div>
-                <div className="whitespace-nowrap text-text-secondary system-sm-semibold">{t('members.removeFromTeam', { ns: 'common' })}</div>
-                <div className="whitespace-nowrap text-text-tertiary system-xs-regular">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
               </div>
             </div>
           </div>

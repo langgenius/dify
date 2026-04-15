@@ -272,7 +272,7 @@ describe('SearchBox', () => {
       )
 
       // In non-marketplace mode, search icon appears first
-      expect(container.querySelector('.radius-md')).toBeInTheDocument()
+      expect(container.querySelector('.rounded-lg')).toBeInTheDocument()
     })
 
     it('should render placeholder correctly', () => {

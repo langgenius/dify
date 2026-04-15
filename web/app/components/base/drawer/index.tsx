@@ -1,8 +1,8 @@
 'use client'
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 export type IDrawerProps = {
   title?: string

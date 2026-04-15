@@ -1,7 +1,7 @@
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
 import type * as React from 'react'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 const avatarSizeClasses = {
   'xxs': { root: 'size-4', text: 'text-[7px]' },

@@ -2,6 +2,7 @@
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDragDropLine,
   RiEqualizer2Line,

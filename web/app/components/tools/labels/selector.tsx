@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -14,7 +15,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useTags } from '@/app/components/plugins/hooks'
-import { cn } from '@/utils/classnames'
 
 type LabelSelectorProps = {
   value: string[]
@@ -81,7 +81,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-1040">
-          <div className="relative w-[591px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg  backdrop-blur-[5px]">
+          <div className="relative w-[591px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="border-b-[0.5px] border-divider-regular p-2">
               <Input
                 showLeftIcon
@@ -95,7 +95,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
               {filteredLabelList.map(label => (
                 <div
                   key={label.name}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-components-panel-on-panel-item-bg-hover"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <Checkbox

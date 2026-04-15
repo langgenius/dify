@@ -32,7 +32,7 @@ vi.mock('@/types/app', async () => {
   return vi.importActual<typeof import('@/types/app')>('@/types/app')
 })
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(a => typeof a === 'string' && a).join(' '),
 }))
 

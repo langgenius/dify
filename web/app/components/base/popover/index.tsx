@@ -1,6 +1,6 @@
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cloneElement, Fragment, isValidElement, useRef } from 'react'
-import { cn } from '@/utils/classnames'
 
 export type HtmlContentProps = {
   open?: boolean

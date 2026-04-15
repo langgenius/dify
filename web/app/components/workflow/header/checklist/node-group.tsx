@@ -1,8 +1,8 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { BlockEnum } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import BlockIcon from '../../block-icon'
 import { ItemIndicator } from './item-indicator'
 
@@ -33,14 +33,14 @@ export const ChecklistNodeGroup = memo(({
   }, [item.errorMessages, item.unConnected, t])
 
   return (
-    <div className="overflow-clip radius-lg bg-components-panel-on-panel-item-bg">
+    <div className="overflow-clip rounded-[10px] bg-components-panel-on-panel-item-bg">
       <div className="flex items-center gap-2 px-2 pt-2">
         <BlockIcon
           type={item.type as BlockEnum}
           size="sm"
           toolIcon={item.toolIcon}
         />
-        <span className="min-w-0 grow truncate text-sm font-medium leading-5 text-text-primary">
+        <span className="min-w-0 grow truncate text-sm leading-5 font-medium text-text-primary">
           {item.title}
         </span>
       </div>
@@ -60,7 +60,7 @@ export const ChecklistNodeGroup = memo(({
             </span>
             {goToEnabled && (
               <div className="flex shrink-0 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
-                <span className="whitespace-nowrap text-xs font-medium leading-4 text-text-accent">
+                <span className="text-xs leading-4 font-medium whitespace-nowrap text-text-accent">
                   {t('panel.goToFix', { ns: 'workflow' })}
                 </span>
                 <span className="i-ri-arrow-right-line size-3.5 text-text-accent" />

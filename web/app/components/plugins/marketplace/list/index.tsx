@@ -1,8 +1,8 @@
 'use client'
 
 import type { Plugin } from '../../types'
-import type { PluginCollection } from '../types'
-import { cn } from '@/utils/classnames'
+import type { MarketplaceCollection } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
 import { GRID_CLASS } from './collection-constants'

@@ -4,6 +4,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightSFill, RiCloseLine } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { memo, useCallback, useMemo, useState } from 'react'
@@ -24,7 +25,6 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import { isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiMoreFill } from '@remixicon/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
@@ -14,7 +15,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useDownloadPlugin } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 

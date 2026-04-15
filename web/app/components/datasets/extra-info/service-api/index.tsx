@@ -1,9 +1,9 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -46,7 +46,7 @@ const ServiceApi = ({
                 apiBaseUrl ? 'green' : 'yellow'
               }
             />
-            <div className="system-sm-medium grow text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
+            <div className="grow system-sm-medium text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-10">

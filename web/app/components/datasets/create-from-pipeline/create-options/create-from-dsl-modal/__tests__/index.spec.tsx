@@ -1512,7 +1512,7 @@ describe('Uploader', () => {
       })
 
       // The dragRef div appears when dragging is true
-      const dragRefDiv = document.querySelector('[class*="absolute left-0 top-0"]')
+      const dragRefDiv = document.querySelector('[class*="absolute top-0 left-0"]')
       expect(dragRefDiv).toBeInTheDocument()
 
       // When dragLeave happens on the dragRef element, setDragging(false) is called
@@ -1688,7 +1688,7 @@ describe('Uploader', () => {
       })
 
       // Now the dragRef div should exist
-      const dragRefDiv = document.querySelector('[class*="absolute left-0 top-0"]')
+      const dragRefDiv = document.querySelector('[class*="absolute top-0 left-0"]')
 
       // When dragEnter happens on dragRef itself, setDragging should NOT be called
       if (dragRefDiv) {

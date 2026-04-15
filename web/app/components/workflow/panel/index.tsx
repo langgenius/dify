@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef } from 'react'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import dynamic from '@/next/dynamic'
-import { cn } from '@/utils/classnames'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
@@ -127,7 +127,7 @@ const Panel: FC<PanelProps> = ({
     <div
       ref={rightPanelRef}
       tabIndex={-1}
-      className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-hidden')}
+      className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
       key={`${isRestoring}`}
     >
       {components?.left}

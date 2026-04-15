@@ -68,7 +68,7 @@ describe('Switch', () => {
   it('should apply correct size classes', () => {
     const { rerender } = render(<Switch value={false} size="xs" />)
     const switchElement = screen.getByRole('switch')
-    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'radius-2xs')
+    expect(switchElement).toHaveClass('h-2.5', 'w-3.5', 'rounded-xs')
 
     rerender(<Switch value={false} size="sm" />)
     expect(switchElement).toHaveClass('h-3', 'w-5')
@@ -186,10 +186,10 @@ describe('SwitchSkeleton', () => {
   it('should apply correct skeleton size classes', () => {
     const { rerender } = render(<SwitchSkeleton size="xs" data-testid="s" />)
     const el = screen.getByTestId('s')
-    expect(el).toHaveClass('h-2.5', 'w-3.5', 'radius-2xs')
+    expect(el).toHaveClass('h-2.5', 'w-3.5', 'rounded-xs')
 
     rerender(<SwitchSkeleton size="lg" data-testid="s" />)
-    expect(el).toHaveClass('h-5', 'w-9', 'radius-sm')
+    expect(el).toHaveClass('h-5', 'w-9', 'rounded-md')
   })
 
   it('should apply custom className to skeleton', () => {

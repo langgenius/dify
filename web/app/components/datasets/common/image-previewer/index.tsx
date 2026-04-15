@@ -159,7 +159,7 @@ const ImagePreviewer = ({
         <Button
           variant="tertiary"
           onClick={onClose}
-          className="size-9 radius-lg p-0"
+          className="size-9 rounded-[10px] p-0"
           size="large"
         >
           <RiCloseLine className="size-5" />

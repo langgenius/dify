@@ -2,6 +2,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
@@ -21,7 +22,6 @@ import { Button } from '@/app/components/base/ui/button'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
-import { cn } from '@/utils/classnames'
 import VariableTag from '../../_base/components/variable-tag'
 import { VarType as NumberVarType } from '../../tool/types'
 

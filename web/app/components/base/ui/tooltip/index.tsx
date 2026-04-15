@@ -2,9 +2,9 @@
 
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 type TooltipContentVariant = 'default' | 'plain'
 

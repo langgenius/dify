@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n-config/language'
-import { cn } from '@/utils/classnames'
 
 export type ILanguageSelectProps = {
   currentLanguage: string
@@ -40,7 +40,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       btnElement={(
         <div className={cn('inline-flex items-center gap-x-px', disabled && 'cursor-not-allowed')}>
           <span className={cn(
-            'system-xs-semibold px-[3px] text-components-button-tertiary-text',
+            'px-[3px] system-xs-semibold text-components-button-tertiary-text',
             disabled ? 'text-components-button-tertiary-text-disabled' : '',
           )}
           >

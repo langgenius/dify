@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiDeleteBinLine,
@@ -18,10 +19,9 @@ import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vend
 import CustomPopover from '@/app/components/base/popover'
 import { Button } from '@/app/components/base/ui/button'
 import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
 
+import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
-import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'

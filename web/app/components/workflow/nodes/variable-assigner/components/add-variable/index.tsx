@@ -4,6 +4,7 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -16,7 +17,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
-import { cn } from '@/utils/classnames'
 import { useVariableAssigner } from '../../hooks'
 
 type AddVariableProps = {

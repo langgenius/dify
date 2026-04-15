@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import ChildSegmentList from '../child-segment-list'
 import SegmentCard from '../segment-card'
 import SegmentList from '../segment-list'

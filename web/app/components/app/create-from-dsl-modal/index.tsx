@@ -1,6 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -25,7 +26,6 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'

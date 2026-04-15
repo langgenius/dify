@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import PoweredByBrand from './powered-by-brand'
 
 type WorkflowPreviewCardProps = {

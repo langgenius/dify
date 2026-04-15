@@ -5,6 +5,7 @@ import type {
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import {
   useCallback,
@@ -21,7 +22,6 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'

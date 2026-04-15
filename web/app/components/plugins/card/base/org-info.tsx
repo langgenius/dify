@@ -1,6 +1,4 @@
-import Link from 'next/link'
-import { cn } from '@/utils/classnames'
-import DownloadCount from './download-count'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type Props = {
   className?: string
@@ -56,15 +54,13 @@ const OrgInfo = ({
     <div className={cn('flex h-4 items-center space-x-0.5', className)}>
       {orgName && (
         <>
-          <span className="system-xs-regular shrink-0 text-text-tertiary">{orgName}</span>
-          <span className="system-xs-regular shrink-0 text-text-quaternary">/</span>
+          <span className="shrink-0 system-xs-regular text-text-tertiary">{orgName}</span>
+          <span className="shrink-0 system-xs-regular text-text-quaternary">/</span>
         </>
       )}
-      {packageName && (
-        <span className={cn('system-xs-regular w-0 shrink-0 grow truncate text-text-tertiary', packageNameClassName)}>
-          {packageName}
-        </span>
-      )}
+      <span className={cn('w-0 shrink-0 grow truncate system-xs-regular text-text-tertiary', packageNameClassName)}>
+        {packageName}
+      </span>
     </div>
   )
 }

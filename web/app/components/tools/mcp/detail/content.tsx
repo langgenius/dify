@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
   RiLoader2Line,
@@ -35,7 +36,6 @@ import {
   useUpdateMCP,
   useUpdateMCPTools,
 } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import MCPModal from '../modal'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'

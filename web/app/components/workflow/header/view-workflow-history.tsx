@@ -1,4 +1,5 @@
 import type { WorkflowHistoryState } from '../workflow-history-store'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
   RiHistoryLine,
@@ -18,7 +19,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
 import {
   useNodesReadOnly,
@@ -158,7 +158,7 @@ const ViewWorkflowHistory = () => {
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-12">
           <div
-            className="ml-2 flex min-w-[240px] max-w-[360px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
+            className="ml-2 flex max-w-[360px] min-w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
           >
             <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
               <div className="system-mg-regular grow text-text-secondary">{t('changeHistory.title', { ns: 'workflow' })}</div>
@@ -206,7 +206,7 @@ const ViewWorkflowHistory = () => {
                       <div>
                         <div
                           className={cn(
-                            'flex items-center text-[13px] font-medium leading-[18px] text-text-secondary',
+                            'flex items-center text-[13px] leading-[18px] font-medium text-text-secondary',
                           )}
                         >
                           {composeHistoryItemLabel(
@@ -239,7 +239,7 @@ const ViewWorkflowHistory = () => {
                       <div>
                         <div
                           className={cn(
-                            'flex items-center text-[13px] font-medium leading-[18px] text-text-secondary',
+                            'flex items-center text-[13px] leading-[18px] font-medium text-text-secondary',
                           )}
                         >
                           {composeHistoryItemLabel(
@@ -274,7 +274,7 @@ const ViewWorkflowHistory = () => {
                     <div>
                       <div
                         className={cn(
-                          'flex items-center text-[13px] font-medium leading-[18px]',
+                          'flex items-center text-[13px] leading-[18px] font-medium',
                         )}
                       >
                         {t('changeHistory.clearHistory', { ns: 'workflow' })}

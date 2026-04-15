@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { InputVarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import FormItem from './form-item'
 
 export type Props = {

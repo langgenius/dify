@@ -1,6 +1,7 @@
 'use client'
 
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
@@ -11,7 +12,6 @@ import Checkbox from '@/app/components/base/checkbox'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -21,6 +21,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -30,7 +31,6 @@ import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
 import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {

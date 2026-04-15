@@ -3,10 +3,10 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 export const Select = BaseSelect.Root
 export const SelectValue = BaseSelect.Value
@@ -24,7 +24,7 @@ const selectTriggerVariants = cva(
       size: {
         small: 'h-6 gap-px rounded-md px-[5px] py-0 system-xs-regular',
         regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
-        large: 'h-9 gap-0.5 radius-lg px-2.5 py-1 system-md-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] px-2.5 py-1 system-md-regular',
       },
       variant: {
         default: '',

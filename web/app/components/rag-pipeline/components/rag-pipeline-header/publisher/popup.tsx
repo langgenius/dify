@@ -1,5 +1,6 @@
 import type { IconInfo } from '@/models/datasets'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { useBoolean, useKeyPress } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
@@ -35,7 +36,6 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix, useInvalidCustomizedTemplateList, usePublishAsCustomizedPipeline } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']

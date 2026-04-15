@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { ChunkingMode, ParentMode } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useRouter } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import DocumentPicker from '../../common/document-picker'
 
 type DocumentTitleProps = {

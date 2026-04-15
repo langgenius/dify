@@ -1,11 +1,11 @@
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/app/components/base/ui/dropdown-menu'
-import { cn } from '@/utils/classnames'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
@@ -38,7 +38,7 @@ const OperationsDropdown = ({
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           className={cn(
-            'inline-flex size-9 cursor-pointer items-center justify-center radius-lg border-[0.5px]',
+            'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
             'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg ring-2 shadow-shadow-shadow-5 ring-components-button-secondary-bg ring-inset',
             'transition-colors hover:border-components-actionbar-border hover:bg-state-base-hover',
             'focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',

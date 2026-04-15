@@ -14,7 +14,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   ),
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 

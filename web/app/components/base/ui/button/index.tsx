@@ -1,8 +1,8 @@
 import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
-import { cn } from '@/utils/classnames'
 
 const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-[disabled]:cursor-not-allowed',

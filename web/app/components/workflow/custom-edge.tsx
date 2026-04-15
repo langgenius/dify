@@ -3,6 +3,7 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { intersection } from 'es-toolkit/array'
 import {
   memo,
@@ -17,7 +18,6 @@ import {
   Position,
 } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import { cn } from '@/utils/classnames'
 import BlockSelector from './block-selector'
 import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'

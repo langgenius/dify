@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
   VariableLabelInText,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { cn } from '@/utils/classnames'
 import { useWorkflow } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { getNodeInfoById, isSystemVar } from './variable/utils'
@@ -60,7 +60,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
   })()
 
   return (
-    <div className={cn('break-all text-xs', className)}>
+    <div className={cn('text-xs break-all', className)}>
       {res}
     </div>
   )

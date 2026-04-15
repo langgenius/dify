@@ -1,6 +1,7 @@
 'use client'
 import type { App } from '@/models/explore'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { Button } from '@/app/components/base/ui/button'
 import AppListContext from '@/context/app-list-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {
@@ -45,7 +45,7 @@ const AppCard = ({
             imageUrl={appBasicInfo.icon_url}
           />
           <AppTypeIcon
-            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 radius-xs border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
+            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
             className="h-3 w-3"
             type={appBasicInfo.mode}
           />

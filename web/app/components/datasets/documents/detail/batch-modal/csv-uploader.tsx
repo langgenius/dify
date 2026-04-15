@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,7 +15,6 @@ import useTheme from '@/hooks/use-theme'
 import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   file: FileItem | undefined

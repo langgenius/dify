@@ -126,7 +126,7 @@ describe('scroll-area wrapper', () => {
         expect(thumb).toHaveAttribute('data-orientation', 'vertical')
         expect(thumb).toHaveClass(
           'shrink-0',
-          'radius-xs',
+          'rounded-sm',
           'bg-state-base-handle',
           'transition-[background-color]',
           'motion-reduce:transition-none',
@@ -164,7 +164,7 @@ describe('scroll-area wrapper', () => {
         expect(thumb).toHaveAttribute('data-orientation', 'horizontal')
         expect(thumb).toHaveClass(
           'shrink-0',
-          'radius-xs',
+          'rounded-sm',
           'bg-state-base-handle',
           'transition-[background-color]',
           'motion-reduce:transition-none',

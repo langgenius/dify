@@ -2,9 +2,9 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 export const NumberField = BaseNumberField.Root
 export type NumberFieldRootProps = React.ComponentPropsWithoutRef<typeof BaseNumberField.Root>
@@ -21,8 +21,8 @@ export const numberFieldGroupVariants = cva(
   {
     variants: {
       size: {
-        regular: 'radius-md',
-        large: 'radius-lg',
+        regular: 'rounded-lg',
+        large: 'rounded-[10px]',
       },
     },
     defaultVariants: {

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '../../../ui/number-field'
 import type { LabelProps } from '../label'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import {
   NumberField,

@@ -72,7 +72,7 @@ const List = ({
         )
       }
       {fileList.length > 0 && (
-        <div className="flex h-full flex-col gap-y-px overflow-y-auto radius-lg bg-background-section px-1 py-1.5">
+        <div className="flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5">
           {
             fileList.map((file) => {
               const isSelected = selectedFileIds.includes(file.id)

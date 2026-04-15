@@ -1,6 +1,7 @@
 'use client'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import type { WorkflowToolModalPayload } from '@/app/components/tools/workflow-tool'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -34,8 +35,8 @@ import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 
+import { useProviderContext } from '@/context/provider-context'
 import { getLanguage } from '@/i18n-config/language'
 import {
   deleteWorkflowTool,
@@ -51,7 +52,6 @@ import {
   updateCustomCollection,
 } from '@/service/tools'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'

@@ -1,6 +1,7 @@
 import type {
   ConversationVariable,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import {
   memo,
@@ -21,7 +22,6 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
@@ -126,7 +126,7 @@ const ChatVariablePanel = () => {
         'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
-      <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+      <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
@@ -141,14 +141,14 @@ const ChatVariablePanel = () => {
         </div>
       </div>
       {showTip && (
-        <div className="shrink-0 px-3 pb-2 pt-2.5">
-          <div className="radius-2xl relative bg-background-section-burn p-3">
-            <div className="system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">TIPS</div>
-            <div className="system-sm-regular mb-4 mt-1 text-text-secondary">
+        <div className="shrink-0 px-3 pt-2.5 pb-2">
+          <div className="relative rounded-2xl bg-background-section-burn p-3">
+            <div className="inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">TIPS</div>
+            <div className="mt-1 mb-4 system-sm-regular text-text-secondary">
               {t('chatVariable.panelDescription', { ns: 'workflow' })}
             </div>
             <div className="flex items-center gap-2">
-              <div className="radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
+              <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
                 <BubbleX className="mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700" />
                 <div className="system-xs-semibold text-text-secondary">conversation_var</div>
                 <div className="system-2xs-regular text-text-tertiary">String</div>
@@ -157,26 +157,26 @@ const ChatVariablePanel = () => {
                 <div className="mb-2 flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
                     <LongArrowLeft className="h-2 grow text-text-quaternary" />
-                    <div className="system-2xs-medium shrink-0 text-text-tertiary">WRITE</div>
+                    <div className="shrink-0 system-2xs-medium text-text-tertiary">WRITE</div>
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.assigner', { ns: 'workflow' })}</div>
+                  <div className="grow truncate system-xs-semibold text-text-secondary">{t('blocks.assigner', { ns: 'workflow' })}</div>
                 </div>
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
-                    <div className="system-2xs-medium shrink-0 text-text-tertiary">READ</div>
+                    <div className="shrink-0 system-2xs-medium text-text-tertiary">READ</div>
                     <LongArrowRight className="h-2 grow text-text-quaternary" />
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.llm', { ns: 'workflow' })}</div>
+                  <div className="grow truncate system-xs-semibold text-text-secondary">{t('blocks.llm', { ns: 'workflow' })}</div>
                 </div>
               </div>
             </div>
-            <div className="absolute right-[38px] top-[-4px] z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+            <div className="absolute top-[-4px] right-[38px] z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
           </div>
         </div>
       )}
-      <div className="shrink-0 px-4 pb-3 pt-2">
+      <div className="shrink-0 px-4 pt-2 pb-3">
         <VariableModalTrigger
           open={showVariableModal}
           setOpen={setShowVariableModal}

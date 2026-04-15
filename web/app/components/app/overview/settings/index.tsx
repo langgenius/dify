@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -27,7 +28,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type ISettingsModalProps = {
   isChat: boolean

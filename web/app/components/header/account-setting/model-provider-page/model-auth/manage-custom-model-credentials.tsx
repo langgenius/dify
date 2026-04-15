@@ -2,6 +2,7 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -14,7 +15,6 @@ import {
   ConfigurationMethodEnum,
   ModelModalModeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { cn } from '@/utils/classnames'
 import Authorized from './authorized'
 import {
   useCustomModels,
