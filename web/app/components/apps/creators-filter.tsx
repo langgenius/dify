@@ -103,7 +103,7 @@ const CreatorsFilter = ({
               baseChipClassName,
               isSelected
                 ? 'border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-state-base-hover'
-                : 'border-transparent bg-[#f9f9f9] text-text-tertiary hover:bg-components-input-bg-hover',
+                : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
             )}
           />
         )}

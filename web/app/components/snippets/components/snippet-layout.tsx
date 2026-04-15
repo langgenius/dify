@@ -16,6 +16,7 @@ import NavLink from '@/app/components/app-sidebar/nav-link'
 import SnippetInfo from '@/app/components/app-sidebar/snippet-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 type SnippetLayoutProps = {
   children: ReactNode
@@ -44,6 +45,8 @@ const SnippetLayout = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const setAppSidebarExpand = useAppStore(state => state.setAppSidebarExpand)
+
+  useDocumentTitle(snippet.name || t('typeLabel'))
 
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
