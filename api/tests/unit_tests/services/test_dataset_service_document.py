@@ -90,13 +90,13 @@ class TestDocumentServiceQueryAndDownloadHelpers:
             result = DocumentService.get_document("dataset-1", None)
 
         assert result is None
-        mock_db.session.query.assert_not_called()
+        mock_db.session.scalar.assert_not_called()
 
     def test_get_document_queries_by_dataset_and_document_id(self):
         document = DatasetServiceUnitDataFactory.create_document_mock()
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.first.return_value = document
+            mock_db.session.scalar.return_value = document
 
             result = DocumentService.get_document("dataset-1", "doc-1")
 
@@ -129,7 +129,7 @@ class TestDocumentServiceQueryAndDownloadHelpers:
 
     def test_update_documents_need_summary_updates_matching_documents_and_commits(self):
         session = MagicMock()
-        session.query.return_value.filter.return_value.update.return_value = 2
+        session.execute.return_value.rowcount = 2
 
         with patch("services.dataset_service.session_factory") as session_factory_mock:
             session_factory_mock.create_session.return_value = _make_session_context(session)
@@ -435,7 +435,7 @@ class TestDocumentServiceQueryAndDownloadHelpers:
         upload_file = DatasetServiceUnitDataFactory.create_upload_file_mock()
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.one_or_none.return_value = upload_file
+            mock_db.session.get.return_value = upload_file
 
             result = DocumentService.get_document_file_detail(upload_file.id)
 
@@ -570,7 +570,7 @@ class TestDocumentServiceMutations:
         assert document.name == "New Name"
         assert document.doc_metadata[BuiltInField.document_name] == "New Name"
         mock_db.session.add.assert_called_once_with(document)
-        mock_db.session.query.return_value.where.return_value.update.assert_called_once()
+        mock_db.session.execute.assert_called()
         mock_db.session.commit.assert_called_once()
 
     def test_recover_document_raises_when_document_is_not_paused(self):
@@ -624,9 +624,7 @@ class TestDocumentServiceMutations:
         document = DatasetServiceUnitDataFactory.create_document_mock(position=7)
 
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.order_by.return_value.first.return_value = (
-                document
-            )
+            mock_db.session.scalar.return_value = document
 
             result = DocumentService.get_documents_position("dataset-1")
 
@@ -634,7 +632,7 @@ class TestDocumentServiceMutations:
 
     def test_get_documents_position_defaults_to_one_when_dataset_is_empty(self):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.filter_by.return_value.order_by.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             result = DocumentService.get_documents_position("dataset-1")
 
@@ -869,11 +867,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.document_indexing_update_task") as update_task,
         ):
-            upload_query = MagicMock()
-            upload_query.where.return_value.first.return_value = SimpleNamespace(id="file-1", name="upload.txt")
-            segment_query = MagicMock()
-            segment_query.filter_by.return_value.update.return_value = 3
-            mock_db.session.query.side_effect = [upload_query, segment_query]
+            mock_db.session.scalar.return_value = SimpleNamespace(id="file-1", name="upload.txt")
 
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
@@ -892,7 +886,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         assert document.created_from == "web"
         assert document.doc_form == IndexStructureType.QA_INDEX
         assert mock_db.session.commit.call_count == 3
-        segment_query.filter_by.return_value.update.assert_called_once()
+        mock_db.session.execute.assert_called()
         update_task.delay.assert_called_once_with(document.dataset_id, document.id)
 
     def test_update_document_with_dataset_id_notion_import_requires_binding(self, account_context):
@@ -920,9 +914,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             patch.object(DatasetService, "check_dataset_model_setting"),
             patch("services.dataset_service.db") as mock_db,
         ):
-            binding_query = MagicMock()
-            binding_query.where.return_value.first.return_value = None
-            mock_db.session.query.return_value = binding_query
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(ValueError, match="Data source binding not found"):
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
@@ -954,10 +946,6 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.document_indexing_update_task") as update_task,
         ):
-            segment_query = MagicMock()
-            segment_query.filter_by.return_value.update.return_value = 2
-            mock_db.session.query.return_value = segment_query
-
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
         assert result is document
@@ -968,7 +956,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         )
         assert document.name == ""
         assert document.doc_form == IndexStructureType.PARENT_CHILD_INDEX
-        segment_query.filter_by.return_value.update.assert_called_once()
+        mock_db.session.execute.assert_called()
         update_task.delay.assert_called_once_with("dataset-1", "doc-1")
 
 
@@ -1080,6 +1068,33 @@ class TestDocumentServiceCreateValidation:
         assert knowledge_config.process_rule.rules is not None
         assert len(knowledge_config.process_rule.rules.pre_processing_rules) == 1
         assert knowledge_config.process_rule.rules.pre_processing_rules[0].enabled is False
+
+    def test_process_rule_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(
+                info_list=InfoList(
+                    data_source_type="upload_file",
+                    file_info_list=FileInfo(file_ids=["file-1"]),
+                )
+            ),
+            process_rule=ProcessRule(
+                mode="hierarchical",
+                rules=Rule(
+                    pre_processing_rules=[
+                        PreProcessingRule(id="remove_extra_spaces", enabled=True),
+                    ],
+                    segmentation=Segmentation(separator="\n", max_tokens=1024),
+                    subchunk_segmentation=Segmentation(separator="\n", max_tokens=512),
+                ),
+            ),
+        )
+
+        DocumentService.process_rule_args_validate(knowledge_config)
+
+        assert knowledge_config.process_rule is not None
+        assert knowledge_config.process_rule.rules is not None
+        assert knowledge_config.process_rule.rules.parent_mode == "paragraph"
 
 
 class TestDocumentServiceSaveDocumentWithDatasetId:
@@ -1218,11 +1233,10 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            upload_query = MagicMock()
-            upload_query.where.return_value.all.return_value = [upload_file_a, upload_file_b]
-            existing_documents_query = MagicMock()
-            existing_documents_query.where.return_value.all.return_value = [duplicate_document]
-            mock_db.session.query.side_effect = [upload_query, existing_documents_query]
+            mock_db.session.scalars.return_value.all.side_effect = [
+                [upload_file_a, upload_file_b],
+                [duplicate_document],
+            ]
 
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset,
@@ -1302,9 +1316,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.DocumentIndexingTaskProxy") as document_proxy_cls,
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            notion_documents_query = MagicMock()
-            notion_documents_query.filter_by.return_value.all.return_value = [existing_keep, existing_remove]
-            mock_db.session.query.return_value = notion_documents_query
+            mock_db.session.scalars.return_value.all.return_value = [existing_keep, existing_remove]
 
             documents, _ = DocumentService.save_document_with_dataset_id(
                 dataset,
@@ -1474,12 +1486,11 @@ class TestDocumentServiceTenantAndUpdateEdges:
 
     def test_get_tenant_documents_count_returns_query_count(self, account_context):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.query.return_value.where.return_value.count.return_value = 12
+            mock_db.session.scalar.return_value = 12
 
             result = DocumentService.get_tenant_documents_count()
 
         assert result == 12
-        mock_db.session.query.return_value.where.return_value.count.assert_called_once()
 
     def test_update_document_with_dataset_id_uses_automatic_process_rule_payload(self, account_context):
         dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
@@ -1514,11 +1525,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
         ):
             process_rule_cls.AUTOMATIC_RULES = DatasetProcessRule.AUTOMATIC_RULES
             process_rule_cls.return_value = created_process_rule
-            upload_query = MagicMock()
-            upload_query.where.return_value.first.return_value = SimpleNamespace(id="file-1", name="upload.txt")
-            segment_query = MagicMock()
-            segment_query.filter_by.return_value.update.return_value = 1
-            mock_db.session.query.side_effect = [upload_query, segment_query]
+            mock_db.session.scalar.return_value = SimpleNamespace(id="file-1", name="upload.txt")
 
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
@@ -1567,7 +1574,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
             patch.object(DatasetService, "check_dataset_model_setting"),
             patch("services.dataset_service.db") as mock_db,
         ):
-            mock_db.session.query.return_value.where.return_value.first.return_value = None
+            mock_db.session.scalar.return_value = None
 
             with pytest.raises(FileNotExistsError):
                 DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
@@ -1618,11 +1625,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.document_indexing_update_task") as update_task,
         ):
-            binding_query = MagicMock()
-            binding_query.where.return_value.first.return_value = SimpleNamespace(id="binding-1")
-            segment_query = MagicMock()
-            segment_query.filter_by.return_value.update.return_value = 1
-            mock_db.session.query.side_effect = [binding_query, segment_query]
+            mock_db.session.scalar.return_value = SimpleNamespace(id="binding-1")
 
             result = DocumentService.update_document_with_dataset_id(dataset, document_data, account_context)
 
@@ -1914,11 +1917,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
         ):
             mock_redis.lock.return_value = _make_lock_context()
             process_rule_cls.return_value = created_process_rule
-            upload_query = MagicMock()
-            upload_query.where.return_value.all.return_value = [SimpleNamespace(id="file-1", name="file.txt")]
-            existing_documents_query = MagicMock()
-            existing_documents_query.where.return_value.all.return_value = []
-            mock_db.session.query.side_effect = [upload_query, existing_documents_query]
+            mock_db.session.scalars.return_value.all.side_effect = [[SimpleNamespace(id="file-1", name="file.txt")], []]
 
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
 
@@ -1958,11 +1957,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             mock_redis.lock.return_value = _make_lock_context()
             process_rule_cls.AUTOMATIC_RULES = DatasetProcessRule.AUTOMATIC_RULES
             process_rule_cls.return_value = created_process_rule
-            upload_query = MagicMock()
-            upload_query.where.return_value.all.return_value = [SimpleNamespace(id="file-1", name="file.txt")]
-            existing_documents_query = MagicMock()
-            existing_documents_query.where.return_value.all.return_value = []
-            mock_db.session.query.side_effect = [upload_query, existing_documents_query]
+            mock_db.session.scalars.return_value.all.side_effect = [[SimpleNamespace(id="file-1", name="file.txt")], []]
 
             DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
 
@@ -1996,11 +1991,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             mock_redis.lock.return_value = _make_lock_context()
             process_rule_cls.AUTOMATIC_RULES = DatasetProcessRule.AUTOMATIC_RULES
             process_rule_cls.return_value = created_process_rule
-            upload_query = MagicMock()
-            upload_query.where.return_value.all.return_value = [SimpleNamespace(id="file-1", name="file.txt")]
-            existing_documents_query = MagicMock()
-            existing_documents_query.where.return_value.all.return_value = []
-            mock_db.session.query.side_effect = [upload_query, existing_documents_query]
+            mock_db.session.scalars.return_value.all.side_effect = [[SimpleNamespace(id="file-1", name="file.txt")], []]
 
             DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
 
@@ -2024,9 +2015,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             patch("services.dataset_service.secrets.randbelow", return_value=23),
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            upload_query = MagicMock()
-            upload_query.where.return_value.all.return_value = [SimpleNamespace(id="file-1", name="file.txt")]
-            mock_db.session.query.return_value = upload_query
+            mock_db.session.scalars.return_value.all.return_value = [SimpleNamespace(id="file-1", name="file.txt")]
 
             with pytest.raises(FileNotExistsError, match="One or more files not found"):
                 DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)

@@ -3,7 +3,7 @@
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
-import styles from './index.module.css'
+import './scroll-area.css'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
 type ScrollAreaRootProps = React.ComponentPropsWithRef<typeof BaseScrollArea.Root>
@@ -25,8 +25,7 @@ type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
 }
 
 const scrollAreaScrollbarClassName = cn(
-  styles.scrollbar,
-  'flex touch-none select-none overflow-clip p-1 opacity-100 transition-opacity motion-reduce:transition-none',
+  'flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
   'pointer-events-none data-hovering:pointer-events-auto',
   'data-scrolling:pointer-events-auto',
   'data-[orientation=vertical]:absolute data-[orientation=vertical]:inset-y-0 data-[orientation=vertical]:w-3 data-[orientation=vertical]:justify-center',
@@ -41,7 +40,7 @@ const scrollAreaThumbClassName = cn(
 
 const scrollAreaViewportClassName = cn(
   'size-full min-h-0 min-w-0 outline-hidden',
-  'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-components-input-border-hover',
+  'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset',
 )
 
 const scrollAreaCornerClassName = 'bg-transparent'
@@ -68,6 +67,7 @@ export function ScrollAreaScrollbar({
 }: ScrollAreaScrollbarProps) {
   return (
     <BaseScrollArea.Scrollbar
+      data-dify-scrollbar=""
       className={cn(scrollAreaScrollbarClassName, className)}
       {...props}
     />

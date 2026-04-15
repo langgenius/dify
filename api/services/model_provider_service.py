@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 
@@ -168,7 +169,9 @@ class ModelProviderService:
             model_name=model,
         )
 
-    def get_provider_credential(self, tenant_id: str, provider: str, credential_id: str | None = None) -> dict | None:
+    def get_provider_credential(
+        self, tenant_id: str, provider: str, credential_id: str | None = None
+    ) -> dict[str, Any] | None:
         """
         get provider credentials.
 
@@ -180,7 +183,7 @@ class ModelProviderService:
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         return provider_configuration.get_provider_credential(credential_id=credential_id)
 
-    def validate_provider_credentials(self, tenant_id: str, provider: str, credentials: dict):
+    def validate_provider_credentials(self, tenant_id: str, provider: str, credentials: dict[str, Any]):
         """
         validate provider credentials before saving.
 
@@ -192,7 +195,7 @@ class ModelProviderService:
         provider_configuration.validate_provider_credentials(credentials)
 
     def create_provider_credential(
-        self, tenant_id: str, provider: str, credentials: dict, credential_name: str | None
+        self, tenant_id: str, provider: str, credentials: dict[str, Any], credential_name: str | None
     ) -> None:
         """
         Create and save new provider credentials.
@@ -210,7 +213,7 @@ class ModelProviderService:
         self,
         tenant_id: str,
         provider: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str,
         credential_name: str | None,
     ) -> None:
@@ -254,7 +257,7 @@ class ModelProviderService:
 
     def get_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str | None
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """
         Retrieve model-specific credentials.
 
@@ -270,7 +273,9 @@ class ModelProviderService:
             model_type=ModelType.value_of(model_type), model=model, credential_id=credential_id
         )
 
-    def validate_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict):
+    def validate_model_credentials(
+        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict[str, Any]
+    ):
         """
         validate model credentials.
 
@@ -287,7 +292,13 @@ class ModelProviderService:
         )
 
     def create_model_credential(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credentials: dict, credential_name: str | None
+        self,
+        tenant_id: str,
+        provider: str,
+        model_type: str,
+        model: str,
+        credentials: dict[str, Any],
+        credential_name: str | None,
     ) -> None:
         """
         create and save model credentials.
@@ -314,7 +325,7 @@ class ModelProviderService:
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str,
         credential_name: str | None,
     ) -> None:

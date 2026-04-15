@@ -50,7 +50,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
     ) -> AIModelEntity | None:
         """
         Get model schema
@@ -80,7 +80,7 @@ class PluginModelClient(BasePluginClient):
         return None
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict
+        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict[str, Any]
     ) -> bool:
         """
         validate the credentials of the provider
@@ -118,7 +118,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
     ) -> bool:
         """
         validate the credentials of the provider
@@ -157,9 +157,9 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, Any] | None = None,
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
@@ -206,7 +206,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
         tools: list[PromptMessageTool] | None = None,
     ) -> int:
@@ -248,7 +248,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         texts: list[str],
         input_type: str,
     ) -> EmbeddingResult:
@@ -290,7 +290,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         documents: list[dict],
         input_type: str,
     ) -> EmbeddingResult:
@@ -332,7 +332,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         texts: list[str],
     ) -> list[int]:
         """
@@ -372,7 +372,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         query: str,
         docs: list[str],
         score_threshold: float | None = None,
@@ -418,7 +418,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         query: MultimodalRerankInput,
         docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
@@ -463,7 +463,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         content_text: str,
         voice: str,
     ) -> Generator[bytes, None, None]:
@@ -508,7 +508,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         language: str | None = None,
     ):
         """
@@ -552,7 +552,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         file: IO[bytes],
     ) -> str:
         """
@@ -592,7 +592,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         text: str,
     ) -> bool:
         """

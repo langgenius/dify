@@ -2,8 +2,8 @@
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
@@ -62,9 +62,9 @@ export default function CheckCode() {
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge text-text-accent-light-mode-only shadow-lg">
         <RiMailSendFill className="h-6 w-6 text-2xl" />
       </div>
-      <div className="pb-4 pt-2">
+      <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-2 text-text-secondary">
+        <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t('checkCode.tipsPrefix', { ns: 'login' })}
             <strong>{email}</strong>
@@ -76,7 +76,7 @@ export default function CheckCode() {
 
       <form action="">
         <input type="text" className="hidden" />
-        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
+        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
         <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) || ''} />
         <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('checkCode.verify', { ns: 'login' })}</Button>
         <Countdown onResend={resendCode} />
@@ -88,7 +88,7 @@ export default function CheckCode() {
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('back', { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t('back', { ns: 'login' })}</span>
       </div>
     </div>
   )

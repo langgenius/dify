@@ -7,9 +7,9 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import Button from '@/app/components/base/button'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
+import { Button } from '@/app/components/base/ui/button'
 import { useRouter } from '@/next/navigation'
 import {
   fetchInitValidateStatus,

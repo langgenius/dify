@@ -7,6 +7,7 @@ document, and segment service test modules that exercise
 
 import json
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -14,6 +15,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from werkzeug.exceptions import Forbidden, NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -44,12 +46,9 @@ from services.entities.knowledge_entities.knowledge_entities import (
     NotionIcon,
     NotionInfo,
     NotionPage,
-    PreProcessingRule,
     ProcessRule,
     RerankingModel,
     RetrievalModel,
-    Rule,
-    Segmentation,
     SegmentUpdateArgs,
     WebsiteInfo,
 )
@@ -168,7 +167,7 @@ class DatasetServiceUnitDataFactory:
         built_in_field_enabled: bool = False,
         doc_form: str | None = "text_model",
         enable_api: bool = False,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: dict[str, Any] | None = None,
         **kwargs,
     ) -> Mock:
         dataset = Mock(spec=Dataset)
@@ -216,12 +215,12 @@ class DatasetServiceUnitDataFactory:
         archived: bool = False,
         enabled: bool = True,
         data_source_type: str = "upload_file",
-        data_source_info_dict: dict | None = None,
+        data_source_info_dict: dict[str, Any] | None = None,
         data_source_info: str | None = None,
         doc_form: str = "text_model",
         need_summary: bool = True,
         position: int = 0,
-        doc_metadata: dict | None = None,
+        doc_metadata: dict[str, Any] | None = None,
         name: str = "Document",
         **kwargs,
     ) -> Mock:

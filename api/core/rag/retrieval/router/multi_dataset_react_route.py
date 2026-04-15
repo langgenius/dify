@@ -1,5 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Union
+from typing import Any, Union
 
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
@@ -139,7 +139,7 @@ class ReactMultiDatasetRouter:
 
     def _invoke_llm(
         self,
-        completion_param: dict,
+        completion_param: dict[str, Any],
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         stop: list[str],

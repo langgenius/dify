@@ -36,7 +36,7 @@ Example:
 
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, TypedDict
 
 from graphon.entities.pause_reason import PauseReason
 from graphon.enums import WorkflowType
@@ -53,6 +53,16 @@ from repositories.types import (
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+
+
+class RunsWithRelatedCountsDict(TypedDict):
+    runs: int
+    node_executions: int
+    offloads: int
+    app_logs: int
+    trigger_logs: int
+    pauses: int
+    pause_reasons: int
 
 
 class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
@@ -333,7 +343,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
+    ) -> RunsWithRelatedCountsDict:
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
         trigger logs, pauses, pause reasons).
@@ -400,7 +410,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         runs: Sequence[WorkflowRun],
         count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
+    ) -> RunsWithRelatedCountsDict:
         """
         Count workflow runs and their related records (node executions, offloads, app logs,
         trigger logs, pauses, pause reasons) without deleting data.

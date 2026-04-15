@@ -65,7 +65,7 @@ class PromptTemplateConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(cls, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, app_mode: AppMode, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate pre_prompt and set defaults for prompt feature
         depending on the config['model']
@@ -130,7 +130,7 @@ class PromptTemplateConfigManager:
         return config, ["prompt_type", "pre_prompt", "chat_prompt_config", "completion_prompt_config"]
 
     @classmethod
-    def validate_post_prompt_and_set_defaults(cls, config: dict):
+    def validate_post_prompt_and_set_defaults(cls, config: dict[str, Any]):
         """
         Validate post_prompt and set defaults for prompt feature
 

@@ -8,7 +8,6 @@
 
 @import '../components/base/action-button/index.css';
 @import '../components/base/badge/index.css';
-@import '../components/base/button/index.css';
 @import '../components/base/modal/index.css' layer(base);
 @import '../components/base/premium-badge/index.css';
 @import '../components/base/segmented-control/index.css';
@@ -908,5 +907,20 @@
   [data-theme='dark'] [data-hide-on-theme='dark'],
   [data-theme='light'] [data-hide-on-theme='light'] {
     display: none;
+  }
+
+  /* Shiki code block line numbers */
+  .shiki-line-numbers code {
+    counter-reset: line;
+  }
+  .shiki-line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 1rem;
+    margin-right: 0.75rem;
+    text-align: right;
+    color: var(--color-text-quaternary);
+    user-select: none;
   }
 }

@@ -94,10 +94,9 @@ def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
 
 def plugin_data[**P, R](
-    view: Callable[P, R] | None = None,
     *,
     payload_type: type[BaseModel],
-) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -116,7 +115,4 @@ def plugin_data[**P, R](
 
         return decorated_view
 
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
+    return decorator

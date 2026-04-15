@@ -3,8 +3,16 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import { deleteTag, updateTag } from '@/service/tag'
 import { cn } from '@/utils/classnames'
@@ -118,16 +126,34 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
         )}
         {isEditing && (<input className="shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
       </div>
-      <Confirm
-        title={`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
-        isShow={showRemoveModal}
-        content={t('tag.deleteTip', { ns: 'common' })}
-        onConfirm={() => {
-          handleRemove()
-          setShowRemoveModal(false)
-        }}
-        onCancel={() => setShowRemoveModal(false)}
-      />
+      <AlertDialog open={showRemoveModal} onOpenChange={open => !open && setShowRemoveModal(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle
+              title={`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
+              className="w-full truncate title-2xl-semi-bold text-text-primary"
+            >
+              {`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('tag.deleteTip', { ns: 'common' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                handleRemove()
+                setShowRemoveModal(false)
+              }}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

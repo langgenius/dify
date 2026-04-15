@@ -637,6 +637,40 @@ class TestConversationServiceSummarization:
         assert conversation.name == new_name
         assert conversation.updated_at == mock_time
 
+    @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
+    def test_rename_with_auto_generate(self, mock_llm_generator, db_session_with_containers):
+        """
+        Test rename delegates to auto_generate_name when auto_generate is True.
+
+        When auto_generate is True, the service should call auto_generate_name
+        which uses an LLM to create a descriptive conversation title.
+        """
+        # Arrange
+        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers, app_model, user
+        )
+        ConversationServiceIntegrationTestDataFactory.create_message(
+            db_session_with_containers, app_model, conversation, user
+        )
+        generated_name = "Auto Generated Name"
+        mock_llm_generator.return_value = generated_name
+
+        # Act
+        result = ConversationService.rename(
+            app_model=app_model,
+            conversation_id=conversation.id,
+            user=user,
+            name=None,
+            auto_generate=True,
+        )
+
+        # Assert
+        assert result == conversation
+        assert conversation.name == generated_name
+
 
 class TestConversationServiceMessageAnnotation:
     """
@@ -1066,3 +1100,32 @@ class TestConversationServiceExport:
         not_deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
         assert not_deleted is not None
         mock_delete_task.delay.assert_not_called()
+
+    @patch("services.conversation_service.delete_conversation_related_data")
+    def test_delete_handles_exception_and_rollback(self, mock_delete_task, db_session_with_containers):
+        """
+        Test that delete propagates exceptions and does not trigger the cleanup task.
+
+        When a DB error occurs during deletion, the service must rollback the
+        transaction and re-raise the exception without scheduling async cleanup.
+        """
+        # Arrange
+        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers, app_model, user
+        )
+        conversation_id = conversation.id
+
+        # Act — force an error during the delete to exercise the rollback path
+        with patch("services.conversation_service.db.session.delete", side_effect=Exception("DB error")):
+            with pytest.raises(Exception, match="DB error"):
+                ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
+
+        # Assert — async cleanup must NOT have been scheduled
+        mock_delete_task.delay.assert_not_called()
+
+        # Conversation is still present because the deletion was never committed
+        still_there = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
+        assert still_there is not None
