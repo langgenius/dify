@@ -20,10 +20,10 @@ vi.mock('@/service/use-common', () => ({
 vi.mock('@/app/components/base/switch', () => ({
   __esModule: true,
   default: (props: {
-    value: boolean
-    onChange: (value: boolean) => void
+    checked: boolean
+    onCheckedChange: (value: boolean) => void
   }) => (
-    <button type="button" onClick={() => props.onChange(!props.value)}>
+    <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
       toggle-workspace
     </button>
   ),
