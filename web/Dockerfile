@@ -30,9 +30,8 @@ COPY packages /app/packages
 # Use packageManager from package.json
 RUN corepack install
 
-# Install the web app and its required UI workspace package without pulling in
-# unrelated workspace dependencies such as e2e tooling.
-RUN VITE_GIT_HOOKS=0 pnpm install --filter ./web... --filter @langgenius/dify-ui... --frozen-lockfile
+# Install workspace dependencies for the Docker build environment.
+RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder
