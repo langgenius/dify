@@ -120,8 +120,20 @@ class AppIconUrlField(fields.Raw):
             obj = obj["app"]
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
-            return file_helpers.get_signed_file_url(obj.icon)
+            return build_icon_url(obj.icon_type, obj.icon)
         return None
+
+
+def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
+        return None
+
+    from models.model import IconType
+
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+    return file_helpers.get_signed_file_url(icon)
 
 
 class AvatarUrlField(fields.Raw):

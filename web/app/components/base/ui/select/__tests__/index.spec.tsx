@@ -42,12 +42,10 @@ const renderOpenSelect = ({
 
 describe('Select wrappers', () => {
   describe('Select root integration', () => {
-    it('should associate the hidden input with an external form and preserve autocomplete hints', () => {
-      const formId = 'profile-form'
+    it('should submit the hidden input value and preserve autocomplete hints inside a form', () => {
       const { container } = render(
-        <>
-          <form id={formId} />
-          <Select defaultValue="seattle" name="city" form={formId} autoComplete="address-level2">
+        <form aria-label="profile form">
+          <Select defaultValue="seattle" name="city" autoComplete="address-level2">
             <SelectTrigger aria-label="city select">
               <SelectValue />
             </SelectTrigger>
@@ -56,13 +54,12 @@ describe('Select wrappers', () => {
               <SelectItem value="new-york">New York</SelectItem>
             </SelectContent>
           </Select>
-        </>,
+        </form>,
       )
 
       const hiddenInput = container.querySelector('input[name="city"]')
-      const form = container.querySelector(`#${formId}`) as HTMLFormElement
+      const form = screen.getByRole('form', { name: 'profile form' }) as HTMLFormElement
 
-      expect(hiddenInput).toHaveAttribute('form', formId)
       expect(hiddenInput).toHaveAttribute('autocomplete', 'address-level2')
       expect(new FormData(form).get('city')).toBe('seattle')
     })

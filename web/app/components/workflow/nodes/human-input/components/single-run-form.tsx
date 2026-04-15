@@ -1,5 +1,5 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/button'
+import type { ButtonProps } from '@/app/components/base/ui/button'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { RiArrowLeftLine } from '@remixicon/react'
@@ -7,9 +7,9 @@ import * as React from 'react'
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   nodeName: string
@@ -49,11 +49,11 @@ const FormContent = ({
     <>
       {showBackButton && (
         <div className="flex items-center p-4 pb-1">
-          <div className="system-sm-semibold-uppercase flex cursor-pointer items-center text-text-accent" onClick={handleBack}>
+          <div className="flex cursor-pointer items-center system-sm-semibold-uppercase text-text-accent" onClick={handleBack}>
             <RiArrowLeftLine className="mr-1 h-4 w-4" />
             {t('nodes.humanInput.singleRun.back', { ns: 'workflow' })}
           </div>
-          <div className="system-xs-regular mx-1 text-divider-deep">/</div>
+          <div className="mx-1 system-xs-regular text-divider-deep">/</div>
           <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>
         </div>
       )}
