@@ -181,7 +181,7 @@ const Popup: FC<PopupProps> = ({
   }, [modelProviders])
 
   return (
-    <div className="no-scrollbar max-h-[480px] overflow-y-auto">
+    <div className="scrollbar-none max-h-[480px] overflow-y-auto">
       <div className="sticky top-0 z-10 bg-components-panel-bg pt-3 pr-2 pb-1 pl-3">
         <div className={`
           flex h-8 items-center rounded-lg border pr-[10px] pl-[9px]

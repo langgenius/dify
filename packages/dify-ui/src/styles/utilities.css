@@ -499,14 +499,6 @@
   border-radius: 64px;
 }
 
-@utility no-scrollbar {
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
 @utility no-spinner {
   &::-webkit-outer-spin-button {
     -webkit-appearance: none;
