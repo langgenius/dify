@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckLine,
   RiMoreFill,
@@ -7,7 +8,6 @@ import {
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { PreferredProviderTypeEnum } from '../declarations'
 
 type SelectorProps = {

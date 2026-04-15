@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Collection } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -13,7 +14,6 @@ import { toast } from '@/app/components/base/ui/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
 type Props = {

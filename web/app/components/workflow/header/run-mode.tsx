@@ -1,4 +1,5 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
@@ -12,7 +13,6 @@ import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import TestRunMenu, { TriggerType } from './test-run-menu'
 
@@ -113,7 +113,7 @@ const RunMode = ({
               <button
                 type="button"
                 className={cn(
-                  'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent system-xs-medium',
+                  'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 system-xs-medium text-text-accent',
                 )}
                 disabled={true}
               >
@@ -129,7 +129,7 @@ const RunMode = ({
               >
                 <div
                   className={cn(
-                    'flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent system-xs-medium hover:bg-state-accent-hover',
+                    'flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 system-xs-medium text-text-accent hover:bg-state-accent-hover',
                   )}
                   style={{ userSelect: 'none' }}
                 >

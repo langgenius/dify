@@ -2,6 +2,7 @@
 import type {
   MCPServerDetail,
 } from '@/app/components/tools/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,6 @@ import {
   useInvalidateMCPServerDetail,
   useUpdateMCPServer,
 } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 
 type ModalProps = {
   appID: string

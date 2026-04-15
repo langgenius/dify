@@ -1,8 +1,8 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiGlobalLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_REQUEST_URL_BLOCK_COMMAND } from './index'
 
@@ -19,7 +19,7 @@ const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
   return (
     <div
       className={cn(
-        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 hover:border-[#7839ee]',
+        'group/wrap relative mx-0.5 flex h-[18px] items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 select-none hover:border-[#7839ee]',
         isSelected && 'border-[#7839ee]! hover:border-[#7839ee]!',
       )}
       ref={ref}

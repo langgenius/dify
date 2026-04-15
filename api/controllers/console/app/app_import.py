@@ -1,6 +1,6 @@
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
 from controllers.console.app.wraps import get_app_model
@@ -52,8 +52,9 @@ class AppImportApi(Resource):
         current_user, _ = current_account_with_tenant()
         args = AppImportPayload.model_validate(console_ns.payload)
 
-        # Create service with session
-        with sessionmaker(db.engine).begin() as session:
+        # AppDslService performs internal commits for some creation paths, so use a plain
+        # Session here instead of nesting it inside sessionmaker(...).begin().
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
@@ -69,6 +70,10 @@ class AppImportApi(Resource):
                 icon_background=args.icon_background,
                 app_id=args.app_id,
             )
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
         if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
@@ -95,12 +100,15 @@ class AppImportConfirmApi(Resource):
         # Check user role first
         current_user, _ = current_account_with_tenant()
 
-        # Create service with session
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
@@ -117,7 +125,7 @@ class AppImportCheckDependenciesApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_model: App):
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 

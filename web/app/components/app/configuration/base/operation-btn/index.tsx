@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiEditLine,
@@ -7,7 +8,6 @@ import {
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type IOperationBtnProps = {
   className?: string
@@ -30,7 +30,7 @@ const OperationBtn: FC<IOperationBtnProps> = ({
   const { t } = useTranslation()
   return (
     <div
-      className={cn('flex h-7 cursor-pointer select-none items-center space-x-1 rounded-md px-3 text-text-secondary hover:bg-state-base-hover', className)}
+      className={cn('flex h-7 cursor-pointer items-center space-x-1 rounded-md px-3 text-text-secondary select-none hover:bg-state-base-hover', className)}
       onClick={onClick}
     >
       <div>

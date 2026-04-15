@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className: string
@@ -22,7 +22,7 @@ const NoDataPlaceholder: FC<Props> = ({
     <div className={cn('flex items-center justify-center', className)}>
       <div className="flex flex-col items-center">
         {icon}
-        <div className="system-sm-regular mt-2 text-text-tertiary">{text}</div>
+        <div className="mt-2 system-sm-regular text-text-tertiary">{text}</div>
       </div>
     </div>
   )

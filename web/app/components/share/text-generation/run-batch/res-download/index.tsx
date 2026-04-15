@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,6 @@ import {
 } from 'react-papaparse'
 import ActionButton from '@/app/components/base/action-button'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type IResDownloadProps = {
   isMobile: boolean

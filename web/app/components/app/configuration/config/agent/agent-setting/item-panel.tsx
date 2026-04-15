@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -23,7 +23,7 @@ const ItemPanel: FC<Props> = ({
     <div className={cn(className, 'flex h-12 items-center justify-between rounded-lg bg-background-section-burn px-3')}>
       <div className="flex items-center">
         {icon}
-        <div className="ml-3 mr-1 text-sm font-semibold leading-6 text-text-secondary">{name}</div>
+        <div className="mr-1 ml-3 text-sm leading-6 font-semibold text-text-secondary">{name}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">

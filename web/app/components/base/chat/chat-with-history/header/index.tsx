@@ -1,4 +1,5 @@
 import type { ConversationItem } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEditBoxLine,
   RiLayoutRight2Line,
@@ -20,7 +21,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { cn } from '@/utils/classnames'
 import {
   useChatWithHistoryContext,
 } from '../context'

@@ -1,4 +1,5 @@
 import type { NavIcon } from './nav-link'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useHover, useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -7,7 +8,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { usePathname } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import AppInfo from './app-info'
@@ -124,7 +124,7 @@ const AppDetailNav = ({
         />
         {!isMobile && isHoveringSidebar && (
           <ToggleButton
-            className="absolute -right-3 top-[-3.5px] z-20"
+            className="absolute top-[-3.5px] -right-3 z-20"
             expand={expand}
             handleToggle={handleToggle}
           />

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -7,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import EmojiPickerInner from './Inner'
 
 type IEmojiPickerProps = {

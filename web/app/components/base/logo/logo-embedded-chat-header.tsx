@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { basePath } from '@/utils/var'
 
 type LogoEmbeddedChatHeaderProps = {

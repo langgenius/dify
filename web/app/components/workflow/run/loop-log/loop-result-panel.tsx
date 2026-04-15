@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowLeftLine,
   RiArrowRightSLine,
@@ -15,7 +16,6 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'singleRun'
 
@@ -69,7 +69,7 @@ const LoopResultPanel: FC<Props> = ({
       return <RiErrorWarningLine className="h-4 w-4 text-text-destructive" />
 
     if (isRunning)
-      return <RiLoader2Line className="text-primary-600 h-3.5 w-3.5 animate-spin" />
+      return <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-primary-600" />
 
     return (
       <>

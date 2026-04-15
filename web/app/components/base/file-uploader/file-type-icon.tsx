@@ -1,4 +1,5 @@
 import type { FileAppearanceType } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiFile3Fill,
   RiFileCodeFill,
@@ -14,7 +15,6 @@ import {
   RiMarkdownFill,
 } from '@remixicon/react'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 import { FileAppearanceTypeEnum } from './types'
 
 const FILE_TYPE_ICON_MAP = {
