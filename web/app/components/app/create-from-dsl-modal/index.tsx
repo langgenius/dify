@@ -6,9 +6,10 @@ import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
@@ -318,7 +319,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         </div>
         <div className="flex items-start justify-end gap-2 self-stretch pt-6">
           <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" destructive onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+          <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

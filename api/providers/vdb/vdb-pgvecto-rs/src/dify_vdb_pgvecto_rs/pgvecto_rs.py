@@ -67,7 +67,7 @@ class PGVectoRS(BaseVector):
                 primary_key=True,
             )
             text: Mapped[str]
-            meta: Mapped[dict] = mapped_column(postgresql.JSONB)
+            meta: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB)
             vector: Mapped[ndarray] = mapped_column(VECTOR(dim))
 
         self._table = _Table

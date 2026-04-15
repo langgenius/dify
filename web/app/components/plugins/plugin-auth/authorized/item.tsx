@@ -13,9 +13,9 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
 import { CredentialTypeEnum } from '../types'
@@ -127,11 +127,11 @@ const Item = ({
               )
             }
             <Indicator
-              className="ml-2 mr-1.5 shrink-0"
+              className="mr-1.5 ml-2 shrink-0"
               color={credential.not_allowed_to_use ? 'gray' : 'green'}
             />
             <div
-              className="system-md-regular truncate text-text-secondary"
+              className="truncate system-md-regular text-text-secondary"
               title={credential.name}
             >
               {credential.name}

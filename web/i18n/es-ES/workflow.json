@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Rama de error",
   "nodes.common.errorHandle.none.desc": "El nodo dejará de ejecutarse si se produce una excepción y no se controla",
   "nodes.common.errorHandle.none.title": "Ninguno",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Hay nodos {{num}} en el proceso que se ejecutan de manera anormal, vaya a rastreo para verificar los registros.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Hay nodos {{num}} en el proceso que se ejecutan de manera anormal, vaya a <tracingLink>rastreo</tracingLink> para verificar los registros.",
   "nodes.common.errorHandle.tip": "Estrategia de control de excepciones, que se desencadena cuando un nodo encuentra una excepción.",
   "nodes.common.errorHandle.title": "Manejo de errores",
   "nodes.common.inputVars": "Variables de entrada",

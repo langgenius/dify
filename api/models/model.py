@@ -1007,7 +1007,7 @@ class OAuthProviderApp(TypeBase):
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
-    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
+    app_label: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     scope: Mapped[str] = mapped_column(
         String(255),
@@ -2495,7 +2495,7 @@ class TraceAppConfig(TypeBase):
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tracing_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    tracing_config: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
+    tracing_config: Mapped[dict[str, Any] | None] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

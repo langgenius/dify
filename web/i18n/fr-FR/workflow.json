@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Branche d’échec",
   "nodes.common.errorHandle.none.desc": "Le nœud cessera de s’exécuter si une exception se produit et n’est pas gérée",
   "nodes.common.errorHandle.none.title": "Aucun",
-  "nodes.common.errorHandle.partialSucceeded.tip": "Il y a des nœuds {{num}} dans le processus qui fonctionnent anormalement, veuillez aller dans le traçage pour vérifier les journaux.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "Il y a des nœuds {{num}} dans le processus qui fonctionnent anormalement, veuillez aller dans le <tracingLink>traçage</tracingLink> pour vérifier les journaux.",
   "nodes.common.errorHandle.tip": "Stratégie de gestion des exceptions, déclenchée lorsqu’un nœud rencontre une exception.",
   "nodes.common.errorHandle.title": "Gestion des erreurs",
   "nodes.common.inputVars": "Variables d’entrée",
