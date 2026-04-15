@@ -50,18 +50,18 @@ def create_clusters(batch_size):
             private_key=dify_config.TIDB_PRIVATE_KEY or "",
             region=dify_config.TIDB_REGION or "",
         )
-        with session_factory.create_session() as session:
-            for new_cluster in new_clusters:
-                tidb_auth_binding = TidbAuthBinding(
-                    tenant_id=None,
-                    cluster_id=new_cluster["cluster_id"],
-                    cluster_name=new_cluster["cluster_name"],
-                    account=new_cluster["account"],
-                    password=new_cluster["password"],
-                    active=False,
-                    status=TidbAuthBindingStatus.CREATING,
-                )
-                session.add(tidb_auth_binding)
-            session.commit()
+        for new_cluster in new_clusters:
+            tidb_auth_binding = TidbAuthBinding(
+                tenant_id=None,
+                cluster_id=new_cluster["cluster_id"],
+                cluster_name=new_cluster["cluster_name"],
+                account=new_cluster["account"],
+                password=new_cluster["password"],
+                qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
+                active=False,
+                status=TidbAuthBindingStatus.CREATING,
+            )
+            db.session.add(tidb_auth_binding)
+        db.session.commit()
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

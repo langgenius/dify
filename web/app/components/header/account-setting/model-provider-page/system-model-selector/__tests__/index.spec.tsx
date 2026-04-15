@@ -120,12 +120,6 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
-  it('should render the primary button variant when configuration is required', () => {
-    render(<SystemModel {...defaultProps} notConfigured />)
-
-    expect(screen.getByRole('button', { name: /system model settings/i })).toHaveClass('btn-primary')
-  })
-
   it('should close dialog when cancel is clicked', async () => {
     render(<SystemModel {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))

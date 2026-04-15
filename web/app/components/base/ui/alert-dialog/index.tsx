@@ -10,7 +10,6 @@ export const AlertDialog = BaseAlertDialog.Root
 export const AlertDialogTrigger = BaseAlertDialog.Trigger
 export const AlertDialogTitle = BaseAlertDialog.Title
 export const AlertDialogDescription = BaseAlertDialog.Description
-export const AlertDialogClose = BaseAlertDialog.Close
 
 type AlertDialogContentProps = {
   children: React.ReactNode
