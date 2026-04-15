@@ -453,6 +453,7 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress)
       return
 
+    this.seedCrdtGraphFromReactFlowIfNeeded()
     this.captureSetNodesAnomaly(oldNodes, newNodes, source)
     this.syncNodes(oldNodes, newNodes)
     this.doc.commit()
@@ -466,6 +467,7 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress)
       return
 
+    this.seedCrdtGraphFromReactFlowIfNeeded()
     this.syncEdges(oldEdges, newEdges)
     this.doc.commit()
   }

@@ -1,5 +1,6 @@
 import type { LoroMap } from 'loro-crdt'
 import type { OnlineUser, RestoreRequestData } from '../../types/collaboration'
+import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -130,6 +131,52 @@ describe('CollaborationManager logs and event helpers', () => {
     expect(payload.nodes).toHaveLength(1)
     expect(payload.edges).toHaveLength(1)
     expect(payload.nodes[0]?.data.selected).toBe(true)
+  })
+
+  it('seeds the full reactflow graph before applying a partial local node update to an empty CRDT', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const startNode = createNode('n-start')
+    const noteNode: Node<NoteNodeType> = {
+      id: 'n-note',
+      type: 'custom-note',
+      position: { x: 100, y: 100 },
+      data: {
+        type: BlockEnum.Start,
+        title: '',
+        desc: '',
+        text: 'note',
+        theme: 'yellow',
+        author: 'Dify',
+        showAuthor: true,
+      },
+    }
+    const edge = createEdge('e-start-note', 'n-start', 'n-note')
+
+    const oldNodes = [startNode, noteNode]
+    const nextNodes: Node[] = [
+      startNode,
+      {
+        ...noteNode,
+        data: {
+          ...noteNode.data,
+          selected: true,
+        },
+      },
+    ]
+
+    internals.reactFlowStore = {
+      getState: () => ({
+        getNodes: () => oldNodes,
+        setNodes: vi.fn(),
+        getEdges: () => [edge],
+        setEdges: vi.fn(),
+      }),
+    }
+
+    manager.setNodes(oldNodes, nextNodes, 'test:partial-note-update')
+
+    expect(manager.getNodes().map(node => node.id).sort()).toEqual(['n-note', 'n-start'])
+    expect(manager.getEdges().map(currentEdge => currentEdge.id)).toEqual(['e-start-note'])
   })
 
   it('clearGraphImportLog clears logs and pending import snapshot', () => {
