@@ -3309,11 +3309,6 @@
       "count": 1
     }
   },
-  "app/components/base/ui/avatar/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/video-gallery/VideoPlayer.tsx": {
     "react/set-state-in-effect": {
       "count": 1
