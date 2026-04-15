@@ -1,3 +1,4 @@
+import type { PopoverRootActions } from '@base-ui/react'
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -31,6 +32,7 @@ describe('OperationsPopover', () => {
   const defaultProps = {
     dataset: createMockDataset(),
     isCurrentWorkspaceDatasetOperator: false,
+    actionsRef: { current: null } as React.RefObject<PopoverRootActions | null>,
     openRenameModal: vi.fn(),
     handleExportPipeline: vi.fn(),
     detectIsUsedByApp: vi.fn(),
@@ -48,7 +50,7 @@ describe('OperationsPopover', () => {
 
     it('should render the more icon button', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
-      const moreIcon = container.querySelector('svg')
+      const moreIcon = container.querySelector('.i-ri-more-fill')
       expect(moreIcon).toBeInTheDocument()
     })
 
@@ -108,12 +110,12 @@ describe('OperationsPopover', () => {
     it('should have correct positioning styles', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('absolute', 'right-2', 'top-2', 'z-15')
+      expect(wrapper).toHaveClass('absolute', 'right-2', 'top-2', 'z-5')
     })
 
     it('should have icon with correct size classes', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('.i-ri-more-fill')
       expect(icon).toHaveClass('h-5', 'w-5', 'text-text-tertiary')
     })
   })

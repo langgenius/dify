@@ -1,5 +1,6 @@
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   Popover,
@@ -55,6 +56,34 @@ describe('PopoverContent', () => {
       expect(positioner).toHaveAttribute('data-side', 'top')
       expect(positioner).toHaveAttribute('data-align', 'end')
       expect(popup).toHaveTextContent('Custom placement content')
+    })
+  })
+
+  describe('Container', () => {
+    it('should portal content into the specified container element when container prop is provided', () => {
+      function TestWrapper() {
+        const containerRef = useRef<HTMLDivElement>(null)
+        return (
+          <div>
+            <div ref={containerRef} data-testid="portal-target" />
+            <Popover open>
+              <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
+              <PopoverContent
+                container={containerRef}
+                popupProps={{ 'role': 'dialog', 'aria-label': 'contained popover' }}
+              >
+                <span>Contained content</span>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )
+      }
+
+      render(<TestWrapper />)
+
+      const portalTarget = screen.getByTestId('portal-target')
+      const popup = screen.getByRole('dialog', { name: 'contained popover' })
+      expect(portalTarget.contains(popup)).toBe(true)
     })
   })
 

@@ -1,3 +1,4 @@
+import type { PopoverRootActions } from '@base-ui/react'
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -62,8 +63,16 @@ vi.mock('../components/tag-area', () => ({
     <div ref={ref} data-testid="tag-area" onClick={onClick} />
   )),
 }))
+const mockPopoverClose = vi.fn()
+function MockOperationsPopover({ actionsRef }: { actionsRef: React.RefObject<PopoverRootActions | null> }) {
+  React.useEffect(() => {
+    if (actionsRef && 'current' in actionsRef)
+      actionsRef.current = { close: mockPopoverClose, unmount: vi.fn() }
+  }, [actionsRef])
+  return <div data-testid="operations-popover" />
+}
 vi.mock('../components/operations-popover', () => ({
-  default: () => <div data-testid="operations-popover" />,
+  default: MockOperationsPopover,
 }))
 
 // Factory function for DataSet mock data
@@ -408,6 +417,16 @@ describe('DatasetCard Component', () => {
 
     fireEvent.click(screen.getByText('Test Dataset'))
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
+  })
+
+  it('should close popover when mouse leaves the card', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+
+    const card = screen.getByText('Test Dataset').closest('[class*="group"]')!
+    fireEvent.mouseLeave(card)
+
+    expect(mockPopoverClose).toHaveBeenCalledTimes(1)
   })
 
   it('should stop propagation when tag area is clicked', () => {

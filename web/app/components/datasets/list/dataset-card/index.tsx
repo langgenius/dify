@@ -1,7 +1,7 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import { useHover } from 'ahooks'
-import { useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import CornerLabels from './components/corner-labels'
@@ -57,6 +57,9 @@ const DatasetCard = ({
       push(`/datasets/${dataset.id}/documents`)
   }
 
+  const popoverActionsRef = useRef<{ close: () => void, unmount: () => void }>(null)
+  const handleCardMouseLeave = useCallback(() => popoverActionsRef.current?.close(), [])
+
   const handleTagAreaClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
@@ -68,6 +71,7 @@ const DatasetCard = ({
         className="group relative col-span-1 flex h-[190px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5"
         data-disable-nprogress={true}
         onClick={handleCardClick}
+        onMouseLeave={handleCardMouseLeave}
       >
         <CornerLabels dataset={dataset} />
         <DatasetCardHeader dataset={dataset} />
@@ -85,6 +89,7 @@ const DatasetCard = ({
         <OperationsPopover
           dataset={dataset}
           isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
+          actionsRef={popoverActionsRef}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}

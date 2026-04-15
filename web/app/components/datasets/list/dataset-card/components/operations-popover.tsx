@@ -1,13 +1,14 @@
+import type { PopoverRootActions } from '@base-ui/react/popover'
 import type { DataSet } from '@/models/datasets'
-import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import CustomPopover from '@/app/components/base/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/base/ui/popover'
 import { cn } from '@/utils/classnames'
 import Operations from '../operations'
 
 type OperationsPopoverProps = {
   dataset: DataSet
   isCurrentWorkspaceDatasetOperator: boolean
+  actionsRef: React.RefObject<PopoverRootActions | null>
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
@@ -16,37 +17,49 @@ type OperationsPopoverProps = {
 const OperationsPopover = ({
   dataset,
   isCurrentWorkspaceDatasetOperator,
+  actionsRef,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
-}: OperationsPopoverProps) => (
-  <div className="absolute right-2 top-2 z-15 hidden group-hover:block">
-    <CustomPopover
-      htmlContent={(
-        <Operations
-          showDelete={!isCurrentWorkspaceDatasetOperator}
-          showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
-          openRenameModal={openRenameModal}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-        />
-      )}
-      className="z-20 min-w-[186px]"
-      popupClassName="rounded-xl bg-none shadow-none ring-0 min-w-[186px]"
-      position="br"
-      trigger="click"
-      btnElement={(
-        <div className="flex size-8 items-center justify-center radius-lg hover:bg-state-base-hover">
-          <RiMoreFill className="h-5 w-5 text-text-tertiary" />
-        </div>
-      )}
-      btnClassName={open =>
-        cn(
-          'size-9 cursor-pointer justify-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-2 ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
-          open ? 'border-components-actionbar-border bg-state-base-hover' : '',
-        )}
-    />
-  </div>
-)
+}: OperationsPopoverProps) => {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute top-2 right-2 z-5 hidden group-hover:block"
+      onClick={e => e.stopPropagation()}
+    >
+      <Popover actionsRef={actionsRef}>
+        <PopoverTrigger
+          className={cn(
+            'group/btn inline-flex size-9 cursor-pointer items-center justify-center radius-lg border-[0.5px]',
+            'border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg ring-2 shadow-shadow-shadow-5 ring-components-actionbar-bg ring-inset',
+            'hover:border-components-actionbar-border hover:bg-state-base-hover hover:backdrop-blur-[5px]',
+            'data-popup-open:border-components-actionbar-border data-popup-open:bg-state-base-hover data-popup-open:backdrop-blur-[5px]',
+          )}
+        >
+          <div className="flex size-8 items-center justify-center radius-lg hover:bg-state-base-hover">
+            <span className="i-ri-more-fill h-5 w-5 text-text-tertiary" />
+          </div>
+        </PopoverTrigger>
+        <PopoverContent
+          placement="bottom-end"
+          container={containerRef}
+          className="min-w-[186px]"
+          popupClassName="rounded-xl bg-none shadow-none ring-0 min-w-[186px]"
+        >
+          <Operations
+            showDelete={!isCurrentWorkspaceDatasetOperator}
+            showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
+            openRenameModal={openRenameModal}
+            handleExportPipeline={handleExportPipeline}
+            detectIsUsedByApp={detectIsUsedByApp}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
 
 export default React.memo(OperationsPopover)
