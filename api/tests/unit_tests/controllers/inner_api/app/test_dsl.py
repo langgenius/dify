@@ -102,16 +102,16 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.fixture
     def _mock_import_deps(self):
-        """Patch db, sessionmaker, and AppDslService for import handler tests."""
-        mock_session_ctx = MagicMock()
-        mock_session_ctx.__enter__ = MagicMock(return_value=MagicMock())
-        mock_session_ctx.__exit__ = MagicMock(return_value=False)
-        mock_sessionmaker = MagicMock(return_value=MagicMock(begin=MagicMock(return_value=mock_session_ctx)))
+        """Patch db, Session, and AppDslService for import handler tests."""
+        mock_session = MagicMock()
+        mock_session.__enter__ = MagicMock(return_value=mock_session)
+        mock_session.__exit__ = MagicMock(return_value=False)
         with (
             patch("controllers.inner_api.app.dsl.db"),
-            patch("controllers.inner_api.app.dsl.sessionmaker", mock_sessionmaker),
+            patch("controllers.inner_api.app.dsl.Session", return_value=mock_session),
             patch("controllers.inner_api.app.dsl.AppDslService") as mock_dsl_cls,
         ):
+            self._mock_session = mock_session
             self._mock_dsl = MagicMock()
             mock_dsl_cls.return_value = self._mock_dsl
             yield
@@ -147,6 +147,8 @@ class TestEnterpriseAppDSLImport:
         assert status_code == 200
         assert body["status"] == "completed"
         mock_account.set_tenant_id.assert_called_once_with("ws-123")
+        self._mock_session.commit.assert_called_once_with()
+        self._mock_session.rollback.assert_not_called()
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
@@ -162,6 +164,8 @@ class TestEnterpriseAppDSLImport:
 
         assert status_code == 202
         assert body["status"] == "pending"
+        self._mock_session.commit.assert_called_once_with()
+        self._mock_session.rollback.assert_not_called()
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
@@ -177,6 +181,8 @@ class TestEnterpriseAppDSLImport:
 
         assert status_code == 400
         assert body["status"] == "failed"
+        self._mock_session.rollback.assert_called_once_with()
+        self._mock_session.commit.assert_not_called()
 
     @patch("controllers.inner_api.app.dsl._get_active_account")
     def test_import_account_not_found_returns_404(self, mock_get_account, api_instance, app: Flask):
