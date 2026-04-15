@@ -455,7 +455,7 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
+            self._session.flush()
             app_was_created.send(app, account=account)
 
         # save dependencies
