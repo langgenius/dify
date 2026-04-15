@@ -80,16 +80,6 @@ const difyUIPreset = {
       fontSize: {
         '2xs': '0.625rem',
       },
-      borderRadius: {
-        '2xs': '2px',
-        'xs': '4px',
-        'sm': '6px',
-        'md': '8px',
-        'lg': '10px',
-        'xl': '12px',
-        '2xl': '16px',
-        '3xl': '20px',
-      },
     },
   },
   plugins: [
