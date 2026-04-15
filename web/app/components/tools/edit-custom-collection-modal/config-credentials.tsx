@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential } from '@/app/components/tools/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio/ui'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   positionCenter?: boolean
@@ -62,7 +62,7 @@ const ConfigCredential: FC<Props> = ({
         <div className="px-6 pt-2">
           <div className="space-y-4">
             <div>
-              <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.type', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.type', { ns: 'tools' })}</div>
               <div className="flex space-x-3">
                 <SelectItem
                   text={t('createTool.authMethod.types.none', { ns: 'tools' })}
@@ -98,7 +98,7 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKeyHeader && (
               <>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authHeaderPrefix.title', { ns: 'tools' })}</div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authHeaderPrefix.title', { ns: 'tools' })}</div>
                   <div className="flex space-x-3">
                     <SelectItem
                       text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
@@ -121,7 +121,7 @@ const ConfigCredential: FC<Props> = ({
                   </div>
                 </div>
                 <div>
-                  <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                  <div className="flex items-center py-2 system-sm-medium text-text-primary">
                     {t('createTool.authMethod.key', { ns: 'tools' })}
                     <Tooltip
                       popupContent={(
@@ -139,7 +139,7 @@ const ConfigCredential: FC<Props> = ({
                   />
                 </div>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
@@ -151,7 +151,7 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKeyQuery && (
               <>
                 <div>
-                  <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                  <div className="flex items-center py-2 system-sm-medium text-text-primary">
                     {t('createTool.authMethod.queryParam', { ns: 'tools' })}
                     <Tooltip
                       popupContent={(
@@ -169,7 +169,7 @@ const ConfigCredential: FC<Props> = ({
                   />
                 </div>
                 <div>
-                  <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
                   <Input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}

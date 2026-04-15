@@ -1,8 +1,10 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
+import { Button } from '@/app/components/base/ui/button'
 import { ScrollArea } from '@/app/components/base/ui/scroll-area'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
@@ -14,8 +16,6 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
-import Button from '../../base/button'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
@@ -152,14 +152,14 @@ export default function AccountSetting({
       onClose={handleClose}
     >
       <div className="mx-auto flex h-screen max-w-[1048px]">
-        <div className="flex w-[44px] flex-col border-r border-divider-burn pl-4 pr-6 sm:w-[224px]">
-          <div className="mb-8 mt-6 px-3 py-2 text-text-primary title-2xl-semi-bold">{t('userProfile.settings', { ns: 'common' })}</div>
+        <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[224px]">
+          <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="mb-0.5 py-2 pb-1 pl-3 text-text-tertiary system-xs-medium-uppercase">{menuItem.name}</div>
+                    <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
                   )}
                   <div>
                     {
@@ -169,7 +169,7 @@ export default function AccountSetting({
                           key={item.key}
                           className={cn(
                             'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
-                            activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium',
+                            activeMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
                           )}
                           aria-label={item.name}
                           title={item.name}
@@ -189,7 +189,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div className="relative flex min-h-0 w-[824px]">
-          <div className="fixed right-6 top-6 z-9999 flex flex-col items-center">
+          <div className="fixed top-6 right-6 z-9999 flex flex-col items-center">
             <Button
               variant="tertiary"
               size="large"
@@ -199,7 +199,7 @@ export default function AccountSetting({
             >
               <span className="i-ri-close-line h-5 w-5" />
             </Button>
-            <div className="mt-1 text-text-tertiary system-2xs-medium-uppercase">ESC</div>
+            <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
           <ScrollArea
             className="h-full min-h-0 flex-1 bg-components-panel-bg"
@@ -208,11 +208,11 @@ export default function AccountSetting({
               content: 'min-h-full pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]">
-              <div className="shrink-0 text-text-primary title-2xl-semi-bold">
+            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pt-[27px] pb-2">
+              <div className="shrink-0 title-2xl-semi-bold text-text-primary">
                 {activeItem?.name}
                 {activeItem?.description && (
-                  <div className="mt-1 text-text-tertiary system-sm-regular">{activeItem?.description}</div>
+                  <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
               {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (

@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { Button } from '@/app/components/base/ui/button'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CE_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
@@ -29,7 +29,7 @@ const APIKeyInfoPanel: FC = () => {
     return null
 
   return (
-    <div className={cn('border-components-panel-border bg-components-panel-bg', 'relative mb-6 rounded-2xl border p-8 shadow-md ')}>
+    <div className={cn('border-components-panel-border bg-components-panel-bg', 'relative mb-6 rounded-2xl border p-8 shadow-md')}>
       <div className={cn('text-[24px] font-semibold text-text-primary', isCloud ? 'flex h-8 items-center space-x-1' : 'mb-6 leading-8')}>
         {isCloud && <em-emoji id="😀" />}
         {isCloud
@@ -56,7 +56,7 @@ const APIKeyInfoPanel: FC = () => {
       </Button>
       {!isCloud && (
         <a
-          className="mt-2 flex h-[26px] items-center space-x-1  p-1 text-xs font-medium text-[#155EEF]"
+          className="mt-2 flex h-[26px] items-center space-x-1 p-1 text-xs font-medium text-[#155EEF]"
           href="https://cloud.dify.ai/apps"
           target="_blank"
           rel="noopener noreferrer"
@@ -67,7 +67,7 @@ const APIKeyInfoPanel: FC = () => {
       )}
       <div
         onClick={() => setIsShow(false)}
-        className="absolute right-4 top-4 flex h-8 w-8 cursor-pointer items-center justify-center "
+        className="absolute top-4 right-4 flex h-8 w-8 cursor-pointer items-center justify-center"
       >
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>

@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useDocLink } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 
 type FormProps = {
   className?: string
@@ -60,7 +60,7 @@ const Form: FC<FormProps> = React.memo(({
               href={docLink('/use-dify/knowledge/external-knowledge-api') || '/'}
               target="_blank"
               rel="noopener noreferrer"
-              className="body-xs-regular flex items-center text-text-accent"
+              className="flex items-center body-xs-regular text-text-accent"
             >
               <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
               {t('externalAPIPanelDocumentation', { ns: 'dataset' })}

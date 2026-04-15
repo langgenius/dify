@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { AppCategory } from '@/models/explore'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import exploreI18n from '@/i18n/en-US/explore.json'
-import { cn } from '@/utils/classnames'
 
 type ICategoryProps = {
   className?: string
@@ -29,7 +29,7 @@ const Category: FC<ICategoryProps> = ({
   const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
 
   const itemClassName = (isSelected: boolean) => cn(
-    'system-sm-medium flex h-7 cursor-pointer items-center rounded-lg border border-transparent  px-3 text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
+    'flex h-7 cursor-pointer items-center rounded-lg border border-transparent px-3 system-sm-medium text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
     isSelected && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
   )
 

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -10,10 +11,10 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
+import { Button } from '@/app/components/base/ui/button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -28,7 +29,6 @@ import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-for
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   showBackButton?: boolean
@@ -140,7 +140,7 @@ const SettingBuiltInTool: FC<Props> = ({
                 )}
               </div>
               {item.human_description && (
-                <div className="system-xs-regular mt-0.5 text-text-tertiary">
+                <div className="mt-0.5 system-xs-regular text-text-tertiary">
                   {item.human_description?.[language]}
                 </div>
               )}
@@ -171,7 +171,7 @@ const SettingBuiltInTool: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <>
         {isLoading && <Loading type="app" />}
@@ -179,14 +179,14 @@ const SettingBuiltInTool: FC<Props> = ({
           <>
             {/* header */}
             <div className="relative border-b border-divider-subtle p-4 pb-3">
-              <div className="absolute right-3 top-3">
+              <div className="absolute top-3 right-3">
                 <ActionButton onClick={onHide}>
                   <RiCloseLine className="h-4 w-4" />
                 </ActionButton>
               </div>
               {showBackButton && (
                 <div
-                  className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
+                  className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
                   onClick={onHide}
                 >
                   <RiArrowLeftLine className="h-4 w-4" />
@@ -201,9 +201,9 @@ const SettingBuiltInTool: FC<Props> = ({
                   packageName={collection.name.split('/').pop() || ''}
                 />
               </div>
-              <div className="system-md-semibold mt-1 text-text-primary">{currTool?.label[language]}</div>
+              <div className="mt-1 system-md-semibold text-text-primary">{currTool?.label[language]}</div>
               {!!currTool?.description[language] && (
-                <Description className="mb-2 mt-3 h-auto" text={currTool.description[language]} descriptionLineRows={2}></Description>
+                <Description className="mt-3 mb-2 h-auto" text={currTool.description[language]} descriptionLineRows={2}></Description>
               )}
               {
                 collection.allow_delete && collection.type === CollectionType.builtIn && (
@@ -240,13 +240,13 @@ const SettingBuiltInTool: FC<Props> = ({
                       />
                     )
                   : (
-                      <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
+                      <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
                     )}
                 <div className="h-0 grow overflow-y-auto px-4">
                   {isInfoActive ? infoUI : settingUI}
                   {!readonly && !isInfoActive && (
                     <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                      <Button className="flex h-8 items-center px-3! text-[13px]! font-medium " onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
                       <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
                     </div>
                   )}

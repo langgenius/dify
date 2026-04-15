@@ -5,13 +5,13 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
@@ -215,7 +215,7 @@ const Tabs: FC<TabsProps> = ({
     <div onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className="relative flex bg-background-section-burn pl-1 pt-1">
+          <div className="relative flex bg-background-section-burn pt-1 pl-1">
             {
               tabs.map(tab => (
                 <TabHeaderItem

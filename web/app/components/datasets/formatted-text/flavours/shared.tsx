@@ -1,5 +1,5 @@
 import type { ComponentProps, FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 const baseStyle = 'py-[3px]'
 
@@ -16,7 +16,7 @@ export const SliceContainer: FC<SliceContainerProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn('group mr-1 select-none align-bottom text-sm', className)}
+      className={cn('group mr-1 align-bottom text-sm select-none', className)}
     />
   )
 }
@@ -35,7 +35,7 @@ export const SliceLabel: FC<SliceLabelProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn(baseStyle, 'bg-state-base-hover-alt px-1 uppercase text-text-tertiary group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface', className)}
+      className={cn(baseStyle, 'bg-state-base-hover-alt px-1 text-text-tertiary uppercase group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface', className)}
     >
       <span className={cn('text-nowrap', labelInnerClassName)}>
         {children}
@@ -58,7 +58,7 @@ export const SliceContent: FC<SliceContentProps> = (
     <span
       {...rest}
       ref={ref}
-      className={cn(baseStyle, 'whitespace-pre-line break-all bg-state-base-hover px-1 leading-7 group-hover:bg-state-accent-hover-alt group-hover:text-text-primary', className)}
+      className={cn(baseStyle, 'bg-state-base-hover px-1 leading-7 break-all whitespace-pre-line group-hover:bg-state-accent-hover-alt group-hover:text-text-primary', className)}
     >
       {children}
     </span>

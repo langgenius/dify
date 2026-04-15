@@ -1,14 +1,14 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'
 import { getFlowPrefix } from '@/service/utils'
-import { cn } from '@/utils/classnames'
 import {
   useWorkflowRefreshDraft,
   useWorkflowRun,
@@ -82,7 +82,7 @@ const HeaderInRestoring = ({
       <div>
         <RestoringTitle />
       </div>
-      <div className=" flex items-center justify-end gap-x-2">
+      <div className="flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
           disabled={!canRestore}

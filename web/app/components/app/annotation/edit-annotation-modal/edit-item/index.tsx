@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import Textarea from '@/app/components/base/textarea'
-import { cn } from '@/utils/classnames'
+import { Button } from '@/app/components/base/ui/button'
 
 export enum EditItemType {
   Query = 'query',
@@ -21,7 +21,7 @@ type Props = {
 }
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
-  <div className={cn(className, 'system-xs-medium flex h-[18px] items-center text-text-tertiary')}>
+  <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>
     <RiEditFill className="mr-1 h-3.5 w-3.5" />
     <div>{title}</div>
     <div
@@ -75,7 +75,7 @@ const EditItem: FC<Props> = ({
         {avatar}
       </div>
       <div className="grow">
-        <div className="system-xs-semibold mb-1 text-text-primary">{name}</div>
+        <div className="mb-1 system-xs-semibold text-text-primary">{name}</div>
         <div className="system-sm-regular text-text-primary">{content}</div>
         {!isEdit
           ? (
@@ -83,13 +83,13 @@ const EditItem: FC<Props> = ({
                 {showNewContent && (
                   <div className="mt-3">
                     <EditTitle title={editTitle} />
-                    <div className="system-sm-regular mt-1 text-text-primary">{newContent}</div>
+                    <div className="mt-1 system-sm-regular text-text-primary">{newContent}</div>
                   </div>
                 )}
                 <div className="mt-2 flex items-center">
                   {!readonly && (
                     <div
-                      className="system-xs-medium flex cursor-pointer items-center space-x-1 text-text-accent"
+                      className="flex cursor-pointer items-center space-x-1 system-xs-medium text-text-accent"
                       onClick={() => {
                         setIsEdit(true)
                       }}
@@ -100,7 +100,7 @@ const EditItem: FC<Props> = ({
                   )}
 
                   {showNewContent && (
-                    <div className="system-xs-medium ml-2 flex items-center text-text-tertiary">
+                    <div className="ml-2 flex items-center system-xs-medium text-text-tertiary">
                       <div className="mr-2">·</div>
                       <div
                         className="flex cursor-pointer items-center space-x-1"

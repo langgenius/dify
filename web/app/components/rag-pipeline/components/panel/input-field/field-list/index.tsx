@@ -1,10 +1,10 @@
 import type { InputVar } from '@/models/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import { cn } from '@/utils/classnames'
 import FieldListContainer from './field-list-container'
 import { useFieldList } from './hooks'
 

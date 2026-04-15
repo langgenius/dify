@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { WithIconCardListProps } from './markdown-with-directive-schema'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type WithIconListProps = WithIconCardListProps & {
   children?: ReactNode

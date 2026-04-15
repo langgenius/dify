@@ -1,13 +1,13 @@
 'use client'
 
 import type { INavSelectorProps } from './nav-selector'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import NavSelector from './nav-selector'
 
 type INavProps = {
@@ -53,7 +53,7 @@ const Nav = ({
               return
             setAppDetail()
           }}
-          className={cn('flex h-7 cursor-pointer items-center radius-lg px-2.5', isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text', curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
+          className={cn('flex h-7 cursor-pointer items-center rounded-[10px] px-2.5', isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text', curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >

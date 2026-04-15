@@ -10,6 +10,7 @@ import type {
   Node,
 } from './types'
 import type { VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useEventListener,
 } from 'ahooks'
@@ -23,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
@@ -34,9 +36,17 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import dynamic from '@/next/dynamic'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -44,7 +54,6 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { fetchAllInspectVars } from '@/service/workflow'
-import { cn } from '@/utils/classnames'
 import CandidateNode from './candidate-node'
 import {
   CUSTOM_EDGE,
@@ -103,10 +112,6 @@ import { WorkflowHistoryProvider } from './workflow-history-store'
 import 'reactflow/dist/style.css'
 import './style.css'
 
-const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
-  ssr: false,
-})
-
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
@@ -133,6 +138,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   children,
   onWorkflowDataUpdate,
 }) => {
+  const { t } = useTranslation()
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -396,7 +402,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <SyncingDataModal />
       <CandidateNode />
       <div
-        className="pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+        className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
         style={{ height: controlHeight }}
       >
         <Control />
@@ -407,17 +413,26 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <EdgeContextmenu />
       <SelectionContextmenu />
       <HelpLine />
-      {
-        !!showConfirm && (
-          <Confirm
-            isShow
-            onCancel={() => setShowConfirm(undefined)}
-            onConfirm={showConfirm.onConfirm}
-            title={showConfirm.title}
-            content={showConfirm.desc}
-          />
-        )
-      }
+      <AlertDialog open={!!showConfirm} onOpenChange={open => !open && setShowConfirm(undefined)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {showConfirm?.title}
+            </AlertDialogTitle>
+            {showConfirm?.desc && (
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {showConfirm.desc}
+              </AlertDialogDescription>
+            )}
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}

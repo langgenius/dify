@@ -5,6 +5,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
@@ -15,8 +16,8 @@ import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import {
@@ -42,7 +43,6 @@ import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()

@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { useDocLink } from '@/context/i18n'
 
 type IConfirm = {
@@ -87,21 +87,21 @@ function Confirm({
     >
       <div ref={dialogRef} className="relative w-full max-w-[481px] overflow-hidden">
         <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
-          <div className="flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6">
+          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
             <div className="title-2xl-semi-bold text-text-primary">{title}</div>
-            <div className="system-md-regular w-full text-text-tertiary">{content}</div>
+            <div className="w-full system-md-regular text-text-tertiary">{content}</div>
           </div>
           {email && (
             <div className="w-full space-y-1 px-6 py-3">
-              <div className="system-sm-semibold py-1 text-text-secondary">{t('emailLabel', { ns: 'education' })}</div>
-              <div className="system-sm-regular rounded-lg bg-components-input-bg-disabled px-3 py-2 text-components-input-text-filled-disabled">{email}</div>
+              <div className="py-1 system-sm-semibold text-text-secondary">{t('emailLabel', { ns: 'education' })}</div>
+              <div className="rounded-lg bg-components-input-bg-disabled px-3 py-2 system-sm-regular text-components-input-text-filled-disabled">{email}</div>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 self-stretch p-6">
             <div className="flex items-center gap-1">
               {showLink && (
                 <>
-                  <a onClick={handleClick} href={eduDocLink} target="_blank" className="system-xs-regular cursor-pointer text-text-accent">{t('learn', { ns: 'education' })}</a>
+                  <a onClick={handleClick} href={eduDocLink} target="_blank" className="cursor-pointer system-xs-regular text-text-accent">{t('learn', { ns: 'education' })}</a>
                   <RiExternalLinkLine className="h-3 w-3 text-text-accent" />
                 </>
               )}

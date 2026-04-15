@@ -4,6 +4,7 @@ import type { QueryParam } from './filter'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import * as React from 'react'
@@ -22,7 +23,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { addAnnotation, delAnnotation, delAnnotations, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
-import { cn } from '@/utils/classnames'
 import EmptyElement from './empty-element'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
@@ -144,7 +144,7 @@ const Annotation: FC<Props> = (props) => {
 
   return (
     <div className="flex h-full flex-col">
-      <p className="text-text-tertiary system-sm-regular">{t('description', { ns: 'appLog' })}</p>
+      <p className="system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
       <div className="relative flex h-full flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className="flex items-center space-x-2">
@@ -152,12 +152,12 @@ const Annotation: FC<Props> = (props) => {
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
                   <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
-                  <div className="text-text-primary system-sm-medium">{t('name', { ns: 'appAnnotation' })}</div>
+                  <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
-                    value={annotationConfig?.enabled ?? false}
+                    checked={annotationConfig?.enabled ?? false}
                     size="md"
-                    onChange={async (value) => {
+                    onCheckedChange={async (value) => {
                       if (value) {
                         if (isAnnotationFull) {
                           setIsShowAnnotationFullModal(true)

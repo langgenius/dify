@@ -1,9 +1,9 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { API_PREFIX } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
-import { cn } from '@/utils/classnames'
 import style from '../page.module.css'
 
 type SocialAuthProps = {
