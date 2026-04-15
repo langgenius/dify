@@ -1155,7 +1155,7 @@
       "count": 2
     },
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 8
+      "count": 1
     }
   },
   "app/components/apps/new-app-card.tsx": {
