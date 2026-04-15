@@ -35,7 +35,7 @@ const OperationsDropdown = ({
       )}
       onClick={e => e.stopPropagation()}
     >
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           className={cn(
             'inline-flex size-9 cursor-pointer items-center justify-center radius-lg border-[0.5px]',
