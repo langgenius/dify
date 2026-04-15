@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
   RiPlayLargeLine,
@@ -60,7 +61,6 @@ import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
-import { cn } from '@/utils/classnames'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
 import PanelWrap from '../before-run-form/panel-wrap'
@@ -352,7 +352,7 @@ const BasePanel: FC<BasePanelProps> = ({
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
-        'relative mr-1  h-full',
+        'relative mr-1 h-full',
       )}
       >
         <div
@@ -392,7 +392,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
     return (
       <div className={cn(
-        'relative mr-1  h-full',
+        'relative mr-1 h-full',
       )}
       >
         <div
@@ -437,7 +437,7 @@ const BasePanel: FC<BasePanelProps> = ({
     >
       <div
         ref={triggerRef}
-        className="absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
@@ -449,7 +449,7 @@ const BasePanel: FC<BasePanelProps> = ({
         }}
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
-          <div className="flex items-center px-4 pb-1 pt-4">
+          <div className="flex items-center px-4 pt-4 pb-1">
             <BlockIcon
               className="mr-1 shrink-0"
               type={data.type}
@@ -514,7 +514,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   detail: currToolCollection as any,
                 }}
               >
-                <div className="flex items-center justify-between pl-4 pr-3">
+                <div className="flex items-center justify-between pr-3 pl-4">
                   <Tab
                     value={tabType}
                     onChange={setTabType}
@@ -539,7 +539,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 onJumpToDataSourcePage={handleJumpToDataSourcePage}
                 isAuthorized={currentDataSource.is_authorized}
               >
-                <div className="flex items-center justify-between pl-4 pr-3">
+                <div className="flex items-center justify-between pr-3 pl-4">
                   <Tab
                     value={tabType}
                     onChange={setTabType}
@@ -567,7 +567,7 @@ const BasePanel: FC<BasePanelProps> = ({
           }
           {
             !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-              <div className="flex items-center justify-between pl-4 pr-3">
+              <div className="flex items-center justify-between pr-3 pl-4">
                 <Tab
                   value={tabType}
                   onChange={setTabType}
@@ -613,10 +613,10 @@ const BasePanel: FC<BasePanelProps> = ({
             {
               !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
-                  <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
+                  <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
                     {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
-                  <div className="system-xs-regular mb-2 text-text-tertiary">
+                  <div className="mb-2 system-xs-regular text-text-tertiary">
                     {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />

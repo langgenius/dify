@@ -7,6 +7,7 @@ import type {
   HybridSearchModeOption,
   Option,
 } from './type'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -18,7 +19,6 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
@@ -166,11 +166,11 @@ const SearchMethodOption = ({
             <div>
               {
                 showRerankModelSelectorSwitch && (
-                  <div className="mb-1 flex items-center text-text-secondary system-sm-semibold">
+                  <div className="mb-1 flex items-center system-sm-semibold text-text-secondary">
                     <Switch
                       className="mr-1"
-                      value={rerankingModelEnabled ?? false}
-                      onChange={onRerankingModelEnabledChange}
+                      checked={rerankingModelEnabled ?? false}
+                      onCheckedChange={onRerankingModelEnabledChange}
                       disabled={readonly}
                     />
                     {t('modelProvider.rerankModel.key', { ns: 'common' })}
@@ -188,11 +188,11 @@ const SearchMethodOption = ({
               />
               {showMultiModalTip && (
                 <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                  <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
                   <div className="p-1">
                     <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>
-                  <span className="text-text-primary system-xs-medium">
+                  <span className="system-xs-medium text-text-primary">
                     {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                   </span>
                 </div>

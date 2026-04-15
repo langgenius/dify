@@ -136,7 +136,6 @@ pnpm -C web test
 
 If you are not familiar with writing tests, refer to:
 
-- [classnames.spec.ts] - Utility function test example
 - [index.spec.tsx] - Component test example
 
 ### Analyze Component Complexity
@@ -166,7 +165,6 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[classnames.spec.ts]: ./utils/classnames.spec.ts
 [index.spec.tsx]: ./app/components/base/button/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext

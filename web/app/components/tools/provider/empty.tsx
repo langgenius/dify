@@ -1,9 +1,9 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
 
@@ -38,7 +38,7 @@ const Empty = ({
   return (
     <div className="flex flex-col items-center justify-center">
       <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
-      <div className="mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary">
+      <div className="mt-2 mb-1 text-[13px] leading-[18px] font-medium text-text-primary">
         {(hasTitle && renderType) ? t(`addToolModal.${renderType}.title`, { ns: 'tools' }) : 'No tools available'}
       </div>
       {!!(!isAgent && hasTitle && renderType) && (

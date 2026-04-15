@@ -1,6 +1,6 @@
 import type { LabelProps } from '../label'
+import { cn } from '@langgenius/dify-ui/cn'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { cn } from '@/utils/classnames'
 import Label from '../label'
 
 type VariableOrConstantInputFieldProps = {

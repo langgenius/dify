@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react'
 import type { NotionPageRow as NotionPageRowData, NotionPageSelectionMode } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
-import { cn } from '@/utils/classnames'
 
 type NotionPageRowProps = {
   checked: boolean

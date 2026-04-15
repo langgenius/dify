@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { LoopNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useEffect,
@@ -10,7 +11,6 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import { cn } from '@/utils/classnames'
 import { LoopStartNodeDumb } from '../loop-start'
 import AddBlock from './add-block'
 

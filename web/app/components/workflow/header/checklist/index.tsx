@@ -2,6 +2,7 @@ import type { ChecklistItem } from '../../hooks/use-checklist'
 import type {
   CommonEdgeType,
 } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -18,7 +19,6 @@ import {
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { cn } from '@/utils/classnames'
 import {
   useChecklist,
   useNodesInteractions,
@@ -84,7 +84,7 @@ const WorkflowChecklist = ({
               />
             </span>
             {!!needWarningNodes.length && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
+              <span className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-gray-100 bg-text-warning-secondary text-[11px] font-semibold text-white">
                 {needWarningNodes.length}
               </span>
             )}
@@ -101,15 +101,15 @@ const WorkflowChecklist = ({
           className="overflow-y-auto"
           style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}
         >
-          <div className="flex flex-col gap-0.5 px-3 pb-1 pt-3.5">
+          <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
             <div className="flex items-start px-1">
               <div className="min-w-0 grow pr-8">
-                <h2 className="text-base font-semibold leading-6 text-text-primary">
+                <h2 className="text-base leading-6 font-semibold text-text-primary">
                   {t('panel.checklist', { ns: 'workflow' })}
                   {needWarningNodes.length > 0 && `(${needWarningNodes.length})`}
                 </h2>
               </div>
-              <PopoverClose className="-mr-0.5 -mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg">
+              <PopoverClose className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg">
                 <span className="i-ri-close-line size-4 text-text-tertiary" />
               </PopoverClose>
             </div>
@@ -122,7 +122,7 @@ const WorkflowChecklist = ({
 
           {needWarningNodes.length > 0
             ? (
-                <div className="flex flex-col gap-1 px-4 pb-4 pt-1">
+                <div className="flex flex-col gap-1 px-4 pt-1 pb-4">
                   {pluginItems.length > 0 && (
                     <ChecklistPluginGroup items={pluginItems} />
                   )}
@@ -138,7 +138,7 @@ const WorkflowChecklist = ({
               )
             : (
                 <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
-                  <span className="i-custom-vender-line-general-checklist-square mx-auto mb-[5px] block h-8 w-8 text-text-quaternary" />
+                  <span className="mx-auto mb-[5px] i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
                   {t('panel.checklistResolved', { ns: 'workflow' })}
                 </div>
               )}

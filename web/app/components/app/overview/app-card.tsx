@@ -180,7 +180,7 @@ function AppCard({
 
   return (
     <div
-      className={`${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
+      className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
         {triggerModeDisabled && (
@@ -247,7 +247,7 @@ function AppCard({
               offset={24}
             >
               <div>
-                <Switch value={cardState.runningStatus} onChange={onChangeStatus} disabled={cardState.toggleDisabled} />
+                <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
               </div>
             </Tooltip>
           </div>

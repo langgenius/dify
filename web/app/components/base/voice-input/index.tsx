@@ -1,10 +1,10 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { useRafInterval } from 'ahooks'
 import Recorder from 'js-audio-recorder'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, usePathname } from '@/next/navigation'
 import { AppSourceType, audioToText } from '@/service/share'
-import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 import { convertToMp3 } from './utils'
 
@@ -161,10 +161,10 @@ const VoiceInput = ({
 
   return (
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         <canvas id="voice-input-record" className="absolute bottom-0 left-0 h-4 w-full" />
         {
-          startConvert && <div className="i-ri-loader-2-line mr-2 h-4 w-4 animate-spin text-primary-700" data-testid="voice-input-loader" />
+          startConvert && <div className="mr-2 i-ri-loader-2-line h-4 w-4 animate-spin text-primary-700" data-testid="voice-input-loader" />
         }
         <div className="grow">
           {

@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import type { inputType } from '@/hooks/use-metadata'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
 import { getTextWidthWithCanvas } from '@/utils'
-import { cn } from '@/utils/classnames'
 import s from '../style.module.css'
 
 type FieldInfoProps = {
