@@ -1,8 +1,18 @@
 from collections.abc import Mapping
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from core.app.app_config.entities import SensitiveWordAvoidanceEntity
 from core.moderation.factory import ModerationFactory
+
+
+class SensitiveWordAvoidanceConfig(BaseModel):
+    """Pydantic model for sensitive word avoidance configuration."""
+
+    enabled: bool = False
+    type: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class SensitiveWordAvoidanceConfigManager:
