@@ -10,7 +10,7 @@ dependencies = [
     "beautifulsoup4==4.14.3",
     "boto3==1.42.73",
     "bs4~=0.0.1",
-    "cachetools~=5.3.0",
+    "cachetools~=6.2.4",
     "celery~=5.6.2",
     "charset-normalizer>=3.4.4",
     "flask~=3.1.2",
@@ -90,7 +90,7 @@ dependencies = [
     "croniter>=6.0.0",
     "weaviate-client==4.20.5",
     "apscheduler>=3.11.0",
-    "weave>=0.52.16",
+    "weave>=0.52.36",
     "fastopenapi[flask]>=0.7.0",
     "bleach~=6.3.0",
 ]
