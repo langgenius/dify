@@ -24,12 +24,25 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 class TidbService:
     @staticmethod
-    def fetch_qdrant_endpoint(api_url: str, public_key: str, private_key: str, cluster_id: str) -> str | None:
-        """Fetch the qdrant endpoint for a cluster by calling the Get Cluster API.
+    def extract_qdrant_endpoint(cluster_response: dict) -> str | None:
+        """Extract the qdrant endpoint URL from a Get Cluster API response.
 
-        The v1beta1 serverless Get Cluster response contains
-        ``endpoints.public.host`` (e.g. ``gateway01.xx.tidbcloud.com``).
-        We prepend ``qdrant-`` and wrap it as an ``https://`` URL.
+        Reads ``endpoints.public.host`` (e.g. ``gateway01.xx.tidbcloud.com``),
+        prepends ``qdrant-`` and wraps it as an ``https://`` URL.
+        """
+        endpoints = cluster_response.get("endpoints") or {}
+        public = endpoints.get("public") or {}
+        host = public.get("host")
+        if host:
+            return f"https://qdrant-{host}"
+        return None
+
+    @staticmethod
+    def fetch_qdrant_endpoint(api_url: str, public_key: str, private_key: str, cluster_id: str) -> str | None:
+        """Call Get Cluster API and extract the qdrant endpoint.
+
+        Use ``extract_qdrant_endpoint`` instead when you already have
+        the cluster response to avoid a redundant API call.
         """
         try:
             logger.info("Fetching qdrant endpoint for cluster %s", cluster_id)
@@ -37,12 +50,8 @@ class TidbService:
             if not cluster_response:
                 logger.warning("Empty response from Get Cluster API for cluster %s", cluster_id)
                 return None
-            # v1beta1 serverless: endpoints.public.host
-            endpoints = cluster_response.get("endpoints") or {}
-            public = endpoints.get("public") or {}
-            host = public.get("host")
-            if host:
-                qdrant_url = f"https://qdrant-{host}"
+            qdrant_url = TidbService.extract_qdrant_endpoint(cluster_response)
+            if qdrant_url:
                 logger.info("Resolved qdrant endpoint for cluster %s: %s", cluster_id, qdrant_url)
                 return qdrant_url
             logger.warning(
@@ -106,10 +115,12 @@ class TidbService:
                 cluster_response = TidbService.get_tidb_serverless_cluster(api_url, public_key, private_key, cluster_id)
                 if cluster_response["state"] == "ACTIVE":
                     user_prefix = cluster_response["userPrefix"]
-                    qdrant_endpoint = TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, cluster_id)
+                    qdrant_endpoint = TidbService.extract_qdrant_endpoint(cluster_response)
                     logger.info(
                         "Cluster %s is ACTIVE, user_prefix=%s, qdrant_endpoint=%s",
-                        cluster_id, user_prefix, qdrant_endpoint,
+                        cluster_id,
+                        user_prefix,
+                        qdrant_endpoint,
                     )
                     return {
                         "cluster_id": cluster_id,
@@ -118,7 +129,13 @@ class TidbService:
                         "password": password,
                         "qdrant_endpoint": qdrant_endpoint,
                     }
-                logger.info("Cluster %s state=%s, retry %d/%d", cluster_id, cluster_response["state"], retry_count + 1, max_retries)
+                logger.info(
+                    "Cluster %s state=%s, retry %d/%d",
+                    cluster_id,
+                    cluster_response["state"],
+                    retry_count + 1,
+                    max_retries,
+                )
                 time.sleep(30)
                 retry_count += 1
             logger.error("Cluster %s did not become ACTIVE after %d retries", cluster_id, max_retries)
@@ -295,12 +312,11 @@ class TidbService:
                 if not cached_password:
                     logger.warning("No cached password for cluster %s, skipping", item["displayName"])
                     continue
-                qdrant_endpoint = TidbService.fetch_qdrant_endpoint(
-                    api_url, public_key, private_key, item["clusterId"]
-                )
+                qdrant_endpoint = TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, item["clusterId"])
                 logger.info(
                     "Batch cluster %s: qdrant_endpoint=%s",
-                    item["clusterId"], qdrant_endpoint,
+                    item["clusterId"],
+                    qdrant_endpoint,
                 )
                 cluster_info = {
                     "cluster_id": item["clusterId"],

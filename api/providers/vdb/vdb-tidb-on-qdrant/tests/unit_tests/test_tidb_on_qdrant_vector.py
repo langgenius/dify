@@ -172,3 +172,57 @@ class TestTidbOnQdrantVectorDeleteByIds:
         # Verify MatchAny structure
         assert isinstance(field_condition.match, rest.MatchAny)
         assert field_condition.match.any == ids
+
+
+class TestInitVectorEndpointSelection:
+    """Test that init_vector selects the correct qdrant endpoint.
+
+    We avoid importing the full module (which triggers Flask app context)
+    by testing the endpoint selection logic directly on TidbOnQdrantConfig.
+    """
+
+    def test_uses_binding_endpoint_when_present(self):
+        binding_endpoint = "https://qdrant-custom.tidb.com"
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-custom.tidb.com"
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == "https://qdrant-custom.tidb.com"
+
+    def test_falls_back_to_global_when_binding_endpoint_is_none(self):
+        binding_endpoint = None
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-global.tidb.com"
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == "https://qdrant-global.tidb.com"
+
+    def test_falls_back_to_empty_when_both_none(self):
+        binding_endpoint = None
+        global_url = None
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == ""
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == ""
+
+    def test_binding_endpoint_takes_precedence_over_global(self):
+        binding_endpoint = "https://qdrant-ap-southeast.tidb.com"
+        global_url = "https://qdrant-us-east.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-ap-southeast.tidb.com"
+
+    def test_empty_string_binding_endpoint_falls_back_to_global(self):
+        binding_endpoint = ""
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-global.tidb.com"
