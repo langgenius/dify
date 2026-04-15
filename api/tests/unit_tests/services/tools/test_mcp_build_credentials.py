@@ -92,9 +92,7 @@ class TestBuildAndEncryptCredentials:
 
         with patch.object(service, "_encrypt_dict_fields", side_effect=_stub_encrypt_dict_fields):
             # Act
-            result_json = service._build_and_encrypt_credentials(
-                "client-1", None, "tenant-1", scope="gateway:invoke"
-            )
+            result_json = service._build_and_encrypt_credentials("client-1", None, "tenant-1", scope="gateway:invoke")
 
         # Assert
         result = json.loads(result_json)
