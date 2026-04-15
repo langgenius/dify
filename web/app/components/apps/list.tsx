@@ -228,12 +228,16 @@ const List: FC<Props> = ({
   const hasAnyApp = (data?.pages?.[0]?.total ?? 0) > 0
   const hasAnySnippet = snippetItems.length > 0
   const currentKeywords = isAppsPage ? keywords : snippetKeywordsInput
+  const showEmptyState = !showSkeleton && (isAppsPage ? !hasAnyApp : !hasAnySnippet)
+  const emptyStateMessage = isAppsPage
+    ? t('newApp.noAppsFound', { ns: 'app' })
+    : t('tabs.noSnippetsFound', { ns: 'workflow' })
 
   return (
     <>
       <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
-          <div className="inset-0 absolute z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2" />
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2" />
         )}
 
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
@@ -273,7 +277,7 @@ const List: FC<Props> = ({
 
         <div className={cn(
           'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-          isAppsPage && !hasAnyApp && 'overflow-hidden',
+          showEmptyState && 'overflow-hidden',
         )}
         >
           {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
@@ -300,13 +304,7 @@ const List: FC<Props> = ({
             <SnippetCard key={snippet.id} snippet={snippet} />
           ))}
 
-          {!showSkeleton && isAppsPage && !hasAnyApp && <Empty />}
-
-          {!showSkeleton && !isAppsPage && !hasAnySnippet && (
-            <div className="col-span-full flex min-h-[240px] items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-6 text-center text-sm text-text-tertiary">
-              {t('tabs.noSnippetsFound', { ns: 'workflow' })}
-            </div>
-          )}
+          {showEmptyState && <Empty message={emptyStateMessage} />}
 
           {isAppsPage && isFetchingNextPage && (
             <AppCardSkeleton count={3} />

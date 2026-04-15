@@ -258,8 +258,8 @@ vi.mock('../new-app-card', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: () => {
-    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
+  default: ({ message }: { message: string }) => {
+    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, message)
   },
 }))
 
@@ -296,6 +296,26 @@ const renderList = (props: React.ComponentProps<typeof List> = {}, searchParams 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    defaultSnippetData.pages[0].data = [
+      {
+        id: 'snippet-1',
+        name: 'Tone Rewriter',
+        description: 'Rewrites rough drafts into a concise, professional tone for internal stakeholder updates.',
+        type: 'node',
+        is_published: false,
+        use_count: 19,
+        icon_info: {
+          icon_type: 'emoji',
+          icon: '🪄',
+          icon_background: '#E0EAFF',
+          icon_url: '',
+        },
+        created_at: 1704067200,
+        updated_at: '2024-01-02 10:00',
+        author: '',
+      },
+    ]
+    defaultSnippetData.pages[0].total = 1
     useTagStore.setState({
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
       showTagManagementModal: false,
@@ -443,6 +463,15 @@ describe('List', () => {
       })
 
       expect(mockFetchSnippetNextPage).not.toHaveBeenCalled()
+    })
+
+    it('should reuse the shared empty state when no snippets are available', () => {
+      defaultSnippetData.pages[0].data = []
+      defaultSnippetData.pages[0].total = 0
+
+      renderList({ pageType: 'snippets' })
+
+      expect(screen.getByTestId('empty-state')).toHaveTextContent('workflow.tabs.noSnippetsFound')
     })
   })
 })
