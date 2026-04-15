@@ -224,7 +224,9 @@ class TestInitVectorEndpointSelection:
     @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.select")
     @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.db")
     @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient")
-    def test_falls_back_to_global_when_binding_endpoint_is_none(self, mock_qc, mock_db, mock_select, mock_config, mock_app):
+    def test_falls_back_to_global_when_binding_endpoint_is_none(
+        self, mock_qc, mock_db, mock_select, mock_config, mock_app
+    ):
         binding = self._make_binding(qdrant_endpoint=None)
         mock_db.session.scalars.return_value.one_or_none.return_value = binding
         self._setup_config(mock_config, mock_app)
