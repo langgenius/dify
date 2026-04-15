@@ -4,11 +4,10 @@ import time
 
 import click
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 import app
+from core.db.session_factory import session_factory
 from core.helper.marketplace import fetch_global_plugin_manifest
-from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy
 from tasks import process_tenant_plugin_autoupgrade_check_task as check_task
 
@@ -32,7 +31,7 @@ def check_upgradable_plugin_task():
 
     # Narrow session scope to just the query; release the connection before
     # any network I/O (marketplace fetch) or sleeping between batches.
-    with Session(db.engine) as session:
+    with session_factory.create_session() as session:
         strategies = session.scalars(
             select(TenantPluginAutoUpgradeStrategy).where(
                 TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,

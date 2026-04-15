@@ -3,11 +3,10 @@ import time
 import click
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
@@ -21,7 +20,7 @@ def create_tidb_serverless_task():
     start_at = time.perf_counter()
     while True:
         try:
-            with Session(db.engine) as session:
+            with session_factory.create_session() as session:
                 idle_tidb_serverless_number = (
                     session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
                 )
@@ -51,7 +50,7 @@ def create_clusters(batch_size):
             private_key=dify_config.TIDB_PRIVATE_KEY or "",
             region=dify_config.TIDB_REGION or "",
         )
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             for new_cluster in new_clusters:
                 tidb_auth_binding = TidbAuthBinding(
                     tenant_id=None,

@@ -4,11 +4,10 @@ from collections.abc import Sequence
 import click
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
@@ -20,7 +19,7 @@ def update_tidb_serverless_status_task():
     try:
         # Narrow session to the read query; release the connection before the
         # external TiDB API call so we don't hold it open during network I/O.
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             tidb_serverless_list = session.scalars(
                 select(TidbAuthBinding).where(
                     TidbAuthBinding.active == False,

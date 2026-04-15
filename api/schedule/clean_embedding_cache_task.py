@@ -4,11 +4,10 @@ import time
 import click
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import Embedding
 
 
@@ -18,7 +17,7 @@ def clean_embedding_cache_task():
     clean_days = int(dify_config.PLAN_SANDBOX_CLEAN_DAY_SETTING)
     start_at = time.perf_counter()
     thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
-    with Session(db.engine) as session:
+    with session_factory.create_session() as session:
         while True:
             try:
                 embedding_ids = session.scalars(
