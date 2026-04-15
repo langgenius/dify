@@ -184,8 +184,13 @@ class TestBatchCreateEdgeCases:
         mock_redis.get.return_value = None
 
         result = TidbService.batch_create_tidb_serverless_cluster(
-            batch_size=1, project_id="proj", api_url="url", iam_url="iam",
-            public_key="pub", private_key="priv", region="us-east-1",
+            batch_size=1,
+            project_id="proj",
+            api_url="url",
+            iam_url="iam",
+            public_key="pub",
+            private_key="priv",
+            region="us-east-1",
         )
 
         assert len(result) == 0
@@ -203,6 +208,11 @@ class TestBatchCreateEdgeCases:
 
         with pytest.raises(Exception, match="HTTP 500"):
             TidbService.batch_create_tidb_serverless_cluster(
-                batch_size=1, project_id="proj", api_url="url", iam_url="iam",
-                public_key="pub", private_key="priv", region="us-east-1",
+                batch_size=1,
+                project_id="proj",
+                api_url="url",
+                iam_url="iam",
+                public_key="pub",
+                private_key="priv",
+                region="us-east-1",
             )
