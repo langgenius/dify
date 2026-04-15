@@ -32,6 +32,11 @@ class RedisConfig(BaseSettings):
         default=0,
     )
 
+    REDIS_KEY_PREFIX: str = Field(
+        description="Optional global prefix for Redis keys, topics, and transport artifacts",
+        default="",
+    )
+
     REDIS_USE_SSL: bool = Field(
         description="Enable SSL/TLS for the Redis connection",
         default=False,

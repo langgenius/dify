@@ -4,9 +4,9 @@ import type { AppPublisherProps } from './index'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Tooltip,
   TooltipContent,

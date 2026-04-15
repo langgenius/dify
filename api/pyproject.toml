@@ -136,6 +136,9 @@ dify-vdb-weaviate = { workspace = true }
 [tool.uv]
 default-groups = ["storage", "tools", "vdb-all"]
 package = false
+override-dependencies = [
+    "pyarrow>=18.0.0",
+]
 
 [dependency-groups]
 
