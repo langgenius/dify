@@ -1,6 +1,6 @@
 import type { EvaluationResourceProps } from '../../types'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { getEvaluationMockConfig } from '../../mock'
 import InputFieldsRequirements from './input-fields/input-fields-requirements'
 import UploadRunPopover from './input-fields/upload-run-popover'

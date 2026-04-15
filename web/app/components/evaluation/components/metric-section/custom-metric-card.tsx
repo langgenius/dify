@@ -3,7 +3,7 @@
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
 import CustomMetricEditorCard from '../custom-metric-editor'

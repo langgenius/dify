@@ -234,7 +234,7 @@ export const PublisherSummarySection = ({
                       />
                       <TooltipContent
                         placement="top"
-                        popupClassName="w-[180px]"
+                        className="w-[180px]"
                       >
                         {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
                       </TooltipContent>

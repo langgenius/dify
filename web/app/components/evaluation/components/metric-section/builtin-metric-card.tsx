@@ -4,7 +4,7 @@ import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import type { NodeInfo } from '@/types/evaluation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,

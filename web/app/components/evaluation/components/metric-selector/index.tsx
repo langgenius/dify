@@ -4,8 +4,8 @@ import type { ChangeEvent } from 'react'
 import type { MetricSelectorProps } from './types'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Popover,
   PopoverContent,
@@ -21,7 +21,6 @@ import { useMetricSelectorData } from './use-metric-selector-data'
 const MetricSelector = ({
   resourceType,
   resourceId,
-  triggerVariant = 'ghost-accent',
   triggerClassName,
   triggerStyle = 'button',
 }: MetricSelectorProps) => {
@@ -69,14 +68,14 @@ const MetricSelector = ({
         render={(
           triggerStyle === 'text'
             ? (
-                <button type="button" className={cn('inline-flex items-center text-text-accent system-sm-medium', triggerClassName)}>
-                  <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
+                <button type="button" className={cn('inline-flex items-center system-sm-medium text-text-accent', triggerClassName)}>
+                  <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
                   {t('metrics.add')}
                 </button>
               )
             : (
-                <Button variant={triggerVariant} className={triggerClassName}>
-                  <span aria-hidden="true" className="i-ri-add-line mr-1 h-4 w-4" />
+                <Button variant="ghost-accent" className={triggerClassName}>
+                  <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
                   {t('metrics.add')}
                 </Button>
               )

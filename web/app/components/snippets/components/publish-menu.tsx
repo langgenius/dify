@@ -2,7 +2,7 @@
 
 import type { SnippetDetailUIModel } from '@/models/snippet'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
 const PublishMenu = ({

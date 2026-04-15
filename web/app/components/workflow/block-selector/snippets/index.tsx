@@ -52,7 +52,7 @@ const LoadingSkeleton = () => {
           </div>
         ))}
       </div>
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-components-panel-bg-transparent to-background-default-subtle" />
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-components-panel-bg-transparent to-background-default-subtle" />
     </div>
   )
 }
@@ -147,7 +147,7 @@ const Snippets = ({
                         <TooltipContent
                           placement="left-start"
                           variant="plain"
-                          popupClassName="!bg-transparent !p-0"
+                          className="bg-transparent! p-0!"
                         >
                           <SnippetDetailCard snippet={item} />
                         </TooltipContent>

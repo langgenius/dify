@@ -4,8 +4,8 @@ import { useDebounceFn, useKeyPress } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import { toast } from '@/app/components/base/ui/toast'
 import {
@@ -163,14 +163,14 @@ const SnippetImportDSLDialog = ({
     <>
       <Dialog open={show} onOpenChange={open => !open && onClose()}>
         <DialogContent className="w-[520px] p-0">
-          <div className="flex items-center justify-between pb-3 pl-6 pr-5 pt-6">
-            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('importFromDSL', { ns: 'app' })}
             </DialogTitle>
-            <DialogCloseButton className="right-5 top-6 h-8 w-8" />
+            <DialogCloseButton className="top-6 right-5 h-8 w-8" />
           </div>
 
-          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary system-md-semibold">
+          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
             {[
               { key: SnippetImportDSLTab.FromFile, label: t('importFromDSLFile', { ns: 'app' }) },
               { key: SnippetImportDSLTab.FromURL, label: t('importFromDSLUrl', { ns: 'app' }) },
@@ -202,7 +202,7 @@ const SnippetImportDSLDialog = ({
             )}
             {currentTab === SnippetImportDSLTab.FromURL && (
               <div>
-                <div className="mb-1 text-text-secondary system-md-semibold">DSL URL</div>
+                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
                 <Input
                   placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
@@ -232,10 +232,10 @@ const SnippetImportDSLDialog = ({
       <Dialog open={showVersionMismatchDialog} onOpenChange={open => !open && setShowVersionMismatchDialog(false)}>
         <DialogContent className="w-[480px]">
           <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}
             </DialogTitle>
-            <div className="flex grow flex-col text-text-secondary system-md-regular">
+            <div className="flex grow flex-col system-md-regular text-text-secondary">
               <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
               <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
               <br />
@@ -253,7 +253,7 @@ const SnippetImportDSLDialog = ({
             <Button variant="secondary" disabled={isImporting} onClick={() => setShowVersionMismatchDialog(false)}>
               {t('newApp.Cancel', { ns: 'app' })}
             </Button>
-            <Button variant="primary" destructive disabled={isImporting} onClick={handleConfirmImport}>
+            <Button variant="primary" tone="destructive" disabled={isImporting} onClick={handleConfirmImport}>
               {t('newApp.Confirm', { ns: 'app' })}
             </Button>
           </div>

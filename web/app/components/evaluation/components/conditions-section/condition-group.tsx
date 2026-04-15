@@ -8,7 +8,7 @@ import type {
 } from '../../types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import Input from '@/app/components/base/input'
 import {
   Select,

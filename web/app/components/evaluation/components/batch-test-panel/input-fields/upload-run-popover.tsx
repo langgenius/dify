@@ -2,7 +2,7 @@ import type { ChangeEvent, DragEvent } from 'react'
 import type { InputField } from './input-fields-utils'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import {
   Popover,
   PopoverContent,
