@@ -22,22 +22,22 @@
     "exports": {
       "./styles.css": "./dist/styles.css",
       "./tailwind-preset": {
-        "import": "./dist/tailwind-preset.js",
-        "types": "./dist/tailwind-preset.d.ts"
+        "import": "./dist/tailwind-preset.mjs",
+        "types": "./dist/tailwind-preset.d.mts"
       },
       "./tokens/tailwind-theme-var-define": {
-        "import": "./dist/tokens/tailwind-theme-var-define.js",
-        "types": "./dist/tokens/tailwind-theme-var-define.d.ts"
+        "import": "./dist/tokens/tailwind-theme-var-define.mjs",
+        "types": "./dist/tokens/tailwind-theme-var-define.d.mts"
       },
       "./lib/cn": {
-        "import": "./dist/lib/cn.js",
-        "types": "./dist/lib/cn.d.ts"
+        "import": "./dist/lib/cn.mjs",
+        "types": "./dist/lib/cn.d.mts"
       }
     }
   },
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch"
+    "build": "vp pack",
+    "dev": "vp pack --watch"
   },
   "dependencies": {
     "clsx": "catalog:",
@@ -47,6 +47,7 @@
     "@egoist/tailwindcss-icons": "catalog:",
     "@iconify-json/ri": "catalog:",
     "tailwindcss": "catalog:",
-    "tsdown": "catalog:"
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   }
 }
