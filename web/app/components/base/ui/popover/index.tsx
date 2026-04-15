@@ -9,7 +9,9 @@ import { cn } from '@/utils/classnames'
 export const Popover = BasePopover.Root
 export const PopoverTrigger = BasePopover.Trigger
 export const PopoverClose = BasePopover.Close
+/** @public */
 export const PopoverTitle = BasePopover.Title
+/** @public */
 export const PopoverDescription = BasePopover.Description
 
 type PopoverContentProps = {
@@ -19,7 +21,6 @@ type PopoverContentProps = {
   alignOffset?: number
   className?: string
   popupClassName?: string
-  container?: React.ComponentPropsWithoutRef<typeof BasePopover.Portal>['container']
   positionerProps?: Omit<
     React.ComponentPropsWithoutRef<typeof BasePopover.Positioner>,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
@@ -37,14 +38,13 @@ export function PopoverContent({
   alignOffset = 0,
   className,
   popupClassName,
-  container,
   positionerProps,
   popupProps,
 }: PopoverContentProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
-    <BasePopover.Portal container={container}>
+    <BasePopover.Portal>
       <BasePopover.Positioner
         side={side}
         align={align}
