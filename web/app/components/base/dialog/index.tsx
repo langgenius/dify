@@ -1,7 +1,7 @@
 import type { ElementType, ReactNode } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Fragment, useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 
 // https://headlessui.com/react/dialog
 
@@ -45,7 +45,7 @@ const CustomDialog = ({
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}
-                    className={cn('title-2xl-semi-bold pb-3 pr-8 text-text-primary', titleClassName)}
+                    className={cn('pr-8 pb-3 title-2xl-semi-bold text-text-primary', titleClassName)}
                   >
                     {title}
                   </DialogTitle>
@@ -54,7 +54,7 @@ const CustomDialog = ({
                   {children}
                 </div>
                 {Boolean(footer) && (
-                  <div className={cn('flex items-center justify-end gap-2 px-6 pb-6 pt-3', footerClassName)}>
+                  <div className={cn('flex items-center justify-end gap-2 px-6 pt-3 pb-6', footerClassName)}>
                     {footer}
                   </div>
                 )}

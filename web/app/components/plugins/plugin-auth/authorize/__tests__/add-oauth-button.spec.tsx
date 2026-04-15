@@ -42,7 +42,7 @@ vi.mock('@/app/components/base/form/types', () => ({
   FormTypeEnum: { radio: 'radio' },
 }))
 
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 

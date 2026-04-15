@@ -19,21 +19,21 @@ const LoadingError: FC = () => {
       <div className="hover-bg-components-panel-on-panel-item-bg relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
         <div className="flex">
           <div
-            className="relative flex h-10 w-10 items-center justify-center gap-2 radius-lg border-[0.5px]
+            className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
               border-state-destructive-border bg-state-destructive-hover p-1 backdrop-blur-xs"
           >
             <div className="flex h-5 w-5 items-center justify-center">
               <Group className="text-text-quaternary" />
             </div>
-            <div className="absolute bottom-[-4px] right-[-4px] rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
+            <div className="absolute right-[-4px] bottom-[-4px] rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
               <RiCloseLine className="h-3 w-3 text-text-primary-on-surface" />
             </div>
           </div>
           <div className="ml-3 grow">
-            <div className="system-md-semibold flex h-5 items-center text-text-destructive">
+            <div className="flex h-5 items-center system-md-semibold text-text-destructive">
               {t('installModal.pluginLoadError', { ns: 'plugin' })}
             </div>
-            <div className="system-xs-regular mt-0.5 text-text-tertiary">
+            <div className="mt-0.5 system-xs-regular text-text-tertiary">
               {t('installModal.pluginLoadErrorDesc', { ns: 'plugin' })}
             </div>
           </div>

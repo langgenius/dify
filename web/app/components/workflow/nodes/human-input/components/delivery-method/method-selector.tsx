@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DeliveryMethod } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiDiscordFill,
@@ -23,7 +24,6 @@ import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -102,18 +102,18 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 })
               }}
             >
-              <div className={cn('radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
+              <div className={cn('rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
                 <RiRobot2Fill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
-                <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.title`, { ns: 'workflow' })}</div>
-                <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.title`, { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.description`, { ns: 'workflow' })}</div>
               </div>
               {webAppDeliveryInfo.added && (
-                <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
+                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
               )}
               {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
-                <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`, { ns: 'workflow' })}</div>
+                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`, { ns: 'workflow' })}</div>
               )}
             </div>
             <div
@@ -137,32 +137,32 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             >
               <div
                 className={cn(
-                  'radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-1',
+                  'rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-1',
                   emailDeliveryInfo.added && 'opacity-50',
                 )}
               >
                 <RiMailSendFill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', emailDeliveryInfo.added && 'opacity-50')}>
-                <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.email.title`, { ns: 'workflow' })}</div>
-                <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.email.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.email.title`, { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.email.description`, { ns: 'workflow' })}</div>
               </div>
               {emailDeliveryInfo.added && (
-                <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
+                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
               )}
             </div>
             {/* Slack */}
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', 'cursor-not-allowed bg-transparent hover:bg-transparent')}
             >
-              <div className={cn('radius-xs border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
+              <div className={cn('rounded-sm border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
                 <Slack className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.slack.title`, { ns: 'workflow' })}</div>
-                <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.slack.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.slack.title`, { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.slack.description`, { ns: 'workflow' })}</div>
               </div>
-              <div className="absolute right-[8px] top-[8px]">
+              <div className="absolute top-[8px] right-[8px]">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -170,14 +170,14 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', 'cursor-not-allowed bg-transparent hover:bg-transparent')}
             >
-              <div className={cn('radius-xs border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
+              <div className={cn('rounded-sm border border-divider-regular bg-background-default-dodge p-1', 'opacity-50')}>
                 <Teams className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.teams.title`, { ns: 'workflow' })}</div>
-                <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.teams.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.teams.title`, { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.teams.description`, { ns: 'workflow' })}</div>
               </div>
-              <div className="absolute right-[8px] top-[8px]">
+              <div className="absolute top-[8px] right-[8px]">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -185,14 +185,14 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             <div
               className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', 'cursor-not-allowed bg-transparent hover:bg-transparent')}
             >
-              <div className={cn('radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5', 'opacity-50')}>
+              <div className={cn('rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5', 'opacity-50')}>
                 <RiDiscordFill className="h-5 w-5 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.discord.title`, { ns: 'workflow' })}</div>
-                <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.discord.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.discord.title`, { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.discord.description`, { ns: 'workflow' })}</div>
               </div>
-              <div className="absolute right-[8px] top-[8px]">
+              <div className="absolute top-[8px] right-[8px]">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -201,7 +201,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         {!IS_CE_EDITION && (
           <div className="mt-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="flex items-center gap-2 px-4 py-3">
-              <div className={cn('radius-xs border border-divider-regular bg-components-icon-bg-midnight-solid p-1')}>
+              <div className={cn('rounded-sm border border-divider-regular bg-components-icon-bg-midnight-solid p-1')}>
                 <RiLightbulbFlashFill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className="system-sm-regular text-text-secondary">

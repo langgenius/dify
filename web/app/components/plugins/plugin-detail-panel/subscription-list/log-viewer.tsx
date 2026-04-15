@@ -1,5 +1,6 @@
 'use client'
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/base/ui/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   logs: TriggerLogEntity[]
@@ -96,8 +96,8 @@ const LogViewer = ({ logs, className }: Props) => {
             <RiFileCopyLine className="h-4 w-4 text-text-tertiary" />
           </button>
         </div>
-        <div className="px-2 pb-2 pt-1">
-          <pre className="code-xs-regular whitespace-pre-wrap break-all text-text-secondary">
+        <div className="px-2 pt-1 pb-2">
+          <pre className="code-xs-regular break-all whitespace-pre-wrap text-text-secondary">
             {String(parsedData)}
           </pre>
         </div>
@@ -127,7 +127,7 @@ const LogViewer = ({ logs, className }: Props) => {
             )}
           >
             {isError && (
-              <div className="pointer-events-none absolute left-0 top-0 h-7 w-[179px]">
+              <div className="pointer-events-none absolute top-0 left-0 h-7 w-[179px]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className="h-full w-full">
                   <g filter="url(#filter0_f_error_glow)">
                     <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25" />
@@ -147,7 +147,7 @@ const LogViewer = ({ logs, className }: Props) => {
               onClick={() => toggleLogExpansion(logId)}
               className={cn(
                 'flex w-full items-center justify-between px-2 py-1.5 text-left',
-                isExpanded ? 'pb-1 pt-2' : 'min-h-7',
+                isExpanded ? 'pt-2 pb-1' : 'min-h-7',
               )}
             >
               <div className="flex items-center gap-0">

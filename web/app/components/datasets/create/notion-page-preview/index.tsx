@@ -1,13 +1,13 @@
 'use client'
 import type { NotionPage } from '@/models/common'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { fetchNotionPagePreview } from '@/service/datasets'
-import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 
 type IProps = {

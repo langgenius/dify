@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { StructuredOutput } from '../../../llm/types'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -20,7 +21,6 @@ import {
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { Type } from '../../../llm/types'
 import ManageInputField from './manage-input-field'
 import { varTypeToStructType } from './utils'
@@ -177,7 +177,7 @@ const Item: FC<ItemProps> = ({
         <div
           ref={itemRef}
           className={cn(
-            (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
+            (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
             isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
             'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
             className,
@@ -200,19 +200,19 @@ const Item: FC<ItemProps> = ({
             {isFlat && flatVarIcon}
 
             {!isEnv && !isChatVar && !isRagVariable && (
-              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{varName}</div>
+              <div title={itemData.variable} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{varName}</div>
             )}
             {isEnv && (
-              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('env.', '')}</div>
+              <div title={itemData.variable} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
             )}
             {isRagVariable && (
-              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
+              <div title={itemData.des} className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
-          <div className="ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
+          <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
           {
             (isObj || isStructureOutput) && (
               <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
@@ -290,7 +290,7 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('var-search-input-wrapper mx-2 mb-2 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('var-search-input-wrapper mx-2 mt-2 mb-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
                 className="var-search-input"
                 showLeftIcon
@@ -324,7 +324,7 @@ const VarReferenceVars: FC<Props> = ({
                   <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
                     {!item.isFlat && (
                       <div
-                        className="system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary"
+                        className="truncate px-3 system-xs-medium-uppercase leading-[22px] text-text-tertiary"
                         title={item.title}
                       >
                         {item.title}
@@ -349,10 +349,10 @@ const VarReferenceVars: FC<Props> = ({
                       />
                     ))}
                     {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
-                      <div className="relative mt-[14px] flex  items-center space-x-1">
+                      <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
                         <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
-                        <div className="h-0  shrink-0 grow border border-divider-subtle"></div>
+                        <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
                   </div>
@@ -360,7 +360,7 @@ const VarReferenceVars: FC<Props> = ({
               }
             </div>
           )
-        : <div className="mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500">{t('common.noVar', { ns: 'workflow' })}</div>}
+        : <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">{t('common.noVar', { ns: 'workflow' })}</div>}
       {
         showManageInputField && (
           <ManageInputField

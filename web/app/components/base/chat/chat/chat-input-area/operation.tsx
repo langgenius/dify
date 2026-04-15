@@ -4,6 +4,7 @@ import type {
   EnableType,
 } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiMicLine,
   RiSendPlane2Fill,
@@ -13,7 +14,6 @@ import { memo } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type OperationProps = {
   readonly?: boolean

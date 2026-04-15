@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
 import TipPopup from '../operator/tip-popup'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
@@ -35,7 +35,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           data-tooltip-id="workflow.undo"
           disabled={nodesReadOnly || buttonsDisabled.undo}
           className={
-            cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
+            cn('flex h-8 w-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
             && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
           }
           onClick={handleUndo}
@@ -50,7 +50,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           data-tooltip-id="workflow.redo"
           disabled={nodesReadOnly || buttonsDisabled.redo}
           className={
-            cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
+            cn('flex h-8 w-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
             && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
           }
           onClick={handleRedo}

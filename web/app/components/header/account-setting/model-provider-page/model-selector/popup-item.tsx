@@ -4,6 +4,7 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -15,7 +16,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -114,7 +114,7 @@ const PopupItem: FC<PopupItemProps> = ({
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
             render={(
-              <button type="button" className="flex cursor-pointer items-center rounded-md px-1.5 py-1 text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover">
+              <button type="button" className="flex cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover">
                 {isUsingCredits
                   ? (
                       hasCredits
@@ -134,13 +134,13 @@ const PopupItem: FC<PopupItemProps> = ({
                   : credentialName
                     ? (
                         <>
-                          <span className={cn('h-1.5 w-1.5 shrink-0 radius-2xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
                           <span className="ml-1 text-text-tertiary">{credentialName}</span>
                         </>
                       )
                     : (
                         <>
-                          <span className="h-1.5 w-1.5 shrink-0 radius-2xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
                           <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}
@@ -175,7 +175,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     modelName={modelItem.model}
                   />
                   <ModelName
-                    className={cn('text-text-secondary system-sm-medium', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
+                    className={cn('system-sm-medium text-text-secondary', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
                     modelItem={modelItem}
                   />
                 </div>
@@ -209,7 +209,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   provider={model}
                   modelName={modelItem.model}
                 />
-                <div className="text-wrap wrap-break-word text-text-primary system-md-medium">{modelItem.label[language] || modelItem.label.en_US}</div>
+                <div className="system-md-medium text-wrap wrap-break-word text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
               </div>
               <div className="flex flex-wrap gap-1">
                 {!!modelItem.model_type && (
@@ -232,7 +232,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
                 && (
                   <div className="pt-2">
-                    <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('model.capabilities', { ns: 'common' })}</div>
+                    <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('model.capabilities', { ns: 'common' })}</div>
                     <div className="flex flex-wrap gap-1">
                       {modelItem.features?.map(feature => (
                         <FeatureIcon

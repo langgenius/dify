@@ -2,6 +2,7 @@
 
 import type { Placement } from '@/app/components/base/ui/placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
   menuBackdropClassName,
@@ -13,7 +14,6 @@ import {
   menuSeparatorClassName,
 } from '@/app/components/base/ui/menu-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 export const ContextMenu = BaseContextMenu.Root
 export const ContextMenuTrigger = BaseContextMenu.Trigger

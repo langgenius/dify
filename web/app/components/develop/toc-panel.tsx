@@ -1,7 +1,7 @@
 'use client'
 import type { TocItem } from './hooks/use-doc-toc'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type TocPanelProps = {
   toc: TocItem[]
@@ -30,7 +30,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
   return (
     <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
       <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+        <span className="text-xs font-medium tracking-wide text-text-tertiary uppercase">
           {t('develop.toc', { ns: 'appApi' })}
         </span>
         <button
@@ -43,8 +43,8 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
         </button>
       </div>
 
-      <div className="from-components-panel-border-subtle/20 pointer-events-none absolute left-0 right-0 top-[41px] z-10 h-2 bg-linear-to-b to-transparent"></div>
-      <div className="pointer-events-none absolute left-0 right-0 top-[43px] z-10 h-3 bg-linear-to-b from-background-default-hover to-transparent"></div>
+      <div className="pointer-events-none absolute top-[41px] right-0 left-0 z-10 h-2 bg-linear-to-b from-components-panel-border-subtle/20 to-transparent"></div>
+      <div className="pointer-events-none absolute top-[43px] right-0 left-0 z-10 h-3 bg-linear-to-b from-background-default-hover to-transparent"></div>
 
       <div className="relative flex-1 overflow-y-auto px-3 py-3 pt-1">
         {toc.length === 0
@@ -88,7 +88,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
             )}
       </div>
 
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-4 rounded-b-xl bg-linear-to-t from-background-default-hover to-transparent"></div>
+      <div className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-4 rounded-b-xl bg-linear-to-t from-background-default-hover to-transparent"></div>
     </nav>
   )
 }

@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
@@ -5,7 +6,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 
 type AuthorizedInDataSourceNodeProps = {
   authorizationsNum: number

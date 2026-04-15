@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { KeyValue } from '../../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalSelect } from '@/app/components/base/select'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
 // import Input from '@/app/components/base/input'
@@ -97,7 +97,7 @@ const KeyValueItem: FC<Props> = ({
             )
           : (
               <input
-                className="system-sm-regular focus:bg-gray-100! appearance-none rounded-none border-none bg-transparent outline-hidden hover:bg-components-input-bg-hover focus:ring-0"
+                className="appearance-none rounded-none border-none bg-transparent system-sm-regular outline-hidden hover:bg-components-input-bg-hover focus:bg-gray-100! focus:ring-0"
                 value={payload.key}
                 onChange={e => handleChange('key')(e.target.value)}
               />
