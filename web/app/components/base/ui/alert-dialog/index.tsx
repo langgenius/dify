@@ -7,10 +7,10 @@ import { Button } from '@/app/components/base/ui/button'
 import { cn } from '@/utils/classnames'
 
 export const AlertDialog = BaseAlertDialog.Root
+/** @public */
 export const AlertDialogTrigger = BaseAlertDialog.Trigger
 export const AlertDialogTitle = BaseAlertDialog.Title
 export const AlertDialogDescription = BaseAlertDialog.Description
-export const AlertDialogClose = BaseAlertDialog.Close
 
 type AlertDialogContentProps = {
   children: React.ReactNode

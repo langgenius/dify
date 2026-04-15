@@ -16,8 +16,6 @@ export const Dialog = BaseDialog.Root
 export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
-/** @public */
-export const DialogClose = BaseDialog.Close
 export const DialogPortal = BaseDialog.Portal
 
 type DialogCloseButtonProps = Omit<React.ComponentPropsWithoutRef<typeof BaseDialog.Close>, 'children'>
