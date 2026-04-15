@@ -1,4 +1,5 @@
 # base image
+# ci-trigger
 FROM node:22-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
