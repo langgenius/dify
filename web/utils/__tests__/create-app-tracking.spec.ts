@@ -3,6 +3,7 @@ import * as amplitude from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 import {
   buildCreateAppEventPayload,
+  clearCreateAppExternalAttributionSearchParams,
   extractExternalCreateAppAttribution,
   rememberCreateAppExternalAttribution,
   trackCreateApp,
@@ -121,6 +122,57 @@ describe('create-app-tracking', () => {
         utm_source: 'blog',
         utm_campaign: 'how-to-build-rag-agent',
       })
+
+      trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
+
+      expect(amplitude.trackEvent).toHaveBeenNthCalledWith(2, 'create_app', {
+        source: 'original',
+        app_mode: 'workflow',
+        time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
+      })
+    })
+
+    it('should keep using remembered external attribution after navigating away from the original url', () => {
+      window.history.replaceState({}, '', '/apps?utm_source=linkedin&slug=agent-launch')
+
+      rememberCreateAppExternalAttribution({
+        searchParams: new URLSearchParams(window.location.search),
+      })
+
+      window.history.replaceState({}, '', '/explore')
+
+      trackCreateApp({ appMode: AppModeEnum.CHAT })
+
+      expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
+        source: 'external',
+        utm_source: 'linkedin',
+        utm_campaign: 'agent-launch',
+      })
+    })
+
+    it('should clear consumed attribution params from the url while preserving unrelated params', () => {
+      window.history.replaceState({}, '', '/apps?action=showSettings&utm_source=linkedin&slug=agent-launch&utm_campaign=spring-launch#preview')
+
+      rememberCreateAppExternalAttribution({
+        searchParams: new URLSearchParams(window.location.search),
+      })
+      clearCreateAppExternalAttributionSearchParams()
+
+      expect(window.location.pathname).toBe('/apps')
+      expect(window.location.search).toBe('?action=showSettings')
+      expect(window.location.hash).toBe('#preview')
+
+      trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
+
+      expect(amplitude.trackEvent).toHaveBeenNthCalledWith(1, 'create_app', {
+        source: 'external',
+        utm_source: 'linkedin',
+        utm_campaign: 'agent-launch',
+      })
+
+      expect(rememberCreateAppExternalAttribution({
+        searchParams: new URLSearchParams(window.location.search),
+      })).toBeNull()
 
       trackCreateApp({ appMode: AppModeEnum.WORKFLOW })
 

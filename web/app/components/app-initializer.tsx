@@ -9,7 +9,11 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
+import {
+  clearCreateAppExternalAttributionSearchParams,
+  extractExternalCreateAppAttribution,
+  rememberCreateAppExternalAttribution,
+} from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
@@ -45,8 +49,15 @@ export const AppInitializer = ({
   useEffect(() => {
     (async () => {
       const action = searchParams.get('action')
+      const externalAttributionFromUrl = extractExternalCreateAppAttribution({
+        searchParams,
+        utmInfo: null,
+      })
 
       rememberCreateAppExternalAttribution({ searchParams })
+
+      if (externalAttributionFromUrl)
+        clearCreateAppExternalAttributionSearchParams()
 
       if (oauthNewUser) {
         let utmInfo = null

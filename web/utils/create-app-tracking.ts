@@ -3,6 +3,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
+const CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS = ['utm_source', 'utm_campaign', 'slug'] as const
 
 const EXTERNAL_UTM_SOURCE_MAP = {
   blog: 'blog',
@@ -129,6 +130,31 @@ const clearRememberedExternalCreateAppAttribution = () => {
   window.sessionStorage.removeItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)
 }
 
+export const clearCreateAppExternalAttributionSearchParams = () => {
+  if (typeof window === 'undefined')
+    return false
+
+  const nextSearchParams = new URLSearchParams(window.location.search)
+  let hasChanges = false
+
+  CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS.forEach((key) => {
+    if (!nextSearchParams.has(key))
+      return
+
+    nextSearchParams.delete(key)
+    hasChanges = true
+  })
+
+  if (!hasChanges)
+    return false
+
+  const nextSearch = nextSearchParams.toString()
+  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
+  window.history.replaceState(window.history.state, '', nextUrl)
+
+  return true
+}
+
 export const rememberCreateAppExternalAttribution = ({
   searchParams,
   utmInfo,
@@ -151,9 +177,7 @@ const resolveCurrentExternalCreateAppAttribution = () => {
   if (typeof window === 'undefined')
     return null
 
-  return rememberCreateAppExternalAttribution({
-    searchParams: new URLSearchParams(window.location.search),
-  }) ?? readRememberedExternalCreateAppAttribution()
+  return readRememberedExternalCreateAppAttribution()
 }
 
 export const buildCreateAppEventPayload = (
