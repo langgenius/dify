@@ -999,6 +999,9 @@ importers:
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
+      '@langgenius/dify-ui':
+        specifier: workspace:*
+        version: link:../packages/dify-ui
       '@mdx-js/loader':
         specifier: 'catalog:'
         version: 3.1.1(webpack@5.105.4(uglify-js@3.19.3))

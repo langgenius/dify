@@ -165,6 +165,7 @@
     "@hono/node-server": "catalog:",
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ri": "catalog:",
+    "@langgenius/dify-ui": "workspace:*",
     "@mdx-js/loader": "catalog:",
     "@mdx-js/react": "catalog:",
     "@mdx-js/rollup": "catalog:",

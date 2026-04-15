@@ -94,6 +94,6 @@ const difyUIPreset = {
       },
     }),
   ],
-} as const
+}
 
 export default difyUIPreset
