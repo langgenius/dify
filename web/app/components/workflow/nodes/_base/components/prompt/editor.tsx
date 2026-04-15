@@ -196,8 +196,8 @@ const Editor: FC<Props> = ({
                       <Jinja className="h-3 w-6 text-text-quaternary" />
                       <Switch
                         size="sm"
-                        value={editionType === EditionType.jinja2}
-                        onChange={(checked) => {
+                        checked={editionType === EditionType.jinja2}
+                        onCheckedChange={(checked) => {
                           onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
                         }}
                       />

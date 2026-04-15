@@ -293,8 +293,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  value={inputInfo.use_icon_as_answer_icon}
-                  onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
+                  checked={inputInfo.use_icon_as_answer_icon}
+                  onCheckedChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                 />
               </div>
               <p className="pb-0.5 body-xs-regular text-text-tertiary">{t('answerIcon.description', { ns: 'app' })}</p>
@@ -327,7 +327,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
                 <div className="flex items-center justify-between">
                   <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
-                  <Switch value={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                  <Switch checked={inputInfo.chatColorThemeInverted} onCheckedChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                 </div>
               </div>
             </div>
@@ -338,8 +338,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
               <Switch
                 disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
-                value={inputInfo.show_workflow_steps}
-                onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
+                checked={inputInfo.show_workflow_steps}
+                onCheckedChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />
             </div>
             <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</p>
@@ -392,8 +392,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   >
                     <Switch
                       disabled={!webappCopyrightEnabled}
-                      value={inputInfo.copyrightSwitchValue}
-                      onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
+                      checked={inputInfo.copyrightSwitchValue}
+                      onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                     />
                   </Tooltip>
                 </div>

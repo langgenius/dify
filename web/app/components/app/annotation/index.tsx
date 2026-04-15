@@ -155,9 +155,9 @@ const Annotation: FC<Props> = (props) => {
                   <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
-                    value={annotationConfig?.enabled ?? false}
+                    checked={annotationConfig?.enabled ?? false}
                     size="md"
-                    onChange={async (value) => {
+                    onCheckedChange={async (value) => {
                       if (value) {
                         if (isAnnotationFull) {
                           setIsShowAnnotationFullModal(true)
