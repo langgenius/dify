@@ -72,7 +72,7 @@ const config = {
     tailwindTypography,
     iconsPlugin({
       collections: {
-        ...getIconCollections(['heroicons']),
+        ...getIconCollections(['heroicons', 'ri']),
         'custom-public': customPublicIcons,
         'custom-vender': customVenderIcons,
       },

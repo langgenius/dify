@@ -19,8 +19,6 @@
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
-    "@egoist/tailwindcss-icons": "catalog:",
-    "@iconify-json/ri": "catalog:",
     "tailwindcss": "catalog:"
   }
 }

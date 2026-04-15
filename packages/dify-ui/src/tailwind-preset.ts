@@ -1,4 +1,3 @@
-import { getIconCollections, iconsPlugin } from '@egoist/tailwindcss-icons'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
 
 const difyUIPreset = {
@@ -82,18 +81,7 @@ const difyUIPreset = {
       },
     },
   },
-  plugins: [
-    iconsPlugin({
-      collections: {
-        ...getIconCollections(['ri']),
-      },
-      extraProperties: {
-        width: '1rem',
-        height: '1rem',
-        display: 'block',
-      },
-    }),
-  ],
+  plugins: [],
 }
 
 export default difyUIPreset

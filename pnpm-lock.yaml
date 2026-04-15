@@ -608,12 +608,6 @@ importers:
         specifier: 'catalog:'
         version: 3.5.0
     devDependencies:
-      '@egoist/tailwindcss-icons':
-        specifier: 'catalog:'
-        version: 1.9.2(tailwindcss@4.2.2)
-      '@iconify-json/ri':
-        specifier: 'catalog:'
-        version: 1.2.10
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.2
