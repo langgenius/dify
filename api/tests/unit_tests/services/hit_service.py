@@ -213,7 +213,10 @@ class TestHitTestingServiceRetrieve:
             "top_k": 5,
             "score_threshold_enabled": True,
             "score_threshold": 0.7,
-            "weights": {"vector_setting": 0.5, "keyword_setting": 0.5},
+            "weights": {
+                "vector_setting": {"vector_weight": 0.5, "embedding_provider_name": "openai", "embedding_model_name": "text-embedding-3-small"},
+                "keyword_setting": {"keyword_weight": 0.5}
+            },
         }
         external_retrieval_model = {}
 
@@ -257,7 +260,7 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = {
             "metadata_filtering_conditions": {
                 "conditions": [
-                    {"field": "category", "operator": "is", "value": "test"},
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
                 ],
             },
         }
@@ -308,7 +311,7 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = {
             "metadata_filtering_conditions": {
                 "conditions": [
-                    {"field": "category", "operator": "is", "value": "test"},
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
                 ],
             },
         }
@@ -708,7 +711,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": ""}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_none_query(self):
@@ -721,7 +724,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": None}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_too_long_query(self):
@@ -734,7 +737,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": "a" * 251}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_exactly_250_characters(self):

@@ -53,11 +53,15 @@ class HitTestingService:
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default
+        base_model_dict = default_retrieval_model.copy()
+        if dataset.retrieval_model:
+            base_model_dict.update(dataset.retrieval_model)
+
         if not retrieval_model:
-            retrieval_model_dict = dataset.retrieval_model or default_retrieval_model
-            retrieval_model = RetrievalModel.model_validate(retrieval_model_dict)
+            retrieval_model = RetrievalModel.model_validate(base_model_dict)
         elif isinstance(retrieval_model, dict):
-            retrieval_model = RetrievalModel.model_validate(retrieval_model)
+            base_model_dict.update(retrieval_model)
+            retrieval_model = RetrievalModel.model_validate(base_model_dict)
 
         document_ids_filter = None
         metadata_filtering_conditions = retrieval_model.metadata_filtering_conditions or {}
