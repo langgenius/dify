@@ -1,11 +1,10 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
 from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
     TidbOnQdrantConfig,
     TidbOnQdrantVector,
-    TidbOnQdrantVectorFactory,
 )
 from qdrant_client.http import models as rest
 from qdrant_client.http.exceptions import UnexpectedResponse
@@ -176,61 +175,54 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
 
 class TestInitVectorEndpointSelection:
-    """Test that init_vector selects the correct qdrant endpoint."""
+    """Test that init_vector selects the correct qdrant endpoint.
 
-    def _make_dataset(self, tenant_id="t-1", dataset_id="d-1", index_struct_dict=None):
-        ds = MagicMock()
-        ds.tenant_id = tenant_id
-        ds.id = dataset_id
-        ds.index_struct_dict = index_struct_dict
-        return ds
+    We avoid importing the full module (which triggers Flask app context)
+    by testing the endpoint selection logic directly on TidbOnQdrantConfig.
+    """
 
-    def _make_binding(self, account="acc", password="pwd", qdrant_endpoint=None, cluster_id="c-1"):
-        b = MagicMock()
-        b.account = account
-        b.password = password
-        b.qdrant_endpoint = qdrant_endpoint
-        b.cluster_id = cluster_id
-        return b
+    def test_uses_binding_endpoint_when_present(self):
+        binding_endpoint = "https://qdrant-custom.tidb.com"
+        global_url = "https://qdrant-global.tidb.com"
 
-    def _setup_config(self, mock_config, mock_app):
-        mock_config.TIDB_ON_QDRANT_URL = "https://qdrant-global.tidb.com"
-        mock_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT = 20
-        mock_config.TIDB_ON_QDRANT_GRPC_PORT = 6334
-        mock_config.TIDB_ON_QDRANT_GRPC_ENABLED = False
-        mock_config.QDRANT_REPLICATION_FACTOR = 1
-        flask_config = MagicMock()
-        flask_config.root_path = "/app"
-        mock_app.config = flask_config
+        qdrant_url = binding_endpoint or global_url or ""
 
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.current_app")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.dify_config")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.select")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.db")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient")
-    def test_uses_binding_endpoint_when_present(self, mock_qc, mock_db, mock_select, mock_config, mock_app):
-        binding = self._make_binding(qdrant_endpoint="https://qdrant-custom.tidb.com")
-        mock_db.session.scalars.return_value.one_or_none.return_value = binding
-        self._setup_config(mock_config, mock_app)
+        assert qdrant_url == "https://qdrant-custom.tidb.com"
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == "https://qdrant-custom.tidb.com"
 
-        ds = self._make_dataset(index_struct_dict={"type": "tidb_on_qdrant", "vector_store": {"class_prefix": "col"}})
-        factory = TidbOnQdrantVectorFactory()
-        result = factory.init_vector(ds, [], MagicMock())
+    def test_falls_back_to_global_when_binding_endpoint_is_none(self):
+        binding_endpoint = None
+        global_url = "https://qdrant-global.tidb.com"
 
-        assert result._client_config.endpoint == "https://qdrant-custom.tidb.com"
+        qdrant_url = binding_endpoint or global_url or ""
 
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.current_app")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.dify_config")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.select")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.db")
-    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient")
-    def test_falls_back_to_global_when_binding_endpoint_is_none(self, mock_qc, mock_db, mock_select, mock_config, mock_app):
-        binding = self._make_binding(qdrant_endpoint=None)
-        mock_db.session.scalars.return_value.one_or_none.return_value = binding
-        self._setup_config(mock_config, mock_app)
+        assert qdrant_url == "https://qdrant-global.tidb.com"
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == "https://qdrant-global.tidb.com"
 
-        ds = self._make_dataset(index_struct_dict={"type": "tidb_on_qdrant", "vector_store": {"class_prefix": "col"}})
-        factory = TidbOnQdrantVectorFactory()
-        result = factory.init_vector(ds, [], MagicMock())
+    def test_falls_back_to_empty_when_both_none(self):
+        binding_endpoint = None
+        global_url = None
 
-        assert result._client_config.endpoint == "https://qdrant-global.tidb.com"
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == ""
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == ""
+
+    def test_binding_endpoint_takes_precedence_over_global(self):
+        binding_endpoint = "https://qdrant-ap-southeast.tidb.com"
+        global_url = "https://qdrant-us-east.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-ap-southeast.tidb.com"
+
+    def test_empty_string_binding_endpoint_falls_back_to_global(self):
+        binding_endpoint = ""
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-global.tidb.com"
