@@ -20,8 +20,7 @@ from models.model import App, InstalledApp, RecommendedApp
 def _make_sm(session_mock):
     """Return a sessionmaker mock whose .begin() context manager yields session_mock."""
     ctx = MagicMock()
-    ctx.__enter__ = MagicMock(return_value=session_mock)
-    ctx.__exit__ = MagicMock(return_value=False)
+    ctx.__enter__.return_value = session_mock
     sm = MagicMock()
     sm.return_value.begin.return_value = ctx
     return sm
