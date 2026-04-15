@@ -48,9 +48,7 @@ class TestAppImportApi:
     def api(self):
         return app_import_module.AppImportApi()
 
-    def test_import_post_returns_failed_status_and_rolls_back(
-        self, api, app, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_import_post_returns_failed_status_and_rolls_back(self, api, app, monkeypatch: pytest.MonkeyPatch) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
