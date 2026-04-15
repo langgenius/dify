@@ -123,11 +123,11 @@ vi.mock('@/app/components/base/radio-card', () => ({
 }))
 
 vi.mock('@/app/components/base/switch', () => ({
-  default: ({ value, onChange }: { value: boolean, onChange?: (v: boolean) => void }) => (
+  default: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange?: (v: boolean) => void }) => (
     <button
       data-testid="rerank-switch"
-      data-checked={value}
-      onClick={() => onChange?.(!value)}
+      data-checked={checked}
+      onClick={() => onCheckedChange?.(!checked)}
     >
       Switch
     </button>

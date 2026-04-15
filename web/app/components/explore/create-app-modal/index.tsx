@@ -166,8 +166,8 @@ const CreateAppModal = ({
               <div className="flex items-center justify-between">
                 <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                 <Switch
-                  value={useIconAsAnswerIcon}
-                  onChange={v => setUseIconAsAnswerIcon(v)}
+                  checked={useIconAsAnswerIcon}
+                  onCheckedChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>
               <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>

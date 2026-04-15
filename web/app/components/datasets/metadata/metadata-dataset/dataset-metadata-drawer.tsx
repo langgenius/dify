@@ -211,8 +211,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
         <div className="mt-3 flex h-6 items-center">
           <Switch
-            value={isBuiltInEnabled}
-            onChange={onIsBuiltInEnabledChange}
+            checked={isBuiltInEnabled}
+            onCheckedChange={onIsBuiltInEnabledChange}
           />
           <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />

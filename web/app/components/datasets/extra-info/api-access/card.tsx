@@ -60,8 +60,8 @@ const Card = ({
               </div>
             </div>
             <Switch
-              value={apiEnabled}
-              onChange={onToggle}
+              checked={apiEnabled}
+              onCheckedChange={onToggle}
               disabled={!isCurrentWorkspaceManager}
             />
           </div>
