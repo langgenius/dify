@@ -1,8 +1,8 @@
 import type { JSX } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { DraggableBlockPlugin_EXPERIMENTAL } from '@lexical/react/LexicalDraggableBlockPlugin'
 import { useEffect, useRef, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 const DRAGGABLE_BLOCK_MENU_CLASSNAME = 'draggable-block-menu'
 
@@ -60,7 +60,7 @@ export default function DraggableBlockPlugin({
       menuComponent={
         isSupportDrag
           ? (
-              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-2.5 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move')} data-testid="draggable-menu">
+              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute top-4 right-2.5 cursor-grab opacity-0 will-change-transform active:cursor-move')} data-testid="draggable-menu">
                 <span className="i-ri-draggable size-3.5 text-text-tertiary" data-testid="draggable-menu-icon" />
               </div>
             )
@@ -69,12 +69,12 @@ export default function DraggableBlockPlugin({
       targetLineComponent={(
         <div
           ref={targetLineRef}
-          className="pointer-events-none absolute left-[-21px] top-0 opacity-0 will-change-transform"
+          className="pointer-events-none absolute top-0 left-[-21px] opacity-0 will-change-transform"
           data-testid="draggable-target-line"
           // style={{ width: 500 }} // width not worked here
         >
           <div
-            className="absolute -right-10 left-0 top-0 h-[2px] bg-text-accent-secondary"
+            className="absolute top-0 -right-10 left-0 h-[2px] bg-text-accent-secondary"
           >
           </div>
         </div>

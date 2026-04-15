@@ -1,4 +1,5 @@
 import type { FileUpload } from '@/app/components/base/features/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAttachmentLine,
 } from '@remixicon/react'
@@ -8,7 +9,6 @@ import {
 } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
 
 type FileUploaderInChatInputProps = {

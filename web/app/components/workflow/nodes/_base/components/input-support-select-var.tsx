@@ -4,6 +4,7 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -14,7 +15,6 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import Tooltip from '@/app/components/base/tooltip'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   instanceId?: string
@@ -118,7 +118,7 @@ const Editor: FC<Props> = ({
         {/* to patch Editor not support dynamic change editable status */}
         {readOnly && <div className="absolute inset-0 z-10"></div>}
         {isFocus && (
-          <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : 'right-1 top-[-9px]')}>
+          <div className={cn('absolute z-10', insertVarTipToLeft ? 'top-1.5 left-[-12px]' : 'top-[-9px] right-1')}>
             <Tooltip
               popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
             >

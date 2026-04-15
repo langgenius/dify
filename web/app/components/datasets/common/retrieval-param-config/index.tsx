@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import * as React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 
+import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
@@ -22,7 +23,6 @@ import {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
 import Reranking from '../../create/assets/rerank.svg'
 
@@ -121,12 +121,12 @@ const RetrievalParamConfig: FC<Props> = ({
             {canToggleRerankModalEnable && (
               <Switch
                 size="md"
-                value={value.reranking_enable}
-                onChange={handleToggleRerankEnable}
+                checked={value.reranking_enable}
+                onCheckedChange={handleToggleRerankEnable}
               />
             )}
             <div className="flex items-center">
-              <span className="mr-0.5 text-text-secondary system-sm-semibold">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
+              <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
@@ -152,11 +152,11 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
                 {showMultiModalTip && (
                   <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                    <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
-                    <span className="text-text-primary system-xs-medium">
+                    <span className="system-xs-medium text-text-primary">
                       {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                     </span>
                   </div>
@@ -276,11 +276,11 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                   {showMultiModalTip && (
                     <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                      <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
-                      <span className="text-text-primary system-xs-medium">
+                      <span className="system-xs-medium text-text-primary">
                         {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                       </span>
                     </div>

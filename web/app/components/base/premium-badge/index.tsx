@@ -1,9 +1,9 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { Highlight } from '@/app/components/base/icons/src/public/common'
-import { cn } from '@/utils/classnames'
 
 const PremiumBadgeVariants = cva(
   'premium-badge',
@@ -21,7 +21,7 @@ const PremiumBadgeVariants = cva(
         orange: 'premium-badge-orange',
       },
       allowHover: {
-        true: 'allowHover',
+        true: 'pb-allow-hover',
         false: '',
       },
     },
@@ -58,7 +58,7 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
     >
       {children}
       <Highlight
-        className={cn('absolute right-1/2 top-0 translate-x-[20%] opacity-50 transition-all duration-100 ease-out hover:translate-x-[30%] hover:opacity-80', size === 's' ? 'h-[18px] w-12' : 'h-6 w-12')}
+        className={cn('absolute top-0 right-1/2 translate-x-[20%] opacity-50 transition-all duration-100 ease-out hover:translate-x-[30%] hover:opacity-80', size === 's' ? 'h-[18px] w-12' : 'h-6 w-12')}
       />
     </div>
   )

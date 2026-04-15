@@ -1,8 +1,8 @@
 'use client'
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type SliderRootProps = BaseSlider.Root.Props<number>
 type SliderThumbProps = BaseSlider.Thumb.Props
