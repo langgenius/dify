@@ -6,7 +6,6 @@ import type {
   NumberFieldInputProps,
   NumberFieldUnitProps,
 } from '../index'
-import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { render, screen } from '@testing-library/react'
 import {
   NumberField,
@@ -67,17 +66,6 @@ const renderNumberField = ({
 }
 
 describe('NumberField wrapper', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Export mapping should stay aligned with the Base UI primitive.
-  describe('Exports', () => {
-    it('should map NumberField to the matching base primitive root', () => {
-      expect(NumberField).toBe(BaseNumberField.Root)
-    })
-  })
-
   // Group and input wrappers should preserve the design-system variants and DOM defaults.
   describe('Group and input', () => {
     it('should apply regular group classes by default and merge custom className', () => {

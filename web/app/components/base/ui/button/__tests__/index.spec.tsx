@@ -1,7 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { Button } from '../index'
-
-afterEach(cleanup)
 
 describe('Button', () => {
   describe('rendering', () => {
@@ -31,58 +29,79 @@ describe('Button', () => {
       expect(link).toHaveTextContent('Link')
       expect(link).toHaveAttribute('href', '/test')
     })
+
+    it('applies base layout classes', () => {
+      render(<Button>Click me</Button>)
+      const btn = screen.getByRole('button')
+      expect(btn).toHaveClass('inline-flex', 'justify-center', 'items-center', 'cursor-pointer')
+    })
   })
 
   describe('variants', () => {
     it('applies default secondary variant', () => {
       render(<Button>Click me</Button>)
-      expect(screen.getByRole('button').className).toContain('btn-secondary')
+      const btn = screen.getByRole('button')
+      expect(btn).toHaveClass('bg-components-button-secondary-bg', 'text-components-button-secondary-text')
     })
 
     it.each([
-      'primary',
-      'secondary',
-      'secondary-accent',
-      'ghost',
-      'ghost-accent',
-      'tertiary',
-    ] as const)('applies %s variant', (variant) => {
+      { variant: 'primary' as const, expectedClass: 'bg-components-button-primary-bg' },
+      { variant: 'secondary' as const, expectedClass: 'bg-components-button-secondary-bg' },
+      { variant: 'secondary-accent' as const, expectedClass: 'text-components-button-secondary-accent-text' },
+      { variant: 'ghost' as const, expectedClass: 'text-components-button-ghost-text' },
+      { variant: 'ghost-accent' as const, expectedClass: 'hover:bg-state-accent-hover' },
+      { variant: 'tertiary' as const, expectedClass: 'bg-components-button-tertiary-bg' },
+    ])('applies $variant variant', ({ variant, expectedClass }) => {
       render(<Button variant={variant}>Click me</Button>)
-      expect(screen.getByRole('button').className).toContain(`btn-${variant}`)
+      expect(screen.getByRole('button')).toHaveClass(expectedClass)
     })
 
     it('applies destructive tone with default variant', () => {
       render(<Button tone="destructive">Click me</Button>)
-      expect(screen.getByRole('button').className).toContain('btn-destructive-secondary')
+      expect(screen.getByRole('button')).toHaveClass('bg-components-button-destructive-secondary-bg')
     })
 
     it('applies destructive tone with primary variant', () => {
       render(<Button variant="primary" tone="destructive">Click me</Button>)
-      expect(screen.getByRole('button').className).toContain('btn-destructive-primary')
+      expect(screen.getByRole('button')).toHaveClass('bg-components-button-destructive-primary-bg')
+    })
+
+    it('applies destructive tone with tertiary variant', () => {
+      render(<Button variant="tertiary" tone="destructive">Click me</Button>)
+      expect(screen.getByRole('button')).toHaveClass('bg-components-button-destructive-tertiary-bg')
+    })
+
+    it('applies destructive tone with ghost variant', () => {
+      render(<Button variant="ghost" tone="destructive">Click me</Button>)
+      expect(screen.getByRole('button')).toHaveClass('text-components-button-destructive-ghost-text')
     })
   })
 
   describe('sizes', () => {
     it('applies default medium size', () => {
       render(<Button>Click me</Button>)
-      expect(screen.getByRole('button').className).toContain('btn-medium')
+      expect(screen.getByRole('button')).toHaveClass('h-8', 'rounded-lg')
     })
 
-    it.each(['small', 'medium', 'large'] as const)('applies %s size', (size) => {
+    it.each([
+      { size: 'small' as const, expectedClass: 'h-6' },
+      { size: 'medium' as const, expectedClass: 'h-8' },
+      { size: 'large' as const, expectedClass: 'h-9' },
+    ])('applies $size size', ({ size, expectedClass }) => {
       render(<Button size={size}>Click me</Button>)
-      expect(screen.getByRole('button').className).toContain(`btn-${size}`)
+      expect(screen.getByRole('button')).toHaveClass(expectedClass)
     })
   })
 
   describe('loading', () => {
     it('shows spinner when loading', () => {
       render(<Button loading>Click me</Button>)
-      expect(screen.getByRole('button').querySelector('.animate-spin')).toBeInTheDocument()
+      expect(screen.getByRole('button').querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
     it('hides spinner when not loading', () => {
       render(<Button loading={false}>Click me</Button>)
-      expect(screen.getByRole('button').querySelector('.animate-spin')).not.toBeInTheDocument()
+      expect(screen.getByRole('button').querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     })
 
     it('auto-disables when loading', () => {
@@ -134,6 +153,15 @@ describe('Button', () => {
       render(<Button onClick={onClick} loading>Click me</Button>)
       fireEvent.click(screen.getByRole('button'))
       expect(onClick).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('className merging', () => {
+    it('merges custom className with variant classes', () => {
+      render(<Button className="custom-class">Click me</Button>)
+      const btn = screen.getByRole('button')
+      expect(btn).toHaveClass('custom-class')
+      expect(btn).toHaveClass('inline-flex')
     })
   })
 

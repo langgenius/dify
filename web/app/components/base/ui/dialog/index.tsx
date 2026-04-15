@@ -12,9 +12,11 @@ import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 export const Dialog = BaseDialog.Root
+/** @public */
 export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
+/** @public */
 export const DialogClose = BaseDialog.Close
 export const DialogPortal = BaseDialog.Portal
 
