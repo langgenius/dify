@@ -263,9 +263,7 @@ class DeleteExploreBannerApi(Resource):
     @admin_required
     def delete(self, banner_id):
         with sessionmaker(bind=db.engine).begin() as session:
-            banner = session.execute(
-                select(ExporleBanner).where(ExporleBanner.id == banner_id)
-            ).scalar_one_or_none()
+            banner = session.execute(select(ExporleBanner).where(ExporleBanner.id == banner_id)).scalar_one_or_none()
             if not banner:
                 raise NotFound(f"Banner '{banner_id}' is not found")
 

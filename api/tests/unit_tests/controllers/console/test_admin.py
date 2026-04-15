@@ -1,7 +1,7 @@
 """Final working unit tests for admin endpoints - tests business logic directly."""
 
 import uuid
-from unittest.mock import Mock, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -264,7 +264,7 @@ class TestInsertExploreAppListApi:
         session = Mock()
         session.execute.side_effect = [
             Mock(scalar_one_or_none=lambda: mock_app),  # App query
-            Mock(scalar_one_or_none=lambda: None),       # RecommendedApp not found
+            Mock(scalar_one_or_none=lambda: None),  # RecommendedApp not found
         ]
 
         mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
@@ -285,8 +285,8 @@ class TestInsertExploreAppListApi:
 
         session = Mock()
         session.execute.side_effect = [
-            Mock(scalar_one_or_none=lambda: mock_app),           # App query
-            Mock(scalar_one_or_none=lambda: mock_recommended),   # RecommendedApp found
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
         ]
 
         mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
@@ -319,8 +319,8 @@ class TestInsertExploreAppListApi:
 
         session = Mock()
         session.execute.side_effect = [
-            Mock(scalar_one_or_none=lambda: mock_app),           # App query
-            Mock(scalar_one_or_none=lambda: mock_recommended),   # RecommendedApp found
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
         ]
 
         mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
@@ -350,9 +350,9 @@ class TestInsertExploreAppListApi:
 
         session = Mock()
         session.execute.side_effect = [
-            Mock(scalar_one_or_none=lambda: mock_app),   # App query
-            Mock(scalar_one_or_none=lambda: None),        # RecommendedApp not found
-            Mock(scalar_one_or_none=lambda: None),        # TrialApp not found
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: None),  # RecommendedApp not found
+            Mock(scalar_one_or_none=lambda: None),  # TrialApp not found
         ]
 
         mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
@@ -381,9 +381,9 @@ class TestInsertExploreAppListApi:
 
         session = Mock()
         session.execute.side_effect = [
-            Mock(scalar_one_or_none=lambda: mock_app),           # App query
-            Mock(scalar_one_or_none=lambda: mock_recommended),   # RecommendedApp found
-            Mock(scalar_one_or_none=lambda: None),               # TrialApp not found
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
+            Mock(scalar_one_or_none=lambda: None),  # TrialApp not found
         ]
 
         mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
@@ -410,8 +410,8 @@ class TestInsertExploreAppListApi:
 
         session = Mock()
         session.execute.side_effect = [
-            Mock(scalar_one_or_none=lambda: mock_app),           # App query
-            Mock(scalar_one_or_none=lambda: mock_recommended),   # RecommendedApp found
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
         ]
 
         mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
