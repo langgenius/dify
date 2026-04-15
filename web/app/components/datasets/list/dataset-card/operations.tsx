@@ -1,4 +1,3 @@
-import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -10,6 +9,7 @@ type OperationsProps = {
   openRenameModal: () => void
   handleExportPipeline: () => void
   detectIsUsedByApp: () => void
+  onClose?: () => void
 }
 
 const Operations = ({
@@ -18,22 +18,38 @@ const Operations = ({
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
+  onClose,
 }: OperationsProps) => {
   const { t } = useTranslation()
+
+  const handleRename = () => {
+    onClose?.()
+    openRenameModal()
+  }
+
+  const handleExport = () => {
+    onClose?.()
+    handleExportPipeline()
+  }
+
+  const handleDelete = () => {
+    onClose?.()
+    detectIsUsedByApp()
+  }
 
   return (
     <div className="relative flex w-full flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
       <div className="flex flex-col p-1">
         <OperationItem
-          Icon={RiEditLine}
+          iconClassName="i-ri-edit-line"
           name={t('operation.edit', { ns: 'common' })}
-          handleClick={openRenameModal}
+          handleClick={handleRename}
         />
         {showExportPipeline && (
           <OperationItem
-            Icon={RiFileDownloadLine}
+            iconClassName="i-ri-file-download-line"
             name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
-            handleClick={handleExportPipeline}
+            handleClick={handleExport}
           />
         )}
       </div>
@@ -42,9 +58,9 @@ const Operations = ({
           <Divider type="horizontal" className="my-0 bg-divider-subtle" />
           <div className="flex flex-col p-1">
             <OperationItem
-              Icon={RiDeleteBinLine}
+              iconClassName="i-ri-delete-bin-line"
               name={t('operation.delete', { ns: 'common' })}
-              handleClick={detectIsUsedByApp}
+              handleClick={handleDelete}
             />
           </div>
         </>

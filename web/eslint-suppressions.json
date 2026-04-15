@@ -2743,11 +2743,6 @@
       "count": 1
     }
   },
-  "app/components/base/popover/index.stories.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
   "app/components/base/portal-to-follow-elem/index.stories.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1

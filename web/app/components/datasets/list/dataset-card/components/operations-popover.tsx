@@ -1,7 +1,10 @@
 import type { DataSet } from '@/models/datasets'
-import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import CustomPopover from '@/app/components/base/popover'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/app/components/base/ui/dropdown-menu'
 import { cn } from '@/utils/classnames'
 import Operations from '../operations'
 
@@ -19,34 +22,51 @@ const OperationsPopover = ({
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
-}: OperationsPopoverProps) => (
-  <div className="absolute right-2 top-2 z-15 hidden group-hover:block">
-    <CustomPopover
-      htmlContent={(
-        <Operations
-          showDelete={!isCurrentWorkspaceDatasetOperator}
-          showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
-          openRenameModal={openRenameModal}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-        />
+}: OperationsPopoverProps) => {
+  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = React.useState(false)
+
+  return (
+    <div
+      className={cn(
+        'absolute right-2 top-2 z-15 transition-opacity',
+        isOperationsMenuOpen
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100',
       )}
-      className="z-20 min-w-[186px]"
-      popupClassName="rounded-xl bg-none shadow-none ring-0 min-w-[186px]"
-      position="br"
-      trigger="click"
-      btnElement={(
-        <div className="flex size-8 items-center justify-center radius-lg hover:bg-state-base-hover">
-          <RiMoreFill className="h-5 w-5 text-text-tertiary" />
-        </div>
-      )}
-      btnClassName={open =>
-        cn(
-          'size-9 cursor-pointer justify-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-2 ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
-          open ? 'border-components-actionbar-border bg-state-base-hover' : '',
-        )}
-    />
-  </div>
-)
+    >
+      <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+        <DropdownMenuTrigger
+          aria-label="more"
+          className={cn(
+            'inline-flex size-9 cursor-pointer items-center justify-center radius-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-2 ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
+            isOperationsMenuOpen ? 'border-components-actionbar-border bg-state-base-hover' : '',
+          )}
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
+        >
+          <div className="flex size-8 items-center justify-center radius-lg hover:bg-state-base-hover">
+            <span aria-hidden className="i-ri-more-fill h-5 w-5 text-text-tertiary" />
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-end"
+          sideOffset={4}
+          popupClassName="min-w-[186px] border-0 bg-transparent py-0 shadow-none backdrop-blur-none"
+        >
+          <Operations
+            showDelete={!isCurrentWorkspaceDatasetOperator}
+            showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
+            openRenameModal={openRenameModal}
+            handleExportPipeline={handleExportPipeline}
+            detectIsUsedByApp={detectIsUsedByApp}
+            onClose={() => setIsOperationsMenuOpen(false)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
 
 export default React.memo(OperationsPopover)

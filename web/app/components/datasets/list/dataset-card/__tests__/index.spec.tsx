@@ -58,9 +58,9 @@ vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
 vi.mock('../components/tag-area', () => ({
-  default: React.forwardRef<HTMLDivElement, { onClick: (e: React.MouseEvent) => void }>(({ onClick }, ref) => (
-    <div ref={ref} data-testid="tag-area" onClick={onClick} />
-  )),
+  default: ({ onClick }: { onClick: (e: React.MouseEvent) => void, ref?: React.Ref<HTMLDivElement> }) => (
+    <div data-testid="tag-area" onClick={onClick} />
+  ),
 }))
 vi.mock('../components/operations-popover', () => ({
   default: () => <div data-testid="operations-popover" />,
@@ -236,22 +236,18 @@ describe('DatasetCard Integration', () => {
 
   // Integration tests for OperationItem component
   describe('OperationItem', () => {
-    const MockIcon = ({ className }: { className?: string }) => (
-      <svg data-testid="mock-icon" className={className} />
-    )
-
     describe('Rendering', () => {
       it('should render icon and name', () => {
-        render(<OperationItem Icon={MockIcon as never} name="Edit" />)
+        render(<OperationItem iconClassName="i-ri-edit-line" name="Edit" />)
         expect(screen.getByText('Edit')).toBeInTheDocument()
-        expect(screen.getByTestId('mock-icon')).toBeInTheDocument()
+        expect(document.querySelector('.i-ri-edit-line')).toBeInTheDocument()
       })
     })
 
     describe('User Interactions', () => {
       it('should call handleClick when clicked', () => {
         const handleClick = vi.fn()
-        render(<OperationItem Icon={MockIcon as never} name="Delete" handleClick={handleClick} />)
+        render(<OperationItem iconClassName="i-ri-delete-bin-line" name="Delete" handleClick={handleClick} />)
 
         const item = screen.getByText('Delete').closest('div')
         fireEvent.click(item!)
@@ -261,7 +257,7 @@ describe('DatasetCard Integration', () => {
 
       it('should prevent default and stop propagation on click', () => {
         const handleClick = vi.fn()
-        render(<OperationItem Icon={MockIcon as never} name="Action" handleClick={handleClick} />)
+        render(<OperationItem iconClassName="i-ri-more-fill" name="Action" handleClick={handleClick} />)
 
         const item = screen.getByText('Action').closest('div')
         const event = new MouseEvent('click', { bubbles: true, cancelable: true })
@@ -277,7 +273,7 @@ describe('DatasetCard Integration', () => {
 
     describe('Edge Cases', () => {
       it('should not throw when handleClick is undefined', () => {
-        render(<OperationItem Icon={MockIcon as never} name="No handler" />)
+        render(<OperationItem iconClassName="i-ri-edit-line" name="No handler" />)
         const item = screen.getByText('No handler').closest('div')
         expect(() => {
           fireEvent.click(item!)
@@ -285,8 +281,8 @@ describe('DatasetCard Integration', () => {
       })
 
       it('should handle empty name', () => {
-        render(<OperationItem Icon={MockIcon as never} name="" />)
-        expect(screen.getByTestId('mock-icon')).toBeInTheDocument()
+        render(<OperationItem iconClassName="i-ri-edit-line" name="" />)
+        expect(document.querySelector('.i-ri-edit-line')).toBeInTheDocument()
       })
     })
   })

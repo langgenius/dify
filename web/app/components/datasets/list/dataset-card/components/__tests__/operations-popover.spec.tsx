@@ -1,5 +1,5 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
@@ -48,14 +48,19 @@ describe('OperationsPopover', () => {
 
     it('should render the more icon button', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
-      const moreIcon = container.querySelector('svg')
+      const moreIcon = container.querySelector('.i-ri-more-fill')
       expect(moreIcon).toBeInTheDocument()
     })
 
-    it('should render in hidden state initially (group-hover)', () => {
+    it('should keep the trigger mounted and visually hide it before hover', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('hidden', 'group-hover:block')
+      expect(wrapper).toHaveClass(
+        'opacity-0',
+        'pointer-events-none',
+        'group-hover:opacity-100',
+        'group-hover:pointer-events-auto',
+      )
     })
   })
 
@@ -113,12 +118,22 @@ describe('OperationsPopover', () => {
 
     it('should have icon with correct size classes', () => {
       const { container } = render(<OperationsPopover {...defaultProps} />)
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('.i-ri-more-fill')
       expect(icon).toHaveClass('h-5', 'w-5', 'text-text-tertiary')
     })
   })
 
   describe('User Interactions', () => {
+    it('should close the menu after choosing rename', async () => {
+      const openRenameModal = vi.fn()
+      render(<OperationsPopover {...defaultProps} openRenameModal={openRenameModal} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'more' }))
+      fireEvent.click(await screen.findByText('common.operation.edit'))
+
+      expect(openRenameModal).toHaveBeenCalledTimes(1)
+    })
+
     it('should pass openRenameModal to Operations', () => {
       const openRenameModal = vi.fn()
       render(<OperationsPopover {...defaultProps} openRenameModal={openRenameModal} />)
