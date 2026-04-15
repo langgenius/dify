@@ -20,7 +20,7 @@
   },
   "publishConfig": {
     "exports": {
-      "./styles.css": "./dist/styles.css",
+      "./styles.css": "./dist/styles/styles.css",
       "./tailwind-preset": {
         "import": "./dist/tailwind-preset.mjs",
         "types": "./dist/tailwind-preset.d.mts"
@@ -36,7 +36,7 @@
     }
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && cp -r src/styles src/themes dist/",
     "dev": "vp pack --watch"
   },
   "dependencies": {

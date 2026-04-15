@@ -48,9 +48,7 @@
   [class*='code-'] {
     @apply font-mono;
   }
-}
 
-@layer components {
   .text-gradient {
     background: linear-gradient(91.58deg, #2250f2 -29.55%, #0ebcf3 75.22%);
     -webkit-background-clip: text;
