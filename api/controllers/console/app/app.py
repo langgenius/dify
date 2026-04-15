@@ -8,7 +8,7 @@ from flask_restx import Resource
 from graphon.enums import WorkflowExecutionStatus
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -37,7 +37,7 @@ from models.model import IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.dsl_entities import ImportMode
+from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
     DataSource,
     InfoList,
@@ -623,7 +623,7 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
@@ -636,6 +636,13 @@ class AppCopyApi(Resource):
                 icon=args.icon,
                 icon_background=args.icon_background,
             )
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+                return result.model_dump(mode="json"), 400
+            if result.status == ImportStatus.PENDING:
+                session.rollback()
+                return result.model_dump(mode="json"), 202
+            session.commit()
 
             # Inherit web app permission from original app
             if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
