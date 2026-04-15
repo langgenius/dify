@@ -7,6 +7,12 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 import controllers.console.explore.installed_app as module
 
 
+@pytest.fixture(autouse=True)
+def _patch_db_engine():
+    with patch.object(module.db, "engine", MagicMock()):
+        yield
+
+
 def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__

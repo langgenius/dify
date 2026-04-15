@@ -6,6 +6,7 @@ from unittest.mock import Mock, MagicMock, PropertyMock, patch
 import pytest
 from werkzeug.exceptions import NotFound, Unauthorized
 
+import controllers.console.admin as admin_module
 from controllers.console.admin import (
     DeleteExploreBannerApi,
     InsertExploreAppApi,
@@ -15,6 +16,12 @@ from controllers.console.admin import (
     InsertExploreBannerPayload,
 )
 from models.model import App, InstalledApp, RecommendedApp
+
+
+@pytest.fixture(autouse=True)
+def _patch_db_engine():
+    with patch.object(admin_module.db, "engine", MagicMock()):
+        yield
 
 
 def _make_sm(session_mock):
