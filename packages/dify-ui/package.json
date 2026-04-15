@@ -9,35 +9,10 @@
       "import": "./src/tailwind-preset.ts",
       "types": "./src/tailwind-preset.ts"
     },
-    "./tokens/tailwind-theme-var-define": {
-      "import": "./src/themes/tailwind-theme-var-define.ts",
-      "types": "./src/themes/tailwind-theme-var-define.ts"
-    },
     "./cn": {
       "import": "./src/cn.ts",
       "types": "./src/cn.ts"
     }
-  },
-  "publishConfig": {
-    "exports": {
-      "./styles.css": "./dist/style.css",
-      "./tailwind-preset": {
-        "import": "./dist/tailwind-preset.mjs",
-        "types": "./dist/tailwind-preset.d.mts"
-      },
-      "./tokens/tailwind-theme-var-define": {
-        "import": "./dist/tokens/tailwind-theme-var-define.mjs",
-        "types": "./dist/tokens/tailwind-theme-var-define.d.mts"
-      },
-      "./cn": {
-        "import": "./dist/cn.mjs",
-        "types": "./dist/cn.d.mts"
-      }
-    }
-  },
-  "scripts": {
-    "build": "vp pack",
-    "dev": "vp pack --watch"
   },
   "dependencies": {
     "clsx": "catalog:",
@@ -46,9 +21,6 @@
   "devDependencies": {
     "@egoist/tailwindcss-icons": "catalog:",
     "@iconify-json/ri": "catalog:",
-    "@tsdown/css": "catalog:",
-    "tailwindcss": "catalog:",
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "tailwindcss": "catalog:"
   }
 }
