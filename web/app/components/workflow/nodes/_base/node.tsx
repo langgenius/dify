@@ -268,7 +268,6 @@ const BaseNode: FC<BaseNodeProps> = ({
             toolIcon={toolIcon}
           />
           <div
-            title={data.title}
             className="mr-1 flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary"
           >
             <div title={data.title} className="min-w-0 grow truncate">
