@@ -160,8 +160,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
           {(method.config || method.type === DeliveryMethodType.WebApp) && (
             <Switch
-              value={method.enabled}
-              onChange={handleEnableStatusChange}
+              checked={method.enabled}
+              onCheckedChange={handleEnableStatusChange}
               disabled={readonly}
             />
           )}

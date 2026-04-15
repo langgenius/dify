@@ -121,8 +121,8 @@ const RetrievalParamConfig: FC<Props> = ({
             {canToggleRerankModalEnable && (
               <Switch
                 size="md"
-                value={value.reranking_enable}
-                onChange={handleToggleRerankEnable}
+                checked={value.reranking_enable}
+                onCheckedChange={handleToggleRerankEnable}
               />
             )}
             <div className="flex items-center">

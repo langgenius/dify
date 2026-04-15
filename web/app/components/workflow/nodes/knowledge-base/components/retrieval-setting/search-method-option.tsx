@@ -169,8 +169,8 @@ const SearchMethodOption = ({
                   <div className="mb-1 flex items-center system-sm-semibold text-text-secondary">
                     <Switch
                       className="mr-1"
-                      value={rerankingModelEnabled ?? false}
-                      onChange={onRerankingModelEnabledChange}
+                      checked={rerankingModelEnabled ?? false}
+                      onCheckedChange={onRerankingModelEnabledChange}
                       disabled={readonly}
                     />
                     {t('modelProvider.rerankModel.key', { ns: 'common' })}

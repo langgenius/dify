@@ -57,7 +57,7 @@ const TopKAndScoreThreshold = ({
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <div className="mb-0.5 flex h-6 items-center text-text-secondary system-xs-medium">
+        <div className="mb-0.5 flex h-6 items-center system-xs-medium text-text-secondary">
           {t('datasetConfig.top_k', { ns: 'appDebug' })}
           <Tooltip
             triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
@@ -87,11 +87,11 @@ const TopKAndScoreThreshold = ({
             <div className="mb-0.5 flex h-6 items-center">
               <Switch
                 className="mr-2"
-                value={isScoreThresholdEnabled ?? false}
-                onChange={onScoreThresholdEnabledChange}
+                checked={isScoreThresholdEnabled ?? false}
+                onCheckedChange={onScoreThresholdEnabledChange}
                 disabled={readonly}
               />
-              <div className="grow truncate text-text-secondary system-sm-medium">
+              <div className="grow truncate system-sm-medium text-text-secondary">
                 {t('datasetConfig.score_threshold', { ns: 'appDebug' })}
               </div>
               <Tooltip

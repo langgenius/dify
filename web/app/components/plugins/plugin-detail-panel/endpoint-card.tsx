@@ -196,8 +196,8 @@ const EndpointCard = ({
         )}
         <Switch
           className="ml-3"
-          value={active}
-          onChange={handleSwitch}
+          checked={active}
+          onCheckedChange={handleSwitch}
           size="sm"
         />
       </div>

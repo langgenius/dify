@@ -62,8 +62,8 @@ const spinnerSizeConfig: Partial<Record<SwitchSize, {
 }
 
 type SwitchProps = {
-  'value': boolean
-  'onChange'?: (value: boolean) => void
+  'checked': boolean
+  'onCheckedChange'?: (checked: boolean) => void
   'size'?: SwitchSize
   'disabled'?: boolean
   'loading'?: boolean
@@ -75,8 +75,8 @@ type SwitchProps = {
 
 const Switch = ({
   ref,
-  value,
-  onChange,
+  checked,
+  onCheckedChange,
   size = 'md',
   disabled = false,
   loading = false,
@@ -93,8 +93,8 @@ const Switch = ({
   return (
     <BaseSwitch.Root
       ref={ref}
-      checked={value}
-      onCheckedChange={checked => onChange?.(checked)}
+      checked={checked}
+      onCheckedChange={value => onCheckedChange?.(value)}
       disabled={isDisabled}
       aria-busy={loading || undefined}
       aria-label={ariaLabel}
@@ -111,7 +111,7 @@ const Switch = ({
               className={cn(
                 'absolute top-1/2 -translate-x-1/2 -translate-y-1/2',
                 spinner.icon,
-                value ? spinner.checkedPosition : spinner.uncheckedPosition,
+                checked ? spinner.checkedPosition : spinner.uncheckedPosition,
               )}
               aria-hidden="true"
             >

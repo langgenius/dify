@@ -191,8 +191,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
             <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
             <Switch
               size="xs"
-              value={!!auto}
-              onChange={val => handleAutomatic(variable, val, type)}
+              checked={!!auto}
+              onCheckedChange={val => handleAutomatic(variable, val, type)}
             />
           </div>
         </div>

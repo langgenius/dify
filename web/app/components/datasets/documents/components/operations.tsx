@@ -154,18 +154,18 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   }, [datasetId, downloadDocument, id, isDownloading, name, t])
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
-      {isListScene && !embeddingAvailable && (<Switch value={false} onChange={noop} disabled={true} size="md" />)}
+      {isListScene && !embeddingAvailable && (<Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />)}
       {isListScene && embeddingAvailable && (
         <>
           {archived
             ? (
                 <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="!font-semibold">
                   <div>
-                    <Switch value={false} onChange={noop} disabled={true} size="md" />
+                    <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
                   </div>
                 </Tooltip>
               )
-            : <Switch value={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
+            : <Switch checked={enabled} onCheckedChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
           <Divider className="!mr-2 !ml-4 !h-3" type="vertical" />
         </>
       )}

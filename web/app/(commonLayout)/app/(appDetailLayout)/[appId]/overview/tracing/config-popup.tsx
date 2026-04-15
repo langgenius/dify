@@ -94,8 +94,8 @@ const ConfigPopup: FC<PopupProps> = ({
   const switchContent = (
     <Switch
       className="ml-3"
-      value={enabled}
-      onChange={onStatusChange}
+      checked={enabled}
+      onCheckedChange={onStatusChange}
       disabled={providerAllNotConfigured}
     />
   )

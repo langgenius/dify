@@ -85,7 +85,7 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
       {scene === 'detail' && (
         <div className="ml-1.5 flex items-center justify-between">
           <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="text-text-secondary system-xs-medium" disabled={!archived}>
-            <Switch value={archived ? false : enabled} onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')} disabled={embedding || archived} size="md" />
+            <Switch checked={archived ? false : enabled} onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')} disabled={embedding || archived} size="md" />
           </Tooltip>
         </div>
       )}

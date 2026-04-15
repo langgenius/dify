@@ -238,8 +238,8 @@ const VoiceParamConfig = ({
         </div>
         <Switch
           className="shrink-0"
-          value={text2speech?.autoPlay === TtsAutoPlay.enabled}
-          onChange={(value: boolean) => {
+          checked={text2speech?.autoPlay === TtsAutoPlay.enabled}
+          onCheckedChange={(value: boolean) => {
             handleChange({
               autoPlay: value ? TtsAutoPlay.enabled : TtsAutoPlay.disabled,
             })

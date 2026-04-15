@@ -121,8 +121,8 @@ const ConfigVision: FC = () => {
                 <ParamConfig />
                 <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
                 <Switch
-                  value={isImageEnabled}
-                  onChange={handleChange}
+                  checked={isImageEnabled}
+                  onCheckedChange={handleChange}
                   size="md"
                 />
               </>

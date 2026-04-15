@@ -298,10 +298,10 @@ const AgentTools: FC = () => {
                 <div className={cn(item.isDeleted && 'opacity-50')}>
                   {!item.notAuthor && (
                     <Switch
-                      value={item.isDeleted ? false : item.enabled}
+                      checked={item.isDeleted ? false : item.enabled}
                       disabled={item.isDeleted || readonly}
                       size="md"
-                      onChange={(enabled) => {
+                      onCheckedChange={(enabled) => {
                         const newModelConfig = produce(modelConfig, (draft) => {
                           (draft.agentConfig.tools[index] as any).enabled = enabled
                         })

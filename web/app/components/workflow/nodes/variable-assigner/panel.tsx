@@ -90,8 +90,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
           tooltip={t(`${i18nPrefix}.aggregationGroupTip`, { ns: 'workflow' })!}
           operations={(
             <Switch
-              value={isEnableGroup}
-              onChange={handleGroupEnabledChange}
+              checked={isEnableGroup}
+              onCheckedChange={handleGroupEnabledChange}
               size="md"
               disabled={readOnly}
             />

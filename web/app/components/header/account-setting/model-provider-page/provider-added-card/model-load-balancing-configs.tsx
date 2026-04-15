@@ -163,11 +163,11 @@ const ModelLoadBalancingConfigs = ({
           {
             withSwitch && (
               <Switch
-                value={Boolean(draftConfig.enabled)}
+                checked={Boolean(draftConfig.enabled)}
                 size="lg"
                 className="ml-3 justify-self-end"
                 disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
-                onChange={value => toggleModalBalancing(value)}
+                onCheckedChange={value => toggleModalBalancing(value)}
                 data-testid="load-balancing-switch-main"
               />
             )
@@ -225,10 +225,10 @@ const ModelLoadBalancingConfigs = ({
                         <>
                           <span className="mr-2 h-3 border-r border-r-divider-subtle" />
                           <Switch
-                            value={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
+                            checked={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                             size="md"
                             className="justify-self-end"
-                            onChange={value => toggleConfigEntryEnabled(index, value)}
+                            onCheckedChange={value => toggleConfigEntryEnabled(index, value)}
                             disabled={credential?.not_allowed_to_use}
                             data-testid={`load-balancing-switch-${config.id || index}`}
                           />

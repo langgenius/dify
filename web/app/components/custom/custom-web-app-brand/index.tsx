@@ -35,9 +35,9 @@ const CustomWebAppBrand = () => {
         {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
           size="lg"
-          value={webappBrandRemoved ?? false}
+          checked={webappBrandRemoved ?? false}
           disabled={isSandbox || !isCurrentWorkspaceManager}
-          onChange={handleSwitch}
+          onCheckedChange={handleSwitch}
         />
       </div>
       <div className={cn('flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4', webappBrandRemoved && 'opacity-30')}>
