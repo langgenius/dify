@@ -12,6 +12,10 @@
     "./tokens/tailwind-theme-var-define": {
       "import": "./src/themes/tailwind-theme-var-define.ts",
       "types": "./src/themes/tailwind-theme-var-define.ts"
+    },
+    "./lib/cn": {
+      "import": "./src/lib/cn.ts",
+      "types": "./src/lib/cn.ts"
     }
   },
   "publishConfig": {
@@ -24,6 +28,10 @@
       "./tokens/tailwind-theme-var-define": {
         "import": "./dist/tokens/tailwind-theme-var-define.js",
         "types": "./dist/tokens/tailwind-theme-var-define.d.ts"
+      },
+      "./lib/cn": {
+        "import": "./dist/lib/cn.js",
+        "types": "./dist/lib/cn.d.ts"
       }
     }
   },
@@ -38,7 +46,6 @@
   "devDependencies": {
     "@egoist/tailwindcss-icons": "catalog:",
     "@iconify-json/ri": "catalog:",
-    "@tailwindcss/typography": "catalog:",
     "tailwindcss": "catalog:",
     "tsdown": "catalog:"
   }

@@ -617,9 +617,6 @@ importers:
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
-      '@tailwindcss/typography':
-        specifier: 'catalog:'
-        version: 0.5.19(tailwindcss@4.2.2)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.2.2
