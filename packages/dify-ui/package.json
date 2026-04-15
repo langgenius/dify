@@ -1,0 +1,45 @@
+{
+  "name": "@langgenius/dify-ui",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./styles.css": "./src/styles/styles.css",
+    "./tailwind-preset": {
+      "import": "./src/tailwind-preset.ts",
+      "types": "./src/tailwind-preset.ts"
+    },
+    "./tokens/tailwind-theme-var-define": {
+      "import": "./src/themes/tailwind-theme-var-define.ts",
+      "types": "./src/themes/tailwind-theme-var-define.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      "./styles.css": "./dist/styles.css",
+      "./tailwind-preset": {
+        "import": "./dist/tailwind-preset.js",
+        "types": "./dist/tailwind-preset.d.ts"
+      },
+      "./tokens/tailwind-theme-var-define": {
+        "import": "./dist/tokens/tailwind-theme-var-define.js",
+        "types": "./dist/tokens/tailwind-theme-var-define.d.ts"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch"
+  },
+  "dependencies": {
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:"
+  },
+  "devDependencies": {
+    "@egoist/tailwindcss-icons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@tailwindcss/typography": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsdown": "catalog:"
+  }
+}
