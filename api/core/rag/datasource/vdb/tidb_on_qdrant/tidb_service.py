@@ -109,7 +109,9 @@ class TidbService:
                     qdrant_endpoint = TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, cluster_id)
                     logger.info(
                         "Cluster %s is ACTIVE, user_prefix=%s, qdrant_endpoint=%s",
-                        cluster_id, user_prefix, qdrant_endpoint,
+                        cluster_id,
+                        user_prefix,
+                        qdrant_endpoint,
                     )
                     return {
                         "cluster_id": cluster_id,
@@ -118,7 +120,13 @@ class TidbService:
                         "password": password,
                         "qdrant_endpoint": qdrant_endpoint,
                     }
-                logger.info("Cluster %s state=%s, retry %d/%d", cluster_id, cluster_response["state"], retry_count + 1, max_retries)
+                logger.info(
+                    "Cluster %s state=%s, retry %d/%d",
+                    cluster_id,
+                    cluster_response["state"],
+                    retry_count + 1,
+                    max_retries,
+                )
                 time.sleep(30)
                 retry_count += 1
             logger.error("Cluster %s did not become ACTIVE after %d retries", cluster_id, max_retries)
@@ -295,12 +303,11 @@ class TidbService:
                 if not cached_password:
                     logger.warning("No cached password for cluster %s, skipping", item["displayName"])
                     continue
-                qdrant_endpoint = TidbService.fetch_qdrant_endpoint(
-                    api_url, public_key, private_key, item["clusterId"]
-                )
+                qdrant_endpoint = TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, item["clusterId"])
                 logger.info(
                     "Batch cluster %s: qdrant_endpoint=%s",
-                    item["clusterId"], qdrant_endpoint,
+                    item["clusterId"],
+                    qdrant_endpoint,
                 )
                 cluster_info = {
                     "cluster_id": item["clusterId"],
