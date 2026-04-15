@@ -107,6 +107,9 @@ from .datasets.rag_pipeline import (
     rag_pipeline_workflow,
 )
 
+# Import evaluation controllers
+from .evaluation import evaluation
+
 # Import explore controllers
 from .explore import (
     banner,
@@ -116,6 +119,9 @@ from .explore import (
     saved_message,
     trial,
 )
+
+# Import snippet controllers
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
 
 # Import tag controllers
 from .tag import tags
@@ -130,6 +136,7 @@ from .workspace import (
     model_providers,
     models,
     plugin,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
@@ -167,6 +174,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "feature",
@@ -201,6 +209,9 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
     "spec",
     "statistic",
     "tags",

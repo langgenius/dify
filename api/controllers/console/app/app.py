@@ -329,6 +329,7 @@ class AppPartial(ResponseModel):
     create_user_name: str | None = None
     author_name: str | None = None
     has_draft_trigger: bool | None = None
+    workflow_type: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -363,6 +364,7 @@ class AppDetail(ResponseModel):
     updated_by: str | None = None
     updated_at: int | None = None
     access_mode: str | None = None
+    workflow_type: str | None = None
     tags: list[Tag] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")
@@ -505,6 +507,17 @@ class AppListApi(Resource):
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
+        workflow_ids = [str(app.workflow_id) for app in app_pagination.items if app.workflow_id]
+        workflow_type_map: dict[str, str] = {}
+        if workflow_ids:
+            rows = db.session.execute(
+                select(Workflow.id, Workflow.type).where(Workflow.id.in_(workflow_ids))
+            ).all()
+            workflow_type_map = {str(row.id): row.type for row in rows}
+
+        for app in app_pagination.items:
+            app.workflow_type = workflow_type_map.get(str(app.workflow_id)) if app.workflow_id else None
+
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
         return pagination_model.model_dump(mode="json"), 200
 
@@ -550,6 +563,14 @@ class AppApi(Resource):
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode
+
+        if app_model.workflow_id:
+            row = db.session.execute(
+                select(Workflow.type).where(Workflow.id == app_model.workflow_id)
+            ).scalar()
+            app_model.workflow_type = row if row else None
+        else:
+            app_model.workflow_type = None
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")

@@ -33,6 +33,13 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .human_input import HumanInputForm
 from .model import (
@@ -80,6 +87,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
 from .tools import (
@@ -139,6 +147,7 @@ __all__ = [
     "Conversation",
     "ConversationVariable",
     "CreatorUserRole",
+    "CustomizedSnippet",
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
@@ -156,6 +165,11 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EvaluationConfiguration",
+    "EvaluationRun",
+    "EvaluationRunItem",
+    "EvaluationRunStatus",
+    "EvaluationTargetType",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",
@@ -183,6 +197,7 @@ __all__ = [
     "RecommendedApp",
     "SavedMessage",
     "Site",
+    "SnippetType",
     "Tag",
     "TagBinding",
     "Tenant",

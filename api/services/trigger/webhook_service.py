@@ -38,6 +38,7 @@ from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
 
@@ -819,9 +820,9 @@ class WebhookService:
                     user_id=None,
                 )
 
-                # consume quota before triggering workflow execution
+                # reserve quota before triggering workflow execution
                 try:
-                    QuotaType.TRIGGER.consume(webhook_trigger.tenant_id)
+                    quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
                 except QuotaExceededError:
                     AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
                     logger.info(
@@ -832,11 +833,16 @@ class WebhookService:
                     raise
 
                 # Trigger workflow execution asynchronously
-                AsyncWorkflowService.trigger_workflow_async(
-                    session,
-                    end_user,
-                    trigger_data,
-                )
+                try:
+                    AsyncWorkflowService.trigger_workflow_async(
+                        session,
+                        end_user,
+                        trigger_data,
+                    )
+                    quota_charge.commit()
+                except Exception:
+                    quota_charge.refund()
+                    raise
 
         except Exception:
             logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)

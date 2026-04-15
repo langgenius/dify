@@ -27,6 +27,7 @@ import {
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
@@ -112,12 +113,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         return
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        // Track app creation from DSL import
-        trackEvent('create_app_with_dsl', {
-          app_mode,
-          creation_method: currentTab === CreateFromDSLModalTab.FROM_FILE ? 'dsl_file' : 'dsl_url',
-          has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
-        })
+        trackCreateApp({ appMode: app_mode })
 
         if (onSuccess)
           onSuccess()
@@ -179,6 +175,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       const { status, app_id, app_mode } = response
 
       if (status === DSLImportStatus.COMPLETED) {
+        trackCreateApp({ appMode: app_mode })
         if (onSuccess)
           onSuccess()
         if (onClose)

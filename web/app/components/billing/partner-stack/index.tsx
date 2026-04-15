@@ -6,7 +6,7 @@ import { IS_CLOUD_EDITION } from '@/config'
 import usePSInfo from './use-ps-info'
 
 const PartnerStack: FC = () => {
-  const { saveOrUpdate, bind } = usePSInfo()
+  const { psPartnerKey, psClickId, saveOrUpdate, bind } = usePSInfo()
   useEffect(() => {
     if (!IS_CLOUD_EDITION)
       return
@@ -14,7 +14,7 @@ const PartnerStack: FC = () => {
     saveOrUpdate()
     // bind PartnerStack info after user logged in
     bind()
-  }, [])
+  }, [psPartnerKey, psClickId, saveOrUpdate, bind])
 
   return null
 }
