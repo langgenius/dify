@@ -53,7 +53,7 @@ function AvatarImage({
 }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
-      className={cn('inset-0 absolute size-full object-cover', className)}
+      className={cn('absolute inset-0 size-full object-cover', className)}
       {...props}
     />
   )
