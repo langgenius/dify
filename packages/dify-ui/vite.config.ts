@@ -6,7 +6,7 @@ export default defineConfig({
       "styles": "src/styles/styles.css",
       "tailwind-preset": "src/tailwind-preset.ts",
       "tokens/tailwind-theme-var-define": "src/themes/tailwind-theme-var-define.ts",
-      "lib/cn": "src/lib/cn.ts",
+      "cn": "src/cn.ts",
     },
     format: ["esm"],
     dts: true,

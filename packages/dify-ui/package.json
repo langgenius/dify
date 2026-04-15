@@ -13,9 +13,9 @@
       "import": "./src/themes/tailwind-theme-var-define.ts",
       "types": "./src/themes/tailwind-theme-var-define.ts"
     },
-    "./lib/cn": {
-      "import": "./src/lib/cn.ts",
-      "types": "./src/lib/cn.ts"
+    "./cn": {
+      "import": "./src/cn.ts",
+      "types": "./src/cn.ts"
     }
   },
   "publishConfig": {
@@ -29,9 +29,9 @@
         "import": "./dist/tokens/tailwind-theme-var-define.mjs",
         "types": "./dist/tokens/tailwind-theme-var-define.d.mts"
       },
-      "./lib/cn": {
-        "import": "./dist/lib/cn.mjs",
-        "types": "./dist/lib/cn.d.mts"
+      "./cn": {
+        "import": "./dist/cn.mjs",
+        "types": "./dist/cn.d.mts"
       }
     }
   },
