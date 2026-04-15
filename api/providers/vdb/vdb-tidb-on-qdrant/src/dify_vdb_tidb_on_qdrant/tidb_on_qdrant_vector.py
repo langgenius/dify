@@ -445,7 +445,8 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                     if idle_tidb_auth_binding:
                         logger.info(
                             "Assigning idle cluster %s to tenant %s",
-                            idle_tidb_auth_binding.cluster_id, dataset.tenant_id,
+                            idle_tidb_auth_binding.cluster_id,
+                            dataset.tenant_id,
                         )
                         idle_tidb_auth_binding.active = True
                         idle_tidb_auth_binding.tenant_id = dataset.tenant_id
@@ -464,7 +465,8 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         )
                         logger.info(
                             "New cluster created: cluster_id=%s, qdrant_endpoint=%s",
-                            new_cluster["cluster_id"], new_cluster.get("qdrant_endpoint"),
+                            new_cluster["cluster_id"],
+                            new_cluster.get("qdrant_endpoint"),
                         )
                         new_tidb_auth_binding = TidbAuthBinding(
                             cluster_id=new_cluster["cluster_id"],
