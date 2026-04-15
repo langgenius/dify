@@ -2,12 +2,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
 
 const mockPush = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-const mockTrackEvent = vi.fn()
+const mockTrackCreateApp = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
 const toastMocks = vi.hoisted(() => ({
@@ -43,8 +44,8 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -172,7 +173,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
-      app_mode: 'chat',
+      app_mode: AppModeEnum.CHAT,
     })
 
     render(
@@ -196,10 +197,7 @@ describe('CreateFromDSLModal', () => {
       mode: DSLImportMode.YAML_URL,
       yaml_url: 'https://example.com/app.yml',
     })
-    expect(mockTrackEvent).toHaveBeenCalledWith('create_app_with_dsl', expect.objectContaining({
-      creation_method: 'dsl_url',
-      has_warnings: false,
-    }))
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.CHAT })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
@@ -212,7 +210,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-2',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-2',
-      app_mode: 'chat',
+      app_mode: AppModeEnum.CHAT,
     })
 
     render(
@@ -275,7 +273,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSLConfirm.mockResolvedValue({
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-3',
-      app_mode: 'workflow',
+      app_mode: AppModeEnum.WORKFLOW,
     })
 
     render(
@@ -305,6 +303,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.WORKFLOW })
   })
 
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
@@ -332,7 +331,7 @@ describe('CreateFromDSLModal', () => {
         id: 'import-in-flight',
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-1',
-        app_mode: 'chat',
+        app_mode: AppModeEnum.CHAT,
       })
     })
 

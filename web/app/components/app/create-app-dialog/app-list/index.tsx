@@ -8,7 +8,6 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
-import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
@@ -25,6 +24,7 @@ import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
@@ -127,14 +127,7 @@ const Apps = ({
         icon_background,
         description,
       })
-
-      // Track app creation from template
-      trackEvent('create_app_with_template', {
-        app_mode: mode,
-        template_id: currApp?.app.id,
-        template_name: currApp?.app.name,
-        description,
-      })
+      trackCreateApp({ appMode: mode })
 
       setIsShowCreateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))

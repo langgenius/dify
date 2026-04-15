@@ -4,7 +4,6 @@ import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
 const mockUseExploreAppList = vi.fn()
-const mockTrackEvent = vi.fn()
 const mockImportDSL = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
@@ -12,6 +11,7 @@ const mockGetRedirection = vi.fn()
 const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
+const mockTrackCreateApp = vi.fn()
 let latestDebounceFn = () => {}
 
 vi.mock('ahooks', () => ({
@@ -92,8 +92,8 @@ vi.mock('@/app/components/base/ui/toast', () => ({
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
 vi.mock('@/service/apps', () => ({
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
@@ -246,10 +246,9 @@ describe('Apps', () => {
       }))
     })
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('create_app_with_template', expect.objectContaining({
-      template_id: 'Alpha',
-      template_name: 'Alpha',
-    }))
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      appMode: AppModeEnum.CHAT,
+    })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
