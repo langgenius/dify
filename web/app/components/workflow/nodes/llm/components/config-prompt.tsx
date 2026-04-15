@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ModelConfig, PromptItem, ValueSelector, Var, Variable } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -10,7 +11,6 @@ import { v4 as uuid4 } from 'uuid'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { cn } from '@/utils/classnames'
 import { useWorkflowStore } from '../../../store'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -182,7 +182,7 @@ const ConfigPrompt: FC<Props> = ({
                       })()
                       return (
                         <div key={item.id || index} className="group relative">
-                          {canDrag && <DragHandle className="absolute left-[-14px] top-2 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />}
+                          {canDrag && <DragHandle className="absolute top-2 left-[-14px] hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />}
                           <ConfigPromptItem
                             instanceId={item.role === PromptRole.system ? `${nodeId}-chat-workflow-llm-prompt-editor` : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`}
                             className={cn(canDrag && 'handle')}

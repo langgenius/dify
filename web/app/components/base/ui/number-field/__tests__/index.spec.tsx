@@ -77,7 +77,7 @@ describe('NumberField wrapper', () => {
 
       const group = screen.getByTestId('group')
 
-      expect(group).toHaveClass('radius-md')
+      expect(group).toHaveClass('rounded-lg')
       expect(group).toHaveClass('custom-group')
     })
 
@@ -94,7 +94,7 @@ describe('NumberField wrapper', () => {
       const group = screen.getByTestId('group')
       const input = screen.getByTestId('input')
 
-      expect(group).toHaveClass('radius-lg')
+      expect(group).toHaveClass('rounded-[10px]')
       expect(input).toHaveClass('px-4')
       expect(input).toHaveClass('py-2')
     })

@@ -1,11 +1,11 @@
 import type { Option } from './type'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import {
   GeneralChunk,
   ParentChildChunk,
   QuestionAndAnswer,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import { cn } from '@/utils/classnames'
 import { ChunkStructureEnum } from '../../types'
 
 export const useChunkStructure = () => {

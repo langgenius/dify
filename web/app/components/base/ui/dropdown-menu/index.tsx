@@ -2,6 +2,7 @@
 
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Menu } from '@base-ui/react/menu'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
   menuGroupLabelClassName,
@@ -12,7 +13,6 @@ import {
   menuSeparatorClassName,
 } from '@/app/components/base/ui/menu-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
-import { cn } from '@/utils/classnames'
 
 export const DropdownMenu = Menu.Root
 export const DropdownMenuTrigger = Menu.Trigger

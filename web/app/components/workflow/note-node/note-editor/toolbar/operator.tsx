@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
@@ -11,7 +12,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import Switch from '@/app/components/base/switch'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import { cn } from '@/utils/classnames'
 
 export type OperatorProps = {
   onCopy: () => void

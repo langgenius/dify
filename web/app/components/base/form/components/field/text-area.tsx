@@ -1,7 +1,7 @@
 import type { TextareaProps } from '../../../textarea'
 import type { LabelProps } from '../label'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Textarea from '../../../textarea'
 import Label from '../label'
