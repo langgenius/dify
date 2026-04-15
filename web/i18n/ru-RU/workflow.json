@@ -433,7 +433,7 @@
   "nodes.common.errorHandle.failBranch.title": "Неудачная ветвь",
   "nodes.common.errorHandle.none.desc": "Узел перестанет работать, если произойдет исключение и оно не будет обработано",
   "nodes.common.errorHandle.none.title": "Никакой",
-  "nodes.common.errorHandle.partialSucceeded.tip": "В процессе есть {{num}} узлов, которые работают ненормально, пожалуйста, перейдите к трассировке, чтобы проверить логи.",
+  "nodes.common.errorHandle.partialSucceeded.tip": "В процессе есть {{num}} узлов, которые работают ненормально, пожалуйста, перейдите к <tracingLink>трассировке</tracingLink>, чтобы проверить логи.",
   "nodes.common.errorHandle.tip": "Стратегия обработки исключений, запускаемая при обнаружении исключения на узле.",
   "nodes.common.errorHandle.title": "Обработка ошибок",
   "nodes.common.inputVars": "Входные переменные",

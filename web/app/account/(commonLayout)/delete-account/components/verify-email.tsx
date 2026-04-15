@@ -1,8 +1,8 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { Button } from '@/app/components/base/ui/button'
 import Countdown from '@/app/components/signin/countdown'
 import Link from '@/next/link'
 import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
@@ -36,14 +36,14 @@ export default function VerifyEmail(props: DeleteAccountProps) {
   }, [emailToken, verificationCode, confirmDeleteAccount, props])
   return (
     <>
-      <div className="body-md-medium pt-1 text-text-destructive">
+      <div className="pt-1 body-md-medium text-text-destructive">
         {t('account.deleteTip', { ns: 'common' })}
       </div>
-      <div className="body-md-regular pb-2 pt-1 text-text-secondary">
+      <div className="pt-1 pb-2 body-md-regular text-text-secondary">
         {t('account.deletePrivacyLinkTip', { ns: 'common' })}
         <Link href="https://dify.ai/privacy" className="text-text-accent">{t('account.deletePrivacyLink', { ns: 'common' })}</Link>
       </div>
-      <label className="system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary">{t('account.verificationLabel', { ns: 'common' })}</label>
+      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('account.verificationLabel', { ns: 'common' })}</label>
       <Input
         minLength={6}
         maxLength={6}
@@ -53,7 +53,7 @@ export default function VerifyEmail(props: DeleteAccountProps) {
         }}
       />
       <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" disabled={shouldButtonDisabled} loading={isDeleting} variant="warning" onClick={handleConfirm}>{t('account.permanentlyDeleteButton', { ns: 'common' })}</Button>
+        <Button className="w-full" disabled={shouldButtonDisabled} loading={isDeleting} variant="primary" tone="destructive" onClick={handleConfirm}>{t('account.permanentlyDeleteButton', { ns: 'common' })}</Button>
         <Button className="w-full" onClick={props.onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         <Countdown onResend={sendEmail} />
       </div>

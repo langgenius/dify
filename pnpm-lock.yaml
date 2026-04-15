@@ -24,9 +24,6 @@ catalogs:
     '@cucumber/cucumber':
       specifier: 12.8.0
       version: 12.8.0
-    '@date-fns/tz':
-      specifier: 1.4.1
-      version: 1.4.1
     '@egoist/tailwindcss-icons':
       specifier: 1.9.2
       version: 1.9.2
@@ -270,9 +267,6 @@ catalogs:
     cron-parser:
       specifier: 5.5.0
       version: 5.5.0
-    date-fns:
-      specifier: 4.1.0
-      version: 4.1.0
     dayjs:
       specifier: 1.11.20
       version: 1.11.20
@@ -655,9 +649,6 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.4.0(@date-fns/tz@1.4.1)(@types/react@19.2.14)(date-fns@4.1.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@date-fns/tz':
-        specifier: 'catalog:'
-        version: 1.4.1
       '@emoji-mart/data':
         specifier: 'catalog:'
         version: 1.2.1
@@ -760,9 +751,6 @@ importers:
       cron-parser:
         specifier: 'catalog:'
         version: 5.5.0
-      date-fns:
-        specifier: 'catalog:'
-        version: 4.1.0
       dayjs:
         specifier: 'catalog:'
         version: 1.11.20

@@ -5,8 +5,8 @@ import { AUTO_UPDATE_STRATEGY } from '../types'
 
 let portalOpen = false
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({
+vi.mock('@/app/components/base/ui/button', () => ({
+  Button: ({
     children,
   }: {
     children: React.ReactNode

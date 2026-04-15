@@ -105,8 +105,10 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const dialog = screen.getByTestId('confirm-overlay')
-      const confirmButton = within(dialog).getByText('common.operation.delete')
+      const dialog = screen.getByRole('alertdialog', {
+        name: /common\.operation\.delete.*Test Extension.*\?/i,
+      })
+      const confirmButton = within(dialog).getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(confirmButton)
 
       // Assert
@@ -123,8 +125,10 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const dialog = screen.getByTestId('confirm-overlay')
-      const confirmButton = within(dialog).getByText('common.operation.delete')
+      const dialog = screen.getByRole('alertdialog', {
+        name: /common\.operation\.delete.*Test Extension.*\?/i,
+      })
+      const confirmButton = within(dialog).getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(confirmButton)
 
       // Assert
@@ -133,14 +137,16 @@ describe('Item Component', () => {
       })
     })
 
-    it('should close delete confirmation when clicking cancel button', () => {
+    it('should close delete confirmation when clicking cancel button', async () => {
       // Act
       render(<Item data={mockData} onUpdate={mockOnUpdate} />)
       fireEvent.click(screen.getByText('common.operation.delete'))
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       // Assert
-      expect(screen.queryByText(/common\.operation\.delete.*Test Extension.*\?/i)).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText(/common\.operation\.delete.*Test Extension.*\?/i)).not.toBeInTheDocument()
+      })
     })
 
     it('should not call delete API when canceling deletion', () => {

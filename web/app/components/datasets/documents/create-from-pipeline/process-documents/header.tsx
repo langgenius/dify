@@ -1,7 +1,7 @@
 import { RiSearchEyeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 
 type HeaderProps = {
   onReset: () => void
@@ -20,7 +20,7 @@ const Header = ({
 
   return (
     <div className="flex items-center gap-x-1 px-4 py-2">
-      <div className="system-sm-semibold-uppercase grow text-text-secondary">
+      <div className="grow system-sm-semibold-uppercase text-text-secondary">
         {t('addDocuments.stepTwo.chunkSettings', { ns: 'datasetPipeline' })}
       </div>
       <Button variant="ghost" disabled={resetDisabled} onClick={onReset}>

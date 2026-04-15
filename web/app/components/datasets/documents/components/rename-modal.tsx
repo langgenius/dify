@@ -4,9 +4,9 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { renameDocumentName } from '@/service/datasets'
 
@@ -60,7 +60,7 @@ const RenameModal: FC<Props> = ({
       isShow
       onClose={onClose}
     >
-      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('list.table.name', { ns: 'datasetDocuments' })}</div>
+      <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('list.table.name', { ns: 'datasetDocuments' })}</div>
       <Input
         className="mt-2 h-10"
         value={newName}
