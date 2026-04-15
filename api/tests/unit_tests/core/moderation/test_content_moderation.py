@@ -10,6 +10,7 @@ This module tests all aspects of the content moderation system including:
 - Configuration validation
 """
 
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -28,7 +29,7 @@ class TestKeywordsModeration:
     """Test suite for custom keyword-based content moderation."""
 
     @pytest.fixture
-    def keywords_config(self) -> dict:
+    def keywords_config(self) -> dict[str, Any]:
         """
         Fixture providing a standard keywords moderation configuration.
 
@@ -48,7 +49,7 @@ class TestKeywordsModeration:
         }
 
     @pytest.fixture
-    def keywords_moderation(self, keywords_config: dict) -> KeywordsModeration:
+    def keywords_moderation(self, keywords_config: dict[str, Any]) -> KeywordsModeration:
         """
         Fixture providing a KeywordsModeration instance.
 
@@ -64,7 +65,7 @@ class TestKeywordsModeration:
             config=keywords_config,
         )
 
-    def test_validate_config_success(self, keywords_config: dict):
+    def test_validate_config_success(self, keywords_config: dict[str, Any]):
         """Test successful validation of keywords moderation configuration."""
         # Should not raise any exception
         KeywordsModeration.validate_config("test-tenant", keywords_config)
@@ -274,7 +275,7 @@ class TestOpenAIModeration:
     """Test suite for OpenAI-based content moderation."""
 
     @pytest.fixture
-    def openai_config(self) -> dict:
+    def openai_config(self) -> dict[str, Any]:
         """
         Fixture providing OpenAI moderation configuration.
 
@@ -293,7 +294,7 @@ class TestOpenAIModeration:
         }
 
     @pytest.fixture
-    def openai_moderation(self, openai_config: dict) -> OpenAIModeration:
+    def openai_moderation(self, openai_config: dict[str, Any]) -> OpenAIModeration:
         """
         Fixture providing an OpenAIModeration instance.
 
@@ -309,7 +310,7 @@ class TestOpenAIModeration:
             config=openai_config,
         )
 
-    def test_validate_config_success(self, openai_config: dict):
+    def test_validate_config_success(self, openai_config: dict[str, Any]):
         """Test successful validation of OpenAI moderation configuration."""
         # Should not raise any exception
         OpenAIModeration.validate_config("test-tenant", openai_config)

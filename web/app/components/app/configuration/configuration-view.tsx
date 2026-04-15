@@ -153,28 +153,26 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             </div>
           </div>
 
-          {showUseGPT4Confirm && (
-            <AlertDialog open={showUseGPT4Confirm} onOpenChange={open => !open && setShowUseGPT4Confirm(false)}>
-              <AlertDialogContent>
-                <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
-                  <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-                    {t('trailUseGPT4Info.title', { ns: 'appDebug' })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                    {t('trailUseGPT4Info.description', { ns: 'appDebug' })}
-                  </AlertDialogDescription>
-                </div>
-                <AlertDialogActions>
-                  <AlertDialogCancelButton tone="default">
-                    {t('operation.cancel', { ns: 'common' })}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton variant="primary" tone="default" onClick={onConfirmUseGPT4}>
-                    {t('operation.confirm', { ns: 'common' })}
-                  </AlertDialogConfirmButton>
-                </AlertDialogActions>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          <AlertDialog open={showUseGPT4Confirm} onOpenChange={open => !open && setShowUseGPT4Confirm(false)}>
+            <AlertDialogContent>
+              <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+                  {t('trailUseGPT4Info.title', { ns: 'appDebug' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {t('trailUseGPT4Info.description', { ns: 'appDebug' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton tone="default">
+                  {t('operation.cancel', { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton variant="primary" tone="default" onClick={onConfirmUseGPT4}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {isShowSelectDataSet && (
             <SelectDataSet
