@@ -7,7 +7,14 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
 from services.dataset_service import DatasetService
@@ -26,12 +33,12 @@ class DatasetUpdateTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=f"tenant-{account.id}", status="normal")
+        tenant = Tenant(name=f"tenant-{account.id}", status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 
