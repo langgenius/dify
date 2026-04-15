@@ -8,8 +8,8 @@
 //   above the dialog backdrop instead of being clipped by it.
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 export const Dialog = BaseDialog.Root
 /** @public */

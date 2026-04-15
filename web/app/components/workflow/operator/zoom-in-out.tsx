@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckLine,
   RiFullscreenLine,
@@ -16,14 +17,13 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
+
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-
-import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
 import {
   useNodesSyncDraft,
@@ -219,7 +219,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                 <RiZoomOutLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
-            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>
+            <div onClick={handleTrigger} className={cn('w-[34px] system-sm-medium text-text-tertiary hover:text-text-secondary')}>
               {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
               %
             </div>
@@ -258,11 +258,10 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                     options.map(option => (
                       <div
                         key={option.key}
-                        className={`system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover ${
-                          option.key === ZoomType.toggleUserComments && isCommentMode
-                            ? 'cursor-not-allowed opacity-50'
-                            : ''
-                        }`}
+                        className={cn(
+                          'flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pr-2 pl-3 system-md-regular text-text-secondary hover:bg-state-base-hover',
+                          option.key === ZoomType.toggleUserComments && isCommentMode && 'cursor-not-allowed opacity-50',
+                        )}
                         onClick={() => handleZoom(option.key)}
                       >
                         <div className="flex items-center space-x-2">

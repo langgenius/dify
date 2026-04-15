@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -7,7 +8,6 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/com
 import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
-import { cn } from '@/utils/classnames'
 
 type IEditWorkspaceModalProps = {
   onCancel: () => void

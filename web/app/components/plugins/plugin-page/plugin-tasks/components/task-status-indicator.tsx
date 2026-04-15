@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
@@ -7,7 +8,6 @@ import {
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import Tooltip from '@/app/components/base/tooltip'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
-import { cn } from '@/utils/classnames'
 
 type TaskStatusIndicatorProps = {
   tip: string
@@ -66,7 +66,7 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
             )}
 
         {/* Status Indicator Badge */}
-        <div className="absolute -right-1 -top-1">
+        <div className="absolute -top-1 -right-1">
           {(isInstalling || isInstallingWithSuccess) && (
             <ProgressCircle
               percentage={(totalPluginsLength > 0 ? successPluginsLength / totalPluginsLength : 0) * 100}

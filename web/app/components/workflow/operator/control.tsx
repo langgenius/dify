@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAspectRatioFill,
   RiAspectRatioLine,
@@ -12,7 +13,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Comment } from '@/app/components/base/icons/src/public/other'
-import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
 import {
   useNodesReadOnly,

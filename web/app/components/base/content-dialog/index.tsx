@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Transition, TransitionChild } from '@headlessui/react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type ContentDialogProps = {
   className?: string

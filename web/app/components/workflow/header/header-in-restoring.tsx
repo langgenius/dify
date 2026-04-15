@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
@@ -9,7 +10,6 @@ import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import {
   useLeaderRestore,
   useWorkflowRefreshDraft,

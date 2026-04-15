@@ -19,7 +19,7 @@ import { getUserColor } from '@/app/components/workflow/collaboration/utils/user
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
 

@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/app/components/base/ui/avatar'
 import { useAppContext } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { MentionInput } from './mention-input'
 
 type CommentInputProps = {

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,6 @@ import Input from '@/app/components/base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { Avatar } from '@/app/components/base/ui/avatar'
 import { useMembers } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: any
@@ -65,13 +65,13 @@ const MemberSelector: FC<Props> = ({
           className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}
         >
           {!currentValue && (
-            <div className="grow p-1 text-components-input-text-placeholder system-sm-regular">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
+            <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
           )}
           {currentValue && (
             <>
               <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
-              <div className="grow truncate text-text-secondary system-sm-medium">{currentValue.name}</div>
-              <div className="text-text-quaternary system-xs-regular">{currentValue.email}</div>
+              <div className="grow truncate system-sm-medium text-text-secondary">{currentValue.name}</div>
+              <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
             </>
           )}
           <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
@@ -92,15 +92,15 @@ const MemberSelector: FC<Props> = ({
               <div
                 key={account.id}
                 data-testid="member-selector-item"
-                className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
+                className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
                 onClick={() => {
                   onSelect(account.id)
                   setOpen(false)
                 }}
               >
                 <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
-                <div className="grow truncate text-text-secondary system-sm-medium">{account.name}</div>
-                <div className="text-text-quaternary system-xs-regular">{account.email}</div>
+                <div className="grow truncate system-sm-medium text-text-secondary">{account.name}</div>
+                <div className="system-xs-regular text-text-quaternary">{account.email}</div>
               </div>
             ))}
           </div>

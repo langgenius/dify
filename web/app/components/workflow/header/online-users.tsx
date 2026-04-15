@@ -13,7 +13,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useStore } from '../store'

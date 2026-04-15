@@ -14,6 +14,7 @@ import type {
   Node,
 } from './types'
 import type { VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useEventListener,
 } from 'ahooks'
@@ -59,7 +60,6 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { fetchAllInspectVars } from '@/service/workflow'
-import { cn } from '@/utils/classnames'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
 import { collaborationManager } from './collaboration/core/collaboration-manager'

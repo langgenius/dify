@@ -20,6 +20,7 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -30,7 +31,6 @@ import {
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,

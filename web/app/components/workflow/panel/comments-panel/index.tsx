@@ -13,7 +13,7 @@ import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
 import { resolveWorkflowComment } from '@/service/workflow-comment'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 const CommentsPanel = () => {
   const { t } = useTranslation()
