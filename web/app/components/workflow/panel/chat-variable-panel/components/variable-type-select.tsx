@@ -35,7 +35,7 @@ const VariableTypeSelector = ({
       <PortalToFollowElemTrigger className="w-full" onClick={() => setOpen(v => !v)}>
         <div className={cn(
           'flex w-full cursor-pointer items-center px-2',
-          !inCell && 'rounded-md bg-components-input-bg-normal py-1 hover:bg-state-base-hover-alt',
+          !inCell && 'rounded-lg bg-components-input-bg-normal py-1 hover:bg-state-base-hover-alt',
           inCell && 'py-0.5 hover:bg-state-base-hover',
           open && !inCell && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
           open && inCell && 'bg-state-base-hover hover:bg-state-base-hover',
@@ -56,7 +56,7 @@ const VariableTypeSelector = ({
           {list.map((item: any) => (
             <div
               key={item}
-              className="flex cursor-pointer items-center gap-2 rounded-md py-[6px] pr-2 pl-3 hover:bg-state-base-hover"
+              className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-state-base-hover"
               onClick={() => {
                 onSelect(item)
                 setOpen(false)

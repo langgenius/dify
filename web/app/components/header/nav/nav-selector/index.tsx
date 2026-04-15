@@ -58,7 +58,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
       {({ open }) => (
         <>
           <MenuButton className={cn(
-            'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center rounded-lg pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active',
+            'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active',
             open && 'bg-components-main-nav-nav-button-bg-active',
           )}
           >
@@ -122,7 +122,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                     'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
                   )}
                 >
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-[0.5px] border-divider-regular bg-background-default">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
                     <RiAddLine className="h-4 w-4 text-text-primary" />
                   </div>
                   <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
@@ -139,7 +139,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                         open && 'bg-state-base-hover!',
                       )}
                       >
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-[0.5px] border-divider-regular bg-background-default">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
                           <RiAddLine className="h-4 w-4 text-text-primary" />
                         </div>
                         <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>

@@ -240,7 +240,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     }
   }, [duration])
   return (
-    <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-lg border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
+    <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
       <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (<source key={index} src={srcUrl} />))}
@@ -254,7 +254,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         <div className="flex h-8 items-center justify-center">
           <canvas ref={canvasRef} data-testid="waveform-canvas" className="relative flex h-6 w-full grow cursor-pointer items-center justify-center" onClick={handleCanvasInteraction} onMouseMove={handleMouseMove} onMouseDown={handleCanvasInteraction} onTouchMove={handleMouseMove} onTouchStart={handleCanvasInteraction} />
           <div className="inline-flex min-w-[50px] items-center justify-center system-xs-medium text-text-accent-secondary">
-            <span className="rounded-lg px-0.5 py-1">{formatTime(duration)}</span>
+            <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>
       </div>

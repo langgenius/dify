@@ -134,13 +134,13 @@ const PopupItem: FC<PopupItemProps> = ({
                   : credentialName
                     ? (
                         <>
-                          <span className={cn('rounded-2xs h-1.5 w-1.5 shrink-0 border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
                           <span className="ml-1 text-text-tertiary">{credentialName}</span>
                         </>
                       )
                     : (
                         <>
-                          <span className="rounded-2xs h-1.5 w-1.5 shrink-0 border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
                           <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}

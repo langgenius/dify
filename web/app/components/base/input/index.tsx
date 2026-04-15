@@ -12,8 +12,8 @@ export const inputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'rounded-md px-3 system-sm-regular',
-        large: 'rounded-lg px-4 system-md-regular',
+        regular: 'rounded-lg px-3 system-sm-regular',
+        large: 'rounded-[10px] px-4 system-md-regular',
       },
     },
     defaultVariants: {

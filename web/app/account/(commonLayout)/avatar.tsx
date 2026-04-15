@@ -44,7 +44,7 @@ export default function AppSelector() {
               <MenuButton
                 className={`
                     p-1x inline-flex
-                    items-center rounded-3xl text-sm
+                    items-center rounded-[20px] text-sm
                     text-text-primary
                     mobile:px-1
                     ${open && 'bg-components-panel-bg-blur'}

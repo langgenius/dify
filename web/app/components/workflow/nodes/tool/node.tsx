@@ -75,7 +75,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           ))}
           {showAuthorizationWarning && (
             <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-              <span className="rounded-2xs mr-1 size-[4px] shrink-0 bg-text-warning-secondary" />
+              <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
               <div className="grow truncate system-xs-medium text-text-warning" title={t('nodes.tool.authorizationRequired', { ns: 'workflow' })}>
                 {t('nodes.tool.authorizationRequired', { ns: 'workflow' })}
               </div>

@@ -152,7 +152,7 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           {value.length === 0 && (
-            <div className="flex justify-center rounded-lg bg-background-section p-3 system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
+            <div className="flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
           )}
           {value.length > 0 && value.map((item, index) => (
             <div className="mb-1" key={index}>

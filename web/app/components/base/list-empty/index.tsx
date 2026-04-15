@@ -16,9 +16,9 @@ const ListEmpty = ({
   icon,
 }: ListEmptyProps) => {
   return (
-    <div className="flex w-[320px] flex-col items-start gap-2 rounded-lg bg-workflow-process-bg p-4">
-      <div className="flex h-10 w-10 items-center justify-center gap-2 rounded-lg">
-        <div className="relative flex grow items-center justify-center gap-2 self-stretch rounded-lg border-[0.5px]
+    <div className="flex w-[320px] flex-col items-start gap-2 rounded-[10px] bg-workflow-process-bg p-4">
+      <div className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px]">
+        <div className="relative flex grow items-center justify-center gap-2 self-stretch rounded-[10px] border-[0.5px]
           border-components-card-border bg-components-card-bg p-1 shadow-lg"
         >
           {icon || <Variable02 className="h-5 w-5 shrink-0 text-text-accent" />}

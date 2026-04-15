@@ -102,7 +102,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
   return (
     <div
-      className="group relative flex h-8 w-full items-center rounded-md border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none"
+      className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none"
     >
       <div className="absolute top-[-12px] left-2.5">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>

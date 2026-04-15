@@ -14,7 +14,7 @@ const Item = ({
 }: Props) => {
   return (
     <div className={cn(
-      'mb-1 rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
     )}
     >
       <div className="flex items-center justify-between">

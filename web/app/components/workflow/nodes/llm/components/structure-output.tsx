@@ -58,7 +58,7 @@ const StructureOutput: FC<Props> = ({
             />
           )
         : (
-            <div className="mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-lg bg-background-section system-xs-regular text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
+            <div className="mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
           )}
 
       {showConfig && (

@@ -90,7 +90,7 @@ const ConversationVariableModal = ({
           <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
           <div className="grow overflow-y-auto px-3 py-2">
             {varList.map(chatVar => (
-              <div key={chatVar.id} className={cn('group mb-0.5 flex cursor-pointer items-center rounded-md p-2 hover:bg-state-base-hover', currentVar.id === chatVar.id && 'bg-state-base-hover')} onClick={() => setCurrentVar(chatVar)}>
+              <div key={chatVar.id} className={cn('group mb-0.5 flex cursor-pointer items-center rounded-lg p-2 hover:bg-state-base-hover', currentVar.id === chatVar.id && 'bg-state-base-hover')} onClick={() => setCurrentVar(chatVar)}>
                 <BubbleX className={cn('mr-1 h-4 w-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')} />
                 <div title={chatVar.name} className={cn('truncate system-sm-medium text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')}>{chatVar.name}</div>
               </div>

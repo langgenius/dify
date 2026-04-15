@@ -72,7 +72,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
         className={cn('relative')}
         ref={containerRef}
       >
-        <div className="flex size-5 items-center justify-center overflow-hidden rounded-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+        <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
           {(() => {
             if (iconFetchError || !icon)
               return <Group className="h-3 w-3 opacity-35" />

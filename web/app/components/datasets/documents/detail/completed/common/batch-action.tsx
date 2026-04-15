@@ -62,7 +62,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
-      <div className="pointer-events-auto flex items-center gap-x-1 rounded-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+      <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
         <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}

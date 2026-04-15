@@ -22,7 +22,7 @@ const EnvItem = ({
 
   return (
     <div className={cn(
-      'group mb-1 rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      'group mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
       destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
     )}
     >
@@ -35,11 +35,11 @@ const EnvItem = ({
             {env.value_type === 'secret' && <RiLock2Line className="h-3 w-3 text-text-tertiary" />}
           </div>
           <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
-            <div className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover hover:text-text-secondary">
+            <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
               <RiEditLine className="h-4 w-4" onClick={() => onEdit(env)} />
             </div>
             <div
-              className="cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
+              className="cursor-pointer rounded-lg p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
               onMouseOver={() => setDestructive(true)}
               onMouseOut={() => setDestructive(false)}
             >

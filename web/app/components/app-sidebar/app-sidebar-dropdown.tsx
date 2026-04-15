@@ -60,7 +60,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
           }}
         >
           <PortalToFollowElemTrigger onClick={handleTrigger}>
-            <div className={cn('flex cursor-pointer items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover', open && 'bg-background-default-hover')}>
+            <div className={cn('flex cursor-pointer items-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-lg backdrop-blur-xs hover:bg-background-default-hover', open && 'bg-background-default-hover')}>
               <AppIcon
                 size="small"
                 iconType={appDetail.icon_type}

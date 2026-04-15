@@ -15,20 +15,20 @@ const ProgressBar = ({
 }: ProgressBarProps) => {
   if (indeterminate) {
     return (
-      <div className="overflow-hidden rounded-sm bg-components-progress-bar-bg">
+      <div className="overflow-hidden rounded-md bg-components-progress-bar-bg">
         <div
           data-testid="billing-progress-bar-indeterminate"
-          className={cn('h-1 rounded-sm bg-progress-bar-indeterminate-stripe', indeterminateFull ? 'w-full' : 'w-[30px]')}
+          className={cn('h-1 rounded-md bg-progress-bar-indeterminate-stripe', indeterminateFull ? 'w-full' : 'w-[30px]')}
         />
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-sm bg-components-progress-bar-bg">
+    <div className="overflow-hidden rounded-md bg-components-progress-bar-bg">
       <div
         data-testid="billing-progress-bar"
-        className={cn('h-1 rounded-sm', color)}
+        className={cn('h-1 rounded-md', color)}
         style={{
           width: `${Math.min(percent, 100)}%`,
         }}

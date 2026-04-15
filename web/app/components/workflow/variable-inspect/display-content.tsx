@@ -52,7 +52,7 @@ const DisplayContent = (props: DisplayContentProps) => {
   }, [previewType, schemaType, jsonString])
 
   return (
-    <div className={cn('flex h-full flex-col rounded-lg bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline-1 outline-components-input-border-active outline-solid', className)}>
+    <div className={cn('flex h-full flex-col rounded-[10px] bg-components-input-bg-normal', isFocused && 'bg-components-input-bg-active outline-1 outline-components-input-border-active outline-solid', className)}>
       <div className="flex shrink-0 items-center justify-end p-1">
         {previewType === PreviewType.Markdown && (
           <div className="flex grow items-center px-2 py-0.5 system-xs-semibold-uppercase text-text-secondary">

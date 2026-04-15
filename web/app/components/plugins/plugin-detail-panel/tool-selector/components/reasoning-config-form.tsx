@@ -178,7 +178,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 asChild={false}
               >
                 <div
-                  className="ml-0.5 cursor-pointer rounded-xs p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                  className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                   onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle)}
                 >
                   <RiBracesLine className="size-3.5" />
@@ -187,7 +187,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
 
           </div>
-          <div className="flex cursor-pointer items-center gap-1 rounded-sm border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
+          <div className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
             <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
             <Switch
               size="xs"

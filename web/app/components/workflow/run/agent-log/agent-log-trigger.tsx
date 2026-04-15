@@ -19,7 +19,7 @@ const AgentLogTrigger = ({
 
   return (
     <div
-      className="cursor-pointer rounded-lg bg-components-button-tertiary-bg"
+      className="cursor-pointer rounded-[10px] bg-components-button-tertiary-bg"
       onClick={() => {
         onShowAgentOrToolLog({ message_id: nodeInfo.id, children: agentLog || [] } as AgentLogItemWithChildren)
       }}

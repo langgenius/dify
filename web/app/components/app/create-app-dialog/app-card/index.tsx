@@ -45,7 +45,7 @@ const AppCard = ({
             imageUrl={appBasicInfo.icon_url}
           />
           <AppTypeIcon
-            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-xs border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
+            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
             className="h-3 w-3"
             type={appBasicInfo.mode}
           />

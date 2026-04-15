@@ -45,7 +45,7 @@ const ToolDetail = ({
       {
         expand && (
           <>
-            <div className="mx-1 mb-0.5 rounded-lg bg-components-panel-on-panel-item-bg text-text-secondary">
+            <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
               <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
                 {t('thought.requestTitle', { ns: 'tools' })}
               </div>
@@ -53,7 +53,7 @@ const ToolDetail = ({
                 {input}
               </div>
             </div>
-            <div className="mx-1 mb-1 rounded-lg bg-components-panel-on-panel-item-bg text-text-secondary">
+            <div className="mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
               <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
                 {t('thought.responseTitle', { ns: 'tools' })}
               </div>

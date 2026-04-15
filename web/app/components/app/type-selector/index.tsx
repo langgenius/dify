@@ -182,7 +182,7 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
         <span
           aria-hidden="true"
           className={cn(
-            'flex h-4 w-4 shrink-0 items-center justify-center rounded-xs shadow-xs shadow-shadow-shadow-3',
+            'flex h-4 w-4 shrink-0 items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3',
             checked
               ? 'bg-components-checkbox-bg text-components-checkbox-icon'
               : 'border border-components-checkbox-border bg-components-checkbox-bg-unchecked',

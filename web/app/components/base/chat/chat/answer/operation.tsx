@@ -174,7 +174,7 @@ const Operation: FC<OperationProps> = ({
       >
         {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
             hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
           )}
           >
@@ -214,7 +214,7 @@ const Operation: FC<OperationProps> = ({
         )}
         {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
             (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
           )}
           >
@@ -290,7 +290,7 @@ const Operation: FC<OperationProps> = ({
           </div>
         )}
         {!isOpeningStatement && (
-          <div className="ml-1 hidden items-center gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex" data-testid="operation-actions">
+          <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex" data-testid="operation-actions">
             {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}

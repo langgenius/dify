@@ -24,7 +24,7 @@ const selectTriggerVariants = cva(
       size: {
         small: 'h-6 gap-px rounded-md px-[5px] py-0 system-xs-regular',
         regular: 'h-8 gap-0.5 rounded-lg px-2 py-1 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-lg px-2.5 py-1 system-md-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] px-2.5 py-1 system-md-regular',
       },
       variant: {
         default: '',

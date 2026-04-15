@@ -107,7 +107,7 @@ const Uploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center rounded-lg border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
+          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
               <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
               <div className="text-text-tertiary">

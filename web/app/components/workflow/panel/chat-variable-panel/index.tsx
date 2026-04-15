@@ -148,7 +148,7 @@ const ChatVariablePanel = () => {
               {t('chatVariable.panelDescription', { ns: 'workflow' })}
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex flex-col rounded-lg border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
+              <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
                 <BubbleX className="mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700" />
                 <div className="system-xs-semibold text-text-secondary">conversation_var</div>
                 <div className="system-2xs-regular text-text-tertiary">String</div>

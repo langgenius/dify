@@ -30,11 +30,11 @@ const appIconVariants = cva(
   {
     variants: {
       size: {
-        xs: 'h-4 w-4 rounded-xs text-xs',
+        xs: 'h-4 w-4 rounded-sm text-xs',
         tiny: 'h-6 w-6 rounded-md text-base',
         small: 'h-8 w-8 rounded-lg text-xl',
-        medium: 'h-9 w-9 rounded-lg text-[22px]',
-        large: 'h-10 w-10 rounded-lg text-[24px]',
+        medium: 'h-9 w-9 rounded-[10px] text-[22px]',
+        large: 'h-10 w-10 rounded-[10px] text-[24px]',
         xl: 'h-12 w-12 rounded-xl text-[28px]',
         xxl: 'h-14 w-14 rounded-2xl text-[32px]',
       },
@@ -53,11 +53,11 @@ const EditIconWrapperVariants = cva(
   {
     variants: {
       size: {
-        xs: 'h-4 w-4 rounded-xs',
+        xs: 'h-4 w-4 rounded-sm',
         tiny: 'h-6 w-6 rounded-md',
         small: 'h-8 w-8 rounded-lg',
-        medium: 'h-9 w-9 rounded-lg',
-        large: 'h-10 w-10 rounded-lg',
+        medium: 'h-9 w-9 rounded-[10px]',
+        large: 'h-10 w-10 rounded-[10px]',
         xl: 'h-12 w-12 rounded-xl',
         xxl: 'h-14 w-14 rounded-2xl',
       },

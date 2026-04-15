@@ -19,7 +19,7 @@ const LoadingError: FC = () => {
       <div className="hover-bg-components-panel-on-panel-item-bg relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
         <div className="flex">
           <div
-            className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-lg border-[0.5px]
+            className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
               border-state-destructive-border bg-state-destructive-hover p-1 backdrop-blur-xs"
           >
             <div className="flex h-5 w-5 items-center justify-center">

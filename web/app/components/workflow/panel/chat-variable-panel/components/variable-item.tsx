@@ -19,7 +19,7 @@ const VariableItem = ({
   const [destructive, setDestructive] = useState(false)
   return (
     <div className={cn(
-      'mb-1 rounded-md border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
       destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
     )}
     >
@@ -30,11 +30,11 @@ const VariableItem = ({
           <div className="system-xs-medium text-text-tertiary">{capitalize(item.value_type)}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
-          <div className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover hover:text-text-secondary">
+          <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
             <RiEditLine className="h-4 w-4" onClick={() => onEdit(item)} />
           </div>
           <div
-            className="cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
+            className="cursor-pointer rounded-lg p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
             onMouseOver={() => setDestructive(true)}
             onMouseOut={() => setDestructive(false)}
           >

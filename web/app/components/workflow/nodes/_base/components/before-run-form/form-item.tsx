@@ -215,7 +215,7 @@ const FormItem: FC<Props> = ({
             language={CodeLanguage.json}
             onChange={onChange}
             noWrapper
-            className="bg h-[80px] overflow-y-auto rounded-lg bg-components-input-bg-normal p-1"
+            className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={
               <div className="whitespace-pre">{jsonSchemaPlaceholder}</div>
             }
