@@ -2,6 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +20,6 @@ import { getUserColor } from '@/app/components/workflow/collaboration/utils/user
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
 

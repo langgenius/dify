@@ -114,9 +114,6 @@
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-config-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
@@ -3745,9 +3742,6 @@
   "app/components/develop/secret-key/secret-key-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "perfectionist/sort-imports": {
-      "count": 1
     }
   },
   "app/components/explore/banner/banner-item.tsx": {
@@ -5469,23 +5463,12 @@
       "count": 2
     }
   },
-  "app/components/workflow/comment/comment-input.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    }
-  },
   "app/components/workflow/comment/mention-input.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
   },
   "app/components/workflow/comment/thread.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
     }
@@ -5512,11 +5495,6 @@
   },
   "app/components/workflow/header/index.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/header/online-users.tsx": {
-    "perfectionist/sort-imports": {
       "count": 1
     }
   },
@@ -7484,9 +7462,6 @@
     }
   },
   "app/components/workflow/panel/comments-panel/index.tsx": {
-    "perfectionist/sort-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 2
     }

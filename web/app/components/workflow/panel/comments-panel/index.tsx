@@ -1,4 +1,5 @@
 import type { WorkflowCommentList } from '@/service/workflow-comment'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCheckLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +14,6 @@ import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
 import { resolveWorkflowComment } from '@/service/workflow-comment'
-import { cn } from '@langgenius/dify-ui/cn'
 
 const CommentsPanel = () => {
   const { t } = useTranslation()

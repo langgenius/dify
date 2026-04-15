@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { UserProfile } from '@/service/workflow-comment'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import {
   forwardRef,
@@ -22,7 +23,6 @@ import { Avatar } from '@/app/components/base/ui/avatar'
 import { Button } from '@/app/components/base/ui/button'
 import { useParams } from '@/next/navigation'
 import { fetchMentionableUsers } from '@/service/workflow-comment'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
