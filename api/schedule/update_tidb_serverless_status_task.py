@@ -18,6 +18,8 @@ def update_tidb_serverless_status_task():
     click.echo(click.style("Update tidb serverless status task.", fg="green"))
     start_at = time.perf_counter()
     try:
+        # Narrow session to the read query; release the connection before the
+        # external TiDB API call so we don't hold it open during network I/O.
         with Session(db.engine) as session:
             tidb_serverless_list = session.scalars(
                 select(TidbAuthBinding).where(
@@ -25,10 +27,13 @@ def update_tidb_serverless_status_task():
                     TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
                 )
             ).all()
-            if len(tidb_serverless_list) == 0:
-                return
-            # update tidb serverless status
-            update_clusters(tidb_serverless_list)
+            # Detach so column attributes remain accessible after session closes.
+            for item in tidb_serverless_list:
+                session.expunge(item)
+        if len(tidb_serverless_list) == 0:
+            return
+        # update tidb serverless status after the read session is closed
+        update_clusters(tidb_serverless_list)
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

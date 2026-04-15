@@ -30,6 +30,8 @@ def check_upgradable_plugin_task():
     now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style(f"Now seconds of day: {now_seconds_of_day}", fg="green"))
 
+    # Narrow session scope to just the query; release the connection before
+    # any network I/O (marketplace fetch) or sleeping between batches.
     with Session(db.engine) as session:
         strategies = session.scalars(
             select(TenantPluginAutoUpgradeStrategy).where(
@@ -40,48 +42,50 @@ def check_upgradable_plugin_task():
                 != TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
             )
         ).all()
+        # Detach objects so their column attributes remain accessible after
+        # the session closes (avoids holding a connection during network/sleep).
+        for strategy in strategies:
+            session.expunge(strategy)
 
-        total_strategies = len(strategies)
-        click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
+    total_strategies = len(strategies)
+    click.echo(click.style(f"Total strategies: {total_strategies}", fg="green"))
 
-        batch_chunk_count = math.ceil(
-            total_strategies / MAX_CONCURRENT_CHECK_TASKS
-        )  # make sure all strategies are checked in this interval
-        batch_interval_time = (
-            (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
-        )
+    batch_chunk_count = math.ceil(
+        total_strategies / MAX_CONCURRENT_CHECK_TASKS
+    )  # make sure all strategies are checked in this interval
+    batch_interval_time = (AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL / batch_chunk_count) if batch_chunk_count > 0 else 0
 
-        if total_strategies == 0:
-            click.echo(click.style("no strategies to process, skipping plugin manifest fetch.", fg="green"))
-            return
+    if total_strategies == 0:
+        click.echo(click.style("no strategies to process, skipping plugin manifest fetch.", fg="green"))
+        return
 
-        # Fetch and cache all plugin manifests before processing tenants
-        # This reduces load on marketplace from 300k requests to 1 request per check cycle
-        logger.info("fetching global plugin manifest from marketplace")
-        try:
-            fetch_global_plugin_manifest(CACHE_REDIS_KEY_PREFIX, CACHE_REDIS_TTL)
-            logger.info("successfully fetched and cached global plugin manifest")
-        except Exception as e:
-            logger.exception("failed to fetch global plugin manifest")
-            click.echo(click.style(f"failed to fetch global plugin manifest: {e}", fg="red"))
-            click.echo(click.style("skipping plugin upgrade check for this cycle", fg="yellow"))
-            return
+    # Fetch and cache all plugin manifests before processing tenants
+    # This reduces load on marketplace from 300k requests to 1 request per check cycle
+    logger.info("fetching global plugin manifest from marketplace")
+    try:
+        fetch_global_plugin_manifest(CACHE_REDIS_KEY_PREFIX, CACHE_REDIS_TTL)
+        logger.info("successfully fetched and cached global plugin manifest")
+    except Exception as e:
+        logger.exception("failed to fetch global plugin manifest")
+        click.echo(click.style(f"failed to fetch global plugin manifest: {e}", fg="red"))
+        click.echo(click.style("skipping plugin upgrade check for this cycle", fg="yellow"))
+        return
 
-        for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
-            batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
-            for strategy in batch_strategies:
-                check_task.process_tenant_plugin_autoupgrade_check_task.delay(
-                    strategy.tenant_id,
-                    strategy.strategy_setting,
-                    strategy.upgrade_time_of_day,
-                    strategy.upgrade_mode,
-                    strategy.exclude_plugins,
-                    strategy.include_plugins,
-                )
+    for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
+        batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
+        for strategy in batch_strategies:
+            check_task.process_tenant_plugin_autoupgrade_check_task.delay(
+                strategy.tenant_id,
+                strategy.strategy_setting,
+                strategy.upgrade_time_of_day,
+                strategy.upgrade_mode,
+                strategy.exclude_plugins,
+                strategy.include_plugins,
+            )
 
-            # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one
-            if batch_interval_time > 0.0001 and i + MAX_CONCURRENT_CHECK_TASKS < total_strategies:
-                time.sleep(batch_interval_time)
+        # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one
+        if batch_interval_time > 0.0001 and i + MAX_CONCURRENT_CHECK_TASKS < total_strategies:
+            time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()
     click.echo(
