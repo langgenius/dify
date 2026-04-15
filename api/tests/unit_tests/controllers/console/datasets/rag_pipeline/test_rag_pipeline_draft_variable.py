@@ -243,6 +243,9 @@ class TestRagPipelineVariableResetApi:
         rag_srv = MagicMock()
         rag_srv.get_draft_workflow.return_value = workflow
 
+        serialized = MagicMock()
+        serialized.model_dump.return_value = {"id": "v1"}
+
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
@@ -256,8 +259,8 @@ class TestRagPipelineVariableResetApi:
                 return_value=srv,
             ),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.marshal",
-                return_value={"id": "v1"},
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableResponse.model_validate",
+                return_value=serialized,
             ),
         ):
             result = method(api, pipeline, "v1")
@@ -296,14 +299,13 @@ class TestSystemAndEnvironmentVariablesApi:
         api = RagPipelineEnvironmentVariableCollectionApi()
         method = unwrap(api.get)
 
-        env_var = MagicMock(
-            id="e1",
-            name="ENV",
-            description="d",
-            selector="s",
-            value_type=MagicMock(value="string"),
-            value="x",
-        )
+        env_var = MagicMock()
+        env_var.id = "e1"
+        env_var.name = "ENV"
+        env_var.description = "d"
+        env_var.selector = ["s"]
+        env_var.value_type = MagicMock(value="string")
+        env_var.value = "x"
 
         workflow = MagicMock(environment_variables=[env_var])
         pipeline = MagicMock(id="p1")

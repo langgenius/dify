@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypedDict
 
 from flask import Response, request
-from flask_restx import Resource, fields, marshal, marshal_with
+from flask_restx import Resource, fields
 from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.types import SegmentType
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -24,6 +27,7 @@ from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTE
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from fields.base import ResponseModel
 from libs.login import current_user, login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
@@ -52,6 +56,155 @@ console_ns.schema_model(
 console_ns.schema_model(
     WorkflowDraftVariableUpdatePayload.__name__,
     WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+
+class FullContentDict(TypedDict):
+    size_bytes: int | None
+    value_type: str
+    length: int | None
+    download_url: str
+
+
+def _serialize_workflow_draft_variable(variable: WorkflowDraftVariable, *, include_value: bool) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "id": variable.id,
+        "type": variable.get_variable_type().value,
+        "name": variable.name,
+        "description": variable.description,
+        "selector": variable.get_selector(),
+        "value_type": _serialize_variable_type(variable),
+        "edited": variable.edited,
+        "visible": variable.visible,
+        "is_truncated": variable.file_id is not None,
+    }
+    if include_value:
+        result["value"] = _serialize_var_value(variable)
+        result["full_content"] = _serialize_full_content(variable)
+    return result
+
+
+def _serialize_workflow_draft_variable_list(
+    workflow_vars: WorkflowDraftVariableList, *, include_value: bool
+) -> dict[str, Any]:
+    response = {
+        "items": [
+            _serialize_workflow_draft_variable(variable, include_value=include_value)
+            for variable in workflow_vars.variables
+        ]
+    }
+    if not include_value:
+        response["total"] = workflow_vars.total
+    return response
+
+
+def _serialize_env_variable(variable: Any) -> dict[str, Any]:
+    selector = variable.get("selector") if isinstance(variable, dict) else getattr(variable, "selector", None)
+    if selector is None and hasattr(variable, "get_selector"):
+        selector = variable.get_selector()
+    if isinstance(selector, str):
+        selector = [selector]
+
+    value_type = variable.get("value_type") if isinstance(variable, dict) else getattr(variable, "value_type", None)
+    if not isinstance(value_type, str):
+        value_type = getattr(value_type, "value", value_type)
+
+    return {
+        "id": variable.get("id") if isinstance(variable, dict) else variable.id,
+        "type": variable.get("type", "env") if isinstance(variable, dict) else "env",
+        "name": variable.get("name") if isinstance(variable, dict) else variable.name,
+        "description": variable.get("description") if isinstance(variable, dict) else variable.description,
+        "selector": selector or [],
+        "value_type": value_type,
+        "edited": variable.get("edited", False) if isinstance(variable, dict) else getattr(variable, "edited", False),
+        "visible": variable.get("visible", True) if isinstance(variable, dict) else getattr(variable, "visible", True),
+    }
+
+
+class WorkflowDraftVariableWithoutValueResponse(ResponseModel):
+    id: str
+    type: str
+    name: str
+    description: str
+    selector: list[str]
+    value_type: str
+    edited: bool
+    visible: bool
+    is_truncated: bool
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_model(cls, value: Any) -> Any:
+        if isinstance(value, WorkflowDraftVariable):
+            return _serialize_workflow_draft_variable(value, include_value=False)
+        return value
+
+
+class WorkflowDraftVariableResponse(WorkflowDraftVariableWithoutValueResponse):
+    value: Any | None = None
+    full_content: FullContentDict | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_model(cls, value: Any) -> Any:
+        if isinstance(value, WorkflowDraftVariable):
+            return _serialize_workflow_draft_variable(value, include_value=True)
+        return value
+
+
+class WorkflowDraftEnvVariableResponse(ResponseModel):
+    id: str
+    type: str
+    name: str
+    description: str
+    selector: list[str]
+    value_type: str
+    edited: bool
+    visible: bool
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_model(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return _serialize_env_variable(value)
+        return _serialize_env_variable(value)
+
+
+class WorkflowDraftEnvVariableListResponse(ResponseModel):
+    items: list[WorkflowDraftEnvVariableResponse]
+
+
+class WorkflowDraftVariableListWithoutValueResponse(ResponseModel):
+    items: list[WorkflowDraftVariableWithoutValueResponse]
+    total: int | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_model(cls, value: Any) -> Any:
+        if isinstance(value, WorkflowDraftVariableList):
+            return _serialize_workflow_draft_variable_list(value, include_value=False)
+        return value
+
+
+class WorkflowDraftVariableListResponse(ResponseModel):
+    items: list[WorkflowDraftVariableResponse]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_model(cls, value: Any) -> Any:
+        if isinstance(value, WorkflowDraftVariableList):
+            return _serialize_workflow_draft_variable_list(value, include_value=True)
+        return value
+
+
+register_schema_models(
+    console_ns,
+    WorkflowDraftVariableWithoutValueResponse,
+    WorkflowDraftVariableResponse,
+    WorkflowDraftEnvVariableResponse,
+    WorkflowDraftEnvVariableListResponse,
+    WorkflowDraftVariableListWithoutValueResponse,
+    WorkflowDraftVariableListResponse,
 )
 
 
@@ -84,13 +237,6 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
 def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     value_type = workflow_draft_var.value_type
     return value_type.exposed_type().value
-
-
-class FullContentDict(TypedDict):
-    size_bytes: int | None
-    value_type: str
-    length: int | None
-    download_url: str
 
 
 def _serialize_full_content(variable: WorkflowDraftVariable) -> FullContentDict | None:
@@ -169,38 +315,8 @@ _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_FIELDS), attribute=_get_items),
 }
 
+
 # Register models for flask_restx to avoid dict type issues in Swagger
-workflow_draft_variable_without_value_model = console_ns.model(
-    "WorkflowDraftVariableWithoutValue", _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS
-)
-
-workflow_draft_variable_model = console_ns.model("WorkflowDraftVariable", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
-
-workflow_draft_env_variable_model = console_ns.model("WorkflowDraftEnvVariable", _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS)
-
-workflow_draft_env_variable_list_fields_copy = _WORKFLOW_DRAFT_ENV_VARIABLE_LIST_FIELDS.copy()
-workflow_draft_env_variable_list_fields_copy["items"] = fields.List(fields.Nested(workflow_draft_env_variable_model))
-workflow_draft_env_variable_list_model = console_ns.model(
-    "WorkflowDraftEnvVariableList", workflow_draft_env_variable_list_fields_copy
-)
-
-workflow_draft_variable_list_without_value_fields_copy = _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS.copy()
-workflow_draft_variable_list_without_value_fields_copy["items"] = fields.List(
-    fields.Nested(workflow_draft_variable_without_value_model), attribute=_get_items
-)
-workflow_draft_variable_list_without_value_model = console_ns.model(
-    "WorkflowDraftVariableListWithoutValue", workflow_draft_variable_list_without_value_fields_copy
-)
-
-workflow_draft_variable_list_fields_copy = _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS.copy()
-workflow_draft_variable_list_fields_copy["items"] = fields.List(
-    fields.Nested(workflow_draft_variable_model), attribute=_get_items
-)
-workflow_draft_variable_list_model = console_ns.model(
-    "WorkflowDraftVariableList", workflow_draft_variable_list_fields_copy
-)
-
-
 def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
@@ -232,10 +348,11 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
     @console_ns.response(
-        200, "Workflow variables retrieved successfully", workflow_draft_variable_list_without_value_model
+        200,
+        "Workflow variables retrieved successfully",
+        console_ns.models[WorkflowDraftVariableListWithoutValueResponse.__name__],
     )
     @_api_prerequisite
-    @marshal_with(workflow_draft_variable_list_without_value_model)
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -260,7 +377,7 @@ class WorkflowVariableCollectionApi(Resource):
                 user_id=current_user.id,
             )
 
-        return workflow_vars
+        return WorkflowDraftVariableListWithoutValueResponse.model_validate(workflow_vars).model_dump(mode="json")
 
     @console_ns.doc("delete_workflow_variables")
     @console_ns.doc(description="Delete all draft workflow variables")
@@ -297,9 +414,12 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.doc("get_node_variables")
     @console_ns.doc(description="Get variables for a specific node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
+    @console_ns.response(
+        200,
+        "Node variables retrieved successfully",
+        console_ns.models[WorkflowDraftVariableListResponse.__name__],
+    )
     @_api_prerequisite
-    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App, node_id: str):
         validate_node_id(node_id)
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
@@ -308,7 +428,7 @@ class NodeVariableCollectionApi(Resource):
             )
             node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
 
-        return node_vars
+        return WorkflowDraftVariableListResponse.model_validate(node_vars).model_dump(mode="json")
 
     @console_ns.doc("delete_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node")
@@ -330,10 +450,13 @@ class VariableApi(Resource):
     @console_ns.doc("get_variable")
     @console_ns.doc(description="Get a specific workflow variable")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
-    @console_ns.response(200, "Variable retrieved successfully", workflow_draft_variable_model)
+    @console_ns.response(
+        200,
+        "Variable retrieved successfully",
+        console_ns.models[WorkflowDraftVariableResponse.__name__],
+    )
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    @marshal_with(workflow_draft_variable_model)
     def get(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -343,15 +466,18 @@ class VariableApi(Resource):
             app_id=app_model.id,
             variable_id=variable_id,
         )
-        return variable
+        return WorkflowDraftVariableResponse.model_validate(variable).model_dump(mode="json")
 
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
     @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
-    @console_ns.response(200, "Variable updated successfully", workflow_draft_variable_model)
+    @console_ns.response(
+        200,
+        "Variable updated successfully",
+        console_ns.models[WorkflowDraftVariableResponse.__name__],
+    )
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    @marshal_with(workflow_draft_variable_model)
     def patch(self, app_model: App, variable_id: str):
         # Request payload for file types:
         #
@@ -388,7 +514,7 @@ class VariableApi(Resource):
         new_name = args_model.name
         raw_value = args_model.value
         if new_name is None and raw_value is None:
-            return variable
+            return WorkflowDraftVariableResponse.model_validate(variable).model_dump(mode="json")
 
         new_value = None
         if raw_value is not None:
@@ -416,7 +542,7 @@ class VariableApi(Resource):
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
-        return variable
+        return WorkflowDraftVariableResponse.model_validate(variable).model_dump(mode="json")
 
     @console_ns.doc("delete_variable")
     @console_ns.doc(description="Delete a workflow variable")
@@ -442,7 +568,11 @@ class VariableResetApi(Resource):
     @console_ns.doc("reset_variable")
     @console_ns.doc(description="Reset a workflow variable to its default value")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
-    @console_ns.response(200, "Variable reset successfully", workflow_draft_variable_model)
+    @console_ns.response(
+        200,
+        "Variable reset successfully",
+        console_ns.models[WorkflowDraftVariableResponse.__name__],
+    )
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
@@ -468,7 +598,7 @@ class VariableResetApi(Resource):
         if resetted is None:
             return Response("", 204)
         else:
-            return marshal(resetted, workflow_draft_variable_model)
+            return WorkflowDraftVariableResponse.model_validate(resetted).model_dump(mode="json")
 
 
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
@@ -494,10 +624,13 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Conversation variables retrieved successfully", workflow_draft_variable_list_model)
+    @console_ns.response(
+        200,
+        "Conversation variables retrieved successfully",
+        console_ns.models[WorkflowDraftVariableListResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
-    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
@@ -508,7 +641,9 @@ class ConversationVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(db.session())
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
         db.session.commit()
-        return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
+        return WorkflowDraftVariableListResponse.model_validate(
+            _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
@@ -516,11 +651,16 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.doc("get_system_variables")
     @console_ns.doc(description="Get system variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
+    @console_ns.response(
+        200,
+        "System variables retrieved successfully",
+        console_ns.models[WorkflowDraftVariableListResponse.__name__],
+    )
     @_api_prerequisite
-    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App):
-        return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID)
+        return WorkflowDraftVariableListResponse.model_validate(
+            _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID)
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
@@ -528,7 +668,11 @@ class EnvironmentVariableCollectionApi(Resource):
     @console_ns.doc("get_environment_variables")
     @console_ns.doc(description="Get environment variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Environment variables retrieved successfully")
+    @console_ns.response(
+        200,
+        "Environment variables retrieved successfully",
+        console_ns.models[WorkflowDraftEnvVariableListResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     def get(self, app_model: App):
@@ -560,4 +704,4 @@ class EnvironmentVariableCollectionApi(Resource):
                 }
             )
 
-        return {"items": env_vars_list}
+        return WorkflowDraftEnvVariableListResponse.model_validate({"items": env_vars_list}).model_dump(mode="json")
