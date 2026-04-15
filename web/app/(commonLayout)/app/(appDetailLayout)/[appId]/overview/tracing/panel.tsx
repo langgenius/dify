@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, DatadogConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import type { TracingStatus } from '@/models/app'
 import {
   RiArrowDownDoubleLine,
@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, DatabricksIcon, DatadogIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
 import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
@@ -71,6 +71,7 @@ const Panel: FC = () => {
     [TracingProvider.aliyun]: AliyunIcon,
     [TracingProvider.mlflow]: MlflowIcon,
     [TracingProvider.databricks]: DatabricksIcon,
+    [TracingProvider.datadog]: DatadogIcon,
     [TracingProvider.tencent]: TencentIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
@@ -84,8 +85,9 @@ const Panel: FC = () => {
   const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
   const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
   const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
+  const [datadogConfig, setDatadogConfig] = useState<DatadogConfig | null>(null)
   const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || datadogConfig || tencentConfig)
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
@@ -133,6 +135,11 @@ const Panel: FC = () => {
       if (!databricksHasNotConfig)
         setDatabricksConfig(databricksConfig as DatabricksConfig)
     }
+    const getDatadogConfig = async () => {
+      const { tracing_config: datadogConfig, has_not_configured: datadogHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.datadog })
+      if (!datadogHasNotConfig)
+        setDatadogConfig(datadogConfig as DatadogConfig)
+    }
     const getTencentConfig = async () => {
       const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
       if (!tencentHasNotConfig)
@@ -148,6 +155,7 @@ const Panel: FC = () => {
       getAliyunConfig(),
       getMLflowConfig(),
       getDatabricksConfig(),
+      getDatadogConfig(),
       getTencentConfig(),
     ])
   }
@@ -169,6 +177,8 @@ const Panel: FC = () => {
       setWeaveConfig(tracing_config as WeaveConfig)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(tracing_config as AliyunConfig)
+    else if (provider === TracingProvider.datadog)
+      setDatadogConfig(tracing_config as DatadogConfig)
     else if (provider === TracingProvider.tencent)
       setTencentConfig(tracing_config as TencentConfig)
   }
@@ -192,6 +202,8 @@ const Panel: FC = () => {
       setMLflowConfig(null)
     else if (provider === TracingProvider.databricks)
       setDatabricksConfig(null)
+    else if (provider === TracingProvider.datadog)
+      setDatadogConfig(null)
     else if (provider === TracingProvider.tencent)
       setTencentConfig(null)
     if (provider === inUseTracingProvider) {
@@ -241,6 +253,7 @@ const Panel: FC = () => {
           aliyunConfig={aliyunConfig}
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
+          datadogConfig={datadogConfig}
           tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
@@ -280,6 +293,7 @@ const Panel: FC = () => {
           aliyunConfig={aliyunConfig}
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
+          datadogConfig={datadogConfig}
           tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}

@@ -115,6 +115,15 @@ class OpsService:
             except Exception:
                 new_decrypt_tracing_config.update({"project_url": "https://console.cloud.tencent.com/apm"})
 
+        if tracing_provider == "datadog" and (
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+        ):
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update({"project_url": project_url})
+            except Exception:
+                new_decrypt_tracing_config.update({"project_url": "https://app.datadoghq.com/llm/traces"})
+
         if tracing_provider == "mlflow" and (
             "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
         ):
@@ -175,7 +184,7 @@ class OpsService:
                 project_url = f"{tracing_config.get('host')}/project/{project_key}"
             except Exception:
                 project_url = None
-        elif tracing_provider in ("langsmith", "opik", "mlflow", "databricks", "tencent"):
+        elif tracing_provider in ("langsmith", "opik", "mlflow", "databricks", "tencent", "datadog"):
             try:
                 project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
             except Exception:

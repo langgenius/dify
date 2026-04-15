@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, DatadogConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -31,10 +31,10 @@ import { TracingProvider } from './type'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | DatadogConfig | TencentConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | DatadogConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -101,6 +101,12 @@ const databricksConfigTemplate = {
   personal_access_token: '',
 }
 
+const datadogConfigTemplate: DatadogConfig = {
+  api_key: '',
+  site: 'datadoghq.com',
+  service_name: 'dify_app',
+}
+
 const tencentConfigTemplate = {
   token: '',
   endpoint: '',
@@ -120,7 +126,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | DatadogConfig | TencentConfig>((() => {
     if (isEdit)
       return payload
 
@@ -147,6 +153,9 @@ const ProviderConfigModal: FC<Props> = ({
 
     else if (type === TracingProvider.databricks)
       return databricksConfigTemplate
+
+    else if (type === TracingProvider.datadog)
+      return datadogConfigTemplate
 
     else if (type === TracingProvider.tencent)
       return tencentConfigTemplate
@@ -250,6 +259,12 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: 'Experiment ID' })
       if (!errorMessage && !postData.host)
         errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: 'Host' })
+    }
+
+    if (type === TracingProvider.datadog) {
+      const postData = config as DatadogConfig
+      if (!errorMessage && !postData.api_key)
+        errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: 'API Key' })
     }
 
     if (type === TracingProvider.tencent) {
@@ -418,6 +433,32 @@ const ProviderConfigModal: FC<Props> = ({
                               labelClassName="text-sm!"
                               isRequired
                               value={(config as TencentConfig).service_name}
+                              onChange={handleConfigChange('service_name')}
+                              placeholder="dify_app"
+                            />
+                          </>
+                        )}
+                        {type === TracingProvider.datadog && (
+                          <>
+                            <Field
+                              label="API Key"
+                              labelClassName="!text-sm"
+                              isRequired
+                              value={(config as DatadogConfig).api_key}
+                              onChange={handleConfigChange('api_key')}
+                              placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: 'API Key' })!}
+                            />
+                            <Field
+                              label={t(`${I18N_PREFIX}.site`, { ns: 'app' })!}
+                              labelClassName="!text-sm"
+                              value={(config as DatadogConfig).site}
+                              onChange={handleConfigChange('site')}
+                              placeholder="datadoghq.com, datadoghq.eu, us5.datadoghq.com"
+                            />
+                            <Field
+                              label={t(`${I18N_PREFIX}.serviceName`, { ns: 'app' })!}
+                              labelClassName="!text-sm"
+                              value={(config as DatadogConfig).service_name}
                               onChange={handleConfigChange('service_name')}
                               placeholder="dify_app"
                             />
