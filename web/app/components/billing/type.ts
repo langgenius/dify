@@ -1,16 +1,19 @@
-export enum Plan {
-  sandbox = 'sandbox',
-  professional = 'professional',
-  team = 'team',
-  enterprise = 'enterprise',
-}
-export enum Priority {
-  standard = 'standard',
-  priority = 'priority',
-  topPriority = 'top-priority',
-}
+export const Plan = {
+  sandbox: 'sandbox',
+  professional: 'professional',
+  team: 'team',
+  enterprise: 'enterprise',
+} as const
+export type Plan = typeof Plan[keyof typeof Plan]
 
-export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team
+export const Priority = {
+  standard: 'standard',
+  priority: 'priority',
+  topPriority: 'top-priority',
+} as const
+export type Priority = typeof Priority[keyof typeof Priority]
+
+export type BasicPlan = typeof Plan['sandbox'] | typeof Plan['professional'] | typeof Plan['team']
 
 export type PlanInfo = {
   level: number
@@ -31,11 +34,12 @@ export type PlanInfo = {
   annotatedResponse: number
 }
 
-export enum SelfHostedPlan {
-  community = 'community',
-  premium = 'premium',
-  enterprise = 'enterprise',
-}
+export const SelfHostedPlan = {
+  community: 'community',
+  premium: 'premium',
+  enterprise: 'enterprise',
+} as const
+export type SelfHostedPlan = typeof SelfHostedPlan[keyof typeof SelfHostedPlan]
 
 export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota' | 'apiRateLimit' | 'triggerEvents'> & { vectorSpace: number }
 
@@ -50,11 +54,12 @@ export type BillingQuota = {
   reset_date?: number | null
 }
 
-export enum DocumentProcessingPriority {
-  standard = 'standard',
-  priority = 'priority',
-  topPriority = 'top-priority',
-}
+export const DocumentProcessingPriority = {
+  standard: 'standard',
+  priority: 'priority',
+  topPriority: 'top-priority',
+} as const
+export type DocumentProcessingPriority = typeof DocumentProcessingPriority[keyof typeof DocumentProcessingPriority]
 
 export type CurrentPlanInfoBackend = {
   billing: {

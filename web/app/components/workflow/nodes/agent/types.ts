@@ -15,6 +15,7 @@ export type AgentNodeType = CommonNodeType & {
   tool_node_version?: string
 }
 
-export enum AgentFeature {
-  HISTORY_MESSAGES = 'history-messages',
-}
+export const AgentFeature = {
+  HISTORY_MESSAGES: 'history-messages',
+} as const
+export type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
