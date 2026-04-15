@@ -1173,3 +1173,190 @@ class TestRetrievalServiceInternals:
             ]
         )
         assert mock_sign.call_count == 2
+
+
+class TestEmbeddingSearchVdbScoreThreshold:
+    """Tests for the vdb_score_threshold bypass in RetrievalService.embedding_search.
+
+    When a valid reranking model is configured (both provider and model name present)
+    the vector-DB score threshold must be 0.0 so that all candidates survive to the
+    reranking stage.  The original score_threshold is then applied by
+    DataPostProcessor after reranking.  Without a reranking model, the original
+    threshold must flow through to the vector-DB query unchanged.
+    """
+
+    @pytest.fixture
+    def dataset(self):
+        ds = Mock(spec=Dataset)
+        ds.id = "dataset-id"
+        ds.tenant_id = "tenant-id"
+        ds.is_multimodal = False
+        return ds
+
+    @pytest.fixture
+    def flask_app(self):
+        app = MagicMock()
+        app.app_context.return_value.__enter__ = Mock()
+        app.app_context.return_value.__exit__.return_value = False
+        return app
+
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_vdb_threshold_is_zero_when_valid_reranking_configured(
+        self, mock_get_dataset, mock_vector_class, mock_processor_class, dataset, flask_app
+    ):
+        """Vector DB receives threshold=0.0 so no candidates are lost before reranking."""
+        mock_get_dataset.return_value = dataset
+        vector_instance = Mock()
+        vector_instance.search_by_vector.return_value = [create_mock_document("doc", "d1", 0.4)]
+        mock_vector_class.return_value = vector_instance
+        processor_instance = Mock()
+        processor_instance.invoke.return_value = []
+        mock_processor_class.return_value = processor_instance
+
+        RetrievalService.embedding_search(
+            flask_app=flask_app,
+            dataset_id=dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.7,
+            reranking_model={
+                "reranking_provider_name": "provider-x",
+                "reranking_model_name": "reranker-y",
+            },
+            all_documents=[],
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=[],
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        _, kwargs = vector_instance.search_by_vector.call_args
+        assert kwargs["score_threshold"] == 0.0
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_vdb_threshold_uses_original_when_no_reranking_model(
+        self, mock_get_dataset, mock_vector_class, dataset, flask_app
+    ):
+        """Without a reranking model the original score_threshold reaches the vector DB."""
+        mock_get_dataset.return_value = dataset
+        vector_instance = Mock()
+        vector_instance.search_by_vector.return_value = []
+        mock_vector_class.return_value = vector_instance
+
+        RetrievalService.embedding_search(
+            flask_app=flask_app,
+            dataset_id=dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.6,
+            reranking_model=None,
+            all_documents=[],
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=[],
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        _, kwargs = vector_instance.search_by_vector.call_args
+        assert kwargs["score_threshold"] == 0.6
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_vdb_threshold_uses_original_when_reranking_model_name_missing(
+        self, mock_get_dataset, mock_vector_class, dataset, flask_app
+    ):
+        """Incomplete reranking config (no model name) → original threshold used."""
+        mock_get_dataset.return_value = dataset
+        vector_instance = Mock()
+        vector_instance.search_by_vector.return_value = []
+        mock_vector_class.return_value = vector_instance
+
+        RetrievalService.embedding_search(
+            flask_app=flask_app,
+            dataset_id=dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.55,
+            reranking_model={
+                "reranking_provider_name": "provider-x",
+                "reranking_model_name": "",
+            },
+            all_documents=[],
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=[],
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        _, kwargs = vector_instance.search_by_vector.call_args
+        assert kwargs["score_threshold"] == 0.55
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_vdb_threshold_uses_original_when_reranking_provider_name_missing(
+        self, mock_get_dataset, mock_vector_class, dataset, flask_app
+    ):
+        """Incomplete reranking config (no provider name) → original threshold used."""
+        mock_get_dataset.return_value = dataset
+        vector_instance = Mock()
+        vector_instance.search_by_vector.return_value = []
+        mock_vector_class.return_value = vector_instance
+
+        RetrievalService.embedding_search(
+            flask_app=flask_app,
+            dataset_id=dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.45,
+            reranking_model={
+                "reranking_provider_name": "",
+                "reranking_model_name": "reranker-y",
+            },
+            all_documents=[],
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=[],
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        _, kwargs = vector_instance.search_by_vector.call_args
+        assert kwargs["score_threshold"] == 0.45
+
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_vdb_threshold_is_zero_for_image_query_with_valid_reranking(
+        self, mock_get_dataset, mock_vector_class, mock_processor_class, dataset, flask_app
+    ):
+        """IMAGE_QUERY path (search_by_file) also receives threshold=0.0 when reranking is valid."""
+        dataset.is_multimodal = True
+        mock_get_dataset.return_value = dataset
+        vector_instance = Mock()
+        vector_instance.search_by_file.return_value = [create_mock_document("img", "img-1", 0.35)]
+        mock_vector_class.return_value = vector_instance
+
+        model_manager_mock = Mock()
+        model_manager_mock.check_model_support_vision.return_value = False
+
+        with patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant", return_value=model_manager_mock):
+            processor_instance = Mock()
+            processor_instance.invoke.return_value = []
+            mock_processor_class.return_value = processor_instance
+
+            RetrievalService.embedding_search(
+                flask_app=flask_app,
+                dataset_id=dataset.id,
+                query="file-id",
+                top_k=4,
+                score_threshold=0.8,
+                reranking_model={
+                    "reranking_provider_name": "provider-x",
+                    "reranking_model_name": "reranker-y",
+                },
+                all_documents=[],
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                exceptions=[],
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        _, kwargs = vector_instance.search_by_file.call_args
+        assert kwargs["score_threshold"] == 0.0

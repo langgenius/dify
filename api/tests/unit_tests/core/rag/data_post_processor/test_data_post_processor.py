@@ -229,6 +229,91 @@ class TestDataPostProcessor:
         for_tenant_mock.assert_called_once_with(tenant_id="tenant-1")
 
 
+class TestDataPostProcessorFallbackFiltering:
+    """Tests for the score-threshold fallback path in DataPostProcessor.invoke.
+
+    The fallback activates when rerank_runner is None but score_threshold is set
+    (e.g. after a model authorisation failure).  It filters documents by their
+    metadata["score"] value, defaulting missing or absent scores to 0.
+    """
+
+    def _doc_with_score(self, content: str, score: float) -> Document:
+        return Document(page_content=content, metadata={"score": score})
+
+    def test_filters_documents_below_score_threshold(self):
+        docs = [
+            self._doc_with_score("low", 0.3),
+            self._doc_with_score("exact", 0.5),
+            self._doc_with_score("high", 0.8),
+        ]
+        processor = DataPostProcessor.__new__(DataPostProcessor)
+        processor.rerank_runner = None
+        processor.reorder_runner = None
+
+        result = processor.invoke(query="q", documents=docs, score_threshold=0.5)
+
+        assert [d.page_content for d in result] == ["exact", "high"]
+
+    def test_passes_all_documents_when_score_threshold_is_none(self):
+        docs = [
+            self._doc_with_score("a", 0.1),
+            self._doc_with_score("b", 0.9),
+        ]
+        processor = DataPostProcessor.__new__(DataPostProcessor)
+        processor.rerank_runner = None
+        processor.reorder_runner = None
+
+        result = processor.invoke(query="q", documents=docs, score_threshold=None)
+
+        assert result == docs
+
+    def test_filters_document_without_metadata(self):
+        # A document with no metadata at all has an effective score of 0
+        # and must be removed when the threshold is > 0.
+        doc_no_meta = Document(page_content="no-meta")
+        doc_with_score = self._doc_with_score("scored", 0.6)
+        processor = DataPostProcessor.__new__(DataPostProcessor)
+        processor.rerank_runner = None
+        processor.reorder_runner = None
+
+        result = processor.invoke(query="q", documents=[doc_no_meta, doc_with_score], score_threshold=0.5)
+
+        assert result == [doc_with_score]
+
+    def test_filters_document_with_missing_score_key(self):
+        # metadata present but 'score' key absent → defaults to 0.
+        doc_no_score_key = Document(page_content="no-key", metadata={"doc_id": "x"})
+        doc_with_score = self._doc_with_score("scored", 0.7)
+        processor = DataPostProcessor.__new__(DataPostProcessor)
+        processor.rerank_runner = None
+        processor.reorder_runner = None
+
+        result = processor.invoke(query="q", documents=[doc_no_score_key, doc_with_score], score_threshold=0.5)
+
+        assert result == [doc_with_score]
+
+    def test_fallback_still_applies_reorder_runner(self):
+        docs = [
+            self._doc_with_score("0", 0.9),
+            self._doc_with_score("1", 0.8),
+            self._doc_with_score("2", 0.7),
+            self._doc_with_score("3", 0.6),
+        ]
+        reordered = [self._doc_with_score("reordered", 1.0)]
+
+        processor = DataPostProcessor.__new__(DataPostProcessor)
+        processor.rerank_runner = None
+        processor.reorder_runner = MagicMock()
+        processor.reorder_runner.run.return_value = reordered
+
+        result = processor.invoke(query="q", documents=docs, score_threshold=0.7)
+
+        # score_threshold=0.7 keeps docs with scores 0.9, 0.8, 0.7
+        filtered = [d for d in docs if d.metadata["score"] >= 0.7]
+        processor.reorder_runner.run.assert_called_once_with(filtered)
+        assert result == reordered
+
+
 class TestReorderRunner:
     def test_run_reorders_even_sized_document_list(self):
         documents = [_doc("0"), _doc("1"), _doc("2"), _doc("3"), _doc("4"), _doc("5")]

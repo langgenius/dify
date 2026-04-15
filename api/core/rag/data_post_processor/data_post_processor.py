@@ -57,6 +57,14 @@ class DataPostProcessor:
     ) -> list[Document]:
         if self.rerank_runner:
             documents = self.rerank_runner.run(query, documents, score_threshold, top_n, query_type)
+        elif score_threshold is not None:
+            # Fallback: apply score threshold filtering directly when the
+            # rerank runner is unavailable (e.g. model authorization failure).
+            documents = [
+                doc
+                for doc in documents
+                if doc.metadata and doc.metadata.get("score", 0) >= score_threshold
+            ]
 
         if self.reorder_runner:
             documents = self.reorder_runner.run(documents)

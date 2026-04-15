@@ -294,13 +294,24 @@ class RetrievalService:
 
                 vector = Vector(dataset=dataset)
                 documents = []
+                # When a reranking model is configured, skip score threshold at the
+                # vector DB layer so all candidates survive to the reranking stage.
+                # The threshold is correctly applied after reranking by
+                # DataPostProcessor.invoke() -> RerankModelRunner.run() or
+                # WeightRerankRunner.run().
+                has_valid_reranking = bool(
+                    reranking_model
+                    and reranking_model.get("reranking_model_name")
+                    and reranking_model.get("reranking_provider_name")
+                )
+                vdb_score_threshold = 0.0 if has_valid_reranking else score_threshold
                 if query_type == QueryType.TEXT_QUERY:
                     documents.extend(
                         vector.search_by_vector(
                             query,
                             search_type="similarity_score_threshold",
                             top_k=top_k,
-                            score_threshold=score_threshold,
+                            score_threshold=vdb_score_threshold,
                             filter={"group_id": [dataset.id]},
                             document_ids_filter=document_ids_filter,
                         )
@@ -312,7 +323,7 @@ class RetrievalService:
                         vector.search_by_file(
                             file_id=query,
                             top_k=top_k,
-                            score_threshold=score_threshold,
+                            score_threshold=vdb_score_threshold,
                             filter={"group_id": [dataset.id]},
                             document_ids_filter=document_ids_filter,
                         )
