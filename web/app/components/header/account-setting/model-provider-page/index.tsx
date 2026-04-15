@@ -2,6 +2,7 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
@@ -11,7 +12,6 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
-import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,

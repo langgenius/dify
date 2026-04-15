@@ -10,6 +10,7 @@ import type {
   Query,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Line,
   RiPlayCircleLine,
@@ -24,7 +25,6 @@ import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
 import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import Textarea from './textarea'
 
 type QueryInputProps = {

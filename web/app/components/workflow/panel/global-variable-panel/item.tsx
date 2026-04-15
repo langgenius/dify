@@ -1,9 +1,9 @@
 import type { GlobalVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { capitalize } from 'es-toolkit/string'
-import { memo } from 'react'
 
+import { memo } from 'react'
 import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   payload: GlobalVariable

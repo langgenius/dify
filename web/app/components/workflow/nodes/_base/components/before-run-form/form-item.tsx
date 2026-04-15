@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -21,7 +22,6 @@ import Textarea from '@/app/components/base/textarea'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { Resolution, TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../types'
 import { CodeLanguage } from '../../../code/types'
 import CodeEditor from '../editor/code-editor'

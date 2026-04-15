@@ -1,6 +1,7 @@
 'use client'
 import type { App } from '@/models/explore'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { Button } from '@/app/components/base/ui/button'
 import AppListContext from '@/context/app-list-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {

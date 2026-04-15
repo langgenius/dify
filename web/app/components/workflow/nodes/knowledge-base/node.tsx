@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import {
   memo,
@@ -16,7 +17,6 @@ import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/client'
-import { cn } from '@/utils/classnames'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
 import {

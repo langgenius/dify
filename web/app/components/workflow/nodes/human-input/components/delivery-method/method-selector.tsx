@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DeliveryMethod } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiDiscordFill,
@@ -23,7 +24,6 @@ import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'

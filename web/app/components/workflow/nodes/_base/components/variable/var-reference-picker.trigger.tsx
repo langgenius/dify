@@ -6,6 +6,7 @@ import type { CredentialFormSchema, CredentialFormSchemaSelect } from '@/app/com
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCloseLine, RiErrorWarningFill, RiLoader4Line, RiMoreLine } from '@remixicon/react'
 import Badge from '@/app/components/base/badge'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -14,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/u
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { cn } from '@/utils/classnames'
 import RemoveButton from '../remove-button'
 import ConstantField from './constant-field'
 

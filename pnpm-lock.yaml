@@ -758,9 +758,6 @@ importers:
       client-only:
         specifier: 'catalog:'
         version: 0.0.1
-      clsx:
-        specifier: 'catalog:'
-        version: 2.1.1
       cmdk:
         specifier: 'catalog:'
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -941,9 +938,6 @@ importers:
       string-ts:
         specifier: 'catalog:'
         version: 2.3.1
-      tailwind-merge:
-        specifier: 'catalog:'
-        version: 3.5.0
       tldts:
         specifier: 'catalog:'
         version: 7.0.28

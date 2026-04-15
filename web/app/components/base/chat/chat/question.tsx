@@ -4,6 +4,7 @@ import type {
 } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import type { ChatItem } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -18,7 +19,6 @@ import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import ActionButton from '../../action-button'
 import { toast } from '../../ui/toast'
 import { CssTransform } from '../embedded-chatbot/theme/utils'

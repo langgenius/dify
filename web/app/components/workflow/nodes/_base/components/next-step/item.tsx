@@ -1,6 +1,7 @@
 import type {
   CommonNodeType,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -14,7 +15,6 @@ import {
   useNodesReadOnly,
   useToolIcon,
 } from '@/app/components/workflow/hooks'
-import { cn } from '@/utils/classnames'
 import Operator from './operator'
 
 type ItemProps = {

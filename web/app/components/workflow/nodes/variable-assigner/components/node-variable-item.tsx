@@ -1,5 +1,6 @@
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
@@ -12,7 +13,6 @@ import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { cn } from '@/utils/classnames'
 
 type NodeVariableItemProps = {
   node: Node
@@ -80,7 +80,7 @@ const NodeVariableItem = ({
     return (
       <div
         className={cn(
-          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
+          'ml-0.5 shrink truncate system-xs-medium text-text-accent',
           isEnv && 'text-text-primary',
           isException && 'text-text-warning',
           isChatVar && 'text-util-colors-teal-teal-700',

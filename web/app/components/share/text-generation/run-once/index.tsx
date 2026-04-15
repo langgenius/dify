@@ -4,6 +4,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -22,7 +23,6 @@ import BoolInput from '@/app/components/workflow/nodes/_base/components/before-r
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 
 type IRunOnceProps = {
   siteInfo: SiteInfo

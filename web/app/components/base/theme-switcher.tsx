@@ -1,6 +1,6 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTheme } from 'next-themes'
-import { cn } from '@/utils/classnames'
 
 type Theme = 'light' | 'dark' | 'system'
 

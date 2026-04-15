@@ -5,6 +5,7 @@ import type {
   ModelItem,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +17,6 @@ import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { getMarketplaceUrl } from '@/utils/var'
 import {

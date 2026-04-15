@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
 import data from '@emoji-mart/data'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
 import { init } from 'emoji-mart'
 import * as React from 'react'
 import { useRef } from 'react'
-import { cn } from '@/utils/classnames'
 
 init({ data })
 

@@ -1,8 +1,8 @@
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useState } from 'react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string

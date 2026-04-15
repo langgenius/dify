@@ -1,10 +1,10 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type AudioPlayerProps = {
   src?: string // Keep backward compatibility

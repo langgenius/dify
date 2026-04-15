@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { ACCEPT_TYPES } from '../constants'
 import { useUpload } from '../hooks/use-upload'
 

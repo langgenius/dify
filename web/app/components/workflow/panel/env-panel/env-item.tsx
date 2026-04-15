@@ -1,10 +1,10 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 
 type EnvItemProps = {
   env: EnvironmentVariable

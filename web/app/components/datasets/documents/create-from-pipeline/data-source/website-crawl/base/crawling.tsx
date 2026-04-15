@@ -1,7 +1,7 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type CrawlingProps = {
   className?: string

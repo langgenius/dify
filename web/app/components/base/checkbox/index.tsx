@@ -1,4 +1,4 @@
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import IndeterminateIcon from './assets/indeterminate-icon'
 
 type CheckboxProps = {

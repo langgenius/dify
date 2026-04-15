@@ -1,9 +1,9 @@
 import type { FileTypeSelectOption } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { cn } from '@/utils/classnames'
 
 type TriggerProps = {
   option: FileTypeSelectOption | undefined

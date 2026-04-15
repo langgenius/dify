@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiUploadCloud2Line,
@@ -10,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 
 type Props = {

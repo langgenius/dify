@@ -1,6 +1,7 @@
 'use client'
 import type { AppIconType, AppModeEnum } from '@/types/app'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -16,7 +17,6 @@ import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 
 export type NavItem = {
   id: string

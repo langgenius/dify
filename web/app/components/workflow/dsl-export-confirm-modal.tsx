@@ -1,5 +1,6 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -9,7 +10,6 @@ import Checkbox from '@/app/components/base/checkbox'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import Modal from '@/app/components/base/modal'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 export type DSLExportConfirmModalProps = {
   envList: EnvironmentVariable[]

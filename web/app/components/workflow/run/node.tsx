@@ -7,6 +7,7 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAlertFill,
   RiArrowRightSLine,
@@ -24,7 +25,6 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'

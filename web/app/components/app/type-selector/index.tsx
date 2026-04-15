@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCloseCircleFill, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -9,7 +10,6 @@ import {
   PopoverTrigger,
 } from '@/app/components/base/ui/popover'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type AppSelectorProps = {
   value: Array<AppModeEnum>

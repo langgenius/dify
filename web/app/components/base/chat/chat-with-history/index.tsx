@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InstalledApp } from '@/models/explore'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useEffect,
   useState,
@@ -8,7 +9,6 @@ import {
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { cn } from '@/utils/classnames'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
 import ChatWrapper from './chat-wrapper'
 import {

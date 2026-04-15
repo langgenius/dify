@@ -1,4 +1,5 @@
 import type { Credential } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckLine,
   RiDeleteBinLine,
@@ -17,7 +18,6 @@ import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {

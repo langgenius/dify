@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiDeleteBinLine,
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { PortalSelect as Select } from '@/app/components/base/select'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { VarType } from '../../../types'
 import { SUB_VARIABLES } from '../../constants'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'

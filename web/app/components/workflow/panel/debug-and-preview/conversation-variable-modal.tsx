@@ -2,6 +2,7 @@
 import type {
   ConversationVariable,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import copy from 'copy-to-clipboard'
@@ -22,7 +23,6 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   conversationID: string

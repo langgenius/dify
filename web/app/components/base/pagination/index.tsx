@@ -1,11 +1,11 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import { Pagination } from './pagination'
 
 export type Props = {

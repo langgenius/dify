@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { cn } from '@/utils/classnames'
 import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
 

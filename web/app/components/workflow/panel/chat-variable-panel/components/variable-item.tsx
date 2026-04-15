@@ -1,9 +1,9 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import { cn } from '@/utils/classnames'
 
 type VariableItemProps = {
   item: ConversationVariable

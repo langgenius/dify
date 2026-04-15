@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
 import { useWorkflowPausedDetails } from '@/service/use-log'
-import { cn } from '@/utils/classnames'
 
 type ResultProps = {
   status: string
@@ -99,10 +99,10 @@ const StatusPanel: FC<ResultProps> = ({
           status === 'partial-succeeded' && 'min-w-[140px]',
         )}
         >
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.status', { ns: 'runLog' })}</div>
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.status', { ns: 'runLog' })}</div>
           <div
             className={cn(
-              'system-xs-semibold-uppercase flex items-center gap-1',
+              'flex items-center gap-1 system-xs-semibold-uppercase',
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
@@ -155,8 +155,8 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="max-w-[152px] flex-[33%]">
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
-          <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
+          <div className="flex items-center gap-1 system-sm-medium text-text-secondary">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-16 animate-pulse rounded-xs bg-text-quaternary" />
             )}
@@ -166,8 +166,8 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="flex-[33%]">
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
-          <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
+          <div className="flex items-center gap-1 system-sm-medium text-text-secondary">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
             )}
@@ -223,13 +223,13 @@ const StatusPanel: FC<ResultProps> = ({
       {status === 'paused' && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
-          <div className="system-xs-medium flex flex-col gap-y-2">
+          <div className="flex flex-col gap-y-2 system-xs-medium">
             <div className="flex flex-col gap-y-0.5">
               <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
               {
                 pausedReasons.length > 0
                   ? pausedReasons.map(reason => (
-                      <div className="system-xs-medium truncate text-text-secondary" key={reason}>{reason}</div>
+                      <div className="truncate system-xs-medium text-text-secondary" key={reason}>{reason}</div>
                     ))
                   : (
                       <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />

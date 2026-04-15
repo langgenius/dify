@@ -1,4 +1,5 @@
 import type { ToolInfoInThought } from '../type'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -7,7 +8,6 @@ import {
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type ToolDetailProps = {
   payload: ToolInfoInThought

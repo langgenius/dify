@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
-import { cn } from '@/utils/classnames'
 import {
   ScrollAreaContent,
   ScrollAreaCorner,

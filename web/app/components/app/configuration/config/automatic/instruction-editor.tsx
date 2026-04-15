@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { GeneratorType } from './types'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -9,7 +10,6 @@ import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-edito
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   editorKey: string

@@ -1,6 +1,7 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiQuestionLine,
@@ -14,7 +15,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   disabled?: boolean

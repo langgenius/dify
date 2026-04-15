@@ -6,6 +6,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -28,7 +29,6 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { cn } from '@/utils/classnames'
 import {
   createPickerProps,
   getFieldFlags,

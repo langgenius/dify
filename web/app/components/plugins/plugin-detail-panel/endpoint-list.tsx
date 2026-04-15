@@ -1,4 +1,5 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiApps2AddLine,
@@ -18,7 +19,6 @@ import {
   useEndpointList,
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
-import { cn } from '@/utils/classnames'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'

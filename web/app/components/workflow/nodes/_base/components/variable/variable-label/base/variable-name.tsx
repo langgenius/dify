@@ -1,5 +1,5 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 import { useVarName } from '../hooks'
 
 type VariableNameProps = {
@@ -17,7 +17,7 @@ const VariableName = ({
   return (
     <div
       className={cn(
-        'system-xs-medium truncate',
+        'truncate system-xs-medium',
         className,
       )}
       title={varName}

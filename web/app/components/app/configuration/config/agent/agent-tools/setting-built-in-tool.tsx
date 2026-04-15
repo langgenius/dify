@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -28,7 +29,6 @@ import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-for
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   showBackButton?: boolean

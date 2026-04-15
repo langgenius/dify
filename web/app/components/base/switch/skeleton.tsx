@@ -1,6 +1,6 @@
 import type { SwitchSize } from './index'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
-import { cn } from '@/utils/classnames'
 
 const skeletonVariants = cva(
   'bg-text-quaternary opacity-20',

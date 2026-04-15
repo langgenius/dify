@@ -1,4 +1,5 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightSLine,
   RiListView,
@@ -14,7 +15,6 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import NodeStatusIcon from '@/app/components/workflow/nodes/_base/components/node-status-icon'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type AgentLogItemProps = {
   item: AgentLogItemWithChildren

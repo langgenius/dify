@@ -2,7 +2,7 @@ import type {
   CommonNodeType,
   Node,
 } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import Add from './add'
 import Item from './item'
 

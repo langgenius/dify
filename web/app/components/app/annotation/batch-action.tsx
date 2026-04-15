@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -12,7 +13,6 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
 

@@ -1,8 +1,8 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
-import { cn } from '@/utils/classnames'
 import TagsFilter from './tags-filter'
 
 type SearchBoxProps = {

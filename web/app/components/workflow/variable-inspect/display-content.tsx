@@ -1,6 +1,7 @@
 import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiBracesLine, RiEyeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -11,7 +12,6 @@ import Textarea from '@/app/components/base/textarea'
 import { ChunkCardList } from '@/app/components/rag-pipeline/components/chunk-card-list'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import { PreviewType, ViewMode } from './types'
 
 type DisplayContentProps = {

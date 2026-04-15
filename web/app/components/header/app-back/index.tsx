@@ -2,10 +2,10 @@
 
 import type { AppDetailResponse } from '@/models/app'
 import { ArrowLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 
 type IAppBackProps = {
   curApp: AppDetailResponse

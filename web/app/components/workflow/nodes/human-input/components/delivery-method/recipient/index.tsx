@@ -1,4 +1,5 @@
 import type { RecipientData, Recipient as RecipientItem } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiGroupLine } from '@remixicon/react'
 import { produce } from 'immer'
 import { memo } from 'react'
@@ -6,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
 

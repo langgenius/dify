@@ -1,7 +1,7 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLargeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { cn } from '@/utils/classnames'
 
 type IModal = {
   className?: string

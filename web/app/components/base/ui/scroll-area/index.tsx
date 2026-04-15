@@ -1,8 +1,8 @@
 'use client'
 
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import './scroll-area.css'
 
 export const ScrollAreaRoot = BaseScrollArea.Root

@@ -3,6 +3,7 @@ import type { ButtonProps } from '@/app/components/base/ui/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
@@ -22,7 +23,6 @@ import { Button } from '@/app/components/base/ui/button'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
-import { cn } from '@/utils/classnames'
 
 export type FormData = {
   site: { site: SiteInfo }

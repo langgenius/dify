@@ -1,9 +1,9 @@
 'use client'
 import type { InputProps } from '../input'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useClipboard } from '@/hooks/use-clipboard'
-import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
 import Tooltip from '../tooltip'
 

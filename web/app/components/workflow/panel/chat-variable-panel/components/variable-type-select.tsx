@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -7,7 +8,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   inCell?: boolean
