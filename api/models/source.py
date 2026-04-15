@@ -25,7 +25,7 @@ class DataSourceOauthBinding(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     access_token: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_info: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    source_info: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

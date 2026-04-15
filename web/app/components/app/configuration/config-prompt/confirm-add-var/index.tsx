@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import VarHighlight from '../../base/var-highlight'
 
 type IConfirmAddVarProps = {
@@ -35,7 +35,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   // }, mainContentRef)
   return (
     <div
-      className="absolute inset-0  flex items-center justify-center rounded-xl"
+      className="absolute inset-0 flex items-center justify-center rounded-xl"
       style={{
         backgroundColor: 'rgba(35, 56, 118, 0.2)',
       }}

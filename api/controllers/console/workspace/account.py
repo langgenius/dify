@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 import pytz
 from flask import request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 
@@ -37,9 +37,10 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from fields.member_fields import Account as AccountResponse
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
+from libs.helper import EmailStr, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
@@ -178,17 +179,57 @@ def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 
-integrate_fields = {
-    "provider": fields.String,
-    "created_at": TimestampField,
-    "is_bound": fields.Boolean,
-    "link": fields.String,
-}
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
 
-integrate_model = console_ns.model("AccountIntegrate", integrate_fields)
-integrate_list_model = console_ns.model(
-    "AccountIntegrateList",
-    {"data": fields.List(fields.Nested(integrate_model))},
+
+class AccountIntegrateResponse(ResponseModel):
+    provider: str
+    created_at: int | None = None
+    is_bound: bool
+    link: str | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class AccountIntegrateListResponse(ResponseModel):
+    data: list[AccountIntegrateResponse]
+
+
+class EducationVerifyResponse(ResponseModel):
+    token: str | None = None
+
+
+class EducationStatusResponse(ResponseModel):
+    result: bool | None = None
+    is_student: bool | None = None
+    expire_at: int | None = None
+    allow_refresh: bool | None = None
+
+    @field_validator("expire_at", mode="before")
+    @classmethod
+    def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class EducationAutocompleteResponse(ResponseModel):
+    data: list[str] = Field(default_factory=list)
+    curr_page: int | None = None
+    has_next: bool | None = None
+
+
+register_schema_models(
+    console_ns,
+    AccountIntegrateResponse,
+    AccountIntegrateListResponse,
+    EducationVerifyResponse,
+    EducationStatusResponse,
+    EducationAutocompleteResponse,
 )
 
 
@@ -359,7 +400,7 @@ class AccountIntegrateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(integrate_list_model)
+    @console_ns.response(200, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
@@ -395,7 +436,9 @@ class AccountIntegrateApi(Resource):
                     }
                 )
 
-        return {"data": integrate_data}
+        return AccountIntegrateListResponse(
+            data=[AccountIntegrateResponse.model_validate(item) for item in integrate_data]
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/delete/verify")
@@ -447,31 +490,22 @@ class AccountDeleteUpdateFeedbackApi(Resource):
 
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
-    verify_fields = {
-        "token": fields.String,
-    }
-
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @marshal_with(verify_fields)
+    @console_ns.response(200, "Success", console_ns.models[EducationVerifyResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
-        return BillingService.EducationIdentity.verify(account.id, account.email)
+        return EducationVerifyResponse.model_validate(
+            BillingService.EducationIdentity.verify(account.id, account.email) or {}
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
-    status_fields = {
-        "result": fields.Boolean,
-        "is_student": fields.Boolean,
-        "expire_at": TimestampField,
-        "allow_refresh": fields.Boolean,
-    }
-
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     @setup_required
     @login_required
@@ -491,37 +525,33 @@ class EducationApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @marshal_with(status_fields)
+    @console_ns.response(200, "Success", console_ns.models[EducationStatusResponse.__name__])
     def get(self):
         account, _ = current_account_with_tenant()
 
-        res = BillingService.EducationIdentity.status(account.id)
+        res = BillingService.EducationIdentity.status(account.id) or {}
         # convert expire_at to UTC timestamp from isoformat
         if res and "expire_at" in res:
             res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
-        return res
+        return EducationStatusResponse.model_validate(res).model_dump(mode="json")
 
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
-    data_fields = {
-        "data": fields.List(fields.String),
-        "curr_page": fields.Integer,
-        "has_next": fields.Boolean,
-    }
-
     @console_ns.expect(console_ns.models[EducationAutocompleteQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @marshal_with(data_fields)
+    @console_ns.response(200, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     def get(self):
         payload = request.args.to_dict(flat=True)
         args = EducationAutocompleteQuery.model_validate(payload)
 
-        return BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit)
+        return EducationAutocompleteResponse.model_validate(
+            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {}
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/change-email")

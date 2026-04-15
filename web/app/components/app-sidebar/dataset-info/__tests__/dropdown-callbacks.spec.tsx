@@ -137,33 +137,6 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({
-    isShow,
-    onConfirm,
-    onCancel,
-    title,
-    content,
-  }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-    content: string
-  }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog">
-        <span>{title}</span>
-        <span>{content}</span>
-        <button type="button" onClick={onConfirm}>confirm</button>
-        <button type="button" onClick={onCancel}>cancel</button>
-      </div>
-    )
-  },
-}))
-
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
@@ -221,13 +194,13 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByText('common.operation.delete'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByText('dataset.deleteDatasetConfirmTitle')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('cancel'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
     })
   })
 
@@ -273,6 +246,6 @@ describe('Dropdown callback coverage', () => {
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith('check failed', { type: 'error' })
     })
-    expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
   })
 })

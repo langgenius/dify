@@ -157,4 +157,17 @@ describe('ViewAnnotationModal', () => {
       expect(props.onHide).toHaveBeenCalledTimes(1)
     })
   })
+
+  it('should close the remove confirmation when cancelled', async () => {
+    renderComponent()
+
+    fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+    })
+  })
 })

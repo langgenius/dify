@@ -138,12 +138,15 @@ def app_models(app_module):
 def patch_signed_url(monkeypatch, app_module):
     """Ensure icon URL generation uses a deterministic helper for tests."""
 
-    def _fake_signed_url(key: str | None) -> str | None:
-        if not key:
+    def _fake_build_icon_url(_icon_type, key: str | None) -> str | None:
+        if key is None:
+            return None
+        icon_type = str(_icon_type).lower()
+        if icon_type != "image":
             return None
         return f"signed:{key}"
 
-    monkeypatch.setattr(app_module.file_helpers, "get_signed_file_url", _fake_signed_url)
+    monkeypatch.setattr(app_module, "build_icon_url", _fake_build_icon_url)
 
 
 def _ts(hour: int = 12) -> datetime:
