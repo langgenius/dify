@@ -146,11 +146,6 @@
       "count": 1
     }
   },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
     "ts/no-explicit-any": {
       "count": 1
