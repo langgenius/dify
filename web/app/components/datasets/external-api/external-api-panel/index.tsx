@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiBookOpenLine,
@@ -11,7 +12,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { cn } from '@/utils/classnames'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {

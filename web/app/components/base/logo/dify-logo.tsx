@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 
 export type LogoStyle = 'default' | 'monochromeWhite'

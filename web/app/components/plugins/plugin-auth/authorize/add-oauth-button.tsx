@@ -1,6 +1,7 @@
 import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { ButtonProps } from '@/app/components/base/ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiClipboardLine,
   RiEqualizer2Line,
@@ -19,7 +20,6 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { Button } from '@/app/components/base/ui/button'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { cn } from '@/utils/classnames'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,

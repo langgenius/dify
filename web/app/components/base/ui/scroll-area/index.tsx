@@ -1,8 +1,8 @@
 'use client'
 
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import './scroll-area.css'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
@@ -33,7 +33,7 @@ const scrollAreaScrollbarClassName = cn(
 )
 
 const scrollAreaThumbClassName = cn(
-  'shrink-0 radius-xs bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
+  'shrink-0 rounded-sm bg-state-base-handle transition-[background-color] motion-reduce:transition-none',
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
 )

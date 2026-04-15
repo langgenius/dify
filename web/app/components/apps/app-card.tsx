@@ -6,6 +6,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
@@ -42,7 +43,6 @@ import { useDeleteAppMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
@@ -281,14 +281,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickSettings}>
-          <span className="text-text-secondary system-sm-regular">{t('editApp', { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
         </button>
         <Divider className="my-1" />
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickDuplicate}>
-          <span className="text-text-secondary system-sm-regular">{t('duplicate', { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
         </button>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
-          <span className="text-text-secondary system-sm-regular">{t('export', { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -309,7 +309,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
+                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -317,7 +317,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="text-text-secondary system-sm-regular">{t('openInExplore', { ns: 'app' })}</span>
+                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -339,7 +339,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           className="group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover"
           onClick={onClickDelete}
         >
-          <span className="text-text-secondary system-sm-regular group-hover:text-text-destructive">
+          <span className="system-sm-regular text-text-secondary group-hover:text-text-destructive">
             {t('operation.delete', { ns: 'common' })}
           </span>
         </button>
@@ -369,7 +369,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         }}
         className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
       >
-        <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]">
+        <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
           <div className="relative shrink-0">
             <AppIcon
               size="large"
@@ -381,10 +381,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="h-3 w-3" />
           </div>
           <div className="w-0 grow py-px">
-            <div className="flex items-center text-sm font-semibold leading-5 text-text-secondary">
+            <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
               <div className="truncate" title={app.name}>{app.name}</div>
             </div>
-            <div className="flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary">
+            <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
               <div className="truncate" title={app.author_name}>{app.author_name}</div>
               <div>·</div>
               <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
@@ -421,7 +421,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             {app.description}
           </div>
         </div>
-        <div className="absolute bottom-1 left-0 right-0 flex h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1">
+        <div className="absolute right-0 bottom-1 left-0 flex h-[42px] shrink-0 items-center pt-1 pr-[6px] pb-[6px] pl-[14px]">
           {isCurrentWorkspaceEditor && (
             <>
               <div

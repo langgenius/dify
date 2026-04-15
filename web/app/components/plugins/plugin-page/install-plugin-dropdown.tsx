@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useRef, useState } from 'react'
@@ -17,7 +18,6 @@ import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-f
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void

@@ -3,6 +3,7 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +12,6 @@ import ParameterItem from '@/app/components/header/account-setting/model-provide
 import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   isAdvancedMode: boolean
@@ -74,7 +74,7 @@ const LLMParamsPanel = ({
   return (
     <>
       <div className="mb-2 flex items-center justify-between">
-        <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
+        <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
         {
           PROVIDER_WITH_PRESET_TONE.includes(provider) && (
             <PresetsParameter onSelect={handleSelectPresetParameter} />

@@ -5,6 +5,7 @@ import type {
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import type { PluginDetail } from '@/app/components/plugins/types'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +17,6 @@ import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
-import { cn } from '@/utils/classnames'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import ModelBadge from '../model-badge'
@@ -96,8 +96,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         currentProviderName === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
       )}
     >
-      <div className="flex rounded-t-xl py-2 pl-3 pr-2">
-        <div className="grow px-1 pb-0.5 pt-1">
+      <div className="flex rounded-t-xl py-2 pr-2 pl-3">
+        <div className="grow px-1 pt-1 pb-0.5">
           <div className="mb-2 flex items-center gap-1">
             <ProviderIcon provider={provider} />
             {pluginDetail && (
@@ -123,12 +123,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         showCollapsedSection && (
-          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary system-xs-medium">
+          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-[11px] pl-2 system-xs-medium text-text-tertiary">
             {(showModelProvider || !notConfigured) && (
               <button
                 type="button"
                 data-testid="show-models-button"
-                className="flex h-6 items-center rounded-lg pl-1 pr-1.5 hover:bg-components-button-ghost-bg-hover"
+                className="flex h-6 items-center rounded-lg pr-1.5 pl-1 hover:bg-components-button-ghost-bg-hover"
                 aria-label={t('modelProvider.showModels', { ns: 'common' })}
                 onClick={handleOpenModelList}
               >
@@ -140,15 +140,15 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 {!loading && <div className="i-ri-arrow-right-s-line h-4 w-4" />}
                 {
                   loading && (
-                    <div className="i-ri-loader-2-line ml-0.5 h-3 w-3 animate-spin" />
+                    <div className="ml-0.5 i-ri-loader-2-line h-3 w-3 animate-spin" />
                   )
                 }
               </button>
             )}
             {!showModelProvider && notConfigured && (
-              <div className="flex h-6 items-center pl-1 pr-1.5">
-                <div className="i-ri-information-2-fill mr-1 h-4 w-4 text-text-accent" />
-                <span className="text-text-secondary system-xs-medium">{t('modelProvider.configureTip', { ns: 'common' })}</span>
+              <div className="flex h-6 items-center pr-1.5 pl-1">
+                <div className="mr-1 i-ri-information-2-fill h-4 w-4 text-text-accent" />
+                <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}
             {

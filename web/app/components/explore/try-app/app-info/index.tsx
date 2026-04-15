@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { TryAppInfo } from '@/service/try-app'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 import useGetRequirements from './use-get-requirements'
 
 type Props = {
@@ -30,7 +30,7 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 
   if (hasLoadError) {
     return (
-      <div className="flex size-5 items-center justify-center overflow-hidden radius-sm border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+      <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         <div className="i-custom-public-other-default-tool-icon size-3 text-text-tertiary" />
       </div>
     )
