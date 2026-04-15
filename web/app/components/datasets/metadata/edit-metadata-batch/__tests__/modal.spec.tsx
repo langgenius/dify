@@ -187,10 +187,7 @@ describe('EditMetadataBatchModal', () => {
       })
 
       // Find the primary save button (not the one in SelectMetadataModal)
-      const saveButtons = screen.getAllByText(/save/i)
-      const modalSaveButton = saveButtons.find(btn => btn.closest('button')?.classList.contains('btn-primary'))
-      if (modalSaveButton)
-        fireEvent.click(modalSaveButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalled()
     })
@@ -443,13 +440,10 @@ describe('EditMetadataBatchModal', () => {
       })
 
       // Find the primary save button
-      const saveButtons = screen.getAllByText(/save/i)
-      const saveBtn = saveButtons.find(btn => btn.closest('button')?.classList.contains('btn-primary'))
-      if (saveBtn) {
-        fireEvent.click(saveBtn)
-        fireEvent.click(saveBtn)
-        fireEvent.click(saveBtn)
-      }
+      const saveBtn = screen.getByRole('button', { name: 'common.operation.save' })
+      fireEvent.click(saveBtn)
+      fireEvent.click(saveBtn)
+      fireEvent.click(saveBtn)
 
       expect(onSave).toHaveBeenCalledTimes(3)
     })
@@ -462,10 +456,7 @@ describe('EditMetadataBatchModal', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
       })
 
-      const saveButtons = screen.getAllByText(/save/i)
-      const saveBtn = saveButtons.find(btn => btn.closest('button')?.classList.contains('btn-primary'))
-      if (saveBtn)
-        fireEvent.click(saveBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalledWith(
         expect.any(Array),
@@ -486,10 +477,7 @@ describe('EditMetadataBatchModal', () => {
       if (checkboxContainer)
         fireEvent.click(checkboxContainer)
 
-      const saveButtons = screen.getAllByText(/save/i)
-      const saveBtn = saveButtons.find(btn => btn.closest('button')?.classList.contains('btn-primary'))
-      if (saveBtn)
-        fireEvent.click(saveBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => {
         expect(onSave).toHaveBeenCalledWith(
@@ -511,10 +499,7 @@ describe('EditMetadataBatchModal', () => {
       // Remove an item
       fireEvent.click(screen.getByTestId('remove-1'))
 
-      const saveButtons = screen.getAllByText(/save/i)
-      const saveBtn = saveButtons.find(btn => btn.closest('button')?.classList.contains('btn-primary'))
-      if (saveBtn)
-        fireEvent.click(saveBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalled()
       // The first argument should not contain the deleted item (id '1')

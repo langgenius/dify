@@ -85,21 +85,6 @@ describe('Actions', () => {
     })
   })
 
-  // Button Variants Tests
-  describe('Button Variants', () => {
-    it('should have primary variant for choose button', () => {
-      render(<Actions {...defaultProps} />)
-      const chooseButton = screen.getByText(/operations\.choose/i).closest('button')
-      expect(chooseButton).toHaveClass('btn-primary')
-    })
-
-    it('should have secondary variant for details button', () => {
-      render(<Actions {...defaultProps} />)
-      const detailsButton = screen.getByText(/operations\.details/i).closest('button')
-      expect(detailsButton).toHaveClass('btn-secondary')
-    })
-  })
-
   describe('Layout', () => {
     it('should have absolute positioning', () => {
       const { container } = render(<Actions {...defaultProps} />)

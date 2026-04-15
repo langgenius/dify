@@ -139,18 +139,6 @@ describe('SecretKeyButton', () => {
       const button = screen.getByRole('button')
       expect(button.className).toContain('px-3')
     })
-
-    it('should have small size', () => {
-      render(<SecretKeyButton />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('btn-small')
-    })
-
-    it('should have ghost variant', () => {
-      render(<SecretKeyButton />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('btn-ghost')
-    })
   })
 
   describe('icon styling', () => {
