@@ -2743,11 +2743,6 @@
       "count": 12
     }
   },
-  "web/app/components/billing/pricing/index.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
-    }
-  },
   "web/app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
