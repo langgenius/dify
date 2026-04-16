@@ -1,5 +1,6 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { appDeleteContract } from './console/apps'
+import { accountAvatarContract } from './console/account'
+import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -35,31 +36,13 @@ import {
 } from './console/trigger'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import {
-  addTemplateToCollectionContract,
-  batchAddTemplatesToCollectionContract,
-  clearCollectionTemplatesContract,
-  collectionPluginsContract,
-  createTemplateCollectionContract,
-  deleteTemplateCollectionContract,
-  getCollectionTemplatesContract,
-  getCreatorAvatarContract,
-  getCreatorByHandleContract,
-  getPublisherPluginsContract,
-  getPublisherTemplatesContract,
-  getTemplateByIdContract,
-  getTemplateCollectionContract,
-  getTemplateDslFileContract,
-  getTemplatesListContract,
-  pluginCollectionsContract,
-  searchAdvancedContract,
-  searchCreatorsAdvancedContract,
-  searchTemplatesAdvancedContract,
-  searchTemplatesBasicContract,
-  searchUnifiedContract,
-  syncCreatorAvatarContract,
-  syncCreatorProfileContract,
-  templateCollectionsContract,
-} from './marketplace'
+  workflowDraftEnvironmentVariablesContract,
+  workflowDraftUpdateConversationVariablesContract,
+  workflowDraftUpdateEnvironmentVariablesContract,
+  workflowDraftUpdateFeaturesContract,
+} from './console/workflow'
+import { workflowCommentContracts } from './console/workflow-comment'
+import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
   plugins: {
@@ -99,9 +82,13 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  account: {
+    avatar: accountAvatarContract,
+  },
   systemFeatures: systemFeaturesContract,
   apps: {
     deleteApp: appDeleteContract,
+    workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {
     apps: exploreAppsContract,
@@ -132,6 +119,13 @@ export const consoleRouterContract = {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
   },
+  workflowDraft: {
+    environmentVariables: workflowDraftEnvironmentVariablesContract,
+    updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
+    updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
+    updateFeatures: workflowDraftUpdateFeaturesContract,
+  },
+  workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
   triggers: {

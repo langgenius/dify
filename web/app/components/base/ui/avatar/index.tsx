@@ -28,7 +28,7 @@ type AvatarRootProps = React.ComponentPropsWithRef<typeof BaseAvatar.Root> & {
   size?: AvatarSize
 }
 
-function AvatarRoot({
+export function AvatarRoot({
   size = 'md',
   className,
   ...props
@@ -45,25 +45,11 @@ function AvatarRoot({
   )
 }
 
-type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
-
-function AvatarImage({
-  className,
-  ...props
-}: AvatarImageProps) {
-  return (
-    <BaseAvatar.Image
-      className={cn('absolute inset-0 size-full object-cover', className)}
-      {...props}
-    />
-  )
-}
-
 type AvatarFallbackProps = React.ComponentPropsWithRef<typeof BaseAvatar.Fallback> & {
   size?: AvatarSize
 }
 
-function AvatarFallback({
+export function AvatarFallback({
   size = 'md',
   className,
   ...props
@@ -75,6 +61,20 @@ function AvatarFallback({
         avatarSizeClasses[size].text,
         className,
       )}
+      {...props}
+    />
+  )
+}
+
+type AvatarImageProps = React.ComponentPropsWithRef<typeof BaseAvatar.Image>
+
+export function AvatarImage({
+  className,
+  ...props
+}: AvatarImageProps) {
+  return (
+    <BaseAvatar.Image
+      className={cn('absolute inset-0 size-full object-cover', className)}
       {...props}
     />
   )

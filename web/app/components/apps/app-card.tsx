@@ -5,6 +5,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
@@ -28,6 +29,7 @@ import {
   AlertDialogTitle,
 } from '@/app/components/base/ui/alert-dialog'
 import { toast } from '@/app/components/base/ui/toast'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -65,10 +67,11 @@ const AccessControl = dynamic(() => import('@/app/components/app/app-access-cont
 
 type AppCardProps = {
   app: App
+  onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
 }
 
-const AppCard = ({ app, onRefresh }: AppCardProps) => {
+const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -360,6 +363,20 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.updated_at, app.created_at, t])
 
+  const onlinePresenceUsers = useMemo(() => {
+    return onlineUsers
+      .map((user, index) => {
+        const id = user.user_id || user.sid || `${app.id}-online-${index}`
+        const name = user.username || user.user_id || user.sid || `${index + 1}`
+        return {
+          id,
+          name,
+          avatar_url: user.avatar || null,
+        }
+      })
+      .filter(user => Boolean(user.id))
+  }, [app.id, onlineUsers])
+
   return (
     <>
       <div
@@ -390,27 +407,32 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
             </div>
           </div>
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center">
-            {app.access_mode === AccessMode.PUBLIC && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
-                <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
+          <div className="flex h-full shrink-0 flex-col items-end justify-between py-px">
+            {onlinePresenceUsers.length > 0 && (
+              <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
             )}
-            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
-                <RiLockLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
-            )}
-            {app.access_mode === AccessMode.ORGANIZATION && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
-                <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
-            )}
-            {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
-                <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
-              </Tooltip>
-            )}
+            <div className="flex h-5 w-5 items-center justify-center">
+              {app.access_mode === AccessMode.PUBLIC && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
+                  <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
+                  <RiLockLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.ORGANIZATION && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
+                  <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+              {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
+                <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
+                  <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
         <div className="title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">

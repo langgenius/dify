@@ -142,6 +142,7 @@ catalog:
   ky: 2.0.0
   lamejs: 1.2.1
   lexical: 0.43.0
+  loro-crdt: 1.10.8
   mermaid: 11.14.0
   mime: 4.1.0
   mitt: 3.0.1
@@ -173,6 +174,7 @@ catalog:
   scheduler: 0.27.0
   sharp: 0.34.5
   shiki: 4.0.2
+  socket.io-client: 4.8.3
   sortablejs: 1.15.7
   std-semver: 1.0.8
   storybook: 10.3.5

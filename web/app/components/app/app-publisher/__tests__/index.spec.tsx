@@ -15,6 +15,7 @@ const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
+const mockInvalidateAppWorkflow = vi.fn()
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -86,6 +87,10 @@ vi.mock('@/service/explore', () => ({
 
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+}))
+
+vi.mock('@/service/use-workflow', () => ({
+  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
 }))
 
 vi.mock('@/app/components/base/ui/toast', () => ({

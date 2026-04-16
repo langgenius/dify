@@ -27,11 +27,11 @@ import type {
   EnvironmentVariable,
   Node,
   NodeOutPutVar,
+  PromptItem,
   ToolWithProvider,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import { uniq } from 'es-toolkit/array'
@@ -53,6 +53,7 @@ import {
 } from '@/app/components/workflow/constants'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
+import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import {
@@ -1310,6 +1311,25 @@ const replaceOldVarInText = (
   )
 }
 
+const getPromptItemTexts = (prompt: PromptItem): string[] => {
+  const texts = [prompt.text]
+  if (prompt.jinja2_text)
+    texts.push(prompt.jinja2_text)
+  return texts.filter((text): text is string => !!text)
+}
+
+const replaceOldVarInPromptItem = (
+  prompt: PromptItem,
+  oldVar: ValueSelector,
+  newVar: ValueSelector,
+): PromptItem => ({
+  ...prompt,
+  text: replaceOldVarInText(prompt.text, oldVar, newVar),
+  ...(prompt.jinja2_text !== undefined
+    ? { jinja2_text: replaceOldVarInText(prompt.jinja2_text, oldVar, newVar) }
+    : {}),
+})
+
 export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -1331,12 +1351,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       let prompts: string[] = []
       if (isChatModel) {
         prompts
-          = (payload.prompt_template as PromptItem[])?.map(p => p.text) || []
+          = (payload.prompt_template as PromptItem[])?.flatMap(getPromptItemTexts) || []
         if (payload.memory?.query_prompt_template)
           prompts.push(payload.memory.query_prompt_template)
       }
       else {
-        prompts = [(payload.prompt_template as PromptItem).text]
+        prompts = getPromptItemTexts(payload.prompt_template as PromptItem)
       }
 
       const inputVars: ValueSelector[] = matchNotSystemVars(prompts)
@@ -1505,7 +1525,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.HumanInput: {
       const payload = data as HumanInputNodeType
       const formContent = payload.form_content
-      res = matchNotSystemVars([formContent])
+      const mailTemplates = payload.delivery_methods.flatMap((method) => {
+        if (method.type !== DeliveryMethodType.Email || !method.config)
+          return []
+        return [method.config.body]
+      })
+      res = matchNotSystemVars([formContent, ...mailTemplates])
       break
     }
   }
@@ -1651,6 +1676,11 @@ export const updateNodeVars = (
       }
       case BlockEnum.Answer: {
         const payload = data as AnswerNodeType
+        payload.answer = replaceOldVarInText(
+          payload.answer,
+          oldVarSelector,
+          newVarSelector,
+        )
         if (payload.variables) {
           payload.variables = payload.variables.map((v) => {
             if (v.value_selector.join('.') === oldVarSelector.join('.'))
@@ -1666,16 +1696,7 @@ export const updateNodeVars = (
         if (isChatModel) {
           payload.prompt_template = (
             payload.prompt_template as PromptItem[]
-          ).map((prompt) => {
-            return {
-              ...prompt,
-              text: replaceOldVarInText(
-                prompt.text,
-                oldVarSelector,
-                newVarSelector,
-              ),
-            }
-          })
+          ).map(prompt => replaceOldVarInPromptItem(prompt, oldVarSelector, newVarSelector))
           if (payload.memory?.query_prompt_template) {
             payload.memory.query_prompt_template = replaceOldVarInText(
               payload.memory.query_prompt_template,
@@ -1685,14 +1706,11 @@ export const updateNodeVars = (
           }
         }
         else {
-          payload.prompt_template = {
-            ...payload.prompt_template,
-            text: replaceOldVarInText(
-              (payload.prompt_template as PromptItem).text,
-              oldVarSelector,
-              newVarSelector,
-            ),
-          }
+          payload.prompt_template = replaceOldVarInPromptItem(
+            payload.prompt_template as PromptItem,
+            oldVarSelector,
+            newVarSelector,
+          )
         }
         if (
           payload.context?.variable_selector?.join('.')
@@ -1780,6 +1798,10 @@ export const updateNodeVars = (
           oldVarSelector,
           newVarSelector,
         )
+        payload.classes = payload.classes.map(topic => ({
+          ...topic,
+          name: replaceOldVarInText(topic.name, oldVarSelector, newVarSelector),
+        }))
         break
       }
       case BlockEnum.HttpRequest: {
@@ -1889,6 +1911,46 @@ export const updateNodeVars = (
         }
         break
       }
+      case BlockEnum.Agent: {
+        const payload = data as AgentNodeType
+        if (payload.agent_parameters) {
+          Object.keys(payload.agent_parameters).forEach((key) => {
+            const value = payload.agent_parameters![key]
+            const { type } = value
+
+            if (
+              type === ToolVarType.variable
+              && Array.isArray(value.value)
+              && value.value.join('.') === oldVarSelector.join('.')
+            ) {
+              payload.agent_parameters![key] = {
+                ...value,
+                value: newVarSelector,
+              }
+            }
+
+            if (type === ToolVarType.mixed && typeof value.value === 'string') {
+              payload.agent_parameters![key] = {
+                ...value,
+                value: replaceOldVarInText(
+                  value.value,
+                  oldVarSelector,
+                  newVarSelector,
+                ),
+              }
+            }
+          })
+        }
+
+        if (payload.memory?.query_prompt_template) {
+          payload.memory.query_prompt_template = replaceOldVarInText(
+            payload.memory.query_prompt_template,
+            oldVarSelector,
+            newVarSelector,
+          )
+        }
+        break
+      }
       case BlockEnum.VariableAssigner: {
         const payload = data as VariableAssignerNodeType
         if (payload.variables) {
@@ -1954,6 +2016,22 @@ export const updateNodeVars = (
           oldVarSelector,
           newVarSelector,
         )
+        payload.delivery_methods = payload.delivery_methods.map((method) => {
+          if (method.type !== DeliveryMethodType.Email || !method.config)
+            return method
+
+          return {
+            ...method,
+            config: {
+              ...method.config,
+              body: replaceOldVarInText(
+                method.config.body,
+                oldVarSelector,
+                newVarSelector,
+              ),
+            },
+          }
+        })
         break
       }
     }

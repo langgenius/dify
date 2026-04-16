@@ -47,6 +47,36 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('@/context/global-public-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/global-public-context')>()
+  const systemFeatures = {
+    ...actual.useGlobalPublicStore.getState().systemFeatures,
+    webapp_auth: {
+      ...actual.useGlobalPublicStore.getState().systemFeatures.webapp_auth,
+      enabled: true,
+    },
+    branding: {
+      ...actual.useGlobalPublicStore.getState().systemFeatures.branding,
+      enabled: false,
+    },
+    enable_marketplace: true,
+    enable_collaboration_mode: false,
+  }
+
+  return {
+    ...actual,
+    useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
+      systemFeatures,
+    }),
+    useSystemFeaturesQuery: () => ({
+      data: systemFeatures,
+      isPending: false,
+      isLoading: false,
+      isFetching: false,
+    }),
+  }
+})
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: vi.fn(() => ({ data: null, isLoading: false })),
   useUpdateDefaultModel: vi.fn(() => ({ trigger: vi.fn() })),
@@ -54,6 +84,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useInvalidateDefaultModel: vi.fn(() => vi.fn()),
   useModelList: vi.fn(() => ({ data: [], isLoading: false })),
   useSystemDefaultModelAndModelList: vi.fn(() => [null, vi.fn()]),
+  useMarketplaceAllPlugins: vi.fn(() => ({ plugins: [], isLoading: false })),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
@@ -68,6 +99,11 @@ vi.mock('@/service/use-common', () => ({
   useApiBasedExtensions: vi.fn(() => ({ data: [], isPending: false })),
   useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
   useProviderContext: vi.fn(),
+}))
+
+vi.mock('@/app/components/billing/billing-page', () => ({
+  __esModule: true,
+  default: () => <div data-testid="billing-page" />,
 }))
 
 const baseAppContextValue: AppContextValue = {
