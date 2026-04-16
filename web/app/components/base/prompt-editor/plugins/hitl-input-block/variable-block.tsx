@@ -63,7 +63,7 @@ const HITLInputVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
-  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
+  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]!]
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
@@ -131,7 +131,7 @@ const HITLInputVariableBlockComponent = ({
           path={variables.slice(1)}
           varType={getVarType
             ? getVarType({
-                nodeId: variables[0],
+                nodeId: variables[0]!,
                 valueSelector: variables,
               })
             : Type.string}

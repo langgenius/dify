@@ -77,7 +77,7 @@ const PopupItem: FC<PopupItemProps> = ({
       onSaveCallback: () => {
         updateModelProviders()
 
-        const modelType = model.models[0].model_type
+        const modelType = model.models[0]!.model_type
 
         if (modelType)
           updateModelList(modelType)

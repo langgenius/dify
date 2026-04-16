@@ -79,7 +79,7 @@ describe('getTriggerCheckParams', () => {
       'zh_Hans',
     )
 
-    expect(result.triggerInputsSchema[0].label).toBe('频道')
+    expect(result.triggerInputsSchema[0]!.label).toBe('频道')
   })
 
   it('should fall back to en_US when language label is missing', () => {
@@ -89,7 +89,7 @@ describe('getTriggerCheckParams', () => {
       'ja_JP',
     )
 
-    expect(result.triggerInputsSchema[0].label).toBe('Channel')
+    expect(result.triggerInputsSchema[0]!.label).toBe('Channel')
   })
 
   it('should fall back to parameter name when no labels exist', () => {
@@ -103,7 +103,7 @@ describe('getTriggerCheckParams', () => {
 
     const result = getTriggerCheckParams(createTriggerData(), [provider], 'en_US')
 
-    expect(result.triggerInputsSchema[0].label).toBe('raw_param')
+    expect(result.triggerInputsSchema[0]!.label).toBe('raw_param')
   })
 
   it('should match provider by provider_id', () => {

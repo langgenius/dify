@@ -66,7 +66,7 @@ const FileTypeItem: FC<Props> = ({
               <FileTypeIcon className="shrink-0" type={type} size="lg" />
               <div className="mx-2 grow">
                 <div className="system-sm-medium text-text-primary">{t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })}</div>
-                <div className="mt-1 system-2xs-regular-uppercase text-text-tertiary">{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type].join(', ') : t('variableConfig.file.custom.description', { ns: 'appDebug' })}</div>
+                <div className="mt-1 system-2xs-regular-uppercase text-text-tertiary">{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type]!.join(', ') : t('variableConfig.file.custom.description', { ns: 'appDebug' })}</div>
               </div>
               <Checkbox className="shrink-0" checked={selected} />
             </div>

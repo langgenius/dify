@@ -78,7 +78,7 @@ describe('var-reference-vars helpers', () => {
     ] as NodeOutPutVar[], 'another')
 
     expect(vars).toHaveLength(1)
-    expect(vars[0].title).toBe('Node B')
-    expect(vars[0].vars).toEqual([expect.objectContaining({ variable: 'another_value' })])
+    expect(vars[0]!.title).toBe('Node B')
+    expect(vars[0]!.vars).toEqual([expect.objectContaining({ variable: 'another_value' })])
   })
 })

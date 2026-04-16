@@ -309,25 +309,26 @@ describe('HitTestingPage', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render page title', () => {
       renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // Look for heading element
       const heading = screen.getByRole('heading', { level: 1 })
-      expect(heading).toBeInTheDocument()
+      expect(heading)!.toBeInTheDocument()
     })
 
     it('should render records section', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // The records section should be present
-      expect(container.querySelector('.flex-col')).toBeInTheDocument()
+      // The records section should be present
+      expect(container.querySelector('.flex-col'))!.toBeInTheDocument()
     })
 
     it('should render query input', () => {
       renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -343,7 +344,7 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // Loading component should be visible - look for the loading animation
       const loadingElement = container.querySelector('[class*="animate"]') || container.querySelector('.flex-1')
-      expect(loadingElement).toBeInTheDocument()
+      expect(loadingElement)!.toBeInTheDocument()
     })
   })
 
@@ -353,7 +354,7 @@ describe('HitTestingPage', () => {
       // EmptyRecords component should be rendered - check that the component is mounted
       // The EmptyRecords has a specific structure with bg-workflow-process-bg class
       const mainContainer = container.querySelector('.flex.h-full')
-      expect(mainContainer).toBeInTheDocument()
+      expect(mainContainer)!.toBeInTheDocument()
     })
   })
 
@@ -373,7 +374,7 @@ describe('HitTestingPage', () => {
       } as unknown as ReturnType<typeof useDatasetTestingRecords>)
 
       renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
-      expect(screen.getByText('Test query')).toBeInTheDocument()
+      expect(screen.getByText('Test query'))!.toBeInTheDocument()
     })
   })
 
@@ -404,7 +405,7 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // The right panel should be present (on non-mobile)
       const rightPanel = container.querySelector('.rounded-tl-2xl')
-      expect(rightPanel).toBeInTheDocument()
+      expect(rightPanel)!.toBeInTheDocument()
     })
   })
 
@@ -423,7 +424,8 @@ describe('HitTestingPage', () => {
         fireEvent.click(methodSelector)
 
       // The component should still be functional after the click
-      expect(container.firstChild).toBeInTheDocument()
+      // The component should still be functional after the click
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -445,7 +447,8 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       // The right panel should show empty state initially
-      expect(container.querySelector('.rounded-tl-2xl')).toBeInTheDocument()
+      // The right panel should show empty state initially
+      expect(container.querySelector('.rounded-tl-2xl'))!.toBeInTheDocument()
     })
 
     it('should render loading skeleton when retrieval is in progress', async () => {
@@ -458,7 +461,8 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       // Component should render without crashing
-      expect(container.firstChild).toBeInTheDocument()
+      // Component should render without crashing
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render results when hit testing returns data', async () => {
@@ -479,7 +483,8 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       // The component should render the result display area
-      expect(container.querySelector('.bg-background-body')).toBeInTheDocument()
+      // The component should render the result display area
+      expect(container.querySelector('.bg-background-body'))!.toBeInTheDocument()
     })
   })
 
@@ -513,7 +518,8 @@ describe('HitTestingPage', () => {
         fireEvent.click(row)
 
       // The query input should be updated - this causes re-render with new key
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      // The query input should be updated - this causes re-render with new key
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -536,7 +542,8 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       // Component should render
-      expect(container.firstChild).toBeInTheDocument()
+      // Component should render
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -549,7 +556,8 @@ describe('HitTestingPage', () => {
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       // Component should still render
-      expect(container.firstChild).toBeInTheDocument()
+      // Component should still render
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -562,7 +570,7 @@ describe('HitTestingPage', () => {
 
       const { rerender, container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
 
       // Re-render with mobile
       vi.mocked(useBreakpoints.default).mockReturnValue('mobile' as unknown as ReturnType<typeof useBreakpoints.default>)
@@ -573,7 +581,7 @@ describe('HitTestingPage', () => {
         </QueryClientProvider>,
       )
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 })
@@ -638,7 +646,8 @@ describe('Integration: Hit Testing Flow', () => {
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     // Component should still be functional - check for the main container
-    expect(container.firstChild).toBeInTheDocument()
+    // Component should still be functional - check for the main container
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 
   it('should render hit results after successful submission', async () => {
@@ -762,7 +771,8 @@ describe('Integration: Hit Testing Flow', () => {
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Component should render
-    expect(container.firstChild).toBeInTheDocument()
+    // Component should render
+    expect(container.firstChild)!.toBeInTheDocument()
 
     // Wait for textbox with timeout for CI
     const textarea = await waitFor(
@@ -781,7 +791,7 @@ describe('Integration: Hit Testing Flow', () => {
     // Verify component is still functional after submission
     await waitFor(
       () => {
-        expect(screen.getByRole('textbox')).toBeInTheDocument()
+        expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       },
       { timeout: 3000 },
     )
@@ -819,12 +829,14 @@ describe('Drawer and Modal Interactions', () => {
 
       await waitFor(() => {
         // The drawer should open - verify container is still there
-        expect(container.firstChild).toBeInTheDocument()
+        // The drawer should open - verify container is still there
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     }
 
     // Component should still be functional - verify main container
-    expect(container.querySelector('.overflow-y-auto')).toBeInTheDocument()
+    // Component should still be functional - verify main container
+    expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
   })
 
   it('should close retrieval modal when onHide is called', async () => {
@@ -841,7 +853,8 @@ describe('Drawer and Modal Interactions', () => {
     }
 
     // Component should still be functional
-    expect(container.firstChild).toBeInTheDocument()
+    // Component should still be functional
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 })
 
@@ -901,7 +914,7 @@ describe('renderHitResults Coverage', () => {
 
     // Verify component is functional
     await waitFor(() => {
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 
@@ -928,7 +941,7 @@ describe('renderHitResults Coverage', () => {
       fireEvent.click(submitButton)
 
     await waitFor(() => {
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 })
@@ -954,12 +967,13 @@ describe('ModifyRetrievalModal onSave Coverage', () => {
 
       // Wait for drawer to open
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
     }
 
     // Verify component renders correctly
-    expect(container.querySelector('.overflow-y-auto')).toBeInTheDocument()
+    // Verify component renders correctly
+    expect(container.querySelector('.overflow-y-auto'))!.toBeInTheDocument()
   })
 
   it('should close modal after saving', async () => {
@@ -975,7 +989,8 @@ describe('ModifyRetrievalModal onSave Coverage', () => {
       fireEvent.click(methodSelector)
 
     // Component should still be rendered
-    expect(container.firstChild).toBeInTheDocument()
+    // Component should still be rendered
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 })
 
@@ -1038,7 +1053,7 @@ describe('HitTestingPage Internal Functions Coverage', () => {
 
     // Wait for state updates
     await waitFor(() => {
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     }, { timeout: 3000 })
 
     // Verify mutation was called
@@ -1059,18 +1074,19 @@ describe('HitTestingPage Internal Functions Coverage', () => {
 
       // Wait for drawer content
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
 
       // Try to find save button in the drawer
       const saveButtons = screen.queryAllByText(/save/i)
       if (saveButtons.length > 0) {
-        fireEvent.click(saveButtons[0])
+        fireEvent.click(saveButtons[0]!)
       }
     }
 
     // Component should still work
-    expect(container.firstChild).toBeInTheDocument()
+    // Component should still work
+    expect(container.firstChild)!.toBeInTheDocument()
   })
 
   it('should show hit count in results panel after successful query', async () => {
@@ -1101,7 +1117,7 @@ describe('HitTestingPage Internal Functions Coverage', () => {
 
     // Verify the component renders
     await waitFor(() => {
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     }, { timeout: 3000 })
   })
 })

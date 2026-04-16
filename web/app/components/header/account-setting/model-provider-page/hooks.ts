@@ -313,8 +313,8 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
       for (let i = 0; i < plugins.length; i++) {
         const plugin = plugins[i]
 
-        if (plugin.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin.plugin_id))
-          allPlugins.push(plugin)
+        if (plugin!.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin!.plugin_id))
+          allPlugins.push(plugin!)
       }
     }
 

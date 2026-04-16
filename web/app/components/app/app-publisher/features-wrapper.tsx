@@ -62,7 +62,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         },
         enabled: !!(file_upload?.enabled || file_upload?.image?.enabled),
         allowed_file_types: file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+        allowed_file_extensions: file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image]!.map(ext => `.${ext}`),
         allowed_file_upload_methods: file_upload?.allowed_file_upload_methods || file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: file_upload?.number_limits || file_upload?.image?.number_limits || 3,
       } as FileUpload

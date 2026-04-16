@@ -75,7 +75,7 @@ describe('useNodeIterationInteractions', () => {
     result.current.handleNodeIterationRerender('iteration-node')
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const updatedNodes = mockSetNodes.mock.calls[0][0]
+    const updatedNodes = mockSetNodes.mock.calls[0]![0]
     const updatedIterationNode = updatedNodes.find((node: Node) => node.id === 'iteration-node')
     expect(updatedIterationNode.width).toBe(100 + 60 + ITERATION_PADDING.right)
     expect(updatedIterationNode.height).toBe(90 + 40 + ITERATION_PADDING.bottom)

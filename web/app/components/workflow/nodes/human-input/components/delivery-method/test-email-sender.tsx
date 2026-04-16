@@ -99,13 +99,13 @@ const EmailSenderModal = ({
     }, [] as ValueSelector[])
     const valueSelectors = doGetInputVars((formContent || '') + (config?.body || ''))
     const variables = unionBy([...valueSelectors, ...defaultValueSelectors], item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodes, item[0])?.data
+      const varInfo = getNodeInfoById(availableNodes, item[0]!)?.data
 
       return {
         label: {
           nodeType: varInfo?.type,
-          nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          nodeName: varInfo?.title || availableNodes[0]?.data.title!, // default start node title
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
           isChatVar: isConversationVar(item),
         },
         variable: `#${item.join('.')}#`,

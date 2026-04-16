@@ -140,13 +140,13 @@ export function registerLexicalTextEntity<T extends TextNode>(
       let nodeToReplace
 
       if (match.start === 0)
-        [nodeToReplace, currentNode] = currentNode.splitText(match.end)
+        [nodeToReplace, currentNode] = (currentNode.splitText(match.end)) as [any, TextNode]
       else
-        [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
+        [, nodeToReplace, currentNode] = (currentNode.splitText(match.start, match.end)) as [unknown, any, TextNode]
 
-      const replacementNode = createNode(nodeToReplace)
-      replacementNode.setFormat(nodeToReplace.getFormat())
-      nodeToReplace.replace(replacementNode)
+      const replacementNode = createNode(nodeToReplace!)
+      replacementNode.setFormat(nodeToReplace!.getFormat())
+      nodeToReplace!.replace(replacementNode)
 
       if (currentNode == null)
         return
@@ -240,12 +240,12 @@ export const decoratorTransform = (
     let nodeToReplace
 
     if (match.start === 0)
-      [nodeToReplace, currentNode] = currentNode.splitText(match.end)
+      [nodeToReplace, currentNode] = (currentNode.splitText(match.end)) as [any, CustomTextNode]
     else
-      [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
+      [, nodeToReplace, currentNode] = (currentNode.splitText(match.start, match.end)) as [unknown, any, CustomTextNode]
 
-    const replacementNode = createNode(nodeToReplace)
-    nodeToReplace.replace(replacementNode)
+    const replacementNode = createNode(nodeToReplace!)
+    nodeToReplace!.replace(replacementNode)
 
     if (currentNode == null)
       return
@@ -292,7 +292,7 @@ export function $splitNodeContainingQuery(match: MenuTextMatch): TextNode | null
   else
     [, newNode] = anchorNode.splitText(startOffset, selectionOffset)
 
-  return newNode
+  return newNode!
 }
 
 export function textToEditorState(text: string) {

@@ -39,7 +39,7 @@ export const getNotionInfo = (
     return {
       credential_id: credentialId,
       workspace_id: workspace.workspaceId,
-      pages: workspace.pages.map((page) => {
+      pages: workspace.pages!.map((page) => {
         const { page_id, page_name, page_icon, type } = page
         return {
           page_id,

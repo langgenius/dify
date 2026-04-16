@@ -60,8 +60,8 @@ describe('configuration utils', () => {
         { id: 'tool-2', icon: '/console/icons/prefixed.svg' },
       ] as never, '/console')
 
-      expect(result[0].icon).toBe('/console/icons/tool.svg')
-      expect(result[1].icon).toBe('/console/icons/prefixed.svg')
+      expect(result[0]!.icon).toBe('/console/icons/tool.svg')
+      expect(result[1]!.icon).toBe('/console/icons/prefixed.svg')
     })
   })
 

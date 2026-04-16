@@ -236,10 +236,10 @@ const FormItem: FC<Props> = ({
                 : payload.allowed_file_types,
               allowed_file_extensions: inStepRun && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
-                    ...FILE_EXTS[SupportUploadFileTypes.image],
-                    ...FILE_EXTS[SupportUploadFileTypes.document],
-                    ...FILE_EXTS[SupportUploadFileTypes.audio],
-                    ...FILE_EXTS[SupportUploadFileTypes.video],
+                    ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.document] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.audio] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
                   ]
                 : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
@@ -263,10 +263,10 @@ const FormItem: FC<Props> = ({
                 : payload.allowed_file_types,
               allowed_file_extensions: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
-                    ...FILE_EXTS[SupportUploadFileTypes.image],
-                    ...FILE_EXTS[SupportUploadFileTypes.document],
-                    ...FILE_EXTS[SupportUploadFileTypes.audio],
-                    ...FILE_EXTS[SupportUploadFileTypes.video],
+                    ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.document] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.audio] ?? []),
+                    ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
                   ]
                 : payload.allowed_file_extensions,
               allowed_file_upload_methods: (inStepRun || isIteratorItemFile) ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,

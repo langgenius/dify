@@ -31,12 +31,12 @@ describe('HumanInputFilledFormList', () => {
       />,
     )
 
-    expect(screen.getByText('Approval')).toBeInTheDocument()
-    expect(screen.getByText('Review')).toBeInTheDocument()
+    expect(screen.getByText('Approval'))!.toBeInTheDocument()
+    expect(screen.getByText('Review'))!.toBeInTheDocument()
     expect(screen.getAllByTestId('submitted-content')).toHaveLength(2)
     expect(screen.getAllByTestId('executed-action')).toHaveLength(2)
 
-    await user.click(screen.getAllByTestId('expand-icon')[0])
+    await user.click(screen.getAllByTestId('expand-icon')[0]!)
 
     expect(screen.getAllByTestId('submitted-content')).toHaveLength(1)
   })

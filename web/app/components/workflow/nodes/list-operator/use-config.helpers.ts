@@ -51,7 +51,7 @@ export const buildFilterCondition = ({
   existingKey?: string
 }): Condition => ({
   key: (isFileArray && !existingKey) ? 'name' : '',
-  comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0],
+  comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0]!,
   value: itemVarType === WorkflowVarType.boolean ? false : '',
 })
 

@@ -9,12 +9,12 @@ const convertToUserTimezoneRepresentation = (utcDate: Date, timezone: string): D
     hour12: false,
   })
   const [dateStr, timeStr] = userTimeStr.split(', ')
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const [hour, minute, second] = timeStr.split(':').map(Number)
+  const [year, month, day] = dateStr!.split('-').map(Number)
+  const [hour, minute, second] = timeStr!.split(':').map(Number)
 
   // Create a new Date object representing this time as "local" time
   // This matches the behavior expected by the execution-time-calculator
-  return new Date(year, month - 1, day, hour, minute, second)
+  return new Date(year!, month! - 1, day, hour, minute, second)
 }
 
 /**

@@ -298,7 +298,7 @@ export const VersionHistoryPanel = ({
                       )
                     })
                   ))}
-                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0]!.items.length) && (
                     <Empty onResetFilter={handleResetFilter} />
                   )}
                 </>

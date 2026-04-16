@@ -49,11 +49,11 @@ describe('InputField', () => {
     )
 
     const inputs = screen.getAllByRole('textbox')
-    await user.clear(inputs[0])
-    await user.type(inputs[0], 'invalid name')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, 'invalid name')
 
-    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameInvalid')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameInvalid'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await user.keyboard('{Control>}{Enter}{/Control}')
     expect(onChange).not.toHaveBeenCalled()
@@ -76,7 +76,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0]).toEqual(createPayload())
+    expect(onChange.mock.calls[0]![0]).toEqual(createPayload())
   })
 
   it('should call onCancel when cancel button is clicked', async () => {
@@ -112,11 +112,11 @@ describe('InputField', () => {
     )
 
     const nameInput = screen.getAllByRole('textbox')[0]
-    await user.type(nameInput, 'generated_name')
+    await user.type(nameInput!, 'generated_name')
     await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0]).toEqual({
+    expect(onChange.mock.calls[0]![0]).toEqual({
       type: InputVarType.paragraph,
       output_variable_name: 'generated_name',
       default: {
@@ -149,11 +149,11 @@ describe('InputField', () => {
 
     await user.keyboard('{Tab}')
     const inputs = screen.getAllByRole('textbox')
-    await user.type(inputs[1], 'constant-default')
+    await user.type(inputs[1]!, 'constant-default')
     await user.keyboard('{Control>}{Enter}{/Control}')
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0].default).toEqual({
+    expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'constant',
       selector: [],
       value: 'constant-default',
@@ -184,7 +184,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0].default.type).toBe('variable')
+    expect(onChange.mock.calls[0]![0].default.type).toBe('variable')
   })
 
   it('should switch to constant mode when variable mode type switch is clicked', async () => {
@@ -211,7 +211,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0].default.type).toBe('constant')
+    expect(onChange.mock.calls[0]![0].default.type).toBe('constant')
   })
 
   it('should update default selector when variable picker is used', async () => {
@@ -238,7 +238,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0].default).toEqual({
+    expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'variable',
       selector: ['node-a', 'var-a'],
       value: '',
@@ -268,7 +268,7 @@ describe('InputField', () => {
     await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0][0].default).toEqual({
+    expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'variable',
       selector: [],
       value: '',

@@ -154,7 +154,7 @@ describe('useConfigurations', () => {
     ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].options).toEqual([
+    expect(result.current[0]!.options).toEqual([
       { label: 'red', value: 'red' },
       { label: 'green', value: 'green' },
       { label: 'blue', value: 'blue' },
@@ -167,7 +167,7 @@ describe('useConfigurations', () => {
     ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].options).toBeUndefined()
+    expect(result.current[0]!.options).toBeUndefined()
   })
 
   it('should include file-related fields for file type', () => {
@@ -182,9 +182,9 @@ describe('useConfigurations', () => {
     ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].allowedFileTypes).toEqual(['pdf', 'docx'])
-    expect(result.current[0].allowedFileExtensions).toEqual(['.pdf', '.docx'])
-    expect(result.current[0].allowedFileUploadMethods).toEqual(['local', 'remote'])
+    expect(result.current[0]!.allowedFileTypes).toEqual(['pdf', 'docx'])
+    expect(result.current[0]!.allowedFileExtensions).toEqual(['.pdf', '.docx'])
+    expect(result.current[0]!.allowedFileUploadMethods).toEqual(['local', 'remote'])
   })
 
   it('should include showConditions as empty array', () => {
@@ -193,7 +193,7 @@ describe('useConfigurations', () => {
     ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].showConditions).toEqual([])
+    expect(result.current[0]!.showConditions).toEqual([])
   })
 
   it('should handle multiple variables', () => {
@@ -205,9 +205,9 @@ describe('useConfigurations', () => {
     const { result } = renderHook(() => useConfigurations(variables))
 
     expect(result.current).toHaveLength(3)
-    expect(result.current[0].variable).toBe('a')
-    expect(result.current[1].variable).toBe('b')
-    expect(result.current[2].variable).toBe('c')
+    expect(result.current[0]!.variable).toBe('a')
+    expect(result.current[1]!.variable).toBe('b')
+    expect(result.current[2]!.variable).toBe('c')
   })
 
   it('should include unit field', () => {
@@ -216,6 +216,6 @@ describe('useConfigurations', () => {
     ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0].unit).toBe('px')
+    expect(result.current[0]!.unit).toBe('px')
   })
 })

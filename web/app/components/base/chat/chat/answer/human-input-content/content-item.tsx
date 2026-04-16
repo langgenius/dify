@@ -18,7 +18,7 @@ const ContentItem = ({
   const extractFieldName = (str: string): string => {
     const outputVarRegex = /\{\{#\$output\.([^#]+)#\}\}/
     const match = outputVarRegex.exec(str)
-    return match ? match[1] : ''
+    return match ? match[1]! : ''
   }
 
   const fieldName = useMemo(() => {
@@ -43,7 +43,7 @@ const ContentItem = ({
       {formInputField.type === 'paragraph' && (
         <Textarea
           className="h-[104px] sm:text-xs"
-          value={inputs[fieldName]}
+          value={inputs[fieldName]!}
           onChange={(e) => { onInputChange(fieldName, e.target.value) }}
           data-testid="content-item-textarea"
         />
