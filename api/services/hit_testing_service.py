@@ -93,7 +93,9 @@ class HitTestingService:
             attachment_ids=attachment_ids,
             top_k=retrieval_model.top_k,
             score_threshold=retrieval_model.score_threshold if retrieval_model.score_threshold_enabled else 0.0,
-            reranking_model=retrieval_model.reranking_model.model_dump() if retrieval_model.reranking_enable and retrieval_model.reranking_model else None,
+            reranking_model=retrieval_model.reranking_model.model_dump()
+            if retrieval_model.reranking_enable and retrieval_model.reranking_model
+            else None,
             reranking_mode=retrieval_model.reranking_mode or "reranking_model",
             weights=retrieval_model.weights.model_dump() if retrieval_model.weights else None,
             document_ids_filter=document_ids_filter,

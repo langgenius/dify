@@ -214,8 +214,12 @@ class TestHitTestingServiceRetrieve:
             "score_threshold_enabled": True,
             "score_threshold": 0.7,
             "weights": {
-                "vector_setting": {"vector_weight": 0.5, "embedding_provider_name": "openai", "embedding_model_name": "text-embedding-3-small"},
-                "keyword_setting": {"keyword_weight": 0.5}
+                "vector_setting": {
+                    "vector_weight": 0.5,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {"keyword_weight": 0.5},
             },
         }
         external_retrieval_model = {}
