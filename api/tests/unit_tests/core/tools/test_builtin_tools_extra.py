@@ -6,6 +6,7 @@ from datetime import date
 from types import SimpleNamespace
 
 import pytest
+from graphon.file import FileType
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -28,7 +29,6 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
-from graphon.file import FileType
 
 
 def _build_builtin_tool(tool_cls: type[BuiltinTool]) -> BuiltinTool:

@@ -3,6 +3,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
+from graphon.file import FileTransferMethod
+from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.variables.types import SegmentType
@@ -12,8 +14,6 @@ from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment_with_type
-from graphon.file import FileTransferMethod
-from graphon.node_events import NodeRunResult
 
 from .entities import ContentType, WebhookData
 

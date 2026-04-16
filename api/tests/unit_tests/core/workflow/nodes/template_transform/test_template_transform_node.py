@@ -6,9 +6,9 @@ from graphon.nodes.template_transform.template_transform_node import (
     DEFAULT_TEMPLATE_TRANSFORM_MAX_OUTPUT_LENGTH,
     TemplateTransformNode,
 )
+from graphon.runtime import GraphRuntimeState
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.runtime import GraphRuntimeState
 from tests.workflow_test_utils import build_test_graph_init_params
 
 from .template_transform_node_spec import TestTemplateTransformNode  # noqa: F401

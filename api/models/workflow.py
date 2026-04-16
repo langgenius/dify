@@ -17,7 +17,9 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
+from graphon.file import File
 from graphon.file.constants import maybe_file_object
+from graphon.variables import utils as variable_utils
 from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from sqlalchemy import (
     DateTime,
@@ -42,8 +44,6 @@ from core.workflow.variable_prefixes import (
 )
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
-from graphon.file import File
-from graphon.variables import utils as variable_utils
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -53,10 +53,11 @@ if TYPE_CHECKING:
     from .model import AppMode, UploadFile
 
 
+from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
+
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from factories import variable_factory
-from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
 
 from .account import Account

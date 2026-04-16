@@ -4,6 +4,7 @@ from collections.abc import Generator
 from threading import Thread
 from typing import Any, cast
 
+from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -59,7 +60,6 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from graphon.file import FileTransferMethod
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 

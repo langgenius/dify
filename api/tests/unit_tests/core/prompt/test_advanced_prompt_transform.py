@@ -2,6 +2,7 @@ from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -17,7 +18,6 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from graphon.file import File, FileTransferMethod, FileType
 from models.model import Conversation
 
 

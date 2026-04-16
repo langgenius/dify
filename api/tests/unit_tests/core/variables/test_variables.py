@@ -1,7 +1,4 @@
 import pytest
-from graphon.variables.variables import VariableBase
-from pydantic import ValidationError
-
 from graphon.variables import (
     ArrayFileVariable,
     ArrayVariable,
@@ -12,6 +9,8 @@ from graphon.variables import (
     SegmentType,
     StringVariable,
 )
+from graphon.variables.variables import VariableBase
+from pydantic import ValidationError
 
 
 def test_frozen_variables():
