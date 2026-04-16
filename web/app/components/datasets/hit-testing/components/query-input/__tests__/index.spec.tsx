@@ -123,7 +123,7 @@ describe('QueryInput', () => {
   it('should show loading state on submit button when loading', () => {
     render(<QueryInput {...defaultProps} loading={true} />)
     const submitButton = screen.getByRole('button', { name: /input\.testing/ })
-    expect(submitButton).toHaveAttribute('aria-disabled', 'true')
+    expect(submitButton)!.toBeDisabled()
     expect(submitButton)!.toHaveAttribute('aria-busy', 'true')
     expect(submitButton.querySelector('.animate-spin'))!.toBeInTheDocument()
   })

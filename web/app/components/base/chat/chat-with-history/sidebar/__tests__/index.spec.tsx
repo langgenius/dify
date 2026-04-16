@@ -581,7 +581,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
       await user.click(screen.getByTestId('rename-1'))
       const saveButton = screen.getByText('common.operation.save').closest('button')
-      expect(saveButton).toHaveAttribute('aria-disabled', 'true')
+      expect(saveButton).toBeDisabled()
     })
 
     it('should handle rename for different items', async () => {
