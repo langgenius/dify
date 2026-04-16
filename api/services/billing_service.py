@@ -32,6 +32,102 @@ class SubscriptionPlan(TypedDict):
     expiration_date: int
 
 
+class QuotaReserveResult(TypedDict):
+    reservation_id: str
+    available: int
+    reserved: int
+
+
+class QuotaCommitResult(TypedDict):
+    available: int
+    reserved: int
+    refunded: int
+
+
+class QuotaReleaseResult(TypedDict):
+    available: int
+    reserved: int
+    released: int
+
+
+_quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
+_quota_commit_adapter = TypeAdapter(QuotaCommitResult)
+_quota_release_adapter = TypeAdapter(QuotaReleaseResult)
+class _BillingQuota(TypedDict):
+    size: int
+    limit: int
+
+
+class _VectorSpaceQuota(TypedDict):
+    size: float
+    limit: int
+
+
+class _KnowledgeRateLimit(TypedDict):
+    # NOTE (hj24):
+    # 1. Return for sandbox users but is null for other plans, it's defined but never used.
+    # 2. Keep it for compatibility for now, can be deprecated in future versions.
+    size: NotRequired[int]
+    # NOTE END
+    limit: int
+
+
+class _BillingSubscription(TypedDict):
+    plan: str
+    interval: str
+    education: bool
+
+
+class BillingInfo(TypedDict):
+    """Response of /subscription/info.
+
+    NOTE (hj24):
+    - Fields not listed here (e.g. trigger_event, api_rate_limit) are stripped by TypeAdapter.validate_python()
+    - To ensure the precision, billing may convert fields like int as str, be careful when use TypeAdapter:
+        1. validate_python in non-strict mode will coerce it to the expected type
+        2. In strict mode, it will raise ValidationError
+        3. To preserve compatibility, always keep non-strict mode here and avoid strict mode
+    """
+
+    enabled: bool
+    subscription: _BillingSubscription
+    members: _BillingQuota
+    apps: _BillingQuota
+    vector_space: _VectorSpaceQuota
+    knowledge_rate_limit: _KnowledgeRateLimit
+    documents_upload_quota: _BillingQuota
+    annotation_quota_limit: _BillingQuota
+    docs_processing: str
+    can_replace_logo: bool
+    model_load_balancing_enabled: bool
+    knowledge_pipeline_publish_enabled: bool
+    next_credit_reset_date: NotRequired[int]
+
+
+_billing_info_adapter = TypeAdapter(BillingInfo)
+
+
+class _TenantFeatureQuota(TypedDict):
+    usage: int
+    limit: int
+    reset_date: NotRequired[int]
+
+
+class TenantFeatureQuotaInfo(TypedDict):
+    """Response of /quota/info.
+
+    NOTE (hj24):
+    - Same convention as BillingInfo: billing may return int fields as str,
+      always keep non-strict mode to auto-coerce.
+    """
+
+    trigger_event: _TenantFeatureQuota
+    api_rate_limit: _TenantFeatureQuota
+
+
+_tenant_feature_quota_info_adapter = TypeAdapter(TenantFeatureQuotaInfo)
+
+
 class _BillingQuota(TypedDict):
     size: int
     limit: int
@@ -149,10 +245,62 @@ class BillingService:
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+        """Deprecated: Use get_quota_info instead."""
         params = {"tenant_id": tenant_id}
-
         usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
         return usage_info
+
+    @classmethod
+    def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
+        params = {"tenant_id": tenant_id}
+        return _tenant_feature_quota_info_adapter.validate_python(
+            cls._send_request("GET", "/quota/info", params=params)
+        )
+
+    @classmethod
+    def quota_reserve(
+        cls, tenant_id: str, feature_key: str, request_id: str, amount: int = 1, meta: dict | None = None
+    ) -> QuotaReserveResult:
+        """Reserve quota before task execution."""
+        payload: dict = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "request_id": request_id,
+            "amount": amount,
+        }
+        if meta:
+            payload["meta"] = meta
+        return _quota_reserve_adapter.validate_python(cls._send_request("POST", "/quota/reserve", json=payload))
+
+    @classmethod
+    def quota_commit(
+        cls, tenant_id: str, feature_key: str, reservation_id: str, actual_amount: int, meta: dict | None = None
+    ) -> QuotaCommitResult:
+        """Commit a reservation with actual consumption."""
+        payload: dict = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "reservation_id": reservation_id,
+            "actual_amount": actual_amount,
+        }
+        if meta:
+            payload["meta"] = meta
+        return _quota_commit_adapter.validate_python(cls._send_request("POST", "/quota/commit", json=payload))
+
+    @classmethod
+    def quota_release(cls, tenant_id: str, feature_key: str, reservation_id: str) -> QuotaReleaseResult:
+        """Release a reservation (cancel, return frozen quota)."""
+        return _quota_release_adapter.validate_python(
+            cls._send_request(
+                "POST",
+                "/quota/release",
+                json={
+                    "tenant_id": tenant_id,
+                    "feature_key": feature_key,
+                    "reservation_id": reservation_id,
+                },
+            )
+        )
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str) -> KnowledgeRateLimitDict:

@@ -2,13 +2,13 @@ import type { FC } from 'react'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { Button } from '@/app/components/base/ui/button'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import MenuItem from './menu-item'
 import useContextMenu from './use-context-menu'

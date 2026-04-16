@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { RiMoreLine } from '@remixicon/react'
 import { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 
 export type Operation = {
@@ -134,7 +134,7 @@ const AppOperations = ({
             tabIndex={-1}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
-            <span className="text-components-button-secondary-text system-xs-medium">
+            <span className="system-xs-medium text-components-button-secondary-text">
               {operation.title}
             </span>
           </Button>
@@ -147,7 +147,7 @@ const AppOperations = ({
           tabIndex={-1}
         >
           <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-          <span className="text-components-button-secondary-text system-xs-medium">
+          <span className="system-xs-medium text-components-button-secondary-text">
             {t('operation.more', { ns: 'common' })}
           </span>
         </Button>
@@ -163,7 +163,7 @@ const AppOperations = ({
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, { className: 'h-3.5 w-3.5 text-components-button-secondary-text' })}
-            <span className="text-components-button-secondary-text system-xs-medium">
+            <span className="system-xs-medium text-components-button-secondary-text">
               {operation.title}
             </span>
           </Button>
@@ -182,7 +182,7 @@ const AppOperations = ({
                 className="gap-px"
               >
                 <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-                <span className="text-components-button-secondary-text system-xs-medium">
+                <span className="system-xs-medium text-components-button-secondary-text">
                   {t('operation.more', { ns: 'common' })}
                 </span>
               </Button>
@@ -200,7 +200,7 @@ const AppOperations = ({
                         onClick={item.onClick}
                       >
                         {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
-                        <span className="text-text-secondary system-md-regular">{item.title}</span>
+                        <span className="system-md-regular text-text-secondary">{item.title}</span>
                       </div>
                     ))}
               </div>

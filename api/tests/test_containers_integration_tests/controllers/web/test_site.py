@@ -1,28 +1,48 @@
-"""Unit tests for controllers.web.site endpoints."""
+"""Testcontainers integration tests for controllers.web.site endpoints."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.web.site import AppSiteApi, AppSiteInfo
+from models import Tenant, TenantStatus
+from models.model import App, AppMode, CustomizeTokenStrategy, Site
 
 
-def _tenant(*, status: str = "normal") -> SimpleNamespace:
-    return SimpleNamespace(
-        id="tenant-1",
-        status=status,
-        plan="basic",
-        custom_config_dict={"remove_webapp_brand": False, "replace_webapp_logo": False},
+@pytest.fixture
+def app(flask_app_with_containers) -> Flask:
+    return flask_app_with_containers
+
+
+def _create_tenant(db_session: Session, *, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:
+    tenant = Tenant(name="test-tenant", status=status)
+    db_session.add(tenant)
+    db_session.commit()
+    return tenant
+
+
+def _create_app(db_session: Session, tenant_id: str, *, enable_site: bool = True) -> App:
+    app_model = App(
+        tenant_id=tenant_id,
+        mode=AppMode.CHAT,
+        name="test-app",
+        enable_site=enable_site,
+        enable_api=True,
     )
+    db_session.add(app_model)
+    db_session.commit()
+    return app_model
 
 
-def _site() -> SimpleNamespace:
-    return SimpleNamespace(
+def _create_site(db_session: Session, app_id: str) -> Site:
+    site = Site(
+        app_id=app_id,
         title="Site",
         icon_type="emoji",
         icon="robot",
@@ -31,77 +51,64 @@ def _site() -> SimpleNamespace:
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
-        copyright=None,
-        privacy_policy=None,
-        custom_disclaimer=None,
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        code=f"code-{app_id[-6:]}",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
     )
+    db_session.add(site)
+    db_session.commit()
+    return site
 
 
-# ---------------------------------------------------------------------------
-# AppSiteApi
-# ---------------------------------------------------------------------------
 class TestAppSiteApi:
     @patch("controllers.web.site.FeatureService.get_features")
-    @patch("controllers.web.site.db")
-    def test_happy_path(self, mock_db: MagicMock, mock_features: MagicMock, app: Flask) -> None:
+    def test_happy_path(self, mock_features, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
-        site_obj = _site()
-        mock_db.session.scalar.return_value = site_obj
-        tenant = _tenant()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
+        tenant = _create_tenant(db_session_with_containers)
+        app_model = _create_app(db_session_with_containers, tenant.id)
+        _create_site(db_session_with_containers, app_model.id)
         end_user = SimpleNamespace(id="eu-1")
+        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
 
         with app.test_request_context("/site"):
             result = AppSiteApi().get(app_model, end_user)
 
-        # marshal_with serializes AppSiteInfo to a dict
-        assert result["app_id"] == "app-1"
+        assert result["app_id"] == app_model.id
         assert result["plan"] == "basic"
         assert result["enable_site"] is True
 
-    @patch("controllers.web.site.db")
-    def test_missing_site_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
+    def test_missing_site_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        mock_db.session.scalar.return_value = None
-        tenant = _tenant()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
+        tenant = _create_tenant(db_session_with_containers)
+        app_model = _create_app(db_session_with_containers, tenant.id)
         end_user = SimpleNamespace(id="eu-1")
 
         with app.test_request_context("/site"):
             with pytest.raises(Forbidden):
                 AppSiteApi().get(app_model, end_user)
 
-    @patch("controllers.web.site.db")
-    def test_archived_tenant_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
+    @patch("controllers.web.site.FeatureService.get_features")
+    def test_archived_tenant_raises_forbidden(
+        self, mock_features, app: Flask, db_session_with_containers: Session
+    ) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        from models.account import TenantStatus
-
-        mock_db.session.scalar.return_value = _site()
-        tenant = SimpleNamespace(
-            id="tenant-1",
-            status=TenantStatus.ARCHIVE,
-            plan="basic",
-            custom_config_dict={},
-        )
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
+        tenant = _create_tenant(db_session_with_containers, status=TenantStatus.ARCHIVE)
+        app_model = _create_app(db_session_with_containers, tenant.id)
+        _create_site(db_session_with_containers, app_model.id)
         end_user = SimpleNamespace(id="eu-1")
+        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
 
         with app.test_request_context("/site"):
             with pytest.raises(Forbidden):
                 AppSiteApi().get(app_model, end_user)
 
 
-# ---------------------------------------------------------------------------
-# AppSiteInfo
-# ---------------------------------------------------------------------------
 class TestAppSiteInfo:
     def test_basic_fields(self) -> None:
-        tenant = _tenant()
-        site_obj = _site()
+        tenant = SimpleNamespace(id="tenant-1", plan="basic", custom_config_dict={})
+        site_obj = SimpleNamespace()
         info = AppSiteInfo(tenant, SimpleNamespace(id="app-1", enable_site=True), site_obj, "eu-1", False)
 
         assert info.app_id == "app-1"
@@ -118,7 +125,7 @@ class TestAppSiteInfo:
             plan="pro",
             custom_config_dict={"remove_webapp_brand": True, "replace_webapp_logo": True},
         )
-        site_obj = _site()
+        site_obj = SimpleNamespace()
         info = AppSiteInfo(tenant, SimpleNamespace(id="app-1", enable_site=True), site_obj, "eu-1", True)
 
         assert info.can_replace_logo is True
