@@ -1908,10 +1908,27 @@ export const useNodesInteractions = () => {
     const pastedNodesMap: Record<string, Node> = {}
     const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
     const selectedNode = nodes.find(node => node.selected)
+    // Keep this list aligned with availableBlocksFilter(inContainer)
+    // in use-available-blocks.ts.
+    const commonNestedDisallowPasteNodes = [
+      BlockEnum.End,
+      BlockEnum.Iteration,
+      BlockEnum.Loop,
+      BlockEnum.DataSource,
+      BlockEnum.KnowledgeBase,
+      BlockEnum.HumanInput,
+    ]
+    const selectedContainerNode = selectedNode
+      && (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop)
+      ? selectedNode
+      : undefined
 
     rootClipboardNodes.forEach((nodeToPaste, index) => {
       const nodeDefaultValue = getNodeDefaultValueForPaste(nodeToPaste)
       if (nodeToPaste.type !== CUSTOM_NOTE_NODE && !nodeDefaultValue)
+        return
+
+      if (selectedContainerNode && commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
         return
 
       const mergedData = shouldRunCompatibilityCheck
@@ -2159,31 +2176,24 @@ export const useNodesInteractions = () => {
         if (newLoopStartNode)
           newChildren.push(newLoopStartNode)
       }
-      else if (selectedNode) {
-        const commonNestedDisallowPasteNodes = [
-          BlockEnum.End,
-        ]
-
-        if (commonNestedDisallowPasteNodes.includes(nodeToPaste.data.type))
-          return
-
-        if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
-          const isIteration = selectedNode.data.type === BlockEnum.Iteration
+      else if (selectedContainerNode) {
+        if (selectedContainerNode.data.type === BlockEnum.Iteration || selectedContainerNode.data.type === BlockEnum.Loop) {
+          const isIteration = selectedContainerNode.data.type === BlockEnum.Iteration
 
           newNode.data.isInIteration = isIteration
-          newNode.data.iteration_id = isIteration ? selectedNode.id : undefined
+          newNode.data.iteration_id = isIteration ? selectedContainerNode.id : undefined
           newNode.data.isInLoop = !isIteration
-          newNode.data.loop_id = !isIteration ? selectedNode.id : undefined
+          newNode.data.loop_id = !isIteration ? selectedContainerNode.id : undefined
 
-          newNode.parentId = selectedNode.id
+          newNode.parentId = selectedContainerNode.id
           newNode.zIndex = isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
           newNode.positionAbsolute = {
             x: newNode.position.x,
             y: newNode.position.y,
           }
-          newNode.position = getNestedNodePosition(newNode, selectedNode)
+          newNode.position = getNestedNodePosition(newNode, selectedContainerNode)
           parentChildrenToAppend.push({
-            parentId: selectedNode.id,
+            parentId: selectedContainerNode.id,
             childId: newNode.id,
             childType: newNode.data.type,
           })

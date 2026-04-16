@@ -673,4 +673,99 @@ describe('useNodesInteractions', () => {
 
     expect(rfState.setNodes).toHaveBeenCalled()
   })
+
+  // Nested container paste restrictions should stay aligned with available block filtering.
+  describe('nested container paste restrictions', () => {
+    const disallowedNestedPasteNodeTypes = [
+      BlockEnum.End,
+      BlockEnum.Iteration,
+      BlockEnum.Loop,
+      BlockEnum.DataSource,
+      BlockEnum.KnowledgeBase,
+      BlockEnum.HumanInput,
+    ]
+
+    const createNodeMeta = (type: BlockEnum) => ({
+      defaultValue: {
+        type,
+        title: `${type} node`,
+        desc: '',
+      },
+      metaData: {
+        isSingleton: false,
+      },
+    })
+
+    const runDisallowedPasteScenario = async (containerType: BlockEnum.Iteration | BlockEnum.Loop, nodeType: BlockEnum) => {
+      runtimeNodesMetaDataMap.value = {
+        [nodeType]: createNodeMeta(nodeType),
+      }
+
+      const containerId = `${containerType}-container`
+      currentNodes = [
+        createNode({
+          id: containerId,
+          position: { x: 20, y: 20 },
+          selected: true,
+          data: {
+            type: containerType,
+            title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
+            desc: '',
+            _children: [],
+          },
+        }),
+      ]
+      currentEdges = []
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: {
+          nodes: currentNodes,
+          edges: currentEdges,
+        },
+      })
+
+      store.setState({
+        clipboardElements: [
+          createNode({
+            id: `${nodeType}-clipboard-node`,
+            position: { x: 100, y: 100 },
+            data: {
+              type: nodeType,
+              title: `${nodeType} clipboard node`,
+              desc: '',
+            },
+          }),
+        ] as never,
+        clipboardEdges: [] as never,
+        mousePosition: {
+          pageX: 60,
+          pageY: 80,
+        } as never,
+      })
+
+      await act(async () => {
+        await result.current.handleNodesPaste()
+      })
+
+      const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+
+      expect(pastedNodes).toHaveLength(1)
+      expect(pastedNodes[0]?.id).toBe(containerId)
+      expect(pastedNodes[0]?.data._children).toEqual([])
+      expect(pastedNodes.some(node => node.data.type === nodeType && node.parentId === containerId)).toBe(false)
+    }
+
+    it.each(disallowedNestedPasteNodeTypes)(
+      'should not paste %s into an iteration container',
+      async (nodeType) => {
+        await runDisallowedPasteScenario(BlockEnum.Iteration, nodeType)
+      },
+    )
+
+    it('should not paste human-input into a loop container', async () => {
+      await runDisallowedPasteScenario(BlockEnum.Loop, BlockEnum.HumanInput)
+    })
+  })
 })
