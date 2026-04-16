@@ -118,9 +118,12 @@ class APIBasedExtensionAPI(Resource):
             api_key=payload.api_key,
         )
 
-        return APIBasedExtensionResponse.model_validate(
-            APIBasedExtensionService.save(extension_data), from_attributes=True
-        ).model_dump(mode="json")
+        return (
+            APIBasedExtensionResponse.model_validate(
+                APIBasedExtensionService.save(extension_data), from_attributes=True
+            ).model_dump(mode="json"),
+            201,
+        )
 
 
 @console_ns.route("/api-based-extension/<uuid:id>")
