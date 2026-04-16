@@ -9,7 +9,7 @@ import type {
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
@@ -474,7 +474,7 @@ export const AppCardOperations = ({
                   }
                 }}
               >
-                <RiEqualizer2Line className="h-3.5 w-3.5" />
+                <RiSettings2Line className="h-3.5 w-3.5" />
               </div>
             </Button>
           </MaybeTooltip>
