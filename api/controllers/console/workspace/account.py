@@ -184,10 +184,13 @@ def _to_timestamp(value: datetime | int | str | None) -> int | None:
         return None
     if isinstance(value, int):
         return value
-    dt = value
+
+    dt: datetime
     if isinstance(value, str):
         normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
         dt = datetime.fromisoformat(normalized)
+    else:
+        dt = value
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
     else:
