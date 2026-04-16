@@ -4,8 +4,6 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.generate_task_pipeline import (
@@ -49,6 +47,8 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
+from graphon.enums import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser

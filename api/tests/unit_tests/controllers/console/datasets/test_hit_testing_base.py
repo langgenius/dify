@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -21,6 +20,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.account import Account
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService

@@ -10,7 +10,6 @@ from typing import Any
 import pytest
 from flask import Flask, Response
 from flask.testing import FlaskClient
-from graphon.enums import BuiltinNodeTypes
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +24,7 @@ from core.trigger.debug import event_selectors
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus

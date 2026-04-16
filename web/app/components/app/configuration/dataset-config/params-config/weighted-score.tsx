@@ -36,7 +36,7 @@ const WeightedScore = ({
 
   return (
     <div>
-      <div className="space-x-3 rounded-lg border border-components-panel-border px-3 pb-2 pt-5">
+      <div className="space-x-3 rounded-lg border border-components-panel-border px-3 pt-5 pb-2">
         <div className="grow" style={weightedScoreSliderStyle}>
           <Slider
             className="grow"
@@ -50,14 +50,14 @@ const WeightedScore = ({
           />
         </div>
         <div className="mt-3 flex justify-between">
-          <div className="flex w-[90px] shrink-0 items-center text-util-colors-blue-light-blue-light-500 system-xs-semibold-uppercase">
+          <div className="flex w-[90px] shrink-0 items-center system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500">
             <div className="mr-1 truncate uppercase" title={t('weightedScore.semantic', { ns: 'dataset' }) || ''}>
               {t('weightedScore.semantic', { ns: 'dataset' })}
             </div>
-            {formatNumber(value.value[0])}
+            {formatNumber(value.value[0]!)}
           </div>
-          <div className="flex w-[90px] shrink-0 items-center justify-end text-util-colors-teal-teal-500 system-xs-semibold-uppercase">
-            {formatNumber(value.value[1])}
+          <div className="flex w-[90px] shrink-0 items-center justify-end system-xs-semibold-uppercase text-util-colors-teal-teal-500">
+            {formatNumber(value.value[1]!)}
             <div className="ml-1 truncate uppercase" title={t('weightedScore.keyword', { ns: 'dataset' }) || ''}>
               {t('weightedScore.keyword', { ns: 'dataset' })}
             </div>

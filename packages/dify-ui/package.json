@@ -1,24 +1,29 @@
 {
   "name": "@langgenius/dify-ui",
+  "type": "module",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "exports": {
     "./styles.css": "./src/styles/styles.css",
     "./tailwind-preset": {
-      "import": "./src/tailwind-preset.ts",
-      "types": "./src/tailwind-preset.ts"
+      "types": "./src/tailwind-preset.ts",
+      "import": "./src/tailwind-preset.ts"
     },
     "./cn": {
-      "import": "./src/cn.ts",
-      "types": "./src/cn.ts"
+      "types": "./src/cn.ts",
+      "import": "./src/cn.ts"
     }
+  },
+  "scripts": {
+    "type-check": "tsc"
   },
   "dependencies": {
     "clsx": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:"
+    "@dify/tsconfig": "workspace:*",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
   }
 }

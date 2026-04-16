@@ -58,8 +58,8 @@ const VirtualPageList = ({
         }}
       >
         {virtualRows.map((virtualRow) => {
-          const row = rows[virtualRow.index]
-          const pageId = row.page.page_id
+          const row = rows[virtualRow.index]!
+          const pageId = row!.page.page_id
 
           return (
             <PageRow

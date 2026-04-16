@@ -3,7 +3,6 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from graphon.variables.types import SegmentType
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -13,6 +12,7 @@ from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
 from factories import variable_factory
+from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable

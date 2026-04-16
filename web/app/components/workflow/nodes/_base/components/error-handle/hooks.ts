@@ -30,8 +30,15 @@ export const useDefaultValue = (
     const index = default_value.findIndex(form => form.key === key)
 
     if (index > -1) {
-      const newDefaultValue = [...default_value]
-      newDefaultValue[index].value = value
+      const newDefaultValue = default_value.map((form) => {
+        if (form.key !== key)
+          return form
+        // clone the entry so we do not mutate the original reference (which would block CRDT diffs)
+        return {
+          ...form,
+          value,
+        }
+      })
       handleNodeDataUpdateWithSyncDraft({
         id,
         data: {

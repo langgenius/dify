@@ -11,7 +11,7 @@ import { ItemIndicator } from './item-indicator'
 
 function getVersionFromMarketplaceIdentifier(identifier: string): string | undefined {
   const withoutHash = identifier.split('@')[0]
-  const [, version] = withoutHash.split(':')
+  const [, version] = withoutHash!.split(':')
   return version || undefined
 }
 

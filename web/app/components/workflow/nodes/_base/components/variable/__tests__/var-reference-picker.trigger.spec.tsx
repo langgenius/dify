@@ -55,7 +55,7 @@ describe('VarReferencePickerTrigger', () => {
       />,
     )
 
-    expect(screen.getByText('Pick variable')).toBeInTheDocument()
+    expect(screen.getByText('Pick variable'))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
     expect(setOpen).toHaveBeenCalledWith(true)
   })
@@ -79,8 +79,8 @@ describe('VarReferencePickerTrigger', () => {
       />,
     )
 
-    expect(screen.getByText('Source Node')).toBeInTheDocument()
-    expect(screen.getByText('answer')).toBeInTheDocument()
+    expect(screen.getByText('Source Node'))!.toBeInTheDocument()
+    expect(screen.getByText('answer'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Source Node'), { ctrlKey: true })
     expect(handleVariableJump).toHaveBeenCalledWith('node-a')
@@ -128,7 +128,7 @@ describe('VarReferencePickerTrigger', () => {
       />,
     )
 
-    expect(document.querySelector('button')).toBeInTheDocument()
+    expect(document.querySelector('button'))!.toBeInTheDocument()
   })
 
   it('should stay inert in readonly mode and show value type placeholder badge', () => {
@@ -148,8 +148,8 @@ describe('VarReferencePickerTrigger', () => {
 
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
     expect(setOpen).not.toHaveBeenCalled()
-    expect(screen.getByText('string')).toBeInTheDocument()
-    expect(screen.getByText('text')).toBeInTheDocument()
+    expect(screen.getByText('string'))!.toBeInTheDocument()
+    expect(screen.getByText('text'))!.toBeInTheDocument()
   })
 
   it('should show loading placeholder and remove rows in table mode', () => {
@@ -167,10 +167,10 @@ describe('VarReferencePickerTrigger', () => {
       />,
     )
 
-    expect(screen.getByText('Loading variable')).toBeInTheDocument()
+    expect(screen.getByText('Loading variable'))!.toBeInTheDocument()
 
     const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[buttons.length - 1])
+    fireEvent.click(buttons[buttons.length - 1]!)
     expect(onRemove).toHaveBeenCalledTimes(1)
   })
 })
