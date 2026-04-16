@@ -167,9 +167,13 @@ describe('Embedded', () => {
       expect(screen.getByLabelText('Secret')).toBeInTheDocument()
     })
 
-    fireEvent.change(screen.getByLabelText('Secret'), {
-      target: { value: 'top-secret' },
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Secret'), {
+        target: { value: 'top-secret' },
+      })
     })
+
+    expect(document.querySelector('pre')?.textContent ?? '').toContain('/chatbot/token')
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')

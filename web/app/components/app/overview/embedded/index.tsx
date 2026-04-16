@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,7 +9,7 @@ import {
   RiClipboardLine,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { Suspense, use, useEffect, useMemo, useState } from 'react'
+import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
@@ -55,14 +56,48 @@ const EMPTY_OPTION_STATUS: OptionStatus = {
   chromePlugin: false,
 }
 
+const getSerializedHiddenInputValue = (
+  variable: WorkflowHiddenStartVariable,
+  values: Record<string, WorkflowLaunchInputValue>,
+) => {
+  const rawValue = values[variable.variable]
+  if (variable.type === InputVarType.checkbox)
+    return String(Boolean(rawValue))
+
+  return String(rawValue ?? '')
+}
+
+const buildEmbeddedIframeUrl = async ({
+  appBaseUrl,
+  accessToken,
+  variables,
+  values,
+}: {
+  appBaseUrl: string
+  accessToken: string
+  variables: WorkflowHiddenStartVariable[]
+  values: Record<string, WorkflowLaunchInputValue>
+}) => {
+  const iframeUrl = new URL(`${appBaseUrl}${basePath}/chatbot/${accessToken}`, window.location.origin)
+
+  await Promise.all(variables.map(async (variable) => {
+    iframeUrl.searchParams.set(variable.variable, await compressAndEncodeBase64(getSerializedHiddenInputValue(variable, values)))
+  }))
+
+  return iframeUrl.toString()
+}
+
 const AsyncEmbeddedOptionContent = ({
   option,
   iframeUrlPromise,
+  latestResolvedIframeUrlRef,
 }: {
   option: Option
   iframeUrlPromise: Promise<string>
+  latestResolvedIframeUrlRef: MutableRefObject<string>
 }) => {
   const iframeUrl = use(iframeUrlPromise)
+  latestResolvedIframeUrlRef.current = iframeUrl
 
   if (option === 'chromePlugin')
     return getChromePluginContent(iframeUrl)
@@ -77,48 +112,49 @@ const EmbeddedContent = ({
   hiddenInputs,
 }: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> & Pick<Props, 'siteInfo' | 'hiddenInputs'>) => {
   const { t } = useTranslation()
-  const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState<OptionStatus>(EMPTY_OPTION_STATUS)
-  const [hiddenInputsCollapsed, setHiddenInputsCollapsed] = useState(true)
-  const [hiddenInputValues, setHiddenInputValues] = useState<Record<string, WorkflowLaunchInputValue>>(
-    () => createWorkflowLaunchInitialValues((hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported)),
-  )
-
-  const { langGeniusVersionInfo } = useAppContext()
-  const themeBuilder = useThemeContext()
-  const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
     [hiddenInputs],
   )
+  const initialHiddenInputValues = useMemo(
+    () => createWorkflowLaunchInitialValues(supportedHiddenInputs),
+    [supportedHiddenInputs],
+  )
+  const [option, setOption] = useState<Option>('iframe')
+  const [isCopied, setIsCopied] = useState<OptionStatus>(EMPTY_OPTION_STATUS)
+  const [hiddenInputsCollapsed, setHiddenInputsCollapsed] = useState(true)
+  const [hiddenInputValues, setHiddenInputValues] = useState<Record<string, WorkflowLaunchInputValue>>(
+    () => initialHiddenInputValues,
+  )
+  const [previewIframeUrlPromise, setPreviewIframeUrlPromise] = useState<Promise<string>>(
+    () => buildEmbeddedIframeUrl({
+      appBaseUrl,
+      accessToken,
+      variables: supportedHiddenInputs,
+      values: initialHiddenInputValues,
+    }),
+  )
+  const latestResolvedIframeUrlRef = useRef('')
+
+  const { langGeniusVersionInfo } = useAppContext()
+  const themeBuilder = useThemeContext()
+  const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
 
   const handleHiddenInputValueChange = (variable: string, value: WorkflowLaunchInputValue) => {
-    setIsCopied(EMPTY_OPTION_STATUS)
-    setHiddenInputValues(prev => ({
-      ...prev,
+    const nextHiddenInputValues = {
+      ...hiddenInputValues,
       [variable]: value,
+    }
+
+    setIsCopied(EMPTY_OPTION_STATUS)
+    setHiddenInputValues(nextHiddenInputValues)
+    setPreviewIframeUrlPromise(buildEmbeddedIframeUrl({
+      appBaseUrl,
+      accessToken,
+      variables: supportedHiddenInputs,
+      values: nextHiddenInputValues,
     }))
   }
-
-  const getSerializedHiddenInputValue = (variable: WorkflowHiddenStartVariable) => {
-    const rawValue = hiddenInputValues[variable.variable]
-    if (variable.type === InputVarType.checkbox)
-      return String(Boolean(rawValue))
-
-    return String(rawValue ?? '')
-  }
-
-  const buildEmbeddedIframeUrl = async () => {
-    const iframeUrl = new URL(`${appBaseUrl}${basePath}/chatbot/${accessToken}`, window.location.origin)
-
-    await Promise.all(supportedHiddenInputs.map(async (variable) => {
-      iframeUrl.searchParams.set(variable.variable, await compressAndEncodeBase64(getSerializedHiddenInputValue(variable)))
-    }))
-
-    return iframeUrl.toString()
-  }
-
-  const iframeUrlPromise = useMemo(() => buildEmbeddedIframeUrl(), [accessToken, appBaseUrl, hiddenInputValues, supportedHiddenInputs])
   const scriptsContent = useMemo(() => getEmbeddedScriptSnippet({
     url: appBaseUrl,
     token: accessToken,
@@ -128,19 +164,31 @@ const EmbeddedContent = ({
   }), [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, themeBuilder.theme?.primaryColor])
 
   const onClickCopy = async () => {
+    const latestIframeUrl = await buildEmbeddedIframeUrl({
+      appBaseUrl,
+      accessToken,
+      variables: supportedHiddenInputs,
+      values: hiddenInputValues,
+    })
+
     if (option === 'chromePlugin') {
-      const splitUrl = getChromePluginContent(await iframeUrlPromise).split(': ')
+      const splitUrl = getChromePluginContent(latestIframeUrl).split(': ')
       if (splitUrl.length > 1)
         copy(splitUrl[1])
     }
     else if (option === 'iframe') {
-      copy(getEmbeddedIframeSnippet(await iframeUrlPromise))
+      copy(getEmbeddedIframeSnippet(latestIframeUrl))
     }
     else {
       copy(scriptsContent)
     }
     setIsCopied(prev => ({ ...prev, [option]: true }))
   }
+  const previewFallback = latestResolvedIframeUrlRef.current
+    ? (option === 'chromePlugin'
+        ? getChromePluginContent(latestResolvedIframeUrlRef.current)
+        : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current))
+    : ''
 
   const navigateToChromeUrl = () => {
     window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank', 'noopener,noreferrer')
@@ -241,8 +289,12 @@ const EmbeddedContent = ({
               {option === 'scripts'
                 ? scriptsContent
                 : (
-                    <Suspense fallback="">
-                      <AsyncEmbeddedOptionContent option={option} iframeUrlPromise={iframeUrlPromise} />
+                    <Suspense fallback={previewFallback}>
+                      <AsyncEmbeddedOptionContent
+                        option={option}
+                        iframeUrlPromise={previewIframeUrlPromise}
+                        latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                      />
                     </Suspense>
                   )}
             </pre>
