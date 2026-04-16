@@ -11,7 +11,7 @@ When('I start creating a blank app', async function (this: DifyWorld) {
 
 When('I enter a unique E2E app name', async function (this: DifyWorld) {
   const appName = `E2E App ${Date.now()}`
-
+  this.lastCreatedAppName = appName
   await this.getPage().getByPlaceholder('Give your app a name').fill(appName)
 })
 

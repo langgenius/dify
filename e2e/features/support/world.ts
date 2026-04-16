@@ -1,9 +1,7 @@
-import type { IWorldOptions } from '@cucumber/cucumber'
-import type { Browser, BrowserContext, ConsoleMessage, Page } from '@playwright/test'
 import type { AuthSessionMetadata } from '../../fixtures/auth'
-import { setWorldConstructor, World } from '@cucumber/cucumber'
+import { type IWorldOptions, World, setWorldConstructor } from '@cucumber/cucumber'
+import type { Browser, BrowserContext, ConsoleMessage, Download, Page } from '@playwright/test'
 import {
-
   authStatePath,
   readAuthSessionMetadata,
 } from '../../fixtures/auth'
@@ -16,6 +14,9 @@ export class DifyWorld extends World {
   pageErrors: string[] = []
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
+  lastCreatedAppName: string | undefined
+  createdAppIds: string[] = []
+  capturedDownloads: Download[] = []
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -25,6 +26,9 @@ export class DifyWorld extends World {
   resetScenarioState() {
     this.consoleErrors = []
     this.pageErrors = []
+    this.lastCreatedAppName = undefined
+    this.createdAppIds = []
+    this.capturedDownloads = []
   }
 
   async startSession(browser: Browser, authenticated: boolean) {
@@ -44,6 +48,9 @@ export class DifyWorld extends World {
     })
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
+    })
+    this.page.on('download', (dl) => {
+      this.capturedDownloads.push(dl)
     })
   }
 
