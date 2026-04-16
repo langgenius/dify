@@ -116,6 +116,10 @@ const COOKIE_DOMAIN = getStringConfig(
   env.NEXT_PUBLIC_COOKIE_DOMAIN,
   '',
 ).trim()
+export const SOCKET_URL = getStringConfig(
+  env.NEXT_PUBLIC_SOCKET_URL,
+  'ws://localhost:5001',
+).trim()
 
 export const BATCH_CONCURRENCY = env.NEXT_PUBLIC_BATCH_CONCURRENCY
 

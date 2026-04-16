@@ -2,6 +2,11 @@ import dataclasses
 
 import orjson
 import pytest
+from pydantic import BaseModel
+
+from core.helper import encrypter
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_variables_to_pool
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables.segment_group import SegmentGroup
@@ -42,11 +47,6 @@ from graphon.variables.variables import (
     StringVariable,
     Variable,
 )
-from pydantic import BaseModel
-
-from core.helper import encrypter
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
-from core.workflow.variable_pool_initializer import add_variables_to_pool
 
 
 def _build_variable_pool(

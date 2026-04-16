@@ -11,9 +11,10 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from werkzeug.exceptions import Forbidden
+
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from werkzeug.exceptions import Forbidden
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]

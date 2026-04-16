@@ -1,9 +1,8 @@
 from collections.abc import Mapping, Sequence
 
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
-
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:

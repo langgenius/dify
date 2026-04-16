@@ -3,9 +3,6 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables.segments import StringSegment
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -19,6 +16,9 @@ from core.workflow.nodes.knowledge_index.protocols import (
     SummaryIndexServiceProtocol,
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

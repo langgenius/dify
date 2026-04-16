@@ -20,6 +20,19 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useIsChatMode: () => false,
+  useWorkflow: () => ({
+    getTreeLeafNodes: () => [],
+    getNodeById: () => undefined,
+    getBeforeNodesInSameBranchIncludeParent: () => [],
+  }),
+  useWorkflowVariables: () => ({
+    getNodeAvailableVars: () => [],
+    getCurrentVariableType: () => undefined,
+  }),
+}))
+
 vi.mock('../var-reference-popup', () => ({
   default: ({
     onChange,

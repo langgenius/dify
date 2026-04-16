@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
 
 from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import (
@@ -26,6 +25,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.enums import MessageStatus
 

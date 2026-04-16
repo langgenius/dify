@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from tests.unit_tests.core.agent.conftest import (
     DummyAgentConfig,
     DummyAppConfig,

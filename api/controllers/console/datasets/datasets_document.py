@@ -8,10 +8,8 @@ from typing import Any, Literal, cast
 
 import sqlalchemy as sa
 from flask import request, send_file
-from flask_restx import Resource, marshal
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from pydantic import BaseModel, Field, field_validator
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -32,8 +30,16 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
-from fields.base import ResponseModel
-from fields.document_fields import document_fields, document_status_fields, document_with_segments_fields
+from fields.dataset_fields import dataset_fields
+from fields.document_fields import (
+    dataset_and_document_fields,
+    document_fields,
+    document_metadata_fields,
+    document_status_fields,
+    document_with_segments_fields,
+)
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile

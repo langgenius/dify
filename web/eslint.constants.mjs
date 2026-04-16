@@ -54,13 +54,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   },
   {
     group: [
-      '**/base/popover',
-      '**/base/popover/index',
-    ],
-    message: 'Deprecated: use @/app/components/base/ui/popover instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/dropdown',
       '**/base/dropdown/index',
     ],

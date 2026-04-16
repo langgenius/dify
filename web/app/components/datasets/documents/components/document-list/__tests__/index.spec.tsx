@@ -21,6 +21,16 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: { doc_form: ChunkingMode.text } }),
 }))
 
+vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
+  default: () => ({
+    isShowEditModal: false,
+    showEditModal: vi.fn(),
+    hideEditModal: vi.fn(),
+    originalList: [],
+    handleSave: vi.fn(),
+  }),
+}))
+
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: { retry: false, gcTime: 0 },
@@ -370,8 +380,7 @@ describe('DocumentList', () => {
         })
       }
 
-      // After clicking rename, the modal should potentially be visible
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'datasetDocuments.list.table.rename' })).toBeInTheDocument()
     })
 
     it('should call onUpdate when document is renamed', () => {

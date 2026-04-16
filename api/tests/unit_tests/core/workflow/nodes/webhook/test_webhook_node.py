@@ -2,11 +2,6 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables import FileVariable, StringVariable
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
@@ -19,6 +14,11 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import FileVariable, StringVariable
 from tests.workflow_test_utils import build_test_variable_pool
 
 
