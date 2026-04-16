@@ -6,11 +6,8 @@ to FileVariable objects, fixing the "Invalid variable type: ObjectVariable" erro
 when passing files to downstream LLM nodes.
 """
 
+from typing import Any
 from unittest.mock import Mock, patch
-
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.nodes.trigger_webhook.entities import (
@@ -21,6 +18,9 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -97,7 +97,7 @@ def create_test_file_dict(
     }
 
 
-def build_webhook_variable_pool(inputs: dict) -> VariablePool:
+def build_webhook_variable_pool(inputs: dict[str, Any]) -> VariablePool:
     return build_test_variable_pool(
         variables=default_system_variables(),
         node_id="webhook-node-1",
@@ -105,7 +105,7 @@ def build_webhook_variable_pool(inputs: dict) -> VariablePool:
     )
 
 
-def expected_factory_mapping(file_dict: dict) -> dict:
+def expected_factory_mapping(file_dict: dict[str, Any]) -> dict[str, Any]:
     return {**file_dict, "upload_file_id": file_dict["related_id"]}
 
 

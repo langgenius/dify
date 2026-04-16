@@ -12,9 +12,10 @@ This test suite covers:
 import json
 import uuid
 from typing import Any, cast
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
+
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -28,7 +29,6 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
 from graphon.variables.input_entities import VariableEntityType
-
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
@@ -94,8 +94,8 @@ class TestWorkflowAssociatedDataFactory:
         app_id: str = "app-123",
         version: str = Workflow.VERSION_DRAFT,
         workflow_type: str = WorkflowType.WORKFLOW.value,
-        graph: dict | None = None,
-        features: dict | None = None,
+        graph: dict[str, Any] | None = None,
+        features: dict[str, Any] | None = None,
         unique_hash: str | None = None,
         **kwargs,
     ) -> MagicMock:
@@ -712,6 +712,79 @@ class TestWorkflowService:
 
         with pytest.raises(ValueError, match="Invalid app mode"):
             workflow_service.validate_features_structure(app, features)
+
+    # ==================== Draft Workflow Variable Update Tests ====================
+    # These tests verify updating draft workflow environment/conversation variables
+
+    def test_update_draft_workflow_environment_variables_updates_workflow(self, workflow_service, mock_db_session):
+        """Test update_draft_workflow_environment_variables updates draft fields."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
+        variables = [Mock()]
+
+        with (
+            patch.object(workflow_service, "get_draft_workflow", return_value=workflow),
+            patch("services.workflow_service.naive_utc_now", return_value="now"),
+        ):
+            workflow_service.update_draft_workflow_environment_variables(
+                app_model=app,
+                environment_variables=variables,
+                account=account,
+            )
+
+        assert workflow.environment_variables == variables
+        assert workflow.updated_by == account.id
+        assert workflow.updated_at == "now"
+        mock_db_session.session.commit.assert_called_once()
+
+    def test_update_draft_workflow_environment_variables_raises_when_missing(self, workflow_service):
+        """Test update_draft_workflow_environment_variables raises when draft missing."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+
+        with patch.object(workflow_service, "get_draft_workflow", return_value=None):
+            with pytest.raises(ValueError, match="No draft workflow found."):
+                workflow_service.update_draft_workflow_environment_variables(
+                    app_model=app,
+                    environment_variables=[],
+                    account=account,
+                )
+
+    def test_update_draft_workflow_conversation_variables_updates_workflow(self, workflow_service, mock_db_session):
+        """Test update_draft_workflow_conversation_variables updates draft fields."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock()
+        variables = [Mock()]
+
+        with (
+            patch.object(workflow_service, "get_draft_workflow", return_value=workflow),
+            patch("services.workflow_service.naive_utc_now", return_value="now"),
+        ):
+            workflow_service.update_draft_workflow_conversation_variables(
+                app_model=app,
+                conversation_variables=variables,
+                account=account,
+            )
+
+        assert workflow.conversation_variables == variables
+        assert workflow.updated_by == account.id
+        assert workflow.updated_at == "now"
+        mock_db_session.session.commit.assert_called_once()
+
+    def test_update_draft_workflow_conversation_variables_raises_when_missing(self, workflow_service):
+        """Test update_draft_workflow_conversation_variables raises when draft missing."""
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        account = TestWorkflowAssociatedDataFactory.create_account_mock()
+
+        with patch.object(workflow_service, "get_draft_workflow", return_value=None):
+            with pytest.raises(ValueError, match="No draft workflow found."):
+                workflow_service.update_draft_workflow_conversation_variables(
+                    app_model=app,
+                    conversation_variables=[],
+                    account=account,
+                )
 
     # ==================== Publish Workflow Tests ====================
     # These tests verify creating published versions from draft workflows
@@ -1686,7 +1759,7 @@ class TestWorkflowServiceCredentialValidation:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
         workflow = self._make_workflow([])
-        node_data: dict = {}  # no model key
+        node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
         service._validate_load_balancing_credentials(workflow, node_data, "node-1")
@@ -2269,7 +2342,7 @@ class TestRebuildFileForUserInputsInStartNode:
         # Arrange
         file_var = self._make_variable("attachment", VariableEntityType.FILE)
         start_data = self._make_start_node_data([file_var])
-        user_inputs: dict = {}  # attachment not provided
+        user_inputs: dict[str, Any] = {}  # attachment not provided
 
         # Act
         result = _rebuild_file_for_user_inputs_in_start_node(

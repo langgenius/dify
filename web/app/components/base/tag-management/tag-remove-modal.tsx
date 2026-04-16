@@ -1,12 +1,12 @@
 'use client'
 
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Modal from '@/app/components/base/modal'
 import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type TagRemoveModalProps = {
   show: boolean
@@ -39,7 +39,7 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
       </div>
       <div className="flex items-center justify-end pt-6">
         <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button className="border-red-700" variant="primary" destructive onClick={onConfirm}>{t('operation.delete', { ns: 'common' })}</Button>
+        <Button className="border-red-700" variant="primary" tone="destructive" onClick={onConfirm}>{t('operation.delete', { ns: 'common' })}</Button>
       </div>
     </Modal>
   )

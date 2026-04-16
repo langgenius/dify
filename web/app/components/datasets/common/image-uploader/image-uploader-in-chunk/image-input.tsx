@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { ACCEPT_TYPES } from '../constants'
 import { useUpload } from '../hooks/use-upload'
 
@@ -32,11 +32,11 @@ const ImageUploader = () => {
       <div
         ref={dropRef}
         className={cn(
-          'relative flex h-16 flex-col items-center justify-center gap-1 radius-lg border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-tertiary',
+          'relative flex h-16 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-text-tertiary',
           dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >
-        <div className="system-sm-medium flex items-center justify-center gap-x-2 text-text-secondary">
+        <div className="flex items-center justify-center gap-x-2 system-sm-medium text-text-secondary">
           <RiUploadCloud2Line className="size-5 text-text-tertiary" />
           <div>
             <span>{t('imageUploader.button', { ns: 'dataset' })}</span>

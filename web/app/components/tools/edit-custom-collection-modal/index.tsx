@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
 import { produce } from 'immer'
@@ -16,7 +17,6 @@ import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
-import { cn } from '@/utils/classnames'
 import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
@@ -344,7 +344,7 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {
                 isEdit && (
-                  <Button variant="primary" destructive onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+                  <Button variant="primary" tone="destructive" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
                 )
               }
               <div className="flex space-x-2">

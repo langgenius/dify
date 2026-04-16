@@ -14,21 +14,21 @@ describe('Input component', () => {
     it('should return correct classes for regular size', () => {
       const result = inputVariants({ size: 'regular' })
       expect(result).toContain('px-3')
-      expect(result).toContain('radius-md')
+      expect(result).toContain('rounded-lg')
       expect(result).toContain('system-sm-regular')
     })
 
     it('should return correct classes for large size', () => {
       const result = inputVariants({ size: 'large' })
       expect(result).toContain('px-4')
-      expect(result).toContain('radius-lg')
+      expect(result).toContain('rounded-[10px]')
       expect(result).toContain('system-md-regular')
     })
 
     it('should use regular size as default', () => {
       const result = inputVariants({})
       expect(result).toContain('px-3')
-      expect(result).toContain('radius-md')
+      expect(result).toContain('rounded-lg')
       expect(result).toContain('system-sm-regular')
     })
   })

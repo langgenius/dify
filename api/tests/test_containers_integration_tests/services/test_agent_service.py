@@ -842,7 +842,6 @@ class TestAgentService:
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
         from graphon.file import FileTransferMethod, FileType
-
         from models.enums import CreatorUserRole
 
         # Add files to message

@@ -3,10 +3,10 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 
 from core.entities.model_entities import ModelStatus
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from models.provider import ProviderType
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError

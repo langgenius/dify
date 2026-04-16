@@ -1,20 +1,7 @@
 import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
-
-from graphon.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
-    LLMResultChunkWithStructuredOutput,
-    LLMResultWithStructuredOutput,
-)
-from graphon.model_runtime.entities.message_entities import (
-    PromptMessage,
-    SystemPromptMessage,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import ModelType
+from typing import Any
 
 from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -32,6 +19,19 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
+from graphon.model_runtime.entities.message_entities import (
+    PromptMessage,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
 
 
@@ -226,7 +226,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         # invoke model
         response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
 
-        def handle() -> Generator[dict, None, None]:
+        def handle() -> Generator[dict[str, Any], None, None]:
             for chunk in response:
                 yield {"result": hexlify(chunk).decode("utf-8")}
 

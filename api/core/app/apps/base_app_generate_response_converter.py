@@ -3,11 +3,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
 from typing import Any, Union
 
-from graphon.model_runtime.errors.invoke import InvokeError
-
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class AppGenerateResponseConverter(ABC):
                 return cls.convert_blocking_full_response(response)
             else:
 
-                def _generate_full_response() -> Generator[dict | str, Any, None]:
+                def _generate_full_response() -> Generator[dict[str, Any] | str, Any, None]:
                     yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
@@ -33,7 +32,7 @@ class AppGenerateResponseConverter(ABC):
                 return cls.convert_blocking_simple_response(response)
             else:
 
-                def _generate_simple_response() -> Generator[dict | str, Any, None]:
+                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any, None]:
                     yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
@@ -52,14 +51,14 @@ class AppGenerateResponseConverter(ABC):
     @abstractmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         raise NotImplementedError
 
     @classmethod

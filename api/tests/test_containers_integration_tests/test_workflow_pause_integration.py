@@ -24,16 +24,16 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import pytest
-from graphon.entities import WorkflowExecution
-from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models import WorkflowPause as WorkflowPauseModel
-from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import (
@@ -181,7 +181,7 @@ class TestWorkflowPauseIntegration:
 
         tenant = Tenant(
             name="Test Tenant",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -190,7 +190,7 @@ class TestWorkflowPauseIntegration:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -696,7 +696,7 @@ class TestWorkflowPauseIntegration:
 
         tenant2 = Tenant(
             name="Test Tenant 2",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         self.session.add(tenant2)
         self.session.commit()
@@ -705,7 +705,7 @@ class TestWorkflowPauseIntegration:
             email="test2@example.com",
             name="Test User 2",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         self.session.add(account2)
         self.session.commit()

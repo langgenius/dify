@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -14,7 +15,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   inCard?: boolean
@@ -69,7 +69,7 @@ const OperationDropdown: FC<Props> = ({
             }}
           >
             <RiEditLine className="h-4 w-4 text-text-tertiary" />
-            <div className="system-md-regular ml-2 text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
+            <div className="ml-2 system-md-regular text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
           </div>
           <div
             className="group flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-destructive-hover"
@@ -79,7 +79,7 @@ const OperationDropdown: FC<Props> = ({
             }}
           >
             <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive-secondary" />
-            <div className="system-md-regular ml-2 text-text-secondary group-hover:text-text-destructive">{t('mcp.operation.remove', { ns: 'tools' })}</div>
+            <div className="ml-2 system-md-regular text-text-secondary group-hover:text-text-destructive">{t('mcp.operation.remove', { ns: 'tools' })}</div>
           </div>
         </div>
       </PortalToFollowElemContent>

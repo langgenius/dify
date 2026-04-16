@@ -332,6 +332,24 @@ describe('EditAnnotationModal', () => {
       // Assert
       expect(mockOnRemove).toHaveBeenCalled()
     })
+
+    it('should hide confirm modal when removal is cancelled', async () => {
+      const props = {
+        ...defaultProps,
+        annotationId: 'test-annotation-id',
+      }
+      const user = userEvent.setup()
+
+      render(<EditAnnotationModal {...props} />)
+      await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+      expect(screen.getByText('appDebug.feature.annotation.removeConfirm')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+      })
+    })
   })
 
   // Edge Cases (REQUIRED)

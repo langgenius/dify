@@ -3,6 +3,7 @@ import type { ToolWithProvider } from '../../../types'
 import type { Strategy } from './agent-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,6 @@ import PluginList from '@/app/components/workflow/block-selector/market-place-pl
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useStrategyProviders } from '@/service/use-strategy'
-import { cn } from '@/utils/classnames'
 import Tools from '../../../block-selector/tools'
 import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
 import { useStrategyInfo } from '../../agent/use-config'
@@ -155,7 +155,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     <PortalToFollowElem open={open} onOpenChange={setOpen} placement="bottom">
       <PortalToFollowElemTrigger className="w-full">
         <div
-          className="flex h-8 w-full select-none items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt"
+          className="flex h-8 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 select-none hover:bg-state-base-hover-alt"
           onClick={() => setOpen(o => !o)}
         >
           { }

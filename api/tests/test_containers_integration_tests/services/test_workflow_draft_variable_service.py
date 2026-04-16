@@ -1,9 +1,9 @@
 import pytest
 from faker import Faker
-from graphon.variables.segments import StringSegment
 from sqlalchemy.orm import Session
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from graphon.variables.segments import StringSegment
 from models import App, Workflow
 from models.enums import DraftVariableType
 from models.workflow import WorkflowDraftVariable

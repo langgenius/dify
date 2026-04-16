@@ -13,10 +13,10 @@ Test coverage:
 from unittest.mock import patch
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
 from opentelemetry.trace import StatusCode
 
 from core.app.workflow.layers.observability import ObservabilityLayer
+from graphon.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerInitialization:

@@ -57,16 +57,16 @@ vi.mock('../../hooks/use-nodes-interactions', () => ({
   }),
 }))
 
-vi.mock('../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks')>()
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodeSelect: mockHandleNodeSelect,
-    }),
-    useToolIcon: () => '',
-  }
-})
+vi.mock('../../hooks', () => ({
+  useNodesInteractions: () => ({
+    handleNodeSelect: mockHandleNodeSelect,
+  }),
+  useToolIcon: () => '',
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
+  useGetToolIcon: () => () => '',
+}))
 
 vi.mock('../../nodes/_base/hooks/use-node-crud', () => ({
   default: () => ({

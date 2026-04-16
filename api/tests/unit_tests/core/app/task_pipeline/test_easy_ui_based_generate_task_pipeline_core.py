@@ -5,9 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from graphon.file import FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -41,6 +38,9 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AudioTrunk
+from graphon.file import FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.model import AppMode
 
 

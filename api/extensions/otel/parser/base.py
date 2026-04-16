@@ -10,17 +10,17 @@ Gate is only active in EE (``ENTERPRISE_ENABLED=True``) when
 import json
 from typing import Any, Protocol
 
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File
-from graphon.graph_events import GraphNodeEventBase
-from graphon.nodes.base.node import Node
-from graphon.variables import Segment
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
 from configs import dify_config
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
+from graphon.variables import Segment
 
 
 def should_include_content() -> bool:

@@ -3,8 +3,6 @@ import logging
 import time
 from typing import Any, TypedDict
 
-from graphon.model_runtime.entities import LLMMode
-
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.query_type import QueryType
@@ -12,6 +10,7 @@ from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
+from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource

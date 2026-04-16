@@ -1,6 +1,7 @@
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import Textarea from '@/app/components/base/textarea'
@@ -8,7 +9,6 @@ import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-sc
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { PreviewMode } from '../../base/features/types'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import DisplayContent from './display-content'
@@ -32,7 +32,7 @@ export const TextEditorSection = ({
 }: TextEditorSectionProps) => {
   return (
     <>
-      {isTruncated && <LargeDataAlert className="absolute left-3 right-3 top-1" />}
+      {isTruncated && <LargeDataAlert className="absolute top-1 right-3 left-3" />}
       {currentVar.value_type === 'string'
         ? (
             <DisplayContent

@@ -6,6 +6,19 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../var-reference-picker'
 
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useIsChatMode: () => false,
+  useWorkflow: () => ({
+    getTreeLeafNodes: () => [],
+    getNodeById: () => undefined,
+    getBeforeNodesInSameBranchIncludeParent: () => [],
+  }),
+  useWorkflowVariables: () => ({
+    getNodeAvailableVars: () => [],
+    getCurrentVariableType: () => undefined,
+  }),
+}))
+
 describe('VarReferencePicker', () => {
   const startNode = createStartNode({
     id: 'start-node',

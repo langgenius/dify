@@ -1,22 +1,33 @@
 'use client'
 import type { TFunction } from 'i18next'
 import type { FC, ReactNode } from 'react'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useDocLink } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
+import { useInvalidateMCPServerDetail } from '@/service/use-tools'
 import { useMCPServiceCardState } from './hooks/use-mcp-service-card'
 
 // Sub-components
@@ -163,6 +174,12 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
+  const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
+  const invalidateMCPServerDetailRef = useRef(invalidateMCPServerDetail)
+
+  useEffect(() => {
+    invalidateMCPServerDetailRef.current = invalidateMCPServerDetail
+  }, [invalidateMCPServerDetail])
 
   const {
     genLoading,
@@ -191,6 +208,28 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   const [pendingStatus, setPendingStatus] = useState<boolean | null>(null)
   const activated = pendingStatus ?? serverActivated
 
+  const emitMcpServerUpdate = async (data: Record<string, unknown>) => {
+    try {
+      const { webSocketClient } = await import('@/app/components/workflow/collaboration/core/websocket-manager')
+      const socket = webSocketClient.getSocket(appId)
+      if (!socket)
+        return
+
+      const timestamp = Date.now()
+      socket.emit('collaboration_event', {
+        type: 'mcp_server_update',
+        data: {
+          ...data,
+          timestamp,
+        },
+        timestamp,
+      })
+    }
+    catch (error) {
+      console.error('MCP collaboration event emit failed:', error)
+    }
+  }
+
   const onChangeStatus = async (state: boolean) => {
     setPendingStatus(state)
     const result = await handleStatusChange(state)
@@ -198,6 +237,15 @@ const MCPServiceCard: FC<IAppCardProps> = ({
       // Server modal was opened instead, clear pending status
       setPendingStatus(null)
     }
+
+    if (result.activated !== state)
+      return
+
+    // Emit collaboration event to notify other clients of MCP server status change
+    void emitMcpServerUpdate({
+      action: 'statusChanged',
+      status: state ? 'active' : 'inactive',
+    })
   }
 
   const onServerModalHide = () => {
@@ -207,9 +255,34 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   }
 
   const onConfirmRegenerate = () => {
-    handleGenCode()
     closeConfirmDelete()
+
+    void (async () => {
+      await handleGenCode()
+
+      // Emit collaboration event to notify other clients of MCP server code changes
+      await emitMcpServerUpdate({
+        action: 'codeRegenerated',
+      })
+    })()
   }
+
+  // Listen for collaborative MCP server updates from other clients
+  useEffect(() => {
+    if (!appId)
+      return
+
+    const unsubscribe = collaborationManager.onMcpServerUpdate((_update: CollaborationUpdate) => {
+      try {
+        invalidateMCPServerDetailRef.current(appId)
+      }
+      catch (error) {
+        console.error('MCP server update failed:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId])
 
   if (isLoading)
     return null
@@ -250,7 +323,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 offset={24}
               >
                 <div>
-                  <Switch value={activated} onChange={onChangeStatus} disabled={toggleDisabled} />
+                  <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
                 </div>
               </Tooltip>
             </div>
@@ -295,16 +368,24 @@ const MCPServiceCard: FC<IAppCardProps> = ({
         />
       )}
 
-      {showConfirmDelete && (
-        <Confirm
-          type="warning"
-          title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-          content={t('mcp.server.reGen', { ns: 'tools' })}
-          isShow={showConfirmDelete}
-          onConfirm={onConfirmRegenerate}
-          onCancel={closeConfirmDelete}
-        />
-      )}
+      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && closeConfirmDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('mcp.server.reGen', { ns: 'tools' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmRegenerate}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

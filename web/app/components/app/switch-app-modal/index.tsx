@@ -1,6 +1,7 @@
 'use client'
 
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
@@ -8,10 +9,18 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import Checkbox from '@/app/components/base/checkbox'
-import Confirm from '@/app/components/base/confirm'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -22,7 +31,6 @@ import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
 import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
@@ -91,6 +99,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       setShowConfirmDelete(true)
   }, [removeOriginal])
 
+  const handleConfirmDeleteOpenChange = (open: boolean) => {
+    if (open)
+      return
+
+    setShowConfirmDelete(false)
+    setRemoveOriginal(false)
+  }
+
   return (
     <>
       <Modal
@@ -152,22 +168,33 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           </div>
           <div className="flex items-center">
             <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" destructive onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
           </div>
         </div>
       </Modal>
-      {showConfirmDelete && (
-        <Confirm
-          title={t('deleteAppConfirmTitle', { ns: 'app' })}
-          content={t('deleteAppConfirmContent', { ns: 'app' })}
-          isShow={showConfirmDelete}
-          onConfirm={() => setShowConfirmDelete(false)}
-          onCancel={() => {
-            setShowConfirmDelete(false)
-            setRemoveOriginal(false)
-          }}
-        />
-      )}
+      <AlertDialog
+        open={showConfirmDelete}
+        onOpenChange={handleConfirmDeleteOpenChange}
+      >
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deleteAppConfirmTitle', { ns: 'app' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('deleteAppConfirmContent', { ns: 'app' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

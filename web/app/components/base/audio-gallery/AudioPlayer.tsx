@@ -1,10 +1,10 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@/app/components/base/ui/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type AudioPlayerProps = {
   src?: string // Keep backward compatibility
@@ -240,7 +240,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     }
   }, [duration])
   return (
-    <div className="flex h-9 min-w-[240px] max-w-[420px] items-center gap-2 radius-lg border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
+    <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
       <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (<source key={index} src={srcUrl} />))}
@@ -253,12 +253,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">
           <canvas ref={canvasRef} data-testid="waveform-canvas" className="relative flex h-6 w-full grow cursor-pointer items-center justify-center" onClick={handleCanvasInteraction} onMouseMove={handleMouseMove} onMouseDown={handleCanvasInteraction} onTouchMove={handleMouseMove} onTouchStart={handleCanvasInteraction} />
-          <div className="inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary system-xs-medium">
-            <span className="radius-lg px-0.5 py-1">{formatTime(duration)}</span>
+          <div className="inline-flex min-w-[50px] items-center justify-center system-xs-medium text-text-accent-secondary">
+            <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>
       </div>
-      <div className="absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
+      <div className="absolute top-0 left-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
     </div>
   )
 }

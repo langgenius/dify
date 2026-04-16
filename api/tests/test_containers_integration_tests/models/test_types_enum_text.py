@@ -4,13 +4,13 @@ from typing import Any, NamedTuple
 
 import pytest
 import sqlalchemy as sa
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.sqltypes import VARCHAR
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.types import EnumText
 
 _USER_TABLE = "enum_text_users"

@@ -29,6 +29,7 @@ import {
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   getImportNotificationPayload,
@@ -113,6 +114,7 @@ const UpdateDSLModal = ({
     }
 
     await handleWorkflowUpdate(appId)
+    collaborationManager.emitWorkflowUpdate(appId)
     onImport?.()
     const payload = getImportNotificationPayload(status, t)
     toast[payload.type](payload.message, payload.children ? { description: payload.children } : undefined)
@@ -247,7 +249,7 @@ const UpdateDSLModal = ({
           <Button
             disabled={!currentFile || loading}
             variant="primary"
-            destructive
+            tone="destructive"
             onClick={handleImport}
             loading={loading}
           >
@@ -278,7 +280,7 @@ const UpdateDSLModal = ({
         </div>
         <div className="flex items-start justify-end gap-2 self-stretch pt-6">
           <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" destructive onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+          <Button variant="primary" tone="destructive" onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

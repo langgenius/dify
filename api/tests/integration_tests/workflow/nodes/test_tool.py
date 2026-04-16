@@ -2,18 +2,17 @@ import time
 import uuid
 from unittest.mock import MagicMock, patch
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.tools.utils.configuration import ToolParameterConfigurationManager
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import DifyToolNodeRuntime
+from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.protocols import ToolFileManagerProtocol
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.runtime import GraphRuntimeState, VariablePool
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyToolNodeRuntime
-from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

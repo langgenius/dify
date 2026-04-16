@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 export type Step = {
   name: string
@@ -23,7 +23,7 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
             ? 'w-5 border border-text-quaternary'
             : 'w-5 border border-divider-deep')}
       >
-        <div className={cn('system-2xs-semibold-uppercase text-center', isActive
+        <div className={cn('text-center system-2xs-semibold-uppercase', isActive
           ? 'text-text-primary-on-surface'
           : !isDisabled
               ? 'text-text-tertiary'

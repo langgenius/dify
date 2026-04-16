@@ -10,24 +10,6 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.entities import GraphInitParams
-from graphon.node_events import PauseRequestedEvent
-from graphon.node_events.node import StreamCompletedEvent
-from graphon.nodes.human_input.entities import (
-    FormInput,
-    FormInputDefault,
-    HumanInputNodeData,
-    UserAction,
-)
-from graphon.nodes.human_input.enums import (
-    ButtonStyle,
-    FormInputType,
-    HumanInputFormStatus,
-    PlaceholderType,
-    TimeoutUnit,
-)
-from graphon.nodes.human_input.human_input_node import HumanInputNode
-from graphon.runtime import GraphRuntimeState, VariablePool
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
@@ -50,6 +32,24 @@ from core.workflow.human_input_compat import (
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.node_events import PauseRequestedEvent
+from graphon.node_events.node import StreamCompletedEvent
+from graphon.nodes.human_input.entities import (
+    FormInput,
+    FormInputDefault,
+    HumanInputNodeData,
+    UserAction,
+)
+from graphon.nodes.human_input.enums import (
+    ButtonStyle,
+    FormInputType,
+    HumanInputFormStatus,
+    PlaceholderType,
+    TimeoutUnit,
+)
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 
 

@@ -10,9 +10,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+
+from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -22,10 +25,8 @@ from graphon.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 
-from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
 
-
-def _mock_model_instance(*, schema: dict | None = None) -> SimpleNamespace:
+def _mock_model_instance(*, schema: dict[str, Any] | None = None) -> SimpleNamespace:
     model_type_instance = Mock()
     model_type_instance.get_model_schema.return_value = (
         SimpleNamespace(model_properties=schema or {}) if schema is not None else None
