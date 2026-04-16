@@ -42,7 +42,14 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     .limit(1)
                 )
             else:
-                user_model = session.get(EndUser, user_id)
+                user_model = session.scalar(
+                    select(EndUser)
+                    .where(
+                        EndUser.id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .limit(1)
+                )
 
             if not user_model:
                 user_model = EndUser(
