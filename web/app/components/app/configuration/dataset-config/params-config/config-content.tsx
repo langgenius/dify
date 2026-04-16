@@ -307,13 +307,13 @@ const ConfigContent: FC<Props> = ({
           }
           {
             showWeightedScorePanel
-            && (
+            && datasetConfigs.weights && (
               <div className="mt-2 space-y-4">
                 <WeightedScore
                   value={{
                     value: [
-                      datasetConfigs.weights!.vector_setting.vector_weight,
-                      datasetConfigs.weights!.keyword_setting.keyword_weight,
+                      datasetConfigs.weights.vector_setting.vector_weight,
+                      datasetConfigs.weights.keyword_setting.keyword_weight,
                     ],
                   }}
                   onChange={handleWeightedScoreChange}
