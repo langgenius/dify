@@ -495,8 +495,8 @@ describe('http path', () => {
       )
 
       fireEvent.change(screen.getAllByDisplayValue('alice')[0], { target: { value: 'bob' } })
-      await user.click(screen.getByText('text'))
-      await user.click(screen.getByText('file'))
+      await user.click(screen.getAllByRole('combobox', { name: 'workflow.nodes.http.type' })[0]!)
+      await user.click(screen.getByRole('option', { name: /file/i }))
 
       expect(onChange).toHaveBeenCalled()
     })
@@ -556,6 +556,35 @@ describe('http path', () => {
 
       expect(onChange).toHaveBeenCalled()
       expect(onRemove).toHaveBeenCalled()
+    })
+
+    it('should show the full file-type menu and update the row type selection', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <KeyValueItem
+          instanceId="kv-type"
+          nodeId="node-1"
+          readonly={false}
+          canRemove
+          payload={{ id: 'kv-type', key: 'attachment', value: '', type: 'text' } as any}
+          onChange={onChange}
+          onRemove={vi.fn()}
+          isLastItem={false}
+          onAdd={vi.fn()}
+          isSupportFile
+        />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'workflow.nodes.http.type' }))
+
+      const fileOption = screen.getByRole('option', { name: /file/i })
+      expect(screen.getByRole('option', { name: /text/i })).toBeInTheDocument()
+      expect(fileOption.closest('.h-7')).toBeNull()
+
+      await user.click(fileOption)
+
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ type: 'file' }))
     })
 
     it('should update the raw-text body payload', () => {
