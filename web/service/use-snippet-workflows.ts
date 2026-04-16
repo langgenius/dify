@@ -1,6 +1,7 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
+import { get } from './base'
 
 const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
@@ -47,9 +48,9 @@ export const useSnippetDraftWorkflow = (
 
   return useQuery({
     ...queryOptions,
-    queryFn: async (context) => {
+    queryFn: async () => {
       try {
-        const draftWorkflow = await queryOptions.queryFn(context)
+        const draftWorkflow = await get<SnippetWorkflow>(`/snippets/${snippetId}/workflows/draft`, {}, { silent: true })
         onSuccess?.(draftWorkflow)
         return draftWorkflow
       }
