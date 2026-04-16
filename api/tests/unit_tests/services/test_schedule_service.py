@@ -8,9 +8,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.workflow.nodes.trigger_schedule.entities import VisualConfig
+from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
+from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
 
