@@ -106,6 +106,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [userId, setUserId] = useState<string>()
   useEffect(() => {
     getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
+      // eslint-disable-next-line react/set-state-in-effect
       setUserId(user_id)
     })
   }, [])
@@ -185,7 +186,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const {
+    data: appChatListData,
+    isLoading: appChatListDataLoading,
+    error: appChatListError,
+  } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
@@ -197,9 +202,23 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
-  const appPrevChatTree = useMemo(() => (currentConversationId && appChatListData?.data.length)
-    ? buildChatItemTree(getFormattedChatList(appChatListData.data))
-    : [], [appChatListData, currentConversationId])
+  useEffect(() => {
+    const status = (appChatListError as { status?: number } | null)?.status
+    if (status === 404 && chatShouldReloadKey) {
+      // The conversation was removed remotely. Clear persisted id to avoid 404 retry loops.
+      handleConversationIdInfoChange('')
+      // eslint-disable-next-line react/set-state-in-effect
+      setNewConversationId('')
+      // eslint-disable-next-line react/set-state-in-effect
+      setClearChatList(true)
+    }
+  }, [appChatListError, chatShouldReloadKey, handleConversationIdInfoChange])
+  const appPrevChatTree = useMemo(
+    () => (currentConversationId && appChatListData?.data.length)
+      ? buildChatItemTree(getFormattedChatList(appChatListData.data))
+      : [],
+    [appChatListData, currentConversationId],
+  )
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
@@ -211,6 +230,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
+    // eslint-disable-next-line react/set-state-in-effect
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -307,6 +327,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
+      // eslint-disable-next-line react/set-state-in-effect
       setOriginConversationList(appConversationData?.data)
   }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
@@ -323,6 +344,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [originConversationList, showNewConversationItemInList, t])
   useEffect(() => {
     if (newConversation) {
+      // eslint-disable-next-line react/set-state-in-effect
       setOriginConversationList(produce((draft) => {
         const index = draft.findIndex(item => item.id === newConversation.id)
         if (index > -1)
@@ -346,6 +368,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
   useEffect(() => {
     if (currentConversationItem)
+      // eslint-disable-next-line react/set-state-in-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
   const checkInputsRequired = useCallback((silent?: boolean) => {
