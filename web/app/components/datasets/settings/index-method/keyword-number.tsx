@@ -33,7 +33,7 @@ const KeyWordNumber = ({
   return (
     <div className="flex items-center gap-x-1">
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate text-text-secondary system-xs-medium">
+        <div className="truncate system-xs-medium text-text-secondary">
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip
@@ -57,11 +57,11 @@ const KeyWordNumber = ({
         value={keywordNumber}
         onValueChange={handleInputChange}
       >
-        <NumberFieldGroup size="regular">
-          <NumberFieldInput size="regular" />
+        <NumberFieldGroup>
+          <NumberFieldInput />
           <NumberFieldControls>
-            <NumberFieldIncrement size="regular" />
-            <NumberFieldDecrement size="regular" />
+            <NumberFieldIncrement />
+            <NumberFieldDecrement />
           </NumberFieldControls>
         </NumberFieldGroup>
       </NumberField>

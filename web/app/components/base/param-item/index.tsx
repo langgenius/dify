@@ -62,11 +62,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={value}
             onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
-            <NumberFieldGroup size="regular">
-              <NumberFieldInput size="regular" className="w-[72px]" />
+            <NumberFieldGroup>
+              <NumberFieldInput className="w-[72px]" />
               <NumberFieldControls>
-                <NumberFieldIncrement size="regular" />
-                <NumberFieldDecrement size="regular" />
+                <NumberFieldIncrement />
+                <NumberFieldDecrement />
               </NumberFieldControls>
             </NumberFieldGroup>
           </NumberField>

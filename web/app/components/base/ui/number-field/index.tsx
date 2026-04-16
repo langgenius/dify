@@ -21,12 +21,12 @@ export const numberFieldGroupVariants = cva(
   {
     variants: {
       size: {
-        regular: 'rounded-lg',
+        medium: 'rounded-lg',
         large: 'rounded-[10px]',
       },
     },
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
     },
   },
 )
@@ -36,7 +36,7 @@ export type NumberFieldGroupProps = BaseNumberField.Group.Props & VariantProps<t
 
 export function NumberFieldGroup({
   className,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldGroupProps) {
   return (
@@ -57,12 +57,12 @@ export const numberFieldInputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 py-[7px] system-sm-regular',
+        medium: 'px-3 py-[7px] system-sm-regular',
         large: 'px-4 py-2 system-md-regular',
       },
     },
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
     },
   },
 )
@@ -71,7 +71,7 @@ export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> & 
 
 export function NumberFieldInput({
   className,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldInputProps) {
   return (
@@ -87,12 +87,12 @@ export const numberFieldUnitVariants = cva(
   {
     variants: {
       size: {
-        regular: 'pr-2',
+        medium: 'pr-2',
         large: 'pr-2.5',
       },
     },
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
     },
   },
 )
@@ -101,7 +101,7 @@ export type NumberFieldUnitProps = HTMLAttributes<HTMLSpanElement> & VariantProp
 
 export function NumberFieldUnit({
   className,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldUnitProps) {
   return (
@@ -143,7 +143,7 @@ const numberFieldControlButtonVariants = cva(
   {
     variants: {
       size: {
-        regular: '',
+        medium: '',
         large: '',
       },
       direction: {
@@ -153,12 +153,12 @@ const numberFieldControlButtonVariants = cva(
     },
     compoundVariants: [
       {
-        size: 'regular',
+        size: 'medium',
         direction: 'increment',
         className: 'pt-1',
       },
       {
-        size: 'regular',
+        size: 'medium',
         direction: 'decrement',
         className: 'pb-1',
       },
@@ -174,7 +174,7 @@ const numberFieldControlButtonVariants = cva(
       },
     ],
     defaultVariants: {
-      size: 'regular',
+      size: 'medium',
       direction: 'increment',
     },
   },
@@ -193,7 +193,7 @@ const decrementAriaLabel = 'Decrement value'
 export function NumberFieldIncrement({
   className,
   children,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldButtonProps) {
   return (
@@ -210,7 +210,7 @@ export function NumberFieldIncrement({
 export function NumberFieldDecrement({
   className,
   children,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberFieldButtonProps) {
   return (

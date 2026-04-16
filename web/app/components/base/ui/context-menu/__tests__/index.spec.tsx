@@ -112,8 +112,8 @@ describe('context-menu wrapper', () => {
     })
   })
 
-  describe('destructive prop behavior', () => {
-    it.each([true, false])('should remain interactive and not leak destructive prop on item when destructive is %s', (destructive) => {
+  describe('variant prop behavior', () => {
+    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant on item when variant is %s', (variant) => {
       const handleClick = vi.fn()
 
       render(
@@ -121,9 +121,9 @@ describe('context-menu wrapper', () => {
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuItem
-              destructive={destructive}
+              variant={variant}
               aria-label="menu action"
-              id={`context-item-${String(destructive)}`}
+              id={`context-item-${variant}`}
               onClick={handleClick}
             >
               Item label
@@ -134,12 +134,12 @@ describe('context-menu wrapper', () => {
 
       const item = screen.getByRole('menuitem', { name: 'menu action' })
       fireEvent.click(item)
-      expect(item).toHaveAttribute('id', `context-item-${String(destructive)}`)
-      expect(item).not.toHaveAttribute('destructive')
+      expect(item).toHaveAttribute('id', `context-item-${variant}`)
+      expect(item).toHaveAttribute('data-variant', variant)
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
 
-    it.each([true, false])('should remain interactive and not leak destructive prop on submenu trigger when destructive is %s', (destructive) => {
+    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant on submenu trigger when variant is %s', (variant) => {
       const handleClick = vi.fn()
 
       render(
@@ -148,9 +148,9 @@ describe('context-menu wrapper', () => {
           <ContextMenuContent>
             <ContextMenuSub open>
               <ContextMenuSubTrigger
-                destructive={destructive}
+                variant={variant}
                 aria-label="submenu action"
-                id={`context-sub-${String(destructive)}`}
+                id={`context-sub-${variant}`}
                 onClick={handleClick}
               >
                 Trigger item
@@ -162,21 +162,21 @@ describe('context-menu wrapper', () => {
 
       const trigger = screen.getByRole('menuitem', { name: 'submenu action' })
       fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('id', `context-sub-${String(destructive)}`)
-      expect(trigger).not.toHaveAttribute('destructive')
+      expect(trigger).toHaveAttribute('id', `context-sub-${variant}`)
+      expect(trigger).toHaveAttribute('data-variant', variant)
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
 
-    it.each([true, false])('should remain interactive and not leak destructive prop on link item when destructive is %s', (destructive) => {
+    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant on link item when variant is %s', (variant) => {
       render(
         <ContextMenu open>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
             <ContextMenuLinkItem
-              destructive={destructive}
+              variant={variant}
               href="https://example.com/docs"
               aria-label="context docs link"
-              id={`context-link-${String(destructive)}`}
+              id={`context-link-${variant}`}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -188,8 +188,8 @@ describe('context-menu wrapper', () => {
 
       const link = screen.getByRole('menuitem', { name: 'context docs link' })
       expect(link.tagName.toLowerCase()).toBe('a')
-      expect(link).toHaveAttribute('id', `context-link-${String(destructive)}`)
-      expect(link).not.toHaveAttribute('destructive')
+      expect(link).toHaveAttribute('id', `context-link-${variant}`)
+      expect(link).toHaveAttribute('data-variant', variant)
     })
   })
 

@@ -177,7 +177,7 @@ describe('dropdown-menu wrapper', () => {
       expect(screen.getByRole('menuitem', { name: 'Trigger item' })).toBeInTheDocument()
     })
 
-    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
+    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant on submenu trigger when variant is %s', (variant) => {
       const handleClick = vi.fn()
 
       render(
@@ -186,9 +186,9 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuContent>
             <DropdownMenuSub open>
               <DropdownMenuSubTrigger
-                destructive={destructive}
+                variant={variant}
                 aria-label="submenu action"
-                id={`submenu-trigger-${String(destructive)}`}
+                id={`submenu-trigger-${variant}`}
                 onClick={handleClick}
               >
                 Trigger item
@@ -201,14 +201,14 @@ describe('dropdown-menu wrapper', () => {
       const subTrigger = screen.getByRole('menuitem', { name: 'submenu action' })
       fireEvent.click(subTrigger)
 
-      expect(subTrigger).toHaveAttribute('id', `submenu-trigger-${String(destructive)}`)
-      expect(subTrigger).not.toHaveAttribute('destructive')
+      expect(subTrigger).toHaveAttribute('id', `submenu-trigger-${variant}`)
+      expect(subTrigger).toHaveAttribute('data-variant', variant)
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('DropdownMenuItem', () => {
-    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
+    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant when variant is %s', (variant) => {
       const handleClick = vi.fn()
 
       render(
@@ -216,9 +216,9 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              destructive={destructive}
+              variant={variant}
               aria-label="menu action"
-              id={`menu-item-${String(destructive)}`}
+              id={`menu-item-${variant}`}
               onClick={handleClick}
             >
               Item label
@@ -230,8 +230,8 @@ describe('dropdown-menu wrapper', () => {
       const item = screen.getByRole('menuitem', { name: 'menu action' })
       fireEvent.click(item)
 
-      expect(item).toHaveAttribute('id', `menu-item-${String(destructive)}`)
-      expect(item).not.toHaveAttribute('destructive')
+      expect(item).toHaveAttribute('id', `menu-item-${variant}`)
+      expect(item).toHaveAttribute('data-variant', variant)
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
@@ -299,7 +299,7 @@ describe('dropdown-menu wrapper', () => {
       expect(link).toHaveTextContent('Account settings')
     })
 
-    it.each([true, false])('should remain interactive and not leak destructive prop when destructive is %s', (destructive) => {
+    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant when variant is %s', (variant) => {
       const handleClick = vi.fn()
 
       render(
@@ -307,10 +307,10 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLinkItem
-              destructive={destructive}
+              variant={variant}
               href="https://example.com/docs"
               aria-label="docs link"
-              id={`menu-link-${String(destructive)}`}
+              id={`menu-link-${variant}`}
               onClick={handleClick}
             >
               Docs
@@ -323,8 +323,8 @@ describe('dropdown-menu wrapper', () => {
       fireEvent.click(link)
 
       expect(link.tagName.toLowerCase()).toBe('a')
-      expect(link).toHaveAttribute('id', `menu-link-${String(destructive)}`)
-      expect(link).not.toHaveAttribute('destructive')
+      expect(link).toHaveAttribute('id', `menu-link-${variant}`)
+      expect(link).toHaveAttribute('data-variant', variant)
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
