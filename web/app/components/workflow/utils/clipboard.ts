@@ -9,12 +9,12 @@ type WorkflowClipboardPayload = {
   edges: Edge[]
 }
 
-export type WorkflowClipboardData = {
+type WorkflowClipboardData = {
   nodes: Node[]
   edges: Edge[]
 }
 
-export type WorkflowClipboardReadResult = WorkflowClipboardData & {
+type WorkflowClipboardReadResult = WorkflowClipboardData & {
   sourceVersion?: string
   isVersionMismatch: boolean
 }
