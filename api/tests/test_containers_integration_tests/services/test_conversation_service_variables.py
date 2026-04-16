@@ -5,11 +5,11 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from graphon.variables import FloatVariable, IntegerVariable, StringVariable
 from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from graphon.variables import FloatVariable, IntegerVariable, StringVariable
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource
 from models.model import App, Conversation, EndUser
