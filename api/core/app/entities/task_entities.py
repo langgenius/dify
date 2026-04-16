@@ -819,6 +819,17 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
     data: Data
 
 
+class WorkflowAppAsyncResponse(AppBlockingResponse):
+    class Data(BaseModel):
+        id: str
+        workflow_id: str
+        status: str
+        created_at: int
+
+    workflow_run_id: str
+    data: Data
+
+
 class AgentLogStreamResponse(StreamResponse):
     """
     AgentLogStreamResponse entity

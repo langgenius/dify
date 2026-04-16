@@ -92,6 +92,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
+    ASYNC_WORKFLOW_MAX_CONCURRENT: NonNegativeInt = Field(
+        description="Maximum concurrent async workflow runs per tenant (0 for unlimited)",
+        default=50,
+    )
 
     HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
         description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
@@ -1215,6 +1219,18 @@ class CeleryScheduleTasksConfig(BaseSettings):
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
         default=60 * 60,
+    )
+    ENABLE_REAP_ZOMBIE_WORKFLOW_RUNS_TASK: bool = Field(
+        description="Enable periodic cleanup of stuck workflow runs",
+        default=True,
+    )
+    ZOMBIE_WORKFLOW_SCHEDULED_TIMEOUT_MINUTES: PositiveInt = Field(
+        description="Minutes before a SCHEDULED workflow run is considered stuck",
+        default=5,
+    )
+    ZOMBIE_WORKFLOW_RUNNING_TIMEOUT_MINUTES: PositiveInt = Field(
+        description="Minutes before a RUNNING workflow run is considered stuck",
+        default=30,
     )
 
 

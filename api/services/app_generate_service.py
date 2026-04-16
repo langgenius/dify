@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
@@ -19,9 +21,12 @@ from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums.quota_type import QuotaType, unlimited
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from extensions.otel import AppGenerateHandler, trace_span
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import Account, App, AppMode, EndUser
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
@@ -281,6 +286,189 @@ class AppGenerateService:
         # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
         limits = [limit for limit in [app_limit, config_limit] if limit > 0]
         return min(limits) if limits else 0
+
+    @classmethod
+    def generate_async(
+        cls,
+        app_model: App,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        idempotency_key: str | None = None,
+    ) -> tuple[dict, bool]:
+        """
+        Async fire-and-forget workflow execution.
+        Returns (response_dict, is_duplicate).
+        """
+        workflow = cls._get_workflow(app_model, invoke_from)
+
+        # Idempotency check
+        if idempotency_key:
+            existing = cls._check_idempotency_key(
+                tenant_id=app_model.tenant_id,
+                idempotency_key=idempotency_key,
+            )
+            if existing:
+                return existing, True
+
+        # Concurrency guard
+        cls._check_async_concurrency_limit(tenant_id=app_model.tenant_id)
+
+        workflow_run_id = str(uuid.uuid4())
+
+        # Rate limiting — count async requests toward the per-app concurrent limit
+        max_active_request = cls._get_max_active_requests(app_model)
+        rate_limit = RateLimit(app_model.id, max_active_request)
+        request_id = RateLimit.gen_request_key()
+        request_id = rate_limit.enter(request_id)
+
+        try:
+            # Build execution params (same as streaming path)
+            payload = AppExecutionParams.new(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                args=args,
+                invoke_from=invoke_from,
+                streaming=True,
+                call_depth=0,
+                workflow_run_id=workflow_run_id,
+            )
+
+            # Pre-create WorkflowRun row with SCHEDULED status
+            workflow_run = cls._pre_create_workflow_run(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                workflow_run_id=workflow_run_id,
+                args=args,
+            )
+
+            # Dispatch to Celery
+            try:
+                payload_json = payload.model_dump_json()
+                workflow_based_app_execution_task.delay(payload_json)
+            except Exception as e:
+                cls._mark_workflow_run_failed(workflow_run_id, f"Failed to dispatch task: {e}")
+                raise
+
+            response = {
+                "task_id": workflow_run_id,
+                "workflow_run_id": workflow_run_id,
+                "data": {
+                    "id": workflow_run_id,
+                    "workflow_id": workflow.id,
+                    "status": "scheduled",
+                    "created_at": int(workflow_run.created_at.timestamp()),
+                },
+            }
+
+            # Store idempotency mapping
+            if idempotency_key:
+                cls._store_idempotency_key(
+                    tenant_id=app_model.tenant_id,
+                    idempotency_key=idempotency_key,
+                    response=response,
+                )
+
+            return response, False
+        finally:
+            rate_limit.exit(request_id)
+
+    @staticmethod
+    def _pre_create_workflow_run(
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        workflow_run_id: str,
+        args: Mapping[str, Any],
+    ) -> WorkflowRun:
+        """Pre-create a WorkflowRun row with SCHEDULED status for async polling."""
+        from graphon.enums import WorkflowExecutionStatus
+
+        workflow_run = WorkflowRun()
+        workflow_run.id = workflow_run_id
+        workflow_run.tenant_id = app_model.tenant_id
+        workflow_run.app_id = app_model.id
+        workflow_run.workflow_id = workflow.id
+        workflow_run.type = WorkflowType(workflow.type)
+        workflow_run.triggered_from = WorkflowRunTriggeredFrom.API_ASYNC
+        workflow_run.version = workflow.version
+        workflow_run.graph = workflow.graph
+        workflow_run.inputs = json.dumps(args.get("inputs", {}))
+        workflow_run.status = WorkflowExecutionStatus.SCHEDULED
+        workflow_run.created_by_role = (
+            CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
+        )
+        workflow_run.created_by = user.id
+        workflow_run.created_at = datetime.now(UTC)
+
+        db.session.add(workflow_run)
+        db.session.commit()
+
+        return workflow_run
+
+    @staticmethod
+    def _mark_workflow_run_failed(workflow_run_id: str, error: str) -> None:
+        """Mark a pre-created WorkflowRun as failed."""
+        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
+        if workflow_run:
+            from graphon.enums import WorkflowExecutionStatus as WFStatus
+
+            workflow_run.status = WFStatus.FAILED
+            workflow_run.error = error
+            workflow_run.finished_at = datetime.now(UTC)
+            db.session.commit()
+
+    @staticmethod
+    def _check_idempotency_key(tenant_id: str, idempotency_key: str) -> dict | None:
+        """Check if this idempotency key was already used. Returns cached response if so."""
+        if len(idempotency_key) > 64:
+            raise ValueError("Idempotency-Key must be 64 characters or fewer")
+
+        redis_key = f"dify:async_workflow:idempotency:{tenant_id}:{idempotency_key}"
+        cached = redis_client.get(redis_key)
+        if cached:
+            return json.loads(cached)
+        return None
+
+    @staticmethod
+    def _store_idempotency_key(
+        tenant_id: str,
+        idempotency_key: str,
+        response: dict,
+        ttl: int = 86400,
+    ) -> None:
+        """Store the response for this idempotency key with TTL."""
+        redis_key = f"dify:async_workflow:idempotency:{tenant_id}:{idempotency_key}"
+        redis_client.setex(redis_key, ttl, json.dumps(response))
+
+    @staticmethod
+    def _check_async_concurrency_limit(tenant_id: str) -> None:
+        """Reject async requests if the tenant has too many active workflow runs."""
+        from sqlalchemy import func
+        from werkzeug.exceptions import TooManyRequests
+
+        max_concurrent = dify_config.ASYNC_WORKFLOW_MAX_CONCURRENT
+        if max_concurrent == 0:
+            return
+
+        active_count = (
+            db.session.query(func.count(WorkflowRun.id))
+            .filter(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.status.in_(["scheduled", "running"]),
+            )
+            .scalar()
+        )
+
+        if active_count >= max_concurrent:
+            raise TooManyRequests(
+                description=(
+                    f"Too many active workflow runs ({active_count}/{max_concurrent}). "
+                    f"Wait for existing runs to complete before submitting new ones."
+                )
+            )
 
     @classmethod
     def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):

@@ -242,6 +242,13 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
         }
 
+    if dify_config.ENABLE_REAP_ZOMBIE_WORKFLOW_RUNS_TASK:
+        imports.append("schedule.reap_zombie_workflow_runs_task")
+        beat_schedule["reap_zombie_workflow_runs_task"] = {
+            "task": "schedule.reap_zombie_workflow_runs_task.reap_zombie_workflow_runs_task",
+            "schedule": timedelta(minutes=1),
+        }
+
     if dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
         imports.append("tasks.enterprise_telemetry_task")
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)

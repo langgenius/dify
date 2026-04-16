@@ -1,14 +1,15 @@
+import json
 import logging
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Literal
 
 from dateutil.parser import isoparse
-from flask import request
+from flask import Response, request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound, TooManyRequests
 
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.schema import register_schema_models
@@ -51,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
-    response_mode: Literal["blocking", "streaming"] | None = None
+    response_mode: Literal["blocking", "streaming", "async"] | None = None
 
 
 class WorkflowLogQuery(BaseModel):
@@ -278,6 +279,29 @@ class WorkflowRunApi(Resource):
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
+        if payload.response_mode == "async":
+            idempotency_key = request.headers.get("Idempotency-Key")
+            try:
+                response, is_duplicate = AppGenerateService.generate_async(
+                    app_model=app_model,
+                    user=end_user,
+                    args=args,
+                    invoke_from=InvokeFrom.SERVICE_API,
+                    idempotency_key=idempotency_key,
+                )
+                return Response(
+                    response=json.dumps(response),
+                    status=200 if is_duplicate else 202,
+                    content_type="application/json; charset=utf-8",
+                )
+            except TooManyRequests:
+                return {"error": "Too many concurrent async workflow runs", "code": "too_many_requests"}, 429
+            except ValueError as e:
+                raise BadRequest(str(e))
+            except Exception:
+                logger.exception("internal server error.")
+                raise InternalServerError()
+
         streaming = payload.response_mode == "streaming"
 
         try:
