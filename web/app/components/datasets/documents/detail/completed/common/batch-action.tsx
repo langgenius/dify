@@ -1,14 +1,22 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import { IS_CE_EDITION } from '@/config'
-import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
@@ -54,9 +62,9 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
-      <div className="pointer-events-auto flex items-center gap-x-1 radius-lg border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
-        <div className="inline-flex items-center gap-x-2 py-1 pl-2 pr-3">
-          <span className="system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface">
+      <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+        <div className="inline-flex items-center gap-x-2 py-1 pr-3 pl-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedIds.length}
           </span>
           <span className="system-sm-semibold text-text-accent">{t(`${i18nPrefix}.selected`, { ns: 'dataset' })}</span>
@@ -130,7 +138,7 @@ const BatchAction: FC<IBatchActionProps> = ({
         )}
         <Button
           variant="ghost"
-          destructive
+          tone="destructive"
           className="gap-x-0.5 px-3"
           onClick={showDeleteConfirm}
         >
@@ -147,20 +155,24 @@ const BatchAction: FC<IBatchActionProps> = ({
           <span className="px-0.5">{t(`${i18nPrefix}.cancel`, { ns: 'dataset' })}</span>
         </Button>
       </div>
-      {
-        isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            content={t('list.delete.content', { ns: 'datasetDocuments' })}
-            confirmText={t('operation.sure', { ns: 'common' })}
-            onConfirm={handleBatchDelete}
-            onCancel={hideDeleteConfirm}
-            isLoading={isDeleting}
-            isDisabled={isDeleting}
-          />
-        )
-      }
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('list.delete.content', { ns: 'datasetDocuments' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={isDeleting} disabled={isDeleting} onClick={handleBatchDelete}>
+              {t('operation.sure', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

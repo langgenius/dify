@@ -1,13 +1,13 @@
 import type { ToastPayload } from './variable-modal.helpers'
 import type { ConversationVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import { useVariableModalState } from './use-variable-modal-state'
 import {
@@ -76,7 +76,7 @@ const ChatVariableModal = ({
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
-      <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold">
+      <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {!chatVar ? t('chatVariable.modal.title', { ns: 'workflow' }) : t('chatVariable.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div

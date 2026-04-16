@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
+
+import pytest
+from graphon.variables.types import SegmentType
+from pydantic import ValidationError
 
 from controllers.console.app import conversation_variables as conversation_variables_module
 
@@ -15,89 +20,89 @@ def _unwrap(func):
     return func
 
 
-class _DummyValueType:
-    def exposed_type(self):
-        return SimpleNamespace(value="number")
-
-
-class _DummyVariable:
-    def __init__(self, *, value_type, value):
-        self._value_type = value_type
-        self._value = value
-
-    def model_dump(self):
-        return {
-            "id": "var-1",
-            "name": "v1",
-            "value_type": self._value_type,
-            "value": self._value,
-            "description": "desc",
-        }
-
-
-class _DummyRow:
-    def __init__(self, *, value_type, value):
-        self.created_at = datetime(2024, 1, 1, 1, 2, 3, tzinfo=UTC)
-        self.updated_at = datetime(2024, 1, 2, 1, 2, 3, tzinfo=UTC)
-        self._variable = _DummyVariable(value_type=value_type, value=value)
-
-    def to_variable(self):
-        return self._variable
-
-
-class _FakeSession:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def scalars(self, _stmt):
-        return SimpleNamespace(all=lambda: self._rows)
-
-
-class _FakeSessionMaker:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def begin(self):
-        rows = self._rows
-
-        class _Ctx:
-            def __enter__(self):
-                return _FakeSession(rows)
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        return _Ctx()
-
-
-def test_conversation_variables_get_serializes_value_type_and_value(app, monkeypatch):
+def test_get_conversation_variables_returns_paginated_response(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = conversation_variables_module.ConversationVariablesApi()
     method = _unwrap(api.get)
 
-    rows = [
-        _DummyRow(value_type=_DummyValueType(), value=123),
-        _DummyRow(value_type="string", value="abc"),
-    ]
+    created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    updated_at = datetime(2026, 1, 2, tzinfo=UTC)
+    row = SimpleNamespace(
+        created_at=created_at,
+        updated_at=updated_at,
+        to_variable=lambda: SimpleNamespace(
+            model_dump=lambda: {
+                "id": "var-1",
+                "name": "my_var",
+                "value_type": "string",
+                "value": "value",
+                "description": "desc",
+            }
+        ),
+    )
+    session = SimpleNamespace(scalars=lambda _stmt: SimpleNamespace(all=lambda: [row]))
+    monkeypatch.setattr(conversation_variables_module, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(
         conversation_variables_module,
         "sessionmaker",
-        lambda *_args, **_kwargs: _FakeSessionMaker(rows),
+        lambda *_args, **_kwargs: SimpleNamespace(begin=lambda: nullcontext(session)),
     )
-    monkeypatch.setattr(conversation_variables_module, "db", SimpleNamespace(engine=object()))
 
     with app.test_request_context(
         "/console/api/apps/app-1/conversation-variables",
+        method="GET",
         query_string={"conversation_id": "conv-1"},
     ):
         response = method(app_model=SimpleNamespace(id="app-1"))
 
     assert response["page"] == 1
     assert response["limit"] == 100
-    assert response["total"] == 2
+    assert response["total"] == 1
     assert response["has_more"] is False
+    assert response["data"][0]["id"] == "var-1"
+    assert response["data"][0]["created_at"] == int(created_at.timestamp())
+    assert response["data"][0]["updated_at"] == int(updated_at.timestamp())
+
+
+def test_get_conversation_variables_normalizes_value_type_and_value(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = conversation_variables_module.ConversationVariablesApi()
+    method = _unwrap(api.get)
+
+    row = SimpleNamespace(
+        created_at=None,
+        updated_at=None,
+        to_variable=lambda: SimpleNamespace(
+            model_dump=lambda: {
+                "id": "var-2",
+                "name": "my_var_2",
+                "value_type": SegmentType.INTEGER,
+                "value": 42,
+                "description": None,
+            }
+        ),
+    )
+    session = SimpleNamespace(scalars=lambda _stmt: SimpleNamespace(all=lambda: [row]))
+    monkeypatch.setattr(conversation_variables_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        conversation_variables_module,
+        "sessionmaker",
+        lambda *_args, **_kwargs: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+
+    with app.test_request_context(
+        "/console/api/apps/app-1/conversation-variables",
+        method="GET",
+        query_string={"conversation_id": "conv-1"},
+    ):
+        response = method(app_model=SimpleNamespace(id="app-1"))
+
     assert response["data"][0]["value_type"] == "number"
-    assert response["data"][0]["value"] == "123"
-    assert response["data"][1]["value_type"] == "string"
-    assert response["data"][1]["value"] == "abc"
-    assert isinstance(response["data"][0]["created_at"], int)
-    assert isinstance(response["data"][0]["updated_at"], int)
+    assert response["data"][0]["value"] == "42"
+
+
+def test_get_conversation_variables_requires_conversation_id(app) -> None:
+    api = conversation_variables_module.ConversationVariablesApi()
+    method = _unwrap(api.get)
+
+    with app.test_request_context("/console/api/apps/app-1/conversation-variables", method="GET"):
+        with pytest.raises(ValidationError):
+            method(app_model=SimpleNamespace(id="app-1"))

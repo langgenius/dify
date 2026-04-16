@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCloseLine,
   RiLoader2Line,
@@ -12,9 +13,17 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
+import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
@@ -27,7 +36,6 @@ import {
   useUpdateMCP,
   useUpdateMCPTools,
 } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import MCPModal from '../modal'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
@@ -163,15 +171,15 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
-              <div className="system-md-semibold truncate text-text-primary" title={detail.name}>{detail.name}</div>
+              <div className="truncate system-md-semibold text-text-primary" title={detail.name}>{detail.name}</div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
               <Tooltip popupContent={t('mcp.identifier', { ns: 'tools' })}>
-                <div className="system-xs-regular shrink-0 cursor-pointer text-text-secondary" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
+                <div className="shrink-0 cursor-pointer system-xs-regular text-text-secondary" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
               </Tooltip>
-              <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
+              <div className="shrink-0 system-xs-regular text-text-quaternary">·</div>
               <Tooltip popupContent={t('mcp.modal.serverUrl', { ns: 'tools' })}>
-                <div className="system-xs-regular truncate text-text-secondary">{detail.server_url}</div>
+                <div className="truncate system-xs-regular text-text-secondary">{detail.server_url}</div>
               </Tooltip>
             </div>
           </div>
@@ -222,7 +230,7 @@ const MCPDetailContent: FC<Props> = ({
       <div className="flex grow flex-col">
         {((detail.is_team_authorization && isGettingTools) || isUpdating) && (
           <>
-            <div className="flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2">
+            <div className="flex shrink-0 justify-between gap-2 px-4 pt-2 pb-1">
               <div className="flex h-6 items-center">
                 {!isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.gettingTools', { ns: 'tools' })}</div>}
                 {isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.updateTools', { ns: 'tools' })}</div>}
@@ -236,7 +244,7 @@ const MCPDetailContent: FC<Props> = ({
         )}
         {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
           <div className="flex h-full w-full flex-col items-center justify-center">
-            <div className="system-sm-regular mb-3 text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
+            <div className="mb-3 system-sm-regular text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
             <Button
               variant="primary"
               onClick={handleUpdateTools}
@@ -247,7 +255,7 @@ const MCPDetailContent: FC<Props> = ({
         )}
         {!isUpdating && !isGettingTools && toolList.length > 0 && (
           <>
-            <div className="flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2">
+            <div className="flex shrink-0 justify-between gap-2 px-4 pt-2 pb-1">
               <div className="flex h-6 items-center">
                 {toolList.length > 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.toolsNum', { ns: 'tools', count: toolList.length })}</div>}
                 {toolList.length === 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.onlyTool', { ns: 'tools' })}</div>}
@@ -272,8 +280,8 @@ const MCPDetailContent: FC<Props> = ({
 
         {!isUpdating && !detail.is_team_authorization && (
           <div className="flex h-full w-full flex-col items-center justify-center">
-            {!isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
-            {isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
+            {!isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
+            {isAuthorizing && <div className="mb-1 system-md-medium text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
             <div className="system-sm-regular text-text-tertiary">{t('mcp.authorizeTip', { ns: 'tools' })}</div>
           </div>
         )}
@@ -286,30 +294,42 @@ const MCPDetailContent: FC<Props> = ({
           onHide={hideUpdateModal}
         />
       )}
-      {isShowDeleteConfirm && (
-        <Confirm
-          isShow
-          title={t('mcp.delete', { ns: 'tools' })}
-          content={(
-            <div>
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('mcp.delete', { ns: 'tools' })}
+            </AlertDialogTitle>
+            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: detail.name })}
             </div>
-          )}
-          onCancel={hideDeleteConfirm}
-          onConfirm={handleDelete}
-          isLoading={deleting}
-          isDisabled={deleting}
-        />
-      )}
-      {isShowUpdateConfirm && (
-        <Confirm
-          isShow
-          title={t('mcp.toolUpdateConfirmTitle', { ns: 'tools' })}
-          content={t('mcp.toolUpdateConfirmContent', { ns: 'tools' })}
-          onCancel={hideUpdateConfirm}
-          onConfirm={handleUpdateTools}
-        />
-      )}
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={isShowUpdateConfirm} onOpenChange={open => !open && hideUpdateConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('mcp.toolUpdateConfirmTitle', { ns: 'tools' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('mcp.toolUpdateConfirmContent', { ns: 'tools' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleUpdateTools}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

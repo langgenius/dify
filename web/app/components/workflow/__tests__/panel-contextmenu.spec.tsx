@@ -8,6 +8,7 @@ const mockUseStore = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
 const mockUsePanelInteractions = vi.hoisted(() => vi.fn())
 const mockUseWorkflowStartRun = vi.hoisted(() => vi.fn())
+const mockUseWorkflowMoveMode = vi.hoisted(() => vi.fn())
 const mockUseOperator = vi.hoisted(() => vi.fn())
 const mockUseDSL = vi.hoisted(() => vi.fn())
 
@@ -23,6 +24,9 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: {
     panelMenu?: { left: number, top: number }
     clipboardElements: unknown[]
+    pendingComment: null | { pageX: number, pageY: number, elementX: number, elementY: number }
+    setCommentPlacing: (placing: boolean) => void
+    setCommentQuickAdd: (quickAdd: boolean) => void
     setShowImportDSLModal: (visible: boolean) => void
   }) => unknown) => mockUseStore(selector),
 }))
@@ -31,6 +35,7 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesInteractions: () => mockUseNodesInteractions(),
   usePanelInteractions: () => mockUsePanelInteractions(),
   useWorkflowStartRun: () => mockUseWorkflowStartRun(),
+  useWorkflowMoveMode: () => mockUseWorkflowMoveMode(),
   useDSL: () => mockUseDSL(),
 }))
 
@@ -62,14 +67,18 @@ describe('PanelContextmenu', () => {
   const mockHandleAddNote = vi.fn()
   const mockExportCheck = vi.fn()
   const mockSetShowImportDSLModal = vi.fn()
+  const mockSetCommentPlacing = vi.fn()
+  const mockSetCommentQuickAdd = vi.fn()
   let panelMenu: { left: number, top: number } | undefined
   let clipboardElements: unknown[]
+  let pendingComment: null | { pageX: number, pageY: number, elementX: number, elementY: number }
   let clickAwayHandler: (() => void) | undefined
 
   beforeEach(() => {
     vi.clearAllMocks()
     panelMenu = undefined
     clipboardElements = []
+    pendingComment = null
     clickAwayHandler = undefined
 
     mockUseClickAway.mockImplementation((handler: () => void) => {
@@ -81,10 +90,16 @@ describe('PanelContextmenu', () => {
     mockUseStore.mockImplementation((selector: (state: {
       panelMenu?: { left: number, top: number }
       clipboardElements: unknown[]
+      pendingComment: null | { pageX: number, pageY: number, elementX: number, elementY: number }
+      setCommentPlacing: (placing: boolean) => void
+      setCommentQuickAdd: (quickAdd: boolean) => void
       setShowImportDSLModal: (visible: boolean) => void
     }) => unknown) => selector({
       panelMenu,
       clipboardElements,
+      pendingComment,
+      setCommentPlacing: mockSetCommentPlacing,
+      setCommentQuickAdd: mockSetCommentQuickAdd,
       setShowImportDSLModal: mockSetShowImportDSLModal,
     }))
     mockUseNodesInteractions.mockReturnValue({
@@ -95,6 +110,9 @@ describe('PanelContextmenu', () => {
     })
     mockUseWorkflowStartRun.mockReturnValue({
       handleStartWorkflowRun: mockHandleStartWorkflowRun,
+    })
+    mockUseWorkflowMoveMode.mockReturnValue({
+      isCommentModeAvailable: false,
     })
     mockUseOperator.mockReturnValue({
       handleAddNote: mockHandleAddNote,

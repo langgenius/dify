@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Any
 
 from flask import request
 from flask_restx import Resource
@@ -28,21 +31,10 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
     return value
 
 
-def _normalize_value_type(value) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, str):
-        return value
-    try:
-        return serialize_value_type({"value_type": value})
-    except (TypeError, ValueError, AttributeError):
-        return str(getattr(value, "value", value))
-
-
 class ConversationVariableResponse(ResponseModel):
     id: str
     name: str
-    value_type: str | None = None
+    value_type: str
     value: str | None = None
     description: str | None = None
     created_at: int | None = None
@@ -50,19 +42,29 @@ class ConversationVariableResponse(ResponseModel):
 
     @field_validator("value_type", mode="before")
     @classmethod
-    def _normalize_value_type(cls, value):
-        return _normalize_value_type(value)
+    def _normalize_value_type(cls, value: Any) -> str:
+        exposed_type = getattr(value, "exposed_type", None)
+        if callable(exposed_type):
+            return str(exposed_type().value)
+        if isinstance(value, str):
+            return value
+        try:
+            return serialize_value_type(value)
+        except Exception:
+            return serialize_value_type({"value_type": value})
 
     @field_validator("value", mode="before")
     @classmethod
-    def _normalize_value(cls, value) -> str | None:
+    def _normalize_value(cls, value: Any | None) -> str | None:
         if value is None:
             return None
+        if isinstance(value, str):
+            return value
         return str(value)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
-    def _normalize_timestamps(cls, value: datetime | int | None) -> int | None:
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return _to_timestamp(value)
 
 
@@ -75,7 +77,10 @@ class PaginatedConversationVariableResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns, ConversationVariablesQuery, ConversationVariableResponse, PaginatedConversationVariableResponse
+    console_ns,
+    ConversationVariablesQuery,
+    ConversationVariableResponse,
+    PaginatedConversationVariableResponse,
 )
 
 
@@ -112,19 +117,22 @@ class ConversationVariablesApi(Resource):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             rows = session.scalars(stmt).all()
 
-        return PaginatedConversationVariableResponse.model_validate(
+        response = PaginatedConversationVariableResponse.model_validate(
             {
                 "page": page,
                 "limit": page_size,
                 "total": len(rows),
                 "has_more": False,
                 "data": [
-                    {
-                        "created_at": row.created_at,
-                        "updated_at": row.updated_at,
-                        **row.to_variable().model_dump(),
-                    }
+                    ConversationVariableResponse.model_validate(
+                        {
+                            "created_at": row.created_at,
+                            "updated_at": row.updated_at,
+                            **row.to_variable().model_dump(),
+                        }
+                    )
                     for row in rows
                 ],
             }
-        ).model_dump(mode="json")
+        )
+        return response.model_dump(mode="json")

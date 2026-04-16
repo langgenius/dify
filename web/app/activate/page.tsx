@@ -1,7 +1,7 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'
 import ActivateForm from './activateForm'
 

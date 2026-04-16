@@ -1,5 +1,6 @@
 import json
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -57,7 +58,7 @@ class _FakeSelect:
         return self
 
 
-def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict | None = None):
+def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None):
     return SimpleNamespace(
         data_source_type=data_source_type,
         keyword_table_dict=keyword_table_dict,

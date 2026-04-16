@@ -1,15 +1,15 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 type ModalPropsType = {
@@ -83,7 +83,7 @@ const VariableModal = ({
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl')}
     >
-      <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold">
+      <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {!env ? t('env.modal.title', { ns: 'workflow' }) : t('env.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
@@ -97,12 +97,12 @@ const VariableModal = ({
       <div className="px-4 py-2">
         {/* type */}
         <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('env.modal.type', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.type', { ns: 'workflow' })}</div>
           <div className="flex gap-2">
             <div
               className={cn(
-                'flex w-[106px] cursor-pointer items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular radius-md hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-                type === 'string' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs system-sm-medium hover:border-components-option-card-option-selected-border',
+                'flex w-[106px] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                type === 'string' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
               )}
               onClick={() => setType('string')}
             >
@@ -110,7 +110,7 @@ const VariableModal = ({
             </div>
             <div
               className={cn(
-                'flex w-[106px] cursor-pointer items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular radius-md hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                'flex w-[106px] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                 type === 'number' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
               )}
               onClick={() => {
@@ -123,7 +123,7 @@ const VariableModal = ({
             </div>
             <div
               className={cn(
-                'flex w-[106px] cursor-pointer items-center justify-center border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular radius-md hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                'flex w-[106px] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                 type === 'secret' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
               )}
               onClick={() => setType('secret')}
@@ -142,7 +142,7 @@ const VariableModal = ({
         </div>
         {/* name */}
         <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('env.modal.name', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.name', { ns: 'workflow' })}</div>
           <div className="flex">
             <Input
               placeholder={t('env.modal.namePlaceholder', { ns: 'workflow' }) || ''}
@@ -155,13 +155,13 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('env.modal.value', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.value', { ns: 'workflow' })}</div>
           <div className="flex">
             {
               type !== 'number'
                 ? (
                     <textarea
-                      className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-hidden system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+                      className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                       value={value}
                       placeholder={t('env.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                       onChange={e => setValue(e.target.value)}
@@ -180,10 +180,10 @@ const VariableModal = ({
         </div>
         {/* description */}
         <div className="">
-          <div className="mb-1 flex h-6 items-center text-text-secondary system-sm-semibold">{t('env.modal.description', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.description', { ns: 'workflow' })}</div>
           <div className="flex">
             <textarea
-              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-hidden system-sm-regular placeholder:text-components-input-text-placeholder placeholder:system-sm-regular hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+              className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
               placeholder={t('env.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}

@@ -1,5 +1,6 @@
 'use client'
 import type { AppData } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useEffect,
 } from 'react'
@@ -13,7 +14,6 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { AppSourceType } from '@/service/share'
-import { cn } from '@/utils/classnames'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,

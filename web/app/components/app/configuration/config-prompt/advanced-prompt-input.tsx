@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
@@ -13,13 +14,13 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
-import Button from '@/app/components/base/button'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
 import {
   Tooltip,
@@ -30,7 +31,6 @@ import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import MessageTypeSelector from './message-type-selector'
@@ -148,14 +148,14 @@ const AdvancedPromptInput: FC<Props> = ({
   const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
-      className="flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl pb-1 pl-4 pr-3 pt-2"
+      className="flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl pt-2 pr-3 pb-1 pl-4"
       style={{
         background: 'linear-gradient(180deg, #FEF0C7 0%, rgba(254, 240, 199, 0) 100%)',
       }}
     >
       <div className="flex items-center pr-2">
         <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
-        <div className="text-[13px] font-medium leading-[18px] text-[#DC6803]">{t('promptMode.contextMissing', { ns: 'appDebug' })}</div>
+        <div className="text-[13px] leading-[18px] font-medium text-[#DC6803]">{t('promptMode.contextMissing', { ns: 'appDebug' })}</div>
       </div>
       <Button
         size="small"
@@ -172,7 +172,7 @@ const AdvancedPromptInput: FC<Props> = ({
         {isContextMissing
           ? contextMissing
           : (
-              <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-background-default pb-1 pl-4 pr-3 pt-2 hover:shadow-xs')}>
+              <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-background-default pt-2 pr-3 pb-1 pl-4 hover:shadow-xs')}>
                 {isChatMode
                   ? (
                       <MessageTypeSelector value={type} onChange={onTypeChange} />
@@ -180,13 +180,13 @@ const AdvancedPromptInput: FC<Props> = ({
                   : (
                       <div className="flex items-center space-x-1">
 
-                        <div className="text-sm font-semibold uppercase text-indigo-800">
+                        <div className="text-sm font-semibold text-indigo-800 uppercase">
                           {t('pageTitle.line1', { ns: 'appDebug' })}
                         </div>
                         <Tooltip>
                           <TooltipTrigger
                             render={(
-                              <span className="i-ri-question-line ml-1 h-4 w-4 shrink-0 text-text-quaternary" />
+                              <span className="ml-1 i-ri-question-line h-4 w-4 shrink-0 text-text-quaternary" />
                             )}
                           />
                           <TooltipContent>

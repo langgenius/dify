@@ -1,12 +1,12 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import { IS_DEV } from '@/config'
-import { cn } from '@/utils/classnames'
 
 type ErrorBoundaryState = {
   hasError: boolean
@@ -151,14 +151,14 @@ class ErrorBoundaryInner extends React.Component<
               <div className="rounded-lg bg-gray-100 p-4">
                 <div className="mb-2">
                   <span className="font-mono text-xs font-semibold text-gray-600">{copy.error}</span>
-                  <pre className="mt-1 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-800">
+                  <pre className="mt-1 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-800">
                     {error.toString()}
                   </pre>
                 </div>
                 {errorInfo && (
                   <div>
                     <span className="font-mono text-xs font-semibold text-gray-600">{copy.componentStack}</span>
-                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-xs text-gray-700">
+                    <pre className="mt-1 max-h-40 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-700">
                       {errorInfo.componentStack}
                     </pre>
                   </div>

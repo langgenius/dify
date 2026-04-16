@@ -1,20 +1,20 @@
 import type {
   CommonNodeType,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@/app/components/base/ui/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
 } from '@/app/components/workflow/hooks'
-import { cn } from '@/utils/classnames'
 import Operator from './operator'
 
 type ItemProps = {
@@ -47,7 +47,7 @@ const Item = ({
         className="mr-1.5 shrink-0"
       />
       <div
-        className="system-xs-medium grow truncate text-text-secondary"
+        className="grow truncate system-xs-medium text-text-secondary"
         title={data.title}
       >
         {data.title}

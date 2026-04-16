@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import { Button } from '@/app/components/base/ui/button'
 import { toast } from '@/app/components/base/ui/toast'
-import { cn } from '@/utils/classnames'
 
 export type Props = {
   file: File | undefined
@@ -100,7 +100,7 @@ const CSVUploader: FC<Props> = ({
                 <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('batchModal.browse', { ns: 'appAnnotation' })}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
           </div>
         )}
         {file && (

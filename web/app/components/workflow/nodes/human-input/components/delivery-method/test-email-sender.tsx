@@ -4,15 +4,16 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightSFill, RiCloseLine } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import { Button } from '@/app/components/base/ui/button'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import {
   getNodeInfoById,
@@ -24,7 +25,6 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
-import { cn } from '@/utils/classnames'
 import { isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 
@@ -251,7 +251,7 @@ const EmailSenderModal = ({
       onClose={noop}
       className="relative max-w-[480px]! p-0!"
     >
-      <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
+      <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       <div className="space-y-1 p-6 pb-3">
@@ -306,12 +306,12 @@ const EmailSenderModal = ({
               onAdd={noop}
             />
           </div>
-          <div className="system-xs-regular px-6 pt-1 text-text-tertiary">
+          <div className="px-6 pt-1 system-xs-regular text-text-tertiary">
             <Trans
               i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
               ns="workflow"
               components={{
-                strong: <span onClick={jumpToEmailConfigModal} className="system-xs-regular cursor-pointer text-text-accent"></span>,
+                strong: <span onClick={jumpToEmailConfigModal} className="cursor-pointer system-xs-regular text-text-accent"></span>,
               }}
             />
           </div>
@@ -321,11 +321,11 @@ const EmailSenderModal = ({
       {generatedInputs.length > 0 && (
         <>
           <div className="px-6">
-            <Divider className="mb-2! mt-4! h-px! w-12! bg-divider-regular" />
+            <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
           </div>
           <div className="px-6 py-2">
             <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
-              <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
+              <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
               <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
             </div>
             <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
