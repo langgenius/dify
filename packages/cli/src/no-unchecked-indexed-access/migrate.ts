@@ -334,12 +334,57 @@ function createDirectEditTarget(
   }
 }
 
+function createIterableFallbackReplacement(
+  expression: ts.Expression,
+  sourceFile: ts.SourceFile,
+): string {
+  return `(${expression.getText(sourceFile)} ?? [])`
+}
+
 function createIterableFallbackTarget(expression: ts.Expression): EditTarget {
   return createDirectEditTarget(
     expression.getSourceFile(),
     expression.getStart(expression.getSourceFile()),
     expression.getEnd(),
-    `(${expression.getText(expression.getSourceFile())} ?? [])`,
+    createIterableFallbackReplacement(expression, expression.getSourceFile()),
+  )
+}
+
+function createArrayLiteralIterableFallbackTarget(
+  arrayLiteral: ts.ArrayLiteralExpression,
+  checker: ts.TypeChecker,
+): EditTarget | undefined {
+  const sourceFile = arrayLiteral.getSourceFile()
+  const start = arrayLiteral.getStart(sourceFile)
+  const end = arrayLiteral.getEnd()
+  const originalText = sourceFile.text.slice(start, end)
+  const edits: TextEdit[] = []
+
+  for (const element of arrayLiteral.elements) {
+    if (!ts.isSpreadElement(element))
+      continue
+
+    if (isAlreadyNonNull(element.expression))
+      continue
+
+    if (!typeIncludesUndefined(checker.getTypeAtLocation(element.expression)))
+      continue
+
+    edits.push({
+      end: element.expression.getEnd() - start,
+      replacement: createIterableFallbackReplacement(element.expression, sourceFile),
+      start: element.expression.getStart(sourceFile) - start,
+    })
+  }
+
+  if (edits.length === 0)
+    return undefined
+
+  return createDirectEditTarget(
+    sourceFile,
+    start,
+    end,
+    applyEdits(originalText, edits).text,
   )
 }
 
@@ -691,28 +736,16 @@ function findIterableTarget(
   end: number,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
+  const arrayLiteral = findAncestor(token, ts.isArrayLiteralExpression)
+  if (arrayLiteral) {
+    const arrayLiteralTarget = createArrayLiteralIterableFallbackTarget(arrayLiteral, checker)
+    if (arrayLiteralTarget)
+      return arrayLiteralTarget
+  }
+
   const spreadElement = findAncestor(token, ts.isSpreadElement)
   if (spreadElement && !isAlreadyNonNull(spreadElement.expression))
     return createIterableFallbackTarget(spreadElement.expression)
-
-  const arrayLiteral = findAncestor(token, ts.isArrayLiteralExpression)
-  if (arrayLiteral) {
-    for (const element of arrayLiteral.elements) {
-      if (!ts.isSpreadElement(element))
-        continue
-
-      const elementStart = element.getStart(sourceFile)
-      const elementEnd = element.getEnd()
-      const overlapsDiagnostic = elementStart <= start && end <= elementEnd
-
-      if (!overlapsDiagnostic && (start < arrayLiteral.getStart(sourceFile) || end > arrayLiteral.getEnd()))
-        continue
-
-      if (!isAlreadyNonNull(element.expression)) {
-        return createIterableFallbackTarget(element.expression)
-      }
-    }
-  }
 
   const variableDeclaration = findAncestor(token, ts.isVariableDeclaration)
   if (
@@ -1290,6 +1323,10 @@ function findArrayLiteralElementTarget(
   arrayLiteral: ts.ArrayLiteralExpression,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
+  const iterableFallbackTarget = createArrayLiteralIterableFallbackTarget(arrayLiteral, checker)
+  if (iterableFallbackTarget)
+    return iterableFallbackTarget
+
   for (const element of arrayLiteral.elements) {
     if (ts.isSpreadElement(element)) {
       const directTarget = findTargetFromExpression(element.expression, checker)
@@ -1458,7 +1495,7 @@ function resolveEditTarget(
 
   if (diagnostic.code === 2488) {
     const iterableTarget = findIterableTarget(sourceFile, token, start, end, checker)
-    if (iterableTarget && isExpressionTarget(iterableTarget) && !isAlreadyNonNull(iterableTarget.expression))
+    if (iterableTarget && (!isExpressionTarget(iterableTarget) || !isAlreadyNonNull(iterableTarget.expression)))
       return iterableTarget
   }
 

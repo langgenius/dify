@@ -18,6 +18,13 @@ function printUsage() {
   dify-cli no-unchecked-indexed-access normalize`)
 }
 
+async function flushStandardStreams() {
+  await Promise.all([
+    new Promise<void>(resolve => process.stdout.write('', () => resolve())),
+    new Promise<void>(resolve => process.stderr.write('', () => resolve())),
+  ])
+}
+
 async function main() {
   const [group, command, ...restArgs] = process.argv.slice(2)
 
@@ -45,10 +52,16 @@ async function main() {
   await handler(restArgs)
 }
 
+let exitCode = 0
+
 try {
   await main()
+  exitCode = process.exitCode ?? 0
 }
 catch (error) {
   console.error(error instanceof Error ? error.message : error)
-  process.exitCode = 1
+  exitCode = 1
 }
+
+await flushStandardStreams()
+process.exit(exitCode)
