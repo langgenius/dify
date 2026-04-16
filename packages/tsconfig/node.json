@@ -1,12 +1,7 @@
 {
   "extends": "./base.json",
   "compilerOptions": {
-    "lib": [
-      "ES2023"
-    ],
-    "noEmit": true,
-    "types": [
-      "node"
-    ]
+    "lib": ["es2022"],
+    "types": ["node"]
   }
 }
