@@ -208,14 +208,16 @@ vi.mock('@/app/components/base/ui/dropdown-menu', () => {
     DropdownMenu: ({
       children,
       open = false,
+      modal,
       onOpenChange,
     }: {
       children: React.ReactNode
       open?: boolean
+      modal?: boolean
       onOpenChange?: (open: boolean) => void
     }) => (
       <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div data-testid="dropdown-menu" data-open={open}>
+        <div data-testid="dropdown-menu" data-open={open} data-modal={modal}>
           {children}
         </div>
       </DropdownMenuContext>
@@ -459,6 +461,11 @@ describe('AppCard', () => {
     it('should render operations dropdown menu', () => {
       render(<AppCard app={mockApp} />)
       expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument()
+    })
+
+    it('should render dropdown menu as non-modal', () => {
+      render(<AppCard app={mockApp} />)
+      expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
     })
 
     it('should show edit option when dropdown menu is opened', async () => {
