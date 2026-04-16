@@ -112,10 +112,9 @@ jobs:
         working-directory: ./web
         run: vp run lint:tss
 
-      - name: Workspace type check
+      - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: .
-        run: pnpm run type-check
+        run: vp run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
