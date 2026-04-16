@@ -334,8 +334,8 @@ catalogs:
       specifier: 2.3.6
       version: 2.3.6
     hono:
-      specifier: 4.12.12
-      version: 4.12.12
+      specifier: 4.12.14
+      version: 4.12.14
     html-entities:
       specifier: 2.6.0
       version: 2.6.0
@@ -554,8 +554,8 @@ overrides:
   flatted@<=3.4.1: 3.4.2
   glob@>=10.2.0 <10.5.0: 11.1.0
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
-  lodash@>=4.0.0 <= 4.17.23: 4.18.0
   lodash-es@>=4.0.0 <= 4.17.23: 4.18.0
+  lodash@>=4.0.0 <= 4.17.23: 4.18.0
   picomatch@<2.3.2: 2.3.2
   picomatch@>=4.0.0 <4.0.4: 4.0.4
   rollup@>=4.0.0 <4.59.0: 4.59.0
@@ -989,7 +989,7 @@ importers:
         version: 3.0.0(eslint@10.2.0(jiti@2.6.1))(typescript@6.0.2)
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 1.19.14(hono@4.12.12)
+        version: 1.19.14(hono@4.12.14)
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
@@ -1151,7 +1151,7 @@ importers:
         version: 20.9.0
       hono:
         specifier: 'catalog:'
-        version: 4.12.12
+        version: 4.12.14
       knip:
         specifier: 'catalog:'
         version: 6.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
@@ -6185,8 +6185,8 @@ packages:
     resolution: {integrity: sha512-Ox1pJVrDCyGHMG9CFg1tmrRUMRPRsAWYc/PinY0XzJU4K7y7vjNoLKIQ7BR5UJMCxNN8EM1MNDmHWA/B3aZUuw==}
     engines: {node: '>=6'}
 
-  hono@4.12.12:
-    resolution: {integrity: sha512-p1JfQMKaceuCbpJKAPKVqyqviZdS0eUxH9v82oWo1kb9xjQ5wA6iP3FNVAPDFlz5/p7d45lO+BpSk1tuSZMF4Q==}
+  hono@4.12.14:
+    resolution: {integrity: sha512-am5zfg3yu6sqn5yjKBNqhnTX7Cv+m00ox+7jbaKkrLMRJ4rAdldd1xPd/JzbBWspqaQv6RSTrgFN95EsfhC+7w==}
     engines: {node: '>=16.9.0'}
 
   hosted-git-info@9.0.2:
@@ -9624,9 +9624,9 @@ snapshots:
     dependencies:
       react: 19.2.5
 
-  '@hono/node-server@1.19.14(hono@4.12.12)':
+  '@hono/node-server@1.19.14(hono@4.12.14)':
     dependencies:
-      hono: 4.12.12
+      hono: 4.12.14
 
   '@humanfs/core@0.19.1': {}
 
@@ -14019,7 +14019,7 @@ snapshots:
 
   hex-rgb@4.3.0: {}
 
-  hono@4.12.12: {}
+  hono@4.12.14: {}
 
   hosted-git-info@9.0.2:
     dependencies:
