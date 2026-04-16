@@ -244,7 +244,7 @@ const ProviderDetail = ({
             <Icon src={collection.icon} />
             <div className="ml-3 w-0 grow">
               <div className="flex h-5 items-center">
-                <Title title={collection.label[language]} />
+                <Title title={collection.label[language]!} />
               </div>
               <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                 <OrgInfo

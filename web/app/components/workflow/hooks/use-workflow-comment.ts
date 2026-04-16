@@ -237,7 +237,7 @@ export const useWorkflowComment = () => {
     activeCommentIdRef.current = comment.id
     setActiveCommentId(comment.id)
 
-    const cachedDetail = commentDetailCacheRef.current[comment.id]
+    const cachedDetail = commentDetailCacheRef.current[comment.id]!
     setActiveComment(cachedDetail || comment)
 
     const hasSelectedNode = reactflow.getNodes().some(node => node.data?.selected)
@@ -341,7 +341,7 @@ export const useWorkflowComment = () => {
       }
       else if (currentComments.length > 0) {
         const nextComment = currentComments[0]
-        handleCommentIconClick(nextComment)
+        handleCommentIconClick(nextComment!)
       }
       else {
         setActiveComment(null)

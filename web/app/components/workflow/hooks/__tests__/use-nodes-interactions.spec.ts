@@ -122,7 +122,7 @@ describe('useNodesInteractions', () => {
   })
 
   it('persists node drags only when the node position actually changes', () => {
-    const node = currentNodes[0]
+    const node = currentNodes[0]!
     const movedNode = {
       ...node,
       position: { x: 120, y: 80 },
@@ -136,7 +136,7 @@ describe('useNodesInteractions', () => {
     })
 
     act(() => {
-      result.current.handleNodeDragStart({} as never, node, currentNodes)
+      result.current.handleNodeDragStart({} as never, node!, currentNodes)
       result.current.handleNodeDragStop({} as never, movedNode, currentNodes)
     })
 

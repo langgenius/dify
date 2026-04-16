@@ -75,7 +75,7 @@ const BlockInput: FC<IBlockInputProps> = ({
         return (
           <VarHighlight
             key={`var-${index}`}
-            name={variableMatch[1]}
+            name={variableMatch[1]!}
           />
         )
       }

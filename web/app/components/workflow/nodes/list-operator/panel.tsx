@@ -75,7 +75,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           {inputs.filter_by?.enabled
             ? (
                 <FilterCondition
-                  condition={inputs.filter_by.conditions[0]}
+                  condition={inputs.filter_by.conditions[0]!}
                   onChange={handleFilterChange}
                   varType={itemVarType}
                   hasSubVariable={hasSubVariable}

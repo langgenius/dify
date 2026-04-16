@@ -115,11 +115,11 @@ describe('WorkplaceSelector', () => {
     it('should render current workspace and available workspace options', () => {
       renderComponent()
 
-      expect(screen.getByTestId('workplace-selector-trigger')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('workspace-option-1')).toBeInTheDocument()
-      expect(screen.getByTestId('workspace-option-2')).toBeInTheDocument()
-      expect(screen.getByTestId('workspace-option-1')).toHaveTextContent('Workspace 1')
-      expect(screen.getByTestId('workspace-option-2')).toHaveTextContent('Workspace 2')
+      expect(screen.getByTestId('workplace-selector-trigger'))!.toHaveTextContent('Workspace 1')
+      expect(screen.getByTestId('workspace-option-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workspace-option-2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workspace-option-1'))!.toHaveTextContent('Workspace 1')
+      expect(screen.getByTestId('workspace-option-2'))!.toHaveTextContent('Workspace 2')
     })
   })
 
@@ -127,7 +127,7 @@ describe('WorkplaceSelector', () => {
     it('should switch workspace successfully', async () => {
       vi.mocked(switchWorkspace).mockResolvedValue({
         result: 'success',
-        new_tenant: mockWorkspaces[1],
+        new_tenant: mockWorkspaces[1]!,
       })
 
       renderComponent()

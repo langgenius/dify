@@ -101,10 +101,10 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
         const name = typeof entry === 'string' ? entry : entry[0]
         return !overrideNames.has(name as string)
       })
-      mergedAttributes[tag] = [...filtered, ...ALLOWED_TAGS[tag]]
+      mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
     }
     else {
-      mergedAttributes[tag] = ALLOWED_TAGS[tag]
+      mergedAttributes[tag] = ALLOWED_TAGS[tag]!
     }
   }
 
@@ -132,10 +132,10 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   }
 
   return [
-    defaultRehypePlugins.raw,
+    defaultRehypePlugins.raw!,
     ...(extraPlugins ?? []),
     [sanitizePlugin, customSchema] as Pluggable,
-    defaultRehypePlugins.harden,
+    defaultRehypePlugins.harden!,
   ]
 }
 

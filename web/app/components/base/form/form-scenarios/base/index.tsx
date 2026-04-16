@@ -23,7 +23,7 @@ const BaseForm = ({
         const result = schema.safeParse(value)
         if (!result.success) {
           const issues = result.error.issues
-          const firstIssue = issues[0].message
+          const firstIssue = issues[0]!.message
           return firstIssue
         }
         return undefined

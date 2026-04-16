@@ -51,7 +51,7 @@ describe('recent-store', () => {
 
       const stored = getRecentItems()
       expect(stored.map(i => i.id)).toEqual(['a', 'b'])
-      expect(stored[0].title).toBe('A updated')
+      expect(stored[0]!.title).toBe('A updated')
     })
 
     it('caps the list at 8 items, evicting the oldest', () => {
@@ -60,8 +60,8 @@ describe('recent-store', () => {
 
       const stored = getRecentItems()
       expect(stored).toHaveLength(8)
-      expect(stored[0].id).toBe('item-9')
-      expect(stored[7].id).toBe('item-2')
+      expect(stored[0]!.id).toBe('item-9')
+      expect(stored[7]!.id).toBe('item-2')
     })
 
     it('silently swallows storage errors', () => {

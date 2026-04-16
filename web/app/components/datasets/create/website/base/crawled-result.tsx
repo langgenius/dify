@@ -53,7 +53,7 @@ const CrawledResult: FC<Props> = ({
   const handlePreview = useCallback((index: number) => {
     return () => {
       setPreviewIndex(index)
-      onPreview(list[index])
+      onPreview(list[index]!)
     }
   }, [list, onPreview])
 

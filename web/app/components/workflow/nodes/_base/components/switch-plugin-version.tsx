@@ -35,7 +35,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     pluginUniqueIden: string
   }>()
   const pluginDetails = useCheckInstalled({
-    pluginIds: [pluginId],
+    pluginIds: [pluginId!],
     enabled: true,
   })
   const pluginDetail = pluginDetails.data?.plugins.at(0)

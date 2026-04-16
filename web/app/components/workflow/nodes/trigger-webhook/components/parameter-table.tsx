@@ -58,7 +58,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   ]
 
   // Choose sensible default type for new rows according to content type
-  const defaultTypeValue: VarType = typeOptions[0]?.value || 'string'
+  const defaultTypeValue: VarType = typeOptions[0]?.value! || 'string'
 
   // Empty row template for new rows
   const emptyRowData: GenericTableRow = {

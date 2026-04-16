@@ -532,7 +532,7 @@ export const useChat = (
           if (responseItem.workflowProcess?.tracing) {
             const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === humanInputRequiredData.node_id)
             if (currentTracingIndex > -1)
-              responseItem.workflowProcess.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+              responseItem.workflowProcess.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           }
         })
       },
@@ -555,7 +555,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
           }
         })
       },
@@ -1098,7 +1098,7 @@ export const useChat = (
         }
         const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
         if (currentTracingIndex > -1) {
-          responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+          responseItem.workflowProcess!.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1128,7 +1128,7 @@ export const useChat = (
       onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-          responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+          responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -1181,8 +1181,8 @@ export const useChat = (
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
@@ -1190,22 +1190,22 @@ export const useChat = (
     updateChatTreeNode(targetAnswerId, {
       content: answer,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         logAnnotation: undefined,
       } as any,
     })
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
     })
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
         id: annotationId,
         authorName,
@@ -1222,12 +1222,12 @@ export const useChat = (
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationRemoved = useCallback((index: number) => {
-    const targetAnswerId = chatList[index].id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         id: '',
       } as Annotation,
     })

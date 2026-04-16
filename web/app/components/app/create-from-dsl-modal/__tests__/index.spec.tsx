@@ -137,10 +137,10 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('importFromDSL')).toBeInTheDocument()
+    expect(screen.getByText('importFromDSL'))!.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml')).toBeInTheDocument()
+      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
   })
 
@@ -159,7 +159,7 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('importFromDSLUrl'))
     })
-    expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
 
     const closeTrigger = screen.getByText('importFromDSL').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
     fireEvent.click(closeTrigger)
@@ -222,7 +222,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml')).toBeInTheDocument()
+      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
 
     await act(async () => {
@@ -245,7 +245,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml')).toBeInTheDocument()
+      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
 
     const removeButton = screen.getByText('demo.yml').closest('.group')?.querySelector('button') as HTMLButtonElement
@@ -255,7 +255,7 @@ describe('CreateFromDSLModal', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('demo.yml')).not.toBeInTheDocument()
-      expect(getCreateButton()).toBeDisabled()
+      expect(getCreateButton())!.toBeDisabled()
     })
 
     ahooksMocks.handlers.findLast(item => Array.isArray(item.keys))?.handler()
@@ -294,10 +294,10 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
 
-    expect(screen.getAllByText('newApp.appCreateDSLErrorTitle')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('newApp.appCreateDSLErrorTitle')[0])!.toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
 
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
@@ -386,7 +386,7 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('apps-full')).toBeInTheDocument()
+    expect(screen.getByText('apps-full'))!.toBeInTheDocument()
     ahooksMocks.handlers.findLast(item => Array.isArray(item.keys))?.handler()
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
   })
@@ -461,12 +461,12 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
     expect(toastMocks.error).toHaveBeenCalledWith('newApp.appCreateFailed')
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0])
+      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
   })

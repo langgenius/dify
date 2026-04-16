@@ -87,7 +87,7 @@ export const useMCPServiceCardState = (
     return (basicAppConfig.user_input_form as Array<Record<string, unknown>>).map((item) => {
       const type = Object.keys(item)[0]
       return {
-        ...(item[type] as object),
+        ...(item[type!] as object),
         type: type || 'text-input',
       }
     })

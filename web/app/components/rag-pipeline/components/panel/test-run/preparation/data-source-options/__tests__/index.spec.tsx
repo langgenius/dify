@@ -62,7 +62,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText('Test Label')).toBeInTheDocument()
+      expect(screen.getByText('Test Label'))!.toBeInTheDocument()
     })
 
     it('should render label text', () => {
@@ -77,7 +77,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText('My Data Source')).toBeInTheDocument()
+      expect(screen.getByText('My Data Source'))!.toBeInTheDocument()
     })
 
     it('should render BlockIcon component', () => {
@@ -92,7 +92,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByTestId('block-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('block-icon'))!.toBeInTheDocument()
     })
 
     it('should pass correct type to BlockIcon', () => {
@@ -108,7 +108,7 @@ describe('OptionCard', () => {
       )
 
       const blockIcon = screen.getByTestId('block-icon')
-      expect(blockIcon).toHaveAttribute('data-type', 'datasource')
+      expect(blockIcon)!.toHaveAttribute('data-type', 'datasource')
     })
 
     it('should set title attribute on label element', () => {
@@ -123,7 +123,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByTitle('Long Label Text')).toBeInTheDocument()
+      expect(screen.getByTitle('Long Label Text'))!.toBeInTheDocument()
     })
   })
 
@@ -225,7 +225,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText('Website Crawler')).toBeInTheDocument()
+      expect(screen.getByText('Website Crawler'))!.toBeInTheDocument()
     })
   })
 
@@ -439,7 +439,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText('Test')).toBeInTheDocument()
+      expect(screen.getByText('Test'))!.toBeInTheDocument()
     })
 
     it('should re-render when selected prop changes', () => {
@@ -484,7 +484,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByTestId('block-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('block-icon'))!.toBeInTheDocument()
     })
 
     it('should handle very long label', () => {
@@ -500,8 +500,8 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText(longLabel)).toBeInTheDocument()
-      expect(screen.getByTitle(longLabel)).toBeInTheDocument()
+      expect(screen.getByText(longLabel))!.toBeInTheDocument()
+      expect(screen.getByTitle(longLabel))!.toBeInTheDocument()
     })
 
     it('should handle special characters in label', () => {
@@ -517,7 +517,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText(specialLabel)).toBeInTheDocument()
+      expect(screen.getByText(specialLabel))!.toBeInTheDocument()
     })
 
     it('should handle unicode characters in label', () => {
@@ -532,7 +532,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText('数据源 🎉 データソース')).toBeInTheDocument()
+      expect(screen.getByText('数据源 🎉 データソース'))!.toBeInTheDocument()
     })
 
     it('should handle empty value', () => {
@@ -584,7 +584,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByText('Minimal')).toBeInTheDocument()
+      expect(screen.getByText('Minimal'))!.toBeInTheDocument()
     })
   })
 
@@ -618,7 +618,7 @@ describe('OptionCard', () => {
         />,
       )
 
-      expect(screen.getByTitle(label)).toBeInTheDocument()
+      expect(screen.getByTitle(label))!.toBeInTheDocument()
     })
   })
 })
@@ -640,7 +640,7 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(container.querySelector('.grid')).toBeInTheDocument()
+      expect(container.querySelector('.grid'))!.toBeInTheDocument()
     })
 
     it('should render OptionCard for each option', () => {
@@ -657,9 +657,9 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(screen.getByText('Option 1')).toBeInTheDocument()
-      expect(screen.getByText('Option 2')).toBeInTheDocument()
-      expect(screen.getByText('Option 3')).toBeInTheDocument()
+      expect(screen.getByText('Option 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Option 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Option 3'))!.toBeInTheDocument()
     })
 
     it('should render empty grid when no options', () => {
@@ -673,7 +673,7 @@ describe('DataSourceOptions', () => {
       )
 
       const grid = container.querySelector('.grid')
-      expect(grid).toBeInTheDocument()
+      expect(grid)!.toBeInTheDocument()
       expect(grid?.children.length).toBe(0)
     })
 
@@ -726,8 +726,8 @@ describe('DataSourceOptions', () => {
       )
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
-      expect(cards[0].className).toContain('border-components-option-card-option-selected-border')
-      expect(cards[1].className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[0]!.className).toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).not.toContain('border-components-option-card-option-selected-border')
     })
 
     it('should mark second option as selected when matching', () => {
@@ -744,8 +744,8 @@ describe('DataSourceOptions', () => {
       )
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
-      expect(cards[0].className).not.toContain('border-components-option-card-option-selected-border')
-      expect(cards[1].className).toContain('border-components-option-card-option-selected-border')
+      expect(cards[0]!.className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).toContain('border-components-option-card-option-selected-border')
     })
 
     it('should mark none as selected when dataSourceNodeId does not match', () => {
@@ -777,7 +777,7 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(container.querySelector('.grid')).toBeInTheDocument()
+      expect(container.querySelector('.grid'))!.toBeInTheDocument()
     })
   })
 
@@ -1101,7 +1101,7 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(screen.getByText('Only Option')).toBeInTheDocument()
+      expect(screen.getByText('Only Option'))!.toBeInTheDocument()
     })
 
     it('should handle many options', () => {
@@ -1115,8 +1115,8 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(screen.getByText('Option 0')).toBeInTheDocument()
-      expect(screen.getByText('Option 19')).toBeInTheDocument()
+      expect(screen.getByText('Option 0'))!.toBeInTheDocument()
+      expect(screen.getByText('Option 19'))!.toBeInTheDocument()
     })
 
     it('should handle options with duplicate labels but different values', () => {
@@ -1135,7 +1135,7 @@ describe('DataSourceOptions', () => {
         />,
       )
       const labels = screen.getAllByText('Same Label')
-      fireEvent.click(labels[1]) // Click second one
+      fireEvent.click(labels[1]!) // Click second one
 
       expect(onSelect).toHaveBeenLastCalledWith({ nodeId: 'id-2', nodeData: data2 })
     })
@@ -1176,7 +1176,7 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(container.querySelector('.grid')).toBeInTheDocument()
+      expect(container.querySelector('.grid'))!.toBeInTheDocument()
     })
 
     it('should handle options with empty string values', () => {
@@ -1289,7 +1289,7 @@ describe('DataSourceOptions Integration', () => {
       )
 
       let cards = container.querySelectorAll('.flex.cursor-pointer')
-      expect(cards[1].className).toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).toContain('border-components-option-card-option-selected-border')
 
       rerender(
         <DataSourceOptions
@@ -1299,8 +1299,8 @@ describe('DataSourceOptions Integration', () => {
       )
 
       cards = container.querySelectorAll('.flex.cursor-pointer')
-      expect(cards[2].className).toContain('border-components-option-card-option-selected-border')
-      expect(cards[1].className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[2]!.className).toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).not.toContain('border-components-option-card-option-selected-border')
     })
 
     it('should handle rapid option switching', async () => {
@@ -1344,8 +1344,8 @@ describe('DataSourceOptions Integration', () => {
         />,
       )
 
-      expect(screen.getByText('Test Label')).toBeInTheDocument()
-      expect(screen.getByTestId('block-icon')).toBeInTheDocument()
+      expect(screen.getByText('Test Label'))!.toBeInTheDocument()
+      expect(screen.getByTestId('block-icon'))!.toBeInTheDocument()
       const card = container.querySelector('.flex.cursor-pointer')
       expect(card?.className).toContain('border-components-option-card-option-selected-border')
     })
@@ -1397,8 +1397,8 @@ describe('DataSourceOptions Integration', () => {
       }
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
-      expect(cards[0].className).toContain('border-components-option-card-option-selected-border')
-      expect(cards[1].className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[0]!.className).toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).not.toContain('border-components-option-card-option-selected-border')
     })
 
     it('should handle options array reference change with same content', () => {
@@ -1490,7 +1490,7 @@ describe('handleSelect Early Return Coverage', () => {
       />,
     )
 
-    expect(container.querySelector('.grid')).toBeInTheDocument()
+    expect(container.querySelector('.grid'))!.toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
   })
 

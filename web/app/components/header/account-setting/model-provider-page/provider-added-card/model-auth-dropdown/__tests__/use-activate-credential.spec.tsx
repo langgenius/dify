@@ -92,7 +92,7 @@ describe('useActivateCredential', () => {
       }),
     )
 
-    const [, callbacks] = mockMutate.mock.calls[0]
+    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
 
     act(() => {
       callbacks.onSuccess()
@@ -113,7 +113,7 @@ describe('useActivateCredential', () => {
 
     expect(result.current.selectedCredentialId).toBe('cred-2')
 
-    const [, callbacks] = mockMutate.mock.calls[0]
+    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
 
     act(() => {
       callbacks.onError()

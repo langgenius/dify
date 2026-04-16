@@ -26,5 +26,5 @@ export const renderI18nObject = (obj: Record<string, string>, language: string) 
     return obj[language]
   if (obj?.en_US)
     return obj.en_US
-  return Object.values(obj)[0]
+  return Object.values(obj)[0]!
 }

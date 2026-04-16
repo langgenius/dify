@@ -325,7 +325,7 @@ describe('CollaborationManager syncNodes', () => {
 
   it('reflects the last writer when concurrent removal and edits happen', () => {
     const base = [createNodeSnapshot(['a', 'b'])]
-    internals.syncNodes([], [deepClone(base[0])])
+    internals.syncNodes([], [deepClone(base[0])!])
     const userA = [
       {
         ...createNodeSnapshot(['a']),
@@ -407,7 +407,7 @@ describe('CollaborationManager syncNodes', () => {
     const final = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
     const finalTemplates = getPromptTemplates(final!)
     expect(finalTemplates).toHaveLength(1)
-    expect(finalTemplates[0].text).toBe('updated system prompt')
+    expect(finalTemplates[0]!.text).toBe('updated system prompt')
   })
 
   it('keeps parameter list in sync when nodes add, edit, or remove parameters', () => {
@@ -500,7 +500,7 @@ describe('CollaborationManager syncNodes', () => {
 
     const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as Node<ParameterExtractorNodeData>
     const mutatedNode = deepClone(stored)
-    mutatedNode.data.parameters[0].description = 'updated'
+    mutatedNode.data.parameters[0]!.description = 'updated'
 
     parameterInternals.syncNodes([stored], [mutatedNode])
 
@@ -509,7 +509,7 @@ describe('CollaborationManager syncNodes', () => {
       | undefined
     const params = storedAfter?.data.parameters ?? []
     expect(params).toHaveLength(1)
-    expect(params[0].description).toBe('updated')
+    expect(params[0]!.description).toBe('updated')
   })
 
   it('filters out transient/private data keys while keeping allowlisted ones', () => {

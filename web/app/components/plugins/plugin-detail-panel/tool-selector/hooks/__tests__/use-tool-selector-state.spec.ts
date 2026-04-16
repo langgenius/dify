@@ -112,11 +112,11 @@ describe('useToolSelectorState', () => {
 
     // param2 has form='form' (not 'llm'), so it goes to settings
     expect(result.current.currentToolSettings).toHaveLength(1)
-    expect(result.current.currentToolSettings[0].name).toBe('param2')
+    expect(result.current.currentToolSettings[0]!.name).toBe('param2')
 
     // param1 has form='llm', so it goes to params
     expect(result.current.currentToolParams).toHaveLength(1)
-    expect(result.current.currentToolParams[0].name).toBe('param1')
+    expect(result.current.currentToolParams[0]!.name).toBe('param1')
   })
 
   it('should show tab slider when both settings and params exist', () => {

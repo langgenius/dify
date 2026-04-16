@@ -59,7 +59,7 @@ const useSingleRunFormParams = ({
         if (varSelector[0] === id) { // skip iteration node itself variable: item, index
           return
         }
-        const isInIteration = isNodeInIteration(varSelector[0])
+        const isInIteration = isNodeInIteration(varSelector[0]!)
         if (isInIteration) // not pass iteration inner variable
           return
 
@@ -80,12 +80,12 @@ const useSingleRunFormParams = ({
       })
     })
     const res = toVarInputs(vars.map((item) => {
-      const varInfo = getNodeInfoById(canChooseVarNodes, item[0])
+      const varInfo = getNodeInfoById(canChooseVarNodes, item[0]!)
       return {
         label: {
           nodeType: varInfo?.data.type,
           nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
         },
         variable: `${item.join('.')}`,
         value_selector: item,
