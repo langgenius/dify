@@ -8,7 +8,11 @@
   },
   "scripts": {
     "prepare": "vp config",
-    "type-check": "vp run -r type-check"
+    "type-check": "vp run -r type-check",
+    "lint": "eslint --cache --concurrency=auto",
+    "lint:ci": "eslint --cache --cache-strategy content --concurrency 2",
+    "lint:fix": "vp run lint --fix",
+    "lint:quiet": "vp run lint --quiet"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",

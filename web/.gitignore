@@ -64,5 +64,3 @@ public/fallback-*.js
 
 .vscode/settings.json
 .vscode/mcp.json
-
-.eslintcache
