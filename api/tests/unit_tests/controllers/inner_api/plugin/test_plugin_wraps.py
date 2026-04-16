@@ -61,6 +61,37 @@ class TestGetUser:
         assert result == mock_user
         mock_session.get.assert_called_once()
 
+    @patch("controllers.inner_api.plugin.wraps.select")
+    @patch("controllers.inner_api.plugin.wraps.EndUser")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
+    @patch("controllers.inner_api.plugin.wraps.db")
+    def test_should_not_resolve_non_anonymous_users_across_tenants(
+        self,
+        mock_db,
+        mock_sessionmaker,
+        mock_enduser_class,
+        mock_select,
+        app: Flask,
+    ):
+        """Test that explicit user IDs remain scoped to the current tenant."""
+        # Arrange
+        mock_session = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+        mock_session.scalar.return_value = None
+        mock_new_user = MagicMock()
+        mock_new_user.tenant_id = "tenant-current"
+        mock_enduser_class.return_value = mock_new_user
+
+        # Act
+        with app.app_context():
+            result = get_user("tenant-current", "foreign-user-id")
+
+        # Assert
+        assert result == mock_new_user
+        mock_session.get.assert_not_called()
+        mock_session.scalar.assert_called_once()
+        mock_session.add.assert_called_once_with(mock_new_user)
+
     @patch("controllers.inner_api.plugin.wraps.EndUser")
     @patch("controllers.inner_api.plugin.wraps.sessionmaker")
     @patch("controllers.inner_api.plugin.wraps.db")
