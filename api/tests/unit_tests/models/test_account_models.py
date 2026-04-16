@@ -399,7 +399,6 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert account._current_tenant is None
 
-
     def test_account_current_tenant_id_property(self):
         """Test the current_tenant_id property."""
         # Arrange
@@ -484,7 +483,6 @@ class TestTenantRelationshipIntegrity:
 
         # Assert - should not set tenant when no relationship exists
         # The method returns early without setting _current_tenant
-
 
 
 class TestAccountRolePermissions:

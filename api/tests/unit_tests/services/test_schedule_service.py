@@ -597,7 +597,6 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
         mock_session.commit.assert_not_called()
 
 
-
 @pytest.fixture
 def session_mock() -> MagicMock:
     return MagicMock(spec=Session)
