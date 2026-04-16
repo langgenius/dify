@@ -314,15 +314,6 @@
     }
   },
   "app/components/app/annotation/header-opts/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/component-hook-factories": {
-      "count": 1
-    },
-    "react/no-nested-component-definitions": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -857,12 +848,6 @@
   },
   "app/components/apps/app-card.tsx": {
     "no-restricted-imports": {
-      "count": 3
-    },
-    "react/component-hook-factories": {
-      "count": 1
-    },
-    "react/no-nested-component-definitions": {
       "count": 1
     },
     "react/set-state-in-effect": {
@@ -1775,7 +1760,7 @@
   },
   "app/components/base/icons/src/vender/line/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 6
     }
   },
   "app/components/base/icons/src/vender/line/financeAndECommerce/index.ts": {
@@ -2569,16 +2554,8 @@
     }
   },
   "app/components/base/tag-management/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 5
-    }
-  },
-  "app/components/base/tag-management/selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "app/components/base/tag-management/tag-item-editor.tsx": {
@@ -2865,11 +2842,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/create-from-pipeline/list/template-card/actions.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create-from-pipeline/list/template-card/content.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
@@ -2888,11 +2860,6 @@
   "app/components/datasets/create-from-pipeline/list/template-card/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
     }
   },
   "app/components/datasets/create/embedding-process/indexing-progress-item.tsx": {
@@ -2971,11 +2938,6 @@
       "count": 1
     },
     "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/create/step-two/language-select/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3094,7 +3056,7 @@
   },
   "app/components/datasets/documents/components/operations.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/datasets/documents/components/rename-modal.tsx": {
@@ -3397,9 +3359,6 @@
   },
   "app/components/datasets/documents/detail/segment-add/index.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "react-refresh/only-export-components": {
