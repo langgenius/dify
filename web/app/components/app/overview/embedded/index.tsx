@@ -317,15 +317,17 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, hiddenIn
       wrapperClassName={className}
       closable={true}
     >
-      {isShow && (
-        <EmbeddedContent
-          key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${JSON.stringify(hiddenInputs ?? [])}`}
-          siteInfo={siteInfo}
-          appBaseUrl={appBaseUrl ?? ''}
-          accessToken={accessToken ?? ''}
-          hiddenInputs={hiddenInputs}
-        />
-      )}
+      <div className="max-h-[calc(90vh-88px)] overflow-y-auto">
+        {isShow && (
+          <EmbeddedContent
+            key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${JSON.stringify(hiddenInputs ?? [])}`}
+            siteInfo={siteInfo}
+            appBaseUrl={appBaseUrl ?? ''}
+            accessToken={accessToken ?? ''}
+            hiddenInputs={hiddenInputs}
+          />
+        )}
+      </div>
     </Modal>
   )
 }
