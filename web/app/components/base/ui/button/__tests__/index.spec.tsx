@@ -1,3 +1,4 @@
+import type { FormEvent } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { Button } from '../index'
 
@@ -104,9 +105,18 @@ describe('Button', () => {
       expect(screen.getByRole('button').querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     })
 
-    it('auto-disables when loading', () => {
+    it('is aria-disabled but not natively disabled when loading', () => {
       render(<Button loading>Click me</Button>)
-      expect(screen.getByRole('button')).toBeDisabled()
+      const btn = screen.getByRole('button')
+      expect(btn).toHaveAttribute('aria-disabled', 'true')
+      expect(btn).not.toBeDisabled()
+    })
+
+    it('remains focusable when loading', () => {
+      render(<Button loading>Click me</Button>)
+      const btn = screen.getByRole('button')
+      btn.focus()
+      expect(btn).toHaveFocus()
     })
 
     it('sets aria-busy when loading', () => {
@@ -124,6 +134,20 @@ describe('Button', () => {
     it('disables button when disabled prop is set', () => {
       render(<Button disabled>Click me</Button>)
       expect(screen.getByRole('button')).toBeDisabled()
+    })
+
+    it('keeps native disabled when explicitly disabled (not focusable)', () => {
+      render(<Button disabled>Click me</Button>)
+      const btn = screen.getByRole('button')
+      expect(btn).toBeDisabled()
+      expect(btn).not.toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('keeps native disabled and announces busy when both disabled and loading', () => {
+      render(<Button disabled loading>Click me</Button>)
+      const btn = screen.getByRole('button')
+      expect(btn).toBeDisabled()
+      expect(btn).toHaveAttribute('aria-busy', 'true')
     })
 
     it('keeps focusable when loading with focusableWhenDisabled', () => {
@@ -153,6 +177,17 @@ describe('Button', () => {
       render(<Button onClick={onClick} loading>Click me</Button>)
       fireEvent.click(screen.getByRole('button'))
       expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('prevents form submission when loading (type=submit)', () => {
+      const onSubmit = vi.fn((e: FormEvent) => e.preventDefault())
+      render(
+        <form onSubmit={onSubmit}>
+          <Button loading type="submit">Submit</Button>
+        </form>,
+      )
+      fireEvent.click(screen.getByRole('button'))
+      expect(onSubmit).not.toHaveBeenCalled()
     })
   })
 

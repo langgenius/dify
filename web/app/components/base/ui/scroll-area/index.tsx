@@ -23,10 +23,6 @@ type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
   labelledBy?: string
 }
 
-export const scrollAreaVars = {
-  edgeHintBg: '--dify-scrollbar-edge-hint-bg',
-} as const
-
 const scrollAreaScrollbarClassName = cn(
   'group/scrollbar flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
   'pointer-events-none data-hovering:pointer-events-auto',

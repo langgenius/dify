@@ -17,7 +17,7 @@ export const SelectValue = BaseSelect.Value
 /** @public */
 export const SelectGroup = BaseSelect.Group
 
-export const selectTriggerVariants = cva(
+const selectTriggerVariants = cva(
   [
     'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
@@ -40,7 +40,7 @@ export const selectTriggerVariants = cva(
   },
 )
 
-export type SelectTriggerProps
+type SelectTriggerProps
   = Omit<BaseSelect.Trigger.Props, 'className'>
     & VariantProps<typeof selectTriggerVariants>
     & { className?: string }
