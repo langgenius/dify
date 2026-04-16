@@ -1,7 +1,7 @@
 from typing import Any
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
@@ -38,8 +38,17 @@ class AppImportPayload(BaseModel):
 
 class LeakedDependencyResponse(ResponseModel):
     type: str
-    value: Any
+    value: dict[str, Any]
     current_identifier: str | None = None
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _normalize_value(cls, value: Any) -> dict[str, Any]:
+        if hasattr(value, "model_dump"):
+            return value.model_dump(mode="json")
+        if isinstance(value, dict):
+            return value
+        raise TypeError("Unsupported dependency value")
 
 
 class AppImportResponse(ResponseModel):
@@ -152,4 +161,5 @@ class AppImportCheckDependenciesApi(Resource):
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 
-        return AppImportCheckDependenciesResponse.model_validate(result).model_dump(mode="json"), 200
+        response_data = result if isinstance(result, dict) else result.model_dump(mode="json")
+        return AppImportCheckDependenciesResponse.model_validate(response_data).model_dump(mode="json"), 200
