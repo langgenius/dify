@@ -5,9 +5,9 @@ import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import {
-  menuGroupLabelClassName,
-  menuSeparatorClassName,
-} from '@/app/components/base/ui/menu-shared'
+  overlayGroupLabelClassName,
+  overlaySeparatorClassName,
+} from '@/app/components/base/ui/overlay-shared'
 import { parsePlacement } from '@/app/components/base/ui/placement'
 
 export const Select = BaseSelect.Root
@@ -61,7 +61,7 @@ export function SelectGroupLabel({
 }: React.ComponentPropsWithoutRef<typeof BaseSelect.GroupLabel>) {
   return (
     <BaseSelect.GroupLabel
-      className={cn(menuGroupLabelClassName, className)}
+      className={cn(overlayGroupLabelClassName, className)}
       {...props}
     />
   )
@@ -74,7 +74,7 @@ export function SelectSeparator({
 }: React.ComponentPropsWithoutRef<typeof BaseSelect.Separator>) {
   return (
     <BaseSelect.Separator
-      className={cn(menuSeparatorClassName, className)}
+      className={cn(overlaySeparatorClassName, className)}
       {...props}
     />
   )
@@ -129,14 +129,14 @@ export function SelectContent({
       >
         <BaseSelect.Popup
           className={cn(
-            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}
           {...popupProps}
         >
           <BaseSelect.List
-            className={cn('max-h-80 min-w-40 overflow-auto p-1 outline-hidden', listClassName)}
+            className={cn('max-h-80 overflow-auto p-1 outline-hidden', listClassName)}
             {...listProps}
           >
             {children}
