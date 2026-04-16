@@ -1,7 +1,7 @@
 import json
 
-from core.agent.cot_agent_runner import CotAgentRunner
 from core.prompt.utils.image_detail_config import image_detail_config_for_prompt_file
+from core.agent.cot_agent_runner import CotAgentRunner
 from graphon.file import file_manager
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
