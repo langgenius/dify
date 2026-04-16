@@ -135,8 +135,12 @@ def _serialize_env_variable(variable: Any) -> dict[str, Any]:
         "description": variable.get("description") if isinstance(variable, dict) else variable.description,
         "selector": selector or [],
         "value_type": value_type,
+        "value": variable.get("value") if isinstance(variable, dict) else getattr(variable, "value", None),
         "edited": variable.get("edited", False) if isinstance(variable, dict) else getattr(variable, "edited", False),
         "visible": variable.get("visible", True) if isinstance(variable, dict) else getattr(variable, "visible", True),
+        "editable": variable.get("editable", False)
+        if isinstance(variable, dict)
+        else getattr(variable, "editable", False),
     }
 
 
@@ -178,8 +182,10 @@ class WorkflowDraftEnvVariableResponse(ResponseModel):
     description: str
     selector: list[str]
     value_type: str
+    value: Any | None = None
     edited: bool
     visible: bool
+    editable: bool = False
 
     @model_validator(mode="before")
     @classmethod
