@@ -1,9 +1,11 @@
 'use client'
 
+import type { VariantProps } from 'class-variance-authority'
 import type { ReactNode } from 'react'
 import type { Placement } from '@/app/components/base/ui/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@langgenius/dify-ui/cn'
+import { cva } from 'class-variance-authority'
 import {
   overlayLabelClassName,
   overlaySeparatorClassName,
@@ -15,34 +17,43 @@ export const SelectValue = BaseSelect.Value
 /** @public */
 export const SelectGroup = BaseSelect.Group
 
-const selectSizeClassName: Record<string, string> = {
-  small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-  medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-  large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
-}
+const selectTriggerVariants = cva(
+  [
+    'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
+    'data-placeholder:text-components-input-text-placeholder',
+    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
+    'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
+    'data-disabled:data-placeholder:text-components-input-text-disabled',
+  ],
+  {
+    variants: {
+      size: {
+        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
+        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
+      },
+    },
+    defaultVariants: {
+      size: 'medium',
+    },
+  },
+)
 
-type SelectTriggerProps = BaseSelect.Trigger.Props & {
-  size?: 'small' | 'medium' | 'large'
-}
+type SelectTriggerProps
+  = Omit<BaseSelect.Trigger.Props, 'className'>
+    & VariantProps<typeof selectTriggerVariants>
+    & { className?: string }
 
 export function SelectTrigger({
   className,
   children,
-  size = 'medium',
+  size,
   ...props
 }: SelectTriggerProps) {
   return (
     <BaseSelect.Trigger
-      className={cn(
-        'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-        'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
-        'data-placeholder:text-components-input-text-placeholder',
-        selectSizeClassName[size],
-        'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
-        'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-        'data-disabled:data-placeholder:text-components-input-text-disabled',
-        className,
-      )}
+      className={cn(selectTriggerVariants({ size, className }))}
       {...props}
     >
       <span className="min-w-0 grow truncate">
