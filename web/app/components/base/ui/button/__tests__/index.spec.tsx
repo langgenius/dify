@@ -105,28 +105,9 @@ describe('Button', () => {
       expect(screen.getByRole('button').querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     })
 
-    it('is aria-disabled but not natively disabled when loading', () => {
+    it('is disabled when loading', () => {
       render(<Button loading>Click me</Button>)
-      const btn = screen.getByRole('button')
-      expect(btn).toHaveAttribute('aria-disabled', 'true')
-      expect(btn).not.toBeDisabled()
-    })
-
-    it('remains focusable when loading', () => {
-      render(<Button loading>Click me</Button>)
-      const btn = screen.getByRole('button')
-      btn.focus()
-      expect(btn).toHaveFocus()
-    })
-
-    it('sets aria-busy when loading', () => {
-      render(<Button loading>Click me</Button>)
-      expect(screen.getByRole('button')).toHaveAttribute('aria-busy', 'true')
-    })
-
-    it('does not set aria-busy when not loading', () => {
-      render(<Button>Click me</Button>)
-      expect(screen.getByRole('button')).not.toHaveAttribute('aria-busy')
+      expect(screen.getByRole('button')).toBeDisabled()
     })
   })
 
@@ -136,24 +117,9 @@ describe('Button', () => {
       expect(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('keeps native disabled when explicitly disabled (not focusable)', () => {
-      render(<Button disabled>Click me</Button>)
-      const btn = screen.getByRole('button')
-      expect(btn).toBeDisabled()
-      expect(btn).not.toHaveAttribute('aria-disabled', 'true')
-    })
-
-    it('keeps native disabled and announces busy when both disabled and loading', () => {
+    it('is disabled when both disabled and loading', () => {
       render(<Button disabled loading>Click me</Button>)
-      const btn = screen.getByRole('button')
-      expect(btn).toBeDisabled()
-      expect(btn).toHaveAttribute('aria-busy', 'true')
-    })
-
-    it('keeps focusable when loading with focusableWhenDisabled', () => {
-      render(<Button loading focusableWhenDisabled>Loading</Button>)
-      const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('button')).toBeDisabled()
     })
   })
 
@@ -188,6 +154,28 @@ describe('Button', () => {
       )
       fireEvent.click(screen.getByRole('button'))
       expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('does not bubble click to parent when loading', () => {
+      const onParentClick = vi.fn()
+      render(
+        <div onClick={onParentClick}>
+          <Button loading>Click me</Button>
+        </div>,
+      )
+      fireEvent.click(screen.getByRole('button'))
+      expect(onParentClick).not.toHaveBeenCalled()
+    })
+
+    it('bubbles click to parent when not loading', () => {
+      const onParentClick = vi.fn()
+      render(
+        <div onClick={onParentClick}>
+          <Button>Click me</Button>
+        </div>,
+      )
+      fireEvent.click(screen.getByRole('button'))
+      expect(onParentClick).toHaveBeenCalledTimes(1)
     })
   })
 

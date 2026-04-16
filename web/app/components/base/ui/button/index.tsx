@@ -116,17 +116,12 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const isBusy = Boolean(loading) && !disabled
-
   return (
     <BaseButton
       type={type}
       className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
-      focusableWhenDisabled={isBusy}
-      aria-busy={loading || undefined}
       {...props}
-      onClick={isBusy ? (e) => { e.preventDefault() } : props.onClick}
     >
       {children}
       {loading && (
